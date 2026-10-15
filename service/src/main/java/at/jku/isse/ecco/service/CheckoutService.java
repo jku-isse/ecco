@@ -151,10 +151,13 @@ class CheckoutService {
                         sb.append(" -- suggested fix: ").append(ModuleRevisions.suggestFix(mr, checkout.getConfiguration()));
                         sb.append(System.lineSeparator());
                     }
-                    for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
-                        sb.append("SURPLUS: ").append(ModuleRevisions.describe(mr.getKey())).append(" trace id: ")
-                                .append(mr.getValue()).append(System.lineSeparator());
-                    }
+                    // sorted: the surplus modules are a hash map, and the file read differently each time
+                    List<String> surplus = new ArrayList<>();
+                    for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet())
+                        surplus.add("SURPLUS: " + ModuleRevisions.describe(mr.getKey()) + " trace id: " + mr.getValue());
+                    surplus.sort(null);
+                    for (String line : surplus)
+                        sb.append(line).append(System.lineSeparator());
                     for (Node orderNode : checkout.getOrderWarnings()) {
                         sb.append("ORDER: ").append(ArtifactDiagnostics.describePath(orderNode))
                                 .append(" (current order: ").append(ArtifactDiagnostics.describeChildren(orderNode)).append(")")

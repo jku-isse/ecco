@@ -40,8 +40,9 @@ public class ReopenEquivalenceTest {
     }
 
     /**
-     * A repository written before that fix holds outdated conditions: opening it recomputes them
-     * (here, conditions made wrong on purpose and stored), and the next write stores the right ones.
+     * Conditions are not stored (they are derived): whatever the nodes had when the repository was
+     * written - here conditions made wrong on purpose - opening it computes them again. A repository
+     * written before they were left out holds outdated ones, which are ignored the same way.
      */
     @Test
     @Timeout(120)

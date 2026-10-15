@@ -17,7 +17,12 @@ public class SerFeatureTrace implements FeatureTrace {
     private static final long serialVersionUID = 1621713735051207581L;
     private Node node;
     private String proactiveCondition;
-    private String retroactiveCondition;
+    // derived from the association's counters (Association.Op#setRetroactiveConditions, after every
+    // commit and merge and when a repository is read) - not stored: stored, it went stale whenever a
+    // commit changed the condition of an association it did not write (ReopenEquivalenceTest), it
+    // repeated the condition on every unique node, and a changed condition rewrote the association.
+    // Files written before carry it; it is ignored on read.
+    private transient String retroactiveCondition;
 
     public SerFeatureTrace(Node node){
         this.node = node;
