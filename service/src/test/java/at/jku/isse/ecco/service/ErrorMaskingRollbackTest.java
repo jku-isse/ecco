@@ -46,8 +46,8 @@ public class ErrorMaskingRollbackTest {
         for (Throwable t = exception; t != null; t = t.getCause()) {
             assertTrue(!String.valueOf(t.getMessage()).contains("No transaction active"),
                     "the real error must not be replaced by a failing second rollback: " + t.getMessage());
-            if (t instanceof NoSuchFileException) hasRealCause = true;
+            if (t instanceof NoSuchFileException || String.valueOf(t.getMessage()).contains("is missing")) hasRealCause = true;
         }
-        assertTrue(hasRealCause, "the missing association file should be in the cause chain");
+        assertTrue(hasRealCause, "the missing association pack should be in the cause chain");
     }
 }

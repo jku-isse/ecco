@@ -76,6 +76,10 @@ public final class SerRepository implements Repository, Repository.Op {
 	private Set<String> artifactIds;
 	private Map<String, String> artifactPacks;
 	private List<String> packOrder = new ArrayList<>();
+	// the association packs in the order they were written - a later pack's copy of an association
+	// is the current one (SerTransactionStrategy); null in a core written before them, whose
+	// associations each have a file of their own
+	private List<String> associationPackOrder;
 	// the module revisions association counters refer to by index (CompactCounters, version 2):
 	// append-only, so an index once written stays valid; null in a core written before
 	private List<SerModuleRevision> countedRevisions;
@@ -240,7 +244,7 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	/** The full set of association IDs that should have a file on disk - what {@link #restoreAssociations} needs loaded. */
 	public Set<String> getAssociationIds() {
-		return Collections.unmodifiableSet(this.associationIds);
+		return this.associationIds == null ? Set.of() : Collections.unmodifiableSet(this.associationIds);
 	}
 
 	/** Associations added or (re-)referenced since the last {@link #clearDirtyTracking()} - need writing. */
@@ -644,6 +648,16 @@ public final class SerRepository implements Repository, Repository.Op {
 		}
 		return this.mainTree;
 	 }
+
+	/** The association packs, oldest first (none in a core written before them). */
+	public List<String> getAssociationPackOrder() {
+		return this.associationPackOrder == null ? List.of() : Collections.unmodifiableList(this.associationPackOrder);
+	}
+
+	/** Sets the association packs, oldest first - before the core is written. */
+	public void setAssociationPackOrder(List<String> packs) {
+		this.associationPackOrder = new ArrayList<>(packs);
+	}
 
 	/** The index counters refer to [revision] by - added at the end if it has none yet. */
 	public synchronized int countedIndex(SerModuleRevision revision) {

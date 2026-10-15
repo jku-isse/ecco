@@ -268,7 +268,6 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// it, so that the id-file swap further down is the single commit point for the whole
 		// transaction (see the javadoc on this method)
 		String newId = UUID.randomUUID().toString();
-		String pendingSuffix = CommitJournal.pendingSuffix(newId);
 		// discard leftovers of earlier transactions that failed before their swap - safe here, we
 		// hold the exclusive write lock, so no other writer can have files in flight
 		this.journal.recoverPendingFiles(this.id, true);
@@ -276,8 +275,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		Map<String, byte[]> stagedArtifacts = new HashMap<>();
 		Set<String> looseArtifactFiles = this.packs.write(repo, newId, stagedArtifacts);
 
-		// then the associations it touched (see AssociationStore#stage)
-		Map<Path, byte[]> staged = this.associations.stage(repo, pendingSuffix);
+		// then the associations it touched, in a pack of their own (see AssociationStore#stage)
+		AssociationStore.Staged staged = this.associations.stage(repo, newId);
 		// the pieces of their trees not stored yet - in a pack of their own, before the core that refers to them
 		this.pieces.write(newId);
 
@@ -340,13 +339,14 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	}
 
 	/**
-	 * After the commit point of {@link #endReadWrite()}: moves the staged files over their stable
-	 * names, deletes the files the new core no longer references, and records what is stored now.
+	 * After the commit point of {@link #endReadWrite()}: moves files staged by writes before packs
+	 * over their stable names, deletes the files the new core no longer references, and records what
+	 * is stored now.
 	 */
-	private void finishCommitted(SerRepository repo, String newId, Map<Path, byte[]> staged, Map<String, byte[]> stagedArtifacts,
+	private void finishCommitted(SerRepository repo, String newId, AssociationStore.Staged staged, Map<String, byte[]> stagedArtifacts,
 								 boolean oldCoreReleased, Set<String> looseArtifactFiles) throws IOException {
 		this.journal.recoverPendingFiles(newId, false);
-		this.associations.committed(repo, staged);
+		this.associations.committed(repo, staged, oldCoreReleased);
 		this.packs.committed(stagedArtifacts);
 		if (oldCoreReleased) {
 			this.packs.deleteSupersededArtifactFiles(repo, looseArtifactFiles);
@@ -487,15 +487,11 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// the artifacts before any association (see ArtifactPackStore#load)
 		this.packs.load(repo);
 
-		// load each association from its own file (eagerly: every association is loaded on open) and wire up the
-		// resolver every commit needs to turn the IDs it holds back into Association objects. A
-		// no-op for a brand new repository (SerRepository starts with an empty association-id set).
+		// every association (eagerly: all are loaded on open), and wire up the resolver every commit
+		// needs to turn the ids it holds back into Association objects. A no-op for a brand new
+		// repository (SerRepository starts with an empty association-id set).
 		this.pieces.load();
-		List<Association.Op> loadedAssociations = new ArrayList<>(repo.getAssociationIds().size());
-		for (String associationId : repo.getAssociationIds()) {
-			loadedAssociations.add(this.associations.read(associationId));
-		}
-		repo.restoreAssociations(loadedAssociations);
+		repo.restoreAssociations(this.associations.readAll(repo));
 		this.pieces.loaded();
 		// the repository's commits (Commit.getAssociations() needs the resolver after a reload -
 		// CommitAssociationConsistencyTest)
