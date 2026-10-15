@@ -408,7 +408,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 				this.beginReadWrite();
 			this.transactionCounter++;
 		} catch (IOException e) {
-			throw new EccoException(this.ioFailure("read", e), e);
+			throw new EccoException(this.ioFailure(transaction == TRANSACTION.READ_WRITE ? "open for writing" : "read", e), e);
 		} catch (ClassNotFoundException e) {
 			throw new EccoException("Error beginning transaction.", e);
 		}
@@ -472,9 +472,17 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 		// obtain exclusive write lock
 		this.writeFileChannel = FileChannel.open(this.writeLockFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-		this.writeFileLock = this.writeFileChannel.lock(0, Long.MAX_VALUE, false);
-		if (!this.writeFileLock.isValid())
-			throw new EccoException("Could not obtain exclusive lock on WRITE file.");
+		try {
+			this.writeFileLock = this.writeFileChannel.lock(0, Long.MAX_VALUE, false);
+			if (!this.writeFileLock.isValid())
+				throw new EccoException("Could not obtain exclusive lock on WRITE file.");
+		} catch (IOException | RuntimeException e) {
+			// the channel stayed open until close() when locking failed
+			this.writeFileChannel.close();
+			this.writeFileChannel = null;
+			this.writeFileLock = null;
+			throw e;
+		}
 
 		this.transaction = TRANSACTION.READ_WRITE;
 

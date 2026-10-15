@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,23 +41,26 @@ public class ErrorRollbackTest {
     @Test
     @Timeout(120)
     public void anErrorRollsBackTheTransactionOfEveryOperation() throws Exception {
-        Map<String, Consumer<EccoService>> operations = new LinkedHashMap<>();
-        operations.put("getRepository", EccoService::getRepository);
-        operations.put("parseConfigurationString", s -> s.parseConfigurationString("A"));
-        operations.put("addVariant", s -> s.addVariant(configuration(s), "v"));
-        operations.put("removeVariant (writeTransaction)", s -> s.removeVariant("none"));
-        operations.put("store", EccoService::store);
-        operations.put("checkout", s -> s.checkout(configuration(s)));
-        operations.put("validCheckoutConditions", EccoService::validCheckoutConditions);
-        operations.put("minimizeConditionsForCheckout", EccoService::minimizeConditionsForCheckout);
-        operations.put("checkConstraintViolations", s -> s.checkConstraintViolations(configuration(s)));
-        operations.put("map", s -> s.map(List.of(Path.of("f.txt"))));
-        operations.put("addRemote", s -> s.addRemote("other", "localhost:1"));
-        operations.put("getRemote", s -> s.getRemote("origin"));
-        operations.put("getRemotes", EccoService::getRemotes);
-        operations.put("removeRemote", s -> s.removeRemote("origin"));
+        // the configuration is parsed before the storage fails, so that the operation itself runs: built
+        // inside the call, its parse failed first and addVariant, checkout and checkConstraintViolations
+        // were never reached
+        Map<String, BiConsumer<EccoService, Configuration>> operations = new LinkedHashMap<>();
+        operations.put("getRepository", (s, c) -> s.getRepository());
+        operations.put("parseConfigurationString", (s, c) -> s.parseConfigurationString("A"));
+        operations.put("addVariant", (s, c) -> s.addVariant(c, "v"));
+        operations.put("removeVariant (writeTransaction)", (s, c) -> s.removeVariant("none"));
+        operations.put("store", (s, c) -> s.store());
+        operations.put("checkout", (s, c) -> s.checkout(c));
+        operations.put("validCheckoutConditions", (s, c) -> s.validCheckoutConditions());
+        operations.put("minimizeConditionsForCheckout", (s, c) -> s.minimizeConditionsForCheckout());
+        operations.put("checkConstraintViolations", (s, c) -> s.checkConstraintViolations(c));
+        operations.put("map", (s, c) -> s.map(List.of(Path.of("f.txt"))));
+        operations.put("addRemote", (s, c) -> s.addRemote("other", "localhost:1"));
+        operations.put("getRemote", (s, c) -> s.getRemote("origin"));
+        operations.put("getRemotes", (s, c) -> s.getRemotes());
+        operations.put("removeRemote", (s, c) -> s.removeRemote("origin"));
 
-        for (Map.Entry<String, Consumer<EccoService>> operation : operations.entrySet())
+        for (Map.Entry<String, BiConsumer<EccoService, Configuration>> operation : operations.entrySet())
             assertRollsBack(operation.getKey(), operation.getValue());
     }
 
@@ -79,7 +83,7 @@ public class ErrorRollbackTest {
         return service.parseConfigurationString("A");
     }
 
-    private void assertRollsBack(String name, Consumer<EccoService> operation) throws Exception {
+    private void assertRollsBack(String name, BiConsumer<EccoService, Configuration> operation) throws Exception {
         Path repositoryDir = newRepository();
         EccoService service = open(repositoryDir);
         Configuration configuration = configuration(service);
@@ -90,7 +94,7 @@ public class ErrorRollbackTest {
         RemoteDao remoteDao = service.remoteDao;
         service.repositoryDao = failing(RepositoryDao.class, repositoryDao);
         service.remoteDao = failing(RemoteDao.class, remoteDao);
-        Executable call = () -> operation.accept(service);
+        Executable call = () -> operation.accept(service, configuration);
         assertThrows(InjectedError.class, call, name + ": the Error itself, not wrapped");
         service.repositoryDao = repositoryDao;
         service.remoteDao = remoteDao;

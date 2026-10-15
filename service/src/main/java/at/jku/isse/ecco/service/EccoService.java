@@ -596,7 +596,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.rollbackIfTransactionActive();
             throw e;
         } catch (EccoException e) {
-            this.transactionStrategy.rollback();
+            // a begin() that failed leaves no transaction: rollback() then threw "No transaction
+            // active" and hid the real reason (e.g. the repository's files could not be read)
+            this.rollbackIfTransactionActive();
             throw new EccoException("Error when retrieving repository.", e);
         }
     }
@@ -1356,7 +1358,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.rollbackIfTransactionActive();
             throw e;
         } catch (Exception e) {
-            this.transactionStrategy.rollback();
+            this.rollbackIfTransactionActive();
 
             throw new EccoException("Store error", e);
         }
@@ -1911,7 +1913,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.rollbackIfTransactionActive();
             throw e;
         } catch (Exception e) {
-            this.transactionStrategy.rollback();
+            this.rollbackIfTransactionActive();
 
             throw new EccoException("Error during map.", e);
         }

@@ -64,7 +64,7 @@ public class VariantManager {
             owner.rollbackIfTransactionActive();
             throw e;
         } catch (Exception e) {
-            owner.transactionStrategy.rollback();
+            owner.rollbackIfTransactionActive();
 
             throw new EccoException("Error during adding a variant.", e);
         } finally {
@@ -130,7 +130,7 @@ public class VariantManager {
             owner.rollbackIfTransactionActive();
             throw e;
         } catch (Exception e) {
-            owner.transactionStrategy.rollback();
+            owner.rollbackIfTransactionActive();
 
             throw new EccoException("Error during adding a variant.", e);
         } finally {
@@ -183,7 +183,7 @@ public class VariantManager {
             owner.rollbackIfTransactionActive();
             throw e;
         } catch (Exception e) {
-            owner.transactionStrategy.rollback();
+            owner.rollbackIfTransactionActive();
             throw new EccoException("Error during adding a variant.", e);
         }
     }
@@ -221,7 +221,7 @@ public class VariantManager {
             owner.rollbackIfTransactionActive();
             throw e;
         } catch (Exception e) {
-            owner.transactionStrategy.rollback();
+            owner.rollbackIfTransactionActive();
 
             throw new EccoException("Error during adding a variant.", e);
         }
