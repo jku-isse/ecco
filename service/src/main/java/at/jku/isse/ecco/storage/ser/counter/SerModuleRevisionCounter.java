@@ -32,7 +32,7 @@ public class SerModuleRevisionCounter implements ModuleRevisionCounter {
 	}
 
 	// Synchronized for the same reason as SerModuleCounter's count/children (see its class javadoc,
-	// association-counter-unsynchronized-race in project memory): getCount() is read concurrently by
+	// the unsynchronized-counter crash): getCount() is read concurrently by
 	// Association.Op#computeLikelyCondition()/#computeCertainCondition() while incCount() is written
 	// during commit's addObservation() - the identical race, one level down the same counter tree.
 	@Override

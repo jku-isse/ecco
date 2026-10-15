@@ -39,8 +39,7 @@ public class ListenerRegistry {
      * outside any {@code EccoService} synchronization (e.g. {@code ArtifactsView} rendering
      * {@code association.computeCondition()} on the FX thread).
      * <p>
-     * The part of this that used to actually crash (association-counter-unsynchronized-race in
-     * project memory: {@code SerAssociationCounter}/{@code SerModuleCounter}/
+     * The part of this that used to actually crash (the unsynchronized-counter crash: {@code SerAssociationCounter}/{@code SerModuleCounter}/
      * {@code SerModuleRevisionCounter}'s {@code children} maps being read via
      * {@code computeCondition()} while a commit's background write mutated them concurrently) is
      * fixed now -- those three classes synchronize every read/write and {@code getChildren()}

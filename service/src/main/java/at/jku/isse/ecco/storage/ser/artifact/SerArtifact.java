@@ -6,7 +6,6 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraph;
-import at.jku.isse.ecco.storage.ser.tree.SerNode;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
 
@@ -19,7 +18,7 @@ import java.util.UUID;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Memory implementation of the {@link Artifact}.
+ * The serialized (Ser storage) implementation of {@link Artifact}.
  */
 public class SerArtifact<DataType extends ArtifactData> implements Artifact<DataType>, Artifact.Op<DataType> {
 
@@ -258,7 +257,6 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 	// where nothing changed - see UnchangedArtifactRewriteTest. Old files still carry the id; it is
 	// ignored on read.
 	private transient Node.Op containingNode;
-	private transient String containingNodeId;
 
 	@Override
 	public Node.Op getContainingNode() {
@@ -268,11 +266,6 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 	@Override
 	public void setContainingNode(final Node.Op node) {
 		this.containingNode = node;
-		this.containingNodeId = (node instanceof SerNode serNode) ? serNode.getStorageId() : null;
-	}
-
-	public String getContainingNodeId() {
-		return this.containingNodeId;
 	}
 
 	/** Used only by SerTransactionStrategy's post-load resolution pass, which derives the containing node from the reconstructed trees. */

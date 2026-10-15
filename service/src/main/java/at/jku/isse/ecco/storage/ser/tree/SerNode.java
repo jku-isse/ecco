@@ -7,7 +7,6 @@ import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
 import at.jku.isse.ecco.storage.ser.featuretrace.SerFeatureTrace;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.util.Location;
 import org.eclipse.collections.impl.factory.Maps;
 
 import java.util.*;
@@ -18,16 +17,8 @@ public class SerNode implements Node, Node.Op {
 
 	public static final long serialVersionUID = 1L;
 
-	// stable identity, independent of artifact content - lets a foreign reference to this exact
-	// node (e.g. SerArtifact.containingNode, when it points outside the node's own association's
-	// tree) be resolved back to a real, properly-reconstructed instance after separately-persisted
-	// associations are loaded, instead of dangling. See SerTransactionStrategy's post-load
-	// resolution pass.
-	private String id = UUID.randomUUID().toString();
-
-	public String getStorageId() {
-		return this.id;
-	}
+	// Files written before carry a random id and a location per node, which nothing read (the id
+	// was a quarter of an association file's bytes, and made equal subtrees differ); ignored on read.
 
 	private boolean unique = true;
 
@@ -53,7 +44,6 @@ public class SerNode implements Node, Node.Op {
 
 	private Integer numberOfChildren = 0;
 
-	private Location location;
 
 	@Override
 	public Op copySingleNode(boolean copyFeatureTrace){

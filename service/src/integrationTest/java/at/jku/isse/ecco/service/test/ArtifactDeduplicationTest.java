@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Characterizes the actual invariant behind
- * pog-mismatch-real-cause-duplicate-storageid/pog-position-identity-fixed's fix: an artifact shared
+ * the fixes of the duplicated-shared-artifact bug and of order positions on shared artifacts: an artifact shared
  * (by reference) across multiple associations' trees must resolve to the SAME Java object after a
  * reload, not merely to "some" resolvable object with the same id. CommitCheckoutTest.
  * serializeAndDeserializeTest() only proves the symptom (checkout no longer throws) - this proves

@@ -7,7 +7,7 @@ import java.util.Objects;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Memory implementation of {@link Constraint}.
+ * The serialized (Ser storage) implementation of {@link Constraint}.
  */
 public class SerConstraint implements Constraint {
 

@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * Closes the last piece of association-counter-unsynchronized-race (project memory):
+ * Closes the last piece of the unsynchronized-counter crash:
  * {@link SerModule}/{@link SerModuleRevision}'s own plain {@code int count} fields, read via
  * {@code Association.Op#computeLikelyCondition()}/{@code #computeCertainCondition()}'s
  * {@code moduleRevisionCounter.getObject().getCount()} on the FX thread while a commit's background

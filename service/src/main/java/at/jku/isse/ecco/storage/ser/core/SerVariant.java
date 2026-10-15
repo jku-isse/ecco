@@ -4,7 +4,7 @@ import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 
 /**
- * Memory implementation of {@link Variant}.
+ * The serialized (Ser storage) implementation of {@link Variant}.
  */
 public class SerVariant implements Variant {
 

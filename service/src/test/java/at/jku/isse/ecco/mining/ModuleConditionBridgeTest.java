@@ -61,7 +61,7 @@ public class ModuleConditionBridgeTest {
 
         // Module B (pos=[Core], neg=[Extra]): a REDUNDANT superset of core1Only specifically (same
         // Core@1 literal plus an extra, historically-accidental !Extra qualifier) -- the exact shape
-        // from the real x8 lattice-bloat finding (see memory "surplus-noise-lattice-bloat-absorption-fix")
+        // from the real x8 lattice-bloat finding (see the lattice-bloat surplus found on a real repository)
         SerModule moduleCoreNotExtra = new SerModule(new Feature[]{core}, new Feature[]{extra});
         SerModuleRevision core1NotExtra = moduleCoreNotExtra.addRevision(new FeatureRevision[]{coreR1}, new Feature[]{extra});
 

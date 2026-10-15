@@ -4,8 +4,8 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
-import at.jku.isse.ecco.storage.ser.tree.SerNode;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.tree.RootNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -96,7 +96,7 @@ public class UnchangedArtifactRewriteTest {
         }
     }
 
-    /** artifact storage id -> storage id of its containing node, for every artifact in every association */
+    /** artifact storage id -> where its containing node is (its association and path), for every artifact in every association */
     private static Map<String, String> containingNodes(EccoService service) {
         Map<String, String> result = new HashMap<>();
         for (Association association : service.getRepository().getAssociations()) {
@@ -107,12 +107,23 @@ public class UnchangedArtifactRewriteTest {
                 Artifact<?> artifact = node.getArtifact();
                 if (artifact instanceof SerArtifact<?> serArtifact) {
                     Node containing = serArtifact.getContainingNode();
-                    result.put(serArtifact.getStorageId(), containing instanceof SerNode serNode ? serNode.getStorageId() : String.valueOf(containing));
+                    result.put(serArtifact.getStorageId(), containing == null ? "none" : place(containing));
                 }
                 for (Node child : node.getChildren()) stack.push(child);
             }
         }
         return result;
+    }
+
+    /** The association of [node] and the child positions leading to it from the root. */
+    private static String place(Node node) {
+        StringBuilder path = new StringBuilder();
+        Node current = node;
+        while (current.getParent() != null) {
+            path.insert(0, "/" + current.getParent().getChildren().indexOf(current));
+            current = current.getParent();
+        }
+        return (current instanceof RootNode root && root.getContainingAssociation() != null ? root.getContainingAssociation().getId() : "?") + path;
     }
 
     /** pack file -> number of artifacts in it (a pack holds a 16 byte digest per artifact) */

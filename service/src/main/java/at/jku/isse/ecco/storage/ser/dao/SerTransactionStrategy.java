@@ -65,7 +65,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -77,8 +76,6 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 	private static final Logger LOGGER = Logger.getLogger(SerTransactionStrategy.class.getName());
 
-	private static final boolean DELETE_OLD_DB_FILES = true;
-	private static final boolean REUSE_DB_ACROSS_TRANSACTIONS = true;
 
 	private static final String ID_FILENAME = "id";
 	private static final String WRITELOCK_FILENAME = "write";
@@ -118,7 +115,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private final Path writeLockFile;
 	// one file per association lives here - see the class javadoc on SerCommit for why this split exists
 	private final Path associationsDir;
-	// one file per artifact lives here - see SerNode.artifactId's javadoc for why this split exists
+	// the artifact packs live here - see writeArtifactPack()
 	private final Path artifactsDir;
 
 	// id of currently loaded database file
@@ -163,8 +160,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	}
 
 	/**
-	 * Serializes object as a STORED (uncompressed) zip entry at file - see the comment in
-	 * endReadWrite() for why STORED rather than the default DEFLATE compression.
+	 * Serializes object as the single zip entry of file, compressed at the fastest level (see
+	 * writeStoredBytes()).
 	 * <p>
 	 * Writes fully to a temp file in {@code file}'s own directory first, then atomically renames
 	 * it into place - writing directly to {@code file} (as this used to do, via
@@ -305,7 +302,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	}
 
 	/**
-	 * Like {@link #readZipped}, and remembers the digest of the serialized bytes, so an unchanged
+	 * Reads the object of a zip file's single entry, and remembers the digest of its bytes, so an unchanged
 	 * entity isn't written again (see {@link #stageIfChanged}).
 	 */
 	private Object readZippedTracked(Path file) throws IOException, ClassNotFoundException {
@@ -415,21 +412,6 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			if (!loadedById.containsKey(id))
 				throw new EccoException("Artifact " + id + " is missing from " + pack.getFileName() + " - the repository is damaged.");
 	}
-
-	private static Object readZipped(Path file) throws IOException, ClassNotFoundException {
-		try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(Files.newInputStream(file)))) {
-			ZipEntry e;
-			while ((e = zis.getNextEntry()) != null) {
-				if (e.getName().equals(ZIP_ENTRY_NAME)) {
-					try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(zis.readAllBytes()))) {
-						return ois.readObject();
-					}
-				}
-			}
-		}
-		throw new EccoException("No " + ZIP_ENTRY_NAME + " entry found in " + file);
-	}
-
 
 	public Database getDatabase() {
 		return this.database;
@@ -636,20 +618,6 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 		// serialize to new db file
 		Path newDbFile = this.repositoryDir.resolve(newId + DB_FILE_SUFFIX);
-		//this.serialize(this.database, newDbFile);
-		//
-		// serialized first to a byte array, then written as a STORED (uncompressed) zip entry,
-		// rather than streaming directly into a DEFLATE-compressed entry as before: measured on a
-		// real ~40MB repository, DEFLATE compression (even at level 0, which still runs the deflate
-		// algorithm, just with minimal effort) was 10-15s of a ~16.6s total, vs. ~0.1s to write the
-		// same (uncompressed, ~5x larger) bytes with no compression at all - raw disk I/O was never
-		// the bottleneck, compression was. STORED entries require the size/CRC32 to be known
-		// upfront, which is why this needs the intermediate byte array. Trades disk space (the
-		// larger, uncompressed on-disk size) for a ~3x faster commit on large repositories. The read
-		// path (loadDatabase() below) needs no changes - ZipInputStream decompresses transparently
-		// regardless of which method an entry was written with, so older, DEFLATE-compressed
-		// database files remain fully readable.
-		//
 		// this "core" write is now cheap regardless of repository size: SerRepository.associations
 		// and SerCommit.associations are both ID-only now (see their javadocs), so the only things
 		// actually reachable from `database` here are IDs, commit/feature/module metadata, and
@@ -1004,7 +972,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		if (Files.exists(this.idFile)) {
 			String id = this.readCurrentId();
 			// check if this.id has changed or if this.dbFile has already been loaded before. if it has then do not load it again and just reuse this.database.)
-			if (REUSE_DB_ACROSS_TRANSACTIONS && this.id != null && this.id.equals(id))
+			if (this.id != null && this.id.equals(id))
 				return;
 			this.id = id;
 
@@ -1015,7 +983,6 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					if (!dbFileLock.isValid())
 						throw new EccoException("Could not obtain shared lock on DB file.");
 
-					//this.database = (Database) this.deserialize(this.dbFile);
 					InputStream is = new BufferedInputStream(Channels.newInputStream(dbFileChannel));
 					ZipInputStream zis = new ZipInputStream(is);
 					ZipEntry e = null;
@@ -1034,15 +1001,13 @@ public class SerTransactionStrategy implements TransactionStrategy {
 				}
 
 				// delete db file if we can get exclusive lock and it does not match id file
-				if (DELETE_OLD_DB_FILES) {
-					String currentId = this.readCurrentId();
-					Path currentDbFile = this.repositoryDir.resolve(currentId + DB_FILE_SUFFIX);
-					if (!currentDbFile.equals(dbFile)) {
-						// try to delete db file
-						try (FileChannel oldDbFileChannel = FileChannel.open(dbFile, StandardOpenOption.WRITE); FileLock oldDbFileLock = oldDbFileChannel.lock(0, Long.MAX_VALUE, false)) {
-							if (oldDbFileLock.isValid())
-								Files.delete(dbFile);
-						}
+				String currentId = this.readCurrentId();
+				Path currentDbFile = this.repositoryDir.resolve(currentId + DB_FILE_SUFFIX);
+				if (!currentDbFile.equals(dbFile)) {
+					// try to delete db file
+					try (FileChannel oldDbFileChannel = FileChannel.open(dbFile, StandardOpenOption.WRITE); FileLock oldDbFileLock = oldDbFileChannel.lock(0, Long.MAX_VALUE, false)) {
+						if (oldDbFileLock.isValid())
+							Files.delete(dbFile);
 					}
 				}
 			} else {
@@ -1071,7 +1036,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// load every artifact from its own file BEFORE any association - association trees' nodes
 		// only carry an artifactId now (see SerNode.artifactId's javadoc), so the global artifact
 		// store needs to already be in place for the resolution pass below to resolve them against.
-		// This is what actually fixes pog-mismatch-real-cause-duplicate-storageid: an artifact is
+		// This is what actually fixes the duplicated-shared-artifact bug: an artifact is
 		// now loaded exactly once, from its own file, regardless of how many associations reference
 		// it - structurally impossible for it to come back as multiple distinct objects sharing one
 		// storageId, rather than merely hoping a name-tag-scan-and-overwrite (the old approach)
@@ -1108,8 +1073,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			loadedArtifacts.add(loadedById.get(artifactId));
 		repo.restoreArtifacts(loadedArtifacts);
 
-		// load each association from its own file (eagerly - this spike only addresses the write
-		// side; every association is still loaded on open, same as before) and wire up the
+		// load each association from its own file (eagerly: every association is loaded on open) and wire up the
 		// resolver every commit needs to turn the IDs it holds back into Association objects. A
 		// no-op for a brand new repository (SerRepository starts with an empty association-id set).
 		List<Association.Op> loadedAssociations = new ArrayList<>(repo.getAssociationIds().size());
@@ -1118,14 +1082,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			loadedAssociations.add((Association.Op) this.readZippedTracked(associationFile));
 		}
 		repo.restoreAssociations(loadedAssociations);
-		// NOTE: deliberately NOT this.database.getCommitIndex().values() here - that map is only
-		// ever populated by SerCommitDao.save()/SerRepositoryDao.store(), neither of which
-		// EccoService's actual commit() flow ever calls (commits are added via
-		// SerRepository.addCommit(), a separate, always-populated collection). Using commitIndex
-		// left every commit loaded from disk with no association resolver wired up at all -
-		// Commit.getAssociations() would throw IllegalStateException for every commit after any
-		// reload. Caught by CommitAssociationConsistencyTest, not by any pre-existing test (none of
-		// them call Commit.getAssociations() after a reload).
+		// the repository's commits (Commit.getAssociations() needs the resolver after a reload -
+		// CommitAssociationConsistencyTest)
 		for (Commit commit : repo.getCommits()) {
 			if (commit instanceof SerCommit serCommit) {
 				serCommit.setAssociationResolver(repo);
@@ -1172,13 +1130,13 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 * by the default deserialization of that file. artifactsById comes
 	 * directly from the global artifact store (restoreArtifacts(), already loaded above) rather than
 	 * being harvested by walking nodes - that's what actually fixes
-	 * pog-mismatch-real-cause-duplicate-storageid, since it means there is structurally exactly one
+	 * the duplicated-shared-artifact bug, since it means there is structurally exactly one
 	 * instance per artifact id, not "whichever association's independently-deserialized copy
 	 * happened to be indexed last". This walks every loaded association's tree once to wire each
 	 * node's artifactId to that instance (and each artifact's containing node to the unique node
 	 * holding it), then fills in the remaining transient fields - always resolving to a real, properly-reconstructed
 	 * instance, never a dangling or independently-duplicated fragment. See
-	 * TreesObjectIdentityDependencyTest and incremental-persistence-node-sharing-blocker for why
+	 * TreesObjectIdentityDependencyTest and the node sharing across associations that broke per-association writing for why
 	 * this matters.
 	 */
 	private void resolveCrossAssociationReferences(SerRepository repo) {
@@ -1309,29 +1267,5 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			serReference.resolveReferences(source, target);
 		}
 	}
-
-
-//	private Object deserialize(Path file) throws IOException, ClassNotFoundException {
-//		try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(file))) {
-//			ZipEntry e = null;
-//			while ((e = zis.getNextEntry()) != null) {
-//				if (e.getName().equals("ecco.ser")) {
-//					try (ObjectInputStream ois = new ObjectInputStream(zis)) {
-//						return ois.readObject();
-//					}
-//				}
-//			}
-//		}
-//		return null;
-//	}
-
-//	private void serialize(Object object, Path file) throws IOException {
-//		try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file, StandardOpenOption.CREATE))) {
-//			zos.putNextEntry(new ZipEntry("ecco.ser"));
-//			try (ObjectOutputStream oos = new ObjectOutputStream(zos)) {
-//				oos.writeObject(object);
-//			}
-//		}
-//	}
 
 }

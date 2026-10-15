@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Regression test for a real checkout-correctness bug found via a user's real repository (see
- * memory/association-condition-corruption-after-reload for the full investigation, and
+ * the association-condition corruption after a reload for the full investigation, and
  * PartialOrderGraphMetaFieldsReloadRegressionTest for a separate, already-fixed bug found earlier in
  * the same investigation).
  * <p>

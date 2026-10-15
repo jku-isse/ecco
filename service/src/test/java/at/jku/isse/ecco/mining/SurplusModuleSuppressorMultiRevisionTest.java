@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Real x8-style repos in this session had zero features with more than one revision (see
- * {@code many-small-files-overhead-quantified}/session notes), so the AMO
+ * the measured many-small-files overhead), so the AMO
  * (at-most-one-revision-per-feature) soundness guarantee in
  * {@link FeatureModelFormula#compileRevisionAware} has never been exercised end to end against
  * real, commit/diff-produced data -- only in {@link SurplusModuleSuppressorTest}'s hand-built

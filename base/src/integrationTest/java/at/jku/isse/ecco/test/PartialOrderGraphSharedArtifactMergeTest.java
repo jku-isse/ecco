@@ -19,7 +19,7 @@ import java.util.List;
  * accidentally-always-distinct duplicate objects, which is what every existing PartialOrderGraphTest
  * fixture uses via fresh A(id) calls) triggered "POG node count mismatch" in a real repository
  * reload - this reproduces that in isolation, independent of the whole persistence stack, per
- * mapdb-step2-maintree-pog-blocker.
+ * the order graphs' artifact references after a reload.
  */
 public class PartialOrderGraphSharedArtifactMergeTest {
 

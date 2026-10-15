@@ -30,7 +30,7 @@ import org.eclipse.collections.impl.factory.Maps;
 import java.util.*;
 
 /**
- * Memory implementation of {@link Repository}.
+ * The serialized (Ser storage) implementation of {@link Repository}.
  */
 public final class SerRepository implements Repository, Repository.Op {
 
@@ -61,7 +61,7 @@ public final class SerRepository implements Repository, Repository.Op {
 	// e.g. shared, non-unique structure - must not be redundantly re-serialized once per association
 	// file, or it comes back as multiple distinct objects claiming the same id after reload, each
 	// with its own diverging state like an independently-deserialized PartialOrderGraph copy. See
-	// pog-mismatch-real-cause-duplicate-storageid). Unlike associations, artifacts have no
+	// the duplicated-shared-artifact bug). Unlike associations, artifacts have no
 	// add/remove choke point (SerEntityFactory.createArtifact() doesn't register with a repository
 	// at all) - SerTransactionStrategy discovers dirty artifacts by walking dirty associations'
 	// trees at write time instead, via registerArtifact() below.
@@ -120,14 +120,6 @@ public final class SerRepository implements Repository, Repository.Op {
 		this.setMaintreeBuildingStrategy(DEFAULT_MAIN_TREE_BUILDING_STRATEGY);
 	}
 
-	/**
-	 * Populates the transient, in-memory association map from associations loaded from their own
-	 * per-association files - called once by {@link at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy}
-	 * right after the "core" database (which only carries {@link #associationIds}, not the
-	 * associations themselves) has been deserialized. Also used to restore associations sent as a
-	 * companion payload over a raw socket (see {@link Repository.Op#restoreAssociations}), which hits
-	 * the same transient-index gap since it bypasses the DAO entirely.
-	 */
 	/**
 	 * Resolves each association's node artifact references against the given artifacts -- the same
 	 * per-artifact-file-load resolution {@link at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy}
@@ -191,6 +183,14 @@ public final class SerRepository implements Repository, Repository.Op {
 		}
 	}
 
+	/**
+	 * Populates the transient, in-memory association map from associations loaded from their own
+	 * per-association files - called once by {@link at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy}
+	 * right after the "core" database (which only carries {@link #associationIds}, not the
+	 * associations themselves) has been deserialized. Also used to restore associations sent as a
+	 * companion payload over a raw socket (see {@link Repository.Op#restoreAssociations}), which hits
+	 * the same transient-index gap since it bypasses the DAO entirely.
+	 */
 	@Override
 	public void restoreAssociations(Collection<? extends Association.Op> loaded) {
 		this.associationsById = new LinkedHashMap<>();
@@ -201,7 +201,6 @@ public final class SerRepository implements Repository, Repository.Op {
 		this.removedAssociationIds = new LinkedHashSet<>();
 	}
 
-	/** The full set of association IDs that should have a file on disk - what {@link #restoreAssociations} needs loaded. */
 	/**
 	 * Whether this repository was deserialized from a storage format that predates per-association
 	 * (12330811) or per-artifact (3e2b04d6) files - the id sets didn't exist then.
@@ -233,6 +232,7 @@ public final class SerRepository implements Repository, Repository.Op {
 		return this.associationIds != null;
 	}
 
+	/** The full set of association IDs that should have a file on disk - what {@link #restoreAssociations} needs loaded. */
 	public Set<String> getAssociationIds() {
 		return Collections.unmodifiableSet(this.associationIds);
 	}
@@ -380,10 +380,6 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	@Override
 	public Collection<Feature> getFeatures() {
-		return Collections.unmodifiableCollection(this.features.values());
-	}
-
-	public Collection<Feature> getMemFeatures() {
 		return Collections.unmodifiableCollection(this.features.values());
 	}
 
@@ -641,28 +637,6 @@ public final class SerRepository implements Repository, Repository.Op {
 		}
 		return this.mainTree;
 	 }
-
-	private void addFeatureRevisionIfMissing(String featureRevisionName){
-		// add feature if missing, add revision if missing
-		String[] nameParts = featureRevisionName.split("\\.");
-		String featureName = nameParts[0];
-		this.addFeatureIfMissing(featureName);
-
-		String revisionName = nameParts[1];
-		Collection<Feature> features = this.getFeaturesByName(featureName);
-		if (features.size() == 0){
-			throw new RuntimeException("could not add Feature " + featureName);
-		}
-		Feature feature = features.iterator().next();
-		feature.addRevision(revisionName);
-	}
-
-	private Feature addFeatureIfMissing(String featureName){
-		Collection<Feature> features = this.getFeaturesByName(featureName);
-		if (features.size() != 0) { return features.iterator().next(); }
-		String id = UUID.randomUUID().toString();
-		return this.addFeature(id, featureName);
-	}
 
 	@Override
 	public SerModule getModule(Feature[] pos, Feature[] neg) {

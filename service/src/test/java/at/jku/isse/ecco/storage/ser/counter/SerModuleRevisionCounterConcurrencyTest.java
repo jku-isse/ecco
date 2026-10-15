@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * SerModuleRevisionCounter.count used to be a plain, unsynchronized int, unlike its parent
  * SerModuleCounter's count/children (see that class's javadoc, and
- * association-counter-unsynchronized-race in project memory for the earlier, already-fixed instance
+ * the unsynchronized-counter crash for the earlier, already-fixed instance
  * of this exact race one level up the same counter tree). Association.Op#addObservation() calls
  * incCount() during commit while Association.Op#computeLikelyCondition()/#computeCertainCondition()
  * call getCount() concurrently from e.g. a GUI background thread - concurrent unsynchronized

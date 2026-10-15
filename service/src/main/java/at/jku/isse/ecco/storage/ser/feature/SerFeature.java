@@ -12,7 +12,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Memory implementation of {@link Feature}.
+ * The serialized (Ser storage) implementation of {@link Feature}.
  */
 public class SerFeature implements Feature {
 

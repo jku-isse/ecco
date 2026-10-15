@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 /**
  * Characterizes (and, since {@code Trees.treeFusion()}'s fix, verifies the fix for) a real
  * checkout-correctness bug found via a real user repository (not included here - see
- * memory/lytiny-treefusion-duplicate-token-bug for the original investigation): {@code
+ * the tree-fusion duplicate-token bug for the original investigation): {@code
  * Trees.treeFusion()} (used to build the cached mainTree every real checkout reads from, via
  * {@code SerBoostedAssociationMerger.buildMainTree()} - NOT the same path as
  * {@code Trees.merge()}/{@code LazyCompositionRootNode}, which are GUI-preview-only) could misdirect

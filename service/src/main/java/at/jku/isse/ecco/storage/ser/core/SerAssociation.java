@@ -9,7 +9,7 @@ import at.jku.isse.ecco.storage.ser.module.SerCondition;
 import at.jku.isse.ecco.tree.RootNode;
 
 /**
- * Memory implementation of {@link Association}.
+ * The serialized (Ser storage) implementation of {@link Association}.
  */
 public class SerAssociation implements Association, Association.Op {
 
@@ -19,7 +19,8 @@ public class SerAssociation implements Association, Association.Op {
 	private String id;
 	private RootNode.Op artifactTreeRoot;
 	private AssociationCounter associationCounter;
-	private Repository.Op containingRepository;
+	// never set: transient, so it is not written either
+	private transient Repository.Op containingRepository;
 
 	private transient boolean visible;
 

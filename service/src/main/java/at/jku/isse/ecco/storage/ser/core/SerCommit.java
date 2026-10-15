@@ -14,7 +14,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Memory implementation of {@link Commit}.
+ * The serialized (Ser storage) implementation of {@link Commit}.
  * <p>
  * Holds association <b>IDs</b>, not the association objects themselves - a commit that references
  * an association it didn't just create/modify would otherwise pull that association's full content

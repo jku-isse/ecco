@@ -6,7 +6,6 @@ import at.jku.isse.ecco.maintree.building.AssociationMerger;
 import at.jku.isse.ecco.maintree.building.BoostedAssociationMerger;
 import at.jku.isse.ecco.maintree.building.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
-import at.jku.isse.ecco.storage.ser.dao.SerCommitDao;
 import at.jku.isse.ecco.storage.ser.dao.SerRemoteDao;
 import at.jku.isse.ecco.storage.ser.dao.SerRepositoryDao;
 import at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy;
@@ -24,7 +23,6 @@ public class SerModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		bind(RepositoryDao.class).to(SerRepositoryDao.class);
-		bind(CommitDao.class).to(SerCommitDao.class);
 		bind(RemoteDao.class).to(SerRemoteDao.class);
 		bind(EntityFactory.class).to(SerEntityFactory.class);
 		bind(TransactionStrategy.class).to(SerTransactionStrategy.class);

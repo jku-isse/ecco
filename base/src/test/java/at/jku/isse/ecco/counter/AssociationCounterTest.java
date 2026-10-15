@@ -78,8 +78,8 @@ public class AssociationCounterTest {
     }
 
     /**
-     * Regression test for a real, twice-recurring production crash (association-counter-
-     * unsynchronized-race in project memory): getChildren() used to return a live view directly over
+     * Regression test for a real, twice-recurring production crash (the
+     * unsynchronized-counter crash): getChildren() used to return a live view directly over
      * the same Eclipse-Collections UnifiedMap addChild() mutates, with no synchronization or defensive
      * copy between them - one thread iterating getChildren() while another thread (a commit's
      * background write) called addChild() crashed with ArrayIndexOutOfBoundsException (confirmed
@@ -107,7 +107,7 @@ public class AssociationCounterTest {
      * The actual real-world scenario the fix targets: one thread repeatedly reading getChildren()
      * (standing in for GUI rendering via Association.Op#computeLikelyCondition()) concurrently with
      * another thread calling addChild() (standing in for a commit's background write) - see
-     * association-counter-unsynchronized-race in project memory for the real crash this reproduced.
+     * the unsynchronized-counter crash for the real crash this reproduced.
      * Before the fix this reliably threw ArrayIndexOutOfBoundsException within a handful of
      * iterations; after it, this test must complete cleanly every time.
      */

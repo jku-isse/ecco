@@ -6,7 +6,7 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Memory implementation of {@link FeatureRevision}.
+ * The serialized (Ser storage) implementation of {@link FeatureRevision}.
  */
 public class SerFeatureRevision implements FeatureRevision {
 

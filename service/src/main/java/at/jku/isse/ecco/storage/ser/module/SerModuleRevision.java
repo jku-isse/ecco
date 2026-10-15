@@ -17,7 +17,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Memory implementation of {@link ModuleRevision}.
+ * The serialized (Ser storage) implementation of {@link ModuleRevision}.
  */
 public class SerModuleRevision implements ModuleRevision {
 
@@ -54,7 +54,7 @@ public class SerModuleRevision implements ModuleRevision {
 	}
 
 	// Synchronized for the same reason as SerModuleCounter/SerModuleRevisionCounter's count (see
-	// association-counter-unsynchronized-race in project memory): getCount() is read via
+	// the unsynchronized-counter crash): getCount() is read via
 	// Association.Op#computeLikelyCondition()/#computeCertainCondition()'s
 	// moduleRevisionCounter.getObject().getCount() comparison, on the FX thread, while incCount() is
 	// written elsewhere during a commit's background write - the same race the counter tree itself

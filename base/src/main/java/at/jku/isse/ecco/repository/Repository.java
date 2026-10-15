@@ -236,7 +236,7 @@ public interface Repository extends Persistable {
 		 * (e.g. {@code SerRepository}/{@code SerNode}, deliberately, so that an artifact reachable from
 		 * more than one node/association is resolved to one shared instance rather than redundantly
 		 * re-created once per node -- the same class of bug documented as
-		 * pog-mismatch-real-cause-duplicate-storageid in project history). Such an implementation would
+		 * the duplicated-shared-artifact bug). Such an implementation would
 		 * otherwise only restore this via its normal per-artifact-file DAO load path, which a
 		 * {@code Repository.Op} sent whole over a raw socket bypasses entirely.
 		 *
@@ -943,7 +943,7 @@ public interface Repository extends Persistable {
 			// copy every accepted constraint as-is. Deliberately independent of the
 			// module/association trimming below -- constraints have no counters and no
 			// fusion/extract() participation to inherit that machinery's fragility from (see
-			// write-time-pruning-confirmed-unsafe in project memory for why that matters). A
+			// the data loss of pruning at write time for why that matters). A
 			// constraint whose features were excluded by "deselected" is still copied: it's
 			// advisory metadata about feature names, not a consumer of module/association data,
 			// and acceptedSuggestions()'s fresh-re-mining safety check (not this copy) is what
@@ -1145,7 +1145,7 @@ public interface Repository extends Persistable {
 			// copy every constraint from other repository into this one that doesn't already exist
 			// here (by natural kind|a|b id). Kept deliberately independent of the module/association
 			// counter-copying logic below (which has known fragility under certain conditions -- see
-			// write-time-pruning-confirmed-unsafe in project memory), since constraints have no
+			// the data loss of pruning at write time), since constraints have no
 			// counters or fusion participation to inherit that fragility from.
 			// A suggestion is accepted, rejected or neither: one this repository has already decided
 			// either way keeps its decision, the other repository's decision only fills the gaps.

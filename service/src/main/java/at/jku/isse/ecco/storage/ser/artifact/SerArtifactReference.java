@@ -6,7 +6,7 @@ import at.jku.isse.ecco.artifact.ArtifactReference;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Memory implementation of {@link ArtifactReference}.
+ * The serialized (Ser storage) implementation of {@link ArtifactReference}.
  *
  * @author JKU, ISSE
  * @version 1.0

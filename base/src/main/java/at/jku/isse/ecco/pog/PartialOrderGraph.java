@@ -1405,7 +1405,7 @@ public interface PartialOrderGraph extends Persistable {
 		 * This node's own position within its own graph - NOT the same thing as
 		 * {@code getArtifact().getSequenceNumber()}, and deliberately so: an artifact object can be
 		 * legitimately shared by nodes in more than one PartialOrderGraph (see
-		 * pog-merge-shared-artifact-bug), so a position that lived on the artifact would let one
+		 * the order-graph corruption by a sequence number on a shared artifact), so a position that lived on the artifact would let one
 		 * graph's bookkeeping clobber another's merely because they happen to reference the same
 		 * artifact. Defaults to delegating to the artifact for any implementation that doesn't
 		 * override it (backward compatible with backends that never adopted their own storage for

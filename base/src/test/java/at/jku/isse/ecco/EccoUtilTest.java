@@ -65,8 +65,7 @@ public class EccoUtilTest {
         // Trees.slice() does for genuinely shared content) - deepCopyTreeRec's
         // hasReplacingArtifact()/setReplacingArtifact() caching (EccoUtil.java:71-80) is what's
         // supposed to keep that sharing intact in the copy rather than producing two independent
-        // copies of the same artifact - see pog-mismatch-real-cause-duplicate-storageid in project
-        // history for what goes wrong when an artifact ends up duplicated like that.
+        // copies of the same artifact - see the duplicated-shared-artifact bug for what goes wrong when an artifact ends up duplicated like that.
         Artifact.Op<TestArtifactData> sharedArtifact = ef.createArtifact(new TestArtifactData("shared"));
         RootNode.Op root = ef.createRootNode();
         Node.Op child1 = ef.createNode();

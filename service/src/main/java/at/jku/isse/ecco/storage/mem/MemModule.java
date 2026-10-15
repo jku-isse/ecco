@@ -21,7 +21,6 @@ public class MemModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		bind(RepositoryDao.class).to(MemRepositoryDao.class);
-		bind(CommitDao.class).to(MemCommitDao.class);
 		bind(RemoteDao.class).to(MemRemoteDao.class);
 		bind(TransactionStrategy.class).to(MemTransactionStrategy.class);
 

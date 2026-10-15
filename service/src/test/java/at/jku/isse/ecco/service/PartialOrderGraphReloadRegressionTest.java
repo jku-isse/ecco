@@ -11,8 +11,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Regression test for a real bug found while investigating a checkout-correctness report against a
- * user's actual repository (see memory/lytiny-treefusion-duplicate-token-bug and
- * memory/pog-reload-headtail-wiring-bug): closing and reopening a repository between two commits -
+ * user's actual repository (see the tree-fusion duplicate-token bug and
+ * the order graph's head/tail wiring after a reload): closing and reopening a repository between two commits -
  * ordinary usage any time the GUI/CLI is restarted between commits, not an edge case - used to throw
  * {@code EccoException("Not all partial order graph nodes can be reached...")} on the second commit.
  * <p>

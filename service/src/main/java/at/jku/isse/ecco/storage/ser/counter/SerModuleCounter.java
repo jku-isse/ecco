@@ -15,8 +15,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Synchronized on {@code this} for every read AND write of {@link #children}/{@link #count} - same
- * live-shared-mutable-state race as SerAssociationCounter (see association-counter-unsynchronized-race
- * in project memory and that class's javadoc); this counter is reached via
+ * live-shared-mutable-state race as SerAssociationCounter (see the unsynchronized-counter crash
+ * and that class's javadoc); this counter is reached via
  * AssociationCounter#getChildren() and walked the same way by
  * {@code Association.Op#computeLikelyCondition()}, so it's vulnerable to the identical
  * concurrent-iteration-vs-addChild() race even though it hasn't been the one to actually crash yet
@@ -65,7 +65,7 @@ public class SerModuleCounter implements ModuleCounter {
 //	@Override
 //	public MemModuleRevisionCounter addChild(ModuleRevision child) {
 //		if (!(child instanceof MemModuleRevision))
-//			throw new EccoException("Only MemModuleRevision can be added as a child to MemModuleCounter!");
+//			throw new EccoException("Only a SerModuleRevision can be added as a child to a SerModuleCounter.");
 //		MemModuleRevision memChild = (MemModuleRevision) child;
 //		if (this.children.containsKey(memChild))
 //			return null;
@@ -87,7 +87,7 @@ public class SerModuleCounter implements ModuleCounter {
 	@Override
 	public synchronized SerModuleRevisionCounter addChild(ModuleRevision child) {
 		if (!(child instanceof SerModuleRevision))
-			throw new EccoException("Only MemModuleRevision can be added as a child to MemModuleCounter!");
+			throw new EccoException("Only a SerModuleRevision can be added as a child to a SerModuleCounter.");
 		SerModuleRevision memChild = (SerModuleRevision) child;
 		for (ModuleRevisionCounter moduleRevisionCounter : this.children) {
 			if (moduleRevisionCounter.getObject().equals(memChild))

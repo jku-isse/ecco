@@ -13,7 +13,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Memory implementation of {@link Module}.
+ * The serialized (Ser storage) implementation of {@link Module}.
  */
 public class SerModule implements Module {
 
@@ -49,7 +49,7 @@ public class SerModule implements Module {
 	}
 
 	// Synchronized for the same reason as SerModuleRevision's count (see
-	// association-counter-unsynchronized-race in project memory) - a plain field on an object a GUI
+	// the unsynchronized-counter crash) - a plain field on an object a GUI
 	// thread may hold a live reference to and read concurrently with a commit's background write.
 	@Override
 	public synchronized int getCount() {

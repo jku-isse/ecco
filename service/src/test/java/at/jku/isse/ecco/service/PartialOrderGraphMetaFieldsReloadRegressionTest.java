@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Regression test for a real checkout-correctness bug found via a user's real repository (see
- * memory/association-condition-corruption-after-reload for the full investigation) - not the same
+ * the association-condition corruption after a reload for the full investigation) - not the same
  * bug as {@link TreeFusionOrderedSiblingMatchingTest}/{@link PartialOrderGraphReloadRegressionTest},
  * which are separate, already-fixed bugs found earlier in the same investigation chain.
  * <p>

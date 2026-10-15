@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Minimal, isolated repro of the real-x8-scale finding from the intensional-checkout investigation
- * (see project memory "surplus-suppressor-unsat-premises-bug"): running
+ * (see the surplus suppressor's unsatisfiable-premises bug): running
  * {@link SurplusModuleSuppressor#suppressEntailed} against real x8 with 40 genuinely novel
  * (never-committed-as-that-exact-combination) intensional configurations originally suppressed 100%
  * of surplus warnings on all 40 -- 106,009 baseline entries in, 0 remaining out, every single time.

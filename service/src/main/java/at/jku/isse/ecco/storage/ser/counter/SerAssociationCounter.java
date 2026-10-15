@@ -25,8 +25,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * counter is a live, shared, mutable object reachable from any {@code Association} a caller holds a
  * reference to, and it is genuinely read from one thread (e.g. GUI rendering via
  * {@code Association.Op#computeLikelyCondition()}) while written from another (e.g. a commit's
- * background write via {@code addChild()}) - see association-counter-unsynchronized-race in project
- * memory for the real, twice-recurring production crash this caused
+ * background write via {@code addChild()}) - see the unsynchronized-counter crash for the real, twice-recurring production crash this caused
  * ({@code ArrayIndexOutOfBoundsException} inside Eclipse Collections' {@code UnifiedMap} iterator,
  * not the more familiar {@code ConcurrentModificationException} you'd get from a java.util
  * collection - confirmed empirically, see AssociationCounterTest). {@link #getChildren()} returns a
@@ -121,7 +120,7 @@ public class SerAssociationCounter implements AssociationCounter {
 	public synchronized ModuleCounter addChild(Module child) {
 		this.checkResolved();
 		if (!(child instanceof SerModule))
-			throw new EccoException("Only MemModule can be added as a child to MemAssociationCounter!");
+			throw new EccoException("Only a SerModule can be added as a child to a SerAssociationCounter.");
 		SerModule memChild = (SerModule) child;
 		if (this.children.containsKey(memChild))
 			return null;
