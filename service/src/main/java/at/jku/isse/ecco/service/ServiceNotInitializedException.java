@@ -8,6 +8,8 @@ import at.jku.isse.ecco.EccoException;
  */
 public class ServiceNotInitializedException extends EccoException {
 
+	private static final long serialVersionUID = 1L;
+
 	public ServiceNotInitializedException() {
 		super("Service is not initialized. No repository is loaded.");
 	}
