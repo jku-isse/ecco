@@ -41,8 +41,10 @@ public interface ArtifactData extends Serializable {
 	 * Must not change anything equals()/hashCode() depend on. Does nothing by default.
 	 *
 	 * @param newer The equal data from the newer commit.
+	 * @return whether this data changed - then it is stored again (a write skips data that cannot have changed, gap #49)
 	 */
-	default void adoptMetadataFrom(ArtifactData newer) {
+	default boolean adoptMetadataFrom(ArtifactData newer) {
+		return false;
 	}
 
 	/**

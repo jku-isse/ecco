@@ -121,14 +121,18 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 	}
 
 	@Override
-	public void adoptMetadataFrom(ArtifactData newer) {
-		if (newer instanceof JavaASTData other) {
-			this.comment = other.comment;
-			this.orphanComments = other.orphanComments;
-			this.leadingComments = other.leadingComments;
-			this.blockBody = other.blockBody;
-			this.textWithComments = other.textWithComments;
-		}
+	public boolean adoptMetadataFrom(ArtifactData newer) {
+		if (!(newer instanceof JavaASTData other))
+			return false;
+		boolean changed = !java.util.Objects.equals(this.comment, other.comment) || !java.util.Objects.equals(this.orphanComments, other.orphanComments)
+				|| !java.util.Objects.equals(this.leadingComments, other.leadingComments) || !java.util.Objects.equals(this.blockBody, other.blockBody)
+				|| !java.util.Objects.equals(this.textWithComments, other.textWithComments);
+		this.comment = other.comment;
+		this.orphanComments = other.orphanComments;
+		this.leadingComments = other.leadingComments;
+		this.blockBody = other.blockBody;
+		this.textWithComments = other.textWithComments;
+		return changed;
 	}
 	
 	/**

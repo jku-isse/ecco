@@ -81,6 +81,13 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private static final String PACK_PREFIX = "pack-";
 	private static final String PACK_SUFFIX = ".zip";
 	private static final String TMP_SUFFIX = ".tmp";
+
+	/**
+	 * Serialize the artifacts a write skips as unchanged anyway, and fail if one has changed - a
+	 * change made without Artifact.Op#markModified() would otherwise not be stored. On in the tests
+	 * (build.gradle); -Decco.verifyUnchangedArtifacts=true for a replay.
+	 */
+	static final boolean VERIFY_UNCHANGED_ARTIFACTS = Boolean.getBoolean("ecco.verifyUnchangedArtifacts");
 	/** Once a write would leave more packs than this, the smallest are merged down to half of it. */
 	private static final int MAX_PACKS = 20;
 	private static final String PACK_ARTIFACTS_ENTRY = "artifacts";
@@ -629,6 +636,10 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		}
 		if (oldCoreReleased)
 			this.deleteSupersededArtifactFiles(repo, looseArtifactFiles);
+		// stored as they are now: unchanged until changed again
+		for (Artifact.Op<?> artifact : repo.getDirtyArtifacts())
+			if (artifact instanceof SerArtifact<?> serArtifact)
+				serArtifact.clearModified();
 		repo.clearDirtyTracking();
 
 		// release exclusive write lock - via releaseWriteLock() rather than closing directly, so the
@@ -665,10 +676,19 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		for (Artifact.Op<?> artifact : repo.getDirtyArtifacts()) {
 			if (!(artifact instanceof SerArtifact<?> serArtifact)) continue;
 			String id = serArtifact.getStorageId();
+			// stored, not changed since it was loaded, and without an order graph (which changes
+			// without the artifact knowing): cannot have changed - not serialized (gap #49)
+			boolean unchanged = !serArtifact.isModified() && !serArtifact.isOrdered() && serArtifact.getPartialOrderGraph() == null
+					&& this.artifactDigests.containsKey(id) && this.isArtifactStored(repo, id, packExists);
+			if (unchanged && !VERIFY_UNCHANGED_ARTIFACTS)
+				continue;
 			byte[] bytes = serialize(artifact);
 			byte[] digest = artifactDigest(bytes);
 			if (Arrays.equals(digest, this.artifactDigests.get(id)) && this.isArtifactStored(repo, id, packExists))
 				continue;
+			if (unchanged)
+				throw new IllegalStateException("An artifact changed without being marked modified (Artifact.Op#markModified): "
+						+ artifact + " (" + artifact.getData().getClass().getName() + ")");
 			entries.put(id, digest);
 			staged.put(id, digest);
 		}

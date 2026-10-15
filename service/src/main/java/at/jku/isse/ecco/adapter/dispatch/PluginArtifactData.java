@@ -91,9 +91,13 @@ public class PluginArtifactData implements ArtifactData {
 	 * traced does not change: a file stored before has no such child in the variants committed before.
 	 */
 	@Override
-	public void adoptMetadataFrom(ArtifactData newer) {
-		if (newer instanceof PluginArtifactData newerData && newerData.hasTextFormat())
-			this.setTextFormat(newerData.charset, newerData.lineSeparator, newerData.endsWithNewline);
+	public boolean adoptMetadataFrom(ArtifactData newer) {
+		if (!(newer instanceof PluginArtifactData newerData) || !newerData.hasTextFormat())
+			return false;
+		boolean changed = !java.util.Objects.equals(this.charset, newerData.charset) || !java.util.Objects.equals(this.lineSeparator, newerData.lineSeparator)
+				|| !java.util.Objects.equals(this.endsWithNewline, newerData.endsWithNewline);
+		this.setTextFormat(newerData.charset, newerData.lineSeparator, newerData.endsWithNewline);
+		return changed;
 	}
 
 	public boolean hasTextFormat() {

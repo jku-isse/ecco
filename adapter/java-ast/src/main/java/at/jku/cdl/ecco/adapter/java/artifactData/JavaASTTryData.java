@@ -60,10 +60,13 @@ public class JavaASTTryData extends JavaASTData {
 	}
 
 	@Override
-	public void adoptMetadataFrom(at.jku.isse.ecco.artifact.ArtifactData newer) {
-		super.adoptMetadataFrom(newer);
-		if (newer instanceof JavaASTTryData other)
+	public boolean adoptMetadataFrom(at.jku.isse.ecco.artifact.ArtifactData newer) {
+		boolean changed = super.adoptMetadataFrom(newer);
+		if (newer instanceof JavaASTTryData other) {
+			changed |= !java.util.Objects.equals(this.expressionsWithComments, other.expressionsWithComments);
 			this.expressionsWithComments = other.expressionsWithComments;
+		}
+		return changed;
 	}
 
 	public boolean hasFinally() {

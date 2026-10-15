@@ -109,10 +109,13 @@ public class JavaASTConstructorData extends JavaASTData {
 	}
 
 	@Override
-	public void adoptMetadataFrom(at.jku.isse.ecco.artifact.ArtifactData newer) {
-		super.adoptMetadataFrom(newer);
-		if (newer instanceof JavaASTConstructorData other)
+	public boolean adoptMetadataFrom(at.jku.isse.ecco.artifact.ArtifactData newer) {
+		boolean changed = super.adoptMetadataFrom(newer);
+		if (newer instanceof JavaASTConstructorData other) {
+			changed |= !java.util.Objects.equals(this.parametersWithComments, other.parametersWithComments);
 			this.parametersWithComments = other.parametersWithComments;
+		}
+		return changed;
 	}
 
 	public boolean addParameter(String parameter) {

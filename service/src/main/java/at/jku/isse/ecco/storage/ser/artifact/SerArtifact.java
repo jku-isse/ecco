@@ -50,6 +50,30 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	private transient Artifact.Op replacingArtifact;
 
+	/**
+	 * Whether this artifact was changed since it was loaded (or created): only such artifacts - and
+	 * ordered ones, whose order graph changes on its own - are serialized again by a write to tell
+	 * whether they changed (gap #49: it serialized every one it reached, about 629,000 per commit of
+	 * flipperzero-firmware, of which at most 23 had changed). Set by the setters below and by
+	 * {@link #markModified()}.
+	 */
+	private transient boolean modified;
+
+	@Override
+	public void markModified() {
+		this.modified = true;
+	}
+
+	/** See {@link #markModified()}. */
+	public boolean isModified() {
+		return this.modified;
+	}
+
+	/** After a write has stored this artifact as it is. */
+	public void clearModified() {
+		this.modified = false;
+	}
+
 
 	public SerArtifact(DataType data) {
 		this(data, false);
@@ -115,6 +139,8 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	@Override
 	public void setUseReferencesInEquals(boolean useReferenesInEquals) {
+		if (this.useReferencesInEquals != useReferenesInEquals)
+			this.modified = true;
 		this.useReferencesInEquals = useReferenesInEquals;
 	}
 
@@ -150,6 +176,8 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	@Override
 	public void setAtomic(boolean atomic) {
+		if (this.atomic != atomic)
+			this.modified = true;
 		this.atomic = atomic;
 	}
 
@@ -160,6 +188,8 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	@Override
 	public void setOrdered(boolean ordered) {
+		if (this.ordered != ordered)
+			this.modified = true;
 		this.ordered = ordered;
 	}
 
@@ -170,6 +200,8 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	@Override
 	public void setPartialOrderGraph(PartialOrderGraph.Op partialOrderGraph) {
+		if (this.sequenceGraph != partialOrderGraph)
+			this.modified = true;
 		this.sequenceGraph = partialOrderGraph;
 	}
 
@@ -180,6 +212,9 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	@Override
 	public void setSequenceNumber(int sequenceNumber) {
+		// a change only: a merge sets every sequence number of an order graph again, mostly to what it was
+		if (this.sequenceNumber != sequenceNumber)
+			this.modified = true;
 		this.sequenceNumber = sequenceNumber;
 	}
 
@@ -263,6 +298,7 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	@Override
 	public void addUses(final ArtifactReference.Op reference) {
+		this.modified = true;
 		checkNotNull(reference);
 
 		this.uses.add(reference);
@@ -270,6 +306,7 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	@Override
 	public void addUsedBy(final ArtifactReference.Op reference) {
+		this.modified = true;
 		checkNotNull(reference);
 
 		this.usedBy.add(reference);

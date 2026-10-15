@@ -36,9 +36,12 @@ public class VariableAssignmentData extends AbstractArtifactData {
      * in. The trailing text is not part of equals().
      */
     @Override
-    public void adoptMetadataFrom(ArtifactData newer) {
-        if (this.getTrailingComment().isEmpty() && newer instanceof VariableAssignmentData other)
+    public boolean adoptMetadataFrom(ArtifactData newer) {
+        if (this.getTrailingComment().isEmpty() && newer instanceof VariableAssignmentData other && !other.getTrailingComment().isEmpty()) {
             this.setTrailingComment(other.getTrailingComment());
+            return true;
+        }
+        return false;
     }
 
     @Override

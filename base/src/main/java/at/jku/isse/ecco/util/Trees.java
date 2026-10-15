@@ -321,8 +321,9 @@ public class Trees {
 	 * data adopt the newer data's non-identity metadata first (see ArtifactData.adoptMetadataFrom()).
 	 */
 	private static void adoptNewerMetadata(Artifact.Op<?> stored, Artifact.Op<?> newer) {
-		if (stored != newer && stored.getData() != null && newer.getData() != null)
-			stored.getData().adoptMetadataFrom(newer.getData());
+		// marked only if something changed: every matched artifact of a commit adopts, mostly the same
+		if (stored != newer && stored.getData() != null && newer.getData() != null && stored.getData().adoptMetadataFrom(newer.getData()))
+			stored.markModified();
 	}
 
 	private static void matchAtomicArtifacts(Node.Op left, Node.Op right) {

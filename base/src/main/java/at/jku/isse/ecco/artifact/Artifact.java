@@ -377,6 +377,15 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 		public boolean useReferencesInEquals();
 
 		public void setUseReferencesInEquals(boolean useReferenesInEquals);
+
+		/**
+		 * Notes that this artifact (or its data) was changed after it was stored, so the next write
+		 * stores it again - a write serializes only the artifacts that may have changed (gap #49).
+		 * The artifact's own setters call it; whoever changes its data from outside must too (as
+		 * Trees does when the stored data adopts a newer commit's metadata).
+		 */
+		default void markModified() {
+		}
 	}
 
 }
