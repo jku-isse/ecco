@@ -71,9 +71,9 @@ public class SerAssociationCounter implements AssociationCounter {
 		ObjectOutputStream.PutField fields = out.putFields();
 		fields.put("association", this.association);
 		fields.put("count", this.count);
-		if (out instanceof CompactCounters.Stream) {
+		if (out instanceof CompactCounters.Stream stream) {
 			this.checkResolved();
-			fields.put("compactChildren", CompactCounters.encode(this.children.values()));
+			fields.put("compactChildren", CompactCounters.encode(this.children.values(), stream.repository()));
 		} else {
 			fields.put("children", this.children);
 		}

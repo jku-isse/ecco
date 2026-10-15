@@ -37,6 +37,8 @@ final class AssociationStore {
 	private final Path dir;
 	// the pieces of the associations' trees (see TreePieces)
 	private final PieceStore pieces;
+	// the repository being written or read - its counted module revisions (see CompactCounters)
+	private SerRepository repository;
 	// SHA-256 of the serialized bytes of every stable artifact/association file as last read or
 	// written by this process - lets endReadWrite() skip entities whose bytes didn't change. Cleared
 	// by reset(); rebuilt by the full reload that follows.
@@ -80,6 +82,7 @@ final class AssociationStore {
 
 	/** After [repo] was read: with {@link #VERIFY_UNCHANGED_ASSOCIATIONS}, records its associations as they serialize now. */
 	void loaded(SerRepository repo) throws IOException {
+		this.repository = repo;
 		if (!VERIFY_UNCHANGED_ASSOCIATIONS)
 			return;
 		this.verifiedAssociationDigests.clear();
@@ -98,6 +101,7 @@ final class AssociationStore {
 	 * @return stable file -> digest of each file staged
 	 */
 	Map<Path, byte[]> stage(SerRepository repo, String pendingSuffix) throws IOException {
+		this.repository = repo;
 		if (VERIFY_UNCHANGED_ASSOCIATIONS)
 			this.verifyUnchangedAssociations(repo);
 		if (!repo.getDirtyAssociations().isEmpty())
@@ -129,6 +133,7 @@ final class AssociationStore {
 
 	/** Forgets what was read and written - the next transaction reads everything again. */
 	void clear() {
+		this.repository = null;
 		this.persistedDigests.clear();
 		this.verifiedAssociationDigests.clear();
 	}
@@ -143,7 +148,7 @@ final class AssociationStore {
 	 */
 	private void stageIfChanged(Association association, Path stableFile, String pendingSuffix, Map<Path, byte[]> staged) throws IOException {
 		this.pieces.writing(association.getId());
-		byte[] bytes = serializeAssociation(association, pieceRoot -> this.pieces.stage(association.getId(), pieceRoot));
+		byte[] bytes = serializeAssociation(association, pieceRoot -> this.pieces.stage(association.getId(), pieceRoot), this.repository);
 		byte[] digest = digest(bytes);
 		if (Arrays.equals(digest, this.persistedDigests.get(stableFile)) && Files.exists(stableFile))
 			return;
@@ -161,7 +166,7 @@ final class AssociationStore {
 			byte[] stored = this.verifiedAssociationDigests.get(association.getId());
 			if (stored == null)
 				throw new IllegalStateException("Association " + association.getId() + " is neither stored nor marked to be written (Repository.Op#addAssociation).");
-			if (!Arrays.equals(stored, digest(serializeAssociation(association, TreePieces.DIGEST_ONLY))))
+			if (!Arrays.equals(stored, digest(serializeAssociation(association, TreePieces.DIGEST_ONLY, this.repository))))
 				throw new IllegalStateException("Association " + association.getId() + " changed without being marked to be written (Repository.Op#addAssociation) - the change would not be stored.");
 		}
 	}
@@ -169,6 +174,6 @@ final class AssociationStore {
 	/** See {@link #verifiedAssociationDigests}: records [associations] as they serialize now. */
 	private void recordVerifiedDigests(Collection<? extends Association> associations) throws IOException {
 		for (Association association : associations)
-			this.verifiedAssociationDigests.put(association.getId(), digest(serializeAssociation(association, TreePieces.DIGEST_ONLY)));
+			this.verifiedAssociationDigests.put(association.getId(), digest(serializeAssociation(association, TreePieces.DIGEST_ONLY, this.repository)));
 	}
 }

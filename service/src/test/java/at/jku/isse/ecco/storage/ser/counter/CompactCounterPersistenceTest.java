@@ -138,4 +138,45 @@ public class CompactCounterPersistenceTest {
             }
         }
     }
+
+    /**
+     * Version 2 refers to the repository's list of counted module revisions instead of writing each
+     * one's features again: it decodes to the same counters as version 1 (which files written
+     * before hold, and which is still read), and is smaller.
+     */
+    @Test
+    @Timeout(120)
+    public void bothVersionsDecodeToTheSameCountersTheIndexedOneSmaller() throws Exception {
+        Path workDir = commitSome(Files.createTempDirectory("compact-counters-versions"));
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(workDir.resolve(".ecco"));
+            service.open();
+            at.jku.isse.ecco.storage.ser.repository.SerRepository repository = (at.jku.isse.ecco.storage.ser.repository.SerRepository) service.getRepository();
+            long version1 = 0, version2 = 0;
+            for (Association association : repository.getAssociations()) {
+                java.util.Collection<SerModuleCounter> children = ((Association.Op) association).getCounter().getChildren().stream().map(c -> (SerModuleCounter) c).toList();
+                byte[] v1 = CompactCounters.encode(children), v2 = CompactCounters.encode(children, repository);
+                version1 += v1.length;
+                version2 += v2.length;
+                assertEquals(text(CompactCounters.decode(v1, repository, association.getId())), text(CompactCounters.decode(v2, repository, association.getId())), association.getId());
+                assertEquals(text(((Association.Op) association).getCounter().getChildren()), text(CompactCounters.decode(v2, repository, association.getId())));
+            }
+            assertTrue(version2 < version1, "version 2 " + version2 + " bytes, version 1 " + version1);
+        }
+    }
+
+    private static String text(java.util.Map<at.jku.isse.ecco.module.Module, SerModuleCounter> children) {
+        return text(children.values());
+    }
+
+    private static String text(java.util.Collection<? extends ModuleCounter> children) {
+        Map<String, String> modules = new TreeMap<>();
+        for (ModuleCounter moduleCounter : children) {
+            Map<String, Integer> revisions = new TreeMap<>();
+            for (ModuleRevisionCounter revisionCounter : moduleCounter.getChildren())
+                revisions.put(revisionCounter.getObject().toString(), revisionCounter.getCount());
+            modules.put(moduleCounter.getObject().toString(), moduleCounter.getCount() + " " + revisions);
+        }
+        return modules.toString();
+    }
 }

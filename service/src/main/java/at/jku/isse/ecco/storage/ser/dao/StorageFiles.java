@@ -73,11 +73,12 @@ final class StorageFiles {
 
 	/**
 	 * Like {@link #serialize}, with the association's counters in compact form (see
-	 * {@link CompactCounters}) and its files' subtrees given to [pieces] (see TreePieces).
+	 * {@link CompactCounters}, referring to [repository]'s list of counted module revisions) and its
+	 * files' subtrees given to [pieces] (see TreePieces).
 	 */
-	static byte[] serializeAssociation(Object association, PieceSink pieces) throws IOException {
+	static byte[] serializeAssociation(Object association, PieceSink pieces, at.jku.isse.ecco.storage.ser.repository.SerRepository repository) throws IOException {
 		ByteArrayOutputStream serialized = new ByteArrayOutputStream();
-		try (ObjectOutputStream oos = new AssociationOutput(serialized, pieces)) {
+		try (ObjectOutputStream oos = new AssociationOutput(serialized, pieces, repository)) {
 			oos.writeObject(association);
 		}
 		return serialized.toByteArray();
@@ -87,8 +88,8 @@ final class StorageFiles {
 	private static final class AssociationOutput extends CompactCounters.Stream implements PieceSink {
 		private final PieceSink pieces;
 
-		AssociationOutput(java.io.OutputStream out, PieceSink pieces) throws IOException {
-			super(out);
+		AssociationOutput(java.io.OutputStream out, PieceSink pieces, at.jku.isse.ecco.storage.ser.repository.SerRepository repository) throws IOException {
+			super(out, repository);
 			this.pieces = pieces;
 		}
 

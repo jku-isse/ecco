@@ -24,6 +24,7 @@ import at.jku.isse.ecco.storage.ser.feature.SerFeature;
 import at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation;
 import at.jku.isse.ecco.storage.ser.maintree.SerBoostedAssociationMerger;
 import at.jku.isse.ecco.storage.ser.module.SerModule;
+import at.jku.isse.ecco.storage.ser.module.SerModuleRevision;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
 
@@ -75,6 +76,11 @@ public final class SerRepository implements Repository, Repository.Op {
 	private Set<String> artifactIds;
 	private Map<String, String> artifactPacks;
 	private List<String> packOrder = new ArrayList<>();
+	// the module revisions association counters refer to by index (CompactCounters, version 2):
+	// append-only, so an index once written stays valid; null in a core written before
+	private List<SerModuleRevision> countedRevisions;
+	// ... and the index of each (made when first asked for)
+	private transient Map<SerModuleRevision, Integer> countedIndex;
 	private transient Map<String, Artifact.Op<?>> artifactsById = new LinkedHashMap<>();
 	// the index, built when loading: every artifact's id, the pack holding its current copy (none: a
 	// file of its own, from before packs), how many current artifacts each pack holds
@@ -638,6 +644,29 @@ public final class SerRepository implements Repository, Repository.Op {
 		}
 		return this.mainTree;
 	 }
+
+	/** The index counters refer to [revision] by - added at the end if it has none yet. */
+	public synchronized int countedIndex(SerModuleRevision revision) {
+		if (this.countedRevisions == null)
+			this.countedRevisions = new ArrayList<>();
+		if (this.countedIndex == null) {
+			this.countedIndex = new HashMap<>();
+			for (int i = 0; i < this.countedRevisions.size(); i++)
+				this.countedIndex.putIfAbsent(this.countedRevisions.get(i), i);
+		}
+		Integer index = this.countedIndex.get(revision);
+		if (index == null) {
+			index = this.countedRevisions.size();
+			this.countedRevisions.add(revision);
+			this.countedIndex.put(revision, index);
+		}
+		return index;
+	}
+
+	/** The module revision counters refer to by [index]; null if there is none. */
+	public synchronized SerModuleRevision countedRevision(int index) {
+		return this.countedRevisions == null || index < 0 || index >= this.countedRevisions.size() ? null : this.countedRevisions.get(index);
+	}
 
 	@Override
 	public SerModule getModule(Feature[] pos, Feature[] neg) {

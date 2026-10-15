@@ -42,15 +42,76 @@ import java.util.Map;
 public final class CompactCounters {
 
 	private static final int VERSION = 1;
+	/**
+	 * Version 2: the counted module revisions as indices into the repository's list of them
+	 * (SerRepository#countedIndex, in the core), sorted, each written as the gap to the one before
+	 * - in a repository of 42 features an association counts up to 36,000 module revisions, most of
+	 * those the repository has, and version 1 wrote each one's features again in every association
+	 * file (16.6 MB for 53 associations).
+	 */
+	private static final int VERSION_INDEXED = 2;
 
 	private CompactCounters() {
 	}
 
 	/** The stream association files are written with - counters written to it are encoded. */
 	public static class Stream extends ObjectOutputStream {
+		// the repository whose list of counted module revisions the counters refer to (version 2); null: version 1
+		private final SerRepository repository;
+
 		public Stream(OutputStream out) throws IOException {
-			super(out);
+			this(out, null);
 		}
+
+		public Stream(OutputStream out, SerRepository repository) throws IOException {
+			super(out);
+			this.repository = repository;
+		}
+
+		SerRepository repository() {
+			return this.repository;
+		}
+	}
+
+	/** [moduleCounters] encoded for association files: version 2 with [repository], else version 1. */
+	static byte[] encode(Collection<SerModuleCounter> moduleCounters, SerRepository repository) throws IOException {
+		if (repository == null || moduleCounters.stream().anyMatch(counter -> counter.getChildren().isEmpty()))
+			return encode(moduleCounters); // (a module counted without a revision: version 1 writes it)
+		// each counted revision: its index, its count, and its module's count beyond it - written for
+		// the first of a module's revisions only
+		int size = 0;
+		for (SerModuleCounter moduleCounter : moduleCounters)
+			size += moduleCounter.getChildren().size();
+		long[] entries = new long[size]; // index << 32 | position in the lists below
+		int[] counts = new int[size], moduleCounts = new int[size];
+		int e = 0;
+		for (SerModuleCounter moduleCounter : moduleCounters) {
+			boolean first = true;
+			for (ModuleRevisionCounter revisionCounter : moduleCounter.getChildren()) {
+				int index = repository.countedIndex((SerModuleRevision) revisionCounter.getObject());
+				entries[e] = ((long) index << 32) | e;
+				counts[e] = revisionCounter.getCount();
+				moduleCounts[e] = first ? moduleCounter.getCount() : -1;
+				first = false;
+				e++;
+			}
+		}
+		java.util.Arrays.sort(entries);
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+		DataOutputStream out = new DataOutputStream(bytes);
+		writeVarint(out, VERSION_INDEXED);
+		writeVarint(out, size);
+		int previous = -1;
+		for (long entry : entries) {
+			int index = (int) (entry >>> 32), position = (int) entry;
+			writeVarint(out, index - previous - 1);
+			previous = index;
+			writeVarint(out, counts[position]);
+			// the module's count: 0 for none here (another of its revisions carries it), else 1 + count
+			writeVarint(out, moduleCounts[position] < 0 ? 0 : moduleCounts[position] + 1);
+		}
+		out.flush();
+		return bytes.toByteArray();
 	}
 
 	static byte[] encode(Collection<SerModuleCounter> moduleCounters) throws IOException {
@@ -116,6 +177,8 @@ public final class CompactCounters {
 		try {
 			DataInputStream in = new DataInputStream(new ByteArrayInputStream(data));
 			int version = readVarint(in);
+			if (version == VERSION_INDEXED)
+				return decodeIndexed(in, repository, associationId);
 			if (version != VERSION)
 				throw new EccoException("Association " + associationId + " has counters in an unknown format (version " + version + "), written by a newer version of ECCO.");
 
@@ -165,6 +228,33 @@ public final class CompactCounters {
 		} catch (IOException e) {
 			throw new EccoException("Association " + associationId + " has damaged counters.", e);
 		}
+	}
+
+	/** Version 2 - see {@link #VERSION_INDEXED}. */
+	private static Map<Module, SerModuleCounter> decodeIndexed(DataInputStream in, SerRepository repository, String associationId) throws IOException {
+		Map<Module, SerModuleCounter> children = Maps.mutable.empty();
+		int size = readVarint(in);
+		int index = -1;
+		for (int e = 0; e < size; e++) {
+			index += readVarint(in) + 1;
+			int count = readVarint(in), moduleCount = readVarint(in);
+			SerModuleRevision listed = repository.countedRevision(index);
+			if (listed == null)
+				throw damaged(associationId, "module revision #" + index);
+			// the repository's own instances (the list holds them, but resolve as version 1 does)
+			Module listedModule = listed.getModule();
+			SerModule module = repository.getModule(listedModule.getPos(), listedModule.getNeg());
+			SerModuleRevision moduleRevision = module == null ? null : module.getRevision(listed.getPos(), listed.getNeg());
+			if (moduleRevision == null)
+				throw damaged(associationId, "module revision " + listed);
+			SerModuleCounter moduleCounter = children.computeIfAbsent(module, m -> new SerModuleCounter(module));
+			if (moduleCount > 0)
+				moduleCounter.setCount(moduleCount - 1);
+			moduleCounter.addChild(moduleRevision).setCount(count);
+		}
+		if (in.available() != 0)
+			throw new EccoException("Association " + associationId + " has damaged counters: unexpected data after them.");
+		return children;
 	}
 
 	private static EccoException damaged(String associationId, String what) {
