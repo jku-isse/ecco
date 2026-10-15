@@ -94,7 +94,9 @@ public class MainView extends BorderPane implements EccoListener {
 		// MacNativeAdapter and a no-op DummyNativeAdapter - mirrored here so this class can decide
 		// whether it still needs its own ribbon "ECCO" tab fallback (see below and the isMac block
 		// after the RibbonBar is built).
-		boolean isMac = System.getProperty("os.name", "").startsWith("Mac");
+		// on macOS's own window system: under Monocle (the headless tests) there is no native menu bar,
+		// and setting AppKit's menu from its FX thread aborted the JVM
+		boolean isMac = System.getProperty("os.name", "").startsWith("Mac") && !"Monocle".equalsIgnoreCase(System.getProperty("glass.platform"));
 
 		// "Action" actions - open a dialog or act directly, independent of any content view.
 		RibbonAction newAction = new RibbonAction("New", Feather.FILE_PLUS,

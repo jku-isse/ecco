@@ -22,7 +22,7 @@ public class PartialOrderGraphView extends BorderPane {
 	private final Layout layout;
 	// read by the drawing thread, set and cleared on the FX thread
 	private volatile FxViewer viewer;
-	private FxViewPanel view;
+	private volatile FxViewPanel view;
 
 	public PartialOrderGraphView() {
 		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
@@ -115,8 +115,17 @@ public class PartialOrderGraphView extends BorderPane {
 	}
 
 	private void rebuildGraph(Snapshot snapshot) {
+		// the view may be closed while this draws (closeGraph clears both on the FX thread): drawing
+		// goes on with the ones it started with, which are discarded anyway - read twice, the field
+		// was null the second time
+		FxViewer viewer = this.viewer;
+		FxViewPanel view = this.view;
+		if (viewer == null || view == null) {
+			Platform.runLater(() -> setCursor(Cursor.DEFAULT));
+			return;
+		}
 		try {
-			this.viewer.disableAutoLayout();
+			viewer.disableAutoLayout();
 			this.graph.removeSink(this.layout);
 			this.layout.removeAttributeSink(this.graph);
 			this.layout.clear();
@@ -141,9 +150,9 @@ public class PartialOrderGraphView extends BorderPane {
 
 			this.graph.addSink(this.layout);
 			this.layout.addAttributeSink(this.graph);
-			this.viewer.enableAutoLayout(this.layout);
+			viewer.enableAutoLayout(this.layout);
 
-			this.view.getCamera().resetView();
+			view.getCamera().resetView();
 
 		} finally {
 			Platform.runLater(() -> setCursor(Cursor.DEFAULT));

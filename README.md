@@ -234,7 +234,7 @@ The architecture is drawn in [`doc/ecco-architecture.drawio`](doc/ecco-architect
 ## Development
 
 * Open the project in IntelliJ IDEA (`File > Open`), which imports the Gradle build.
-* `./gradlew build` runs all tests. Tests that need Python with `libcst` (Python adapter) are skipped without it; the LilyPond tests that read files are skipped without `tree-sitter`, `py4j` and `lymodel`.
+* `./gradlew build` runs all tests. The GUI tests run headless (Monocle), so no windows appear; `-Pgui.tests.visible` shows them. Tests that need Python with `libcst` (Python adapter) are skipped without it; the LilyPond tests that read files are skipped without `tree-sitter`, `py4j` and `lymodel`.
 * Dependency versions are kept in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
 * See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 

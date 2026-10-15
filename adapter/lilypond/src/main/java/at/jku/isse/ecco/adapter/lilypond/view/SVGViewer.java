@@ -39,7 +39,10 @@ public class SVGViewer extends BorderPane implements ArtifactViewer {
 
 	private final LilypondStringWriter textWriter = new LilypondStringWriter();
 
-	private final WebView webView = new WebView();
+	// created when a score is first shown: a WebView started WebKit for every viewer the GUI built,
+	// also where no score is ever shown (and the headless GUI tests crashed in WebKit at exit)
+	private WebView webView;
+	private double zoom = 1.0;
 	private final Label pageLabel = new Label();
 	private final Button previousButton = new Button("Previous");
 	private final Button nextButton = new Button("Next");
@@ -56,19 +59,10 @@ public class SVGViewer extends BorderPane implements ArtifactViewer {
 		previousButton.setOnAction(e -> showPage(currentPage - 1));
 		nextButton.setOnAction(e -> showPage(currentPage + 1));
 
-		zoomOutButton.setOnAction(e -> setZoom(webView.getZoom() / ZOOM_STEP));
-		zoomInButton.setOnAction(e -> setZoom(webView.getZoom() * ZOOM_STEP));
+		zoomOutButton.setOnAction(e -> setZoom(this.zoom / ZOOM_STEP));
+		zoomInButton.setOnAction(e -> setZoom(this.zoom * ZOOM_STEP));
 		zoomResetButton.setOnAction(e -> setZoom(1.0));
 		setZoom(1.0);
-
-		// Ctrl+scroll to zoom; intercepted as a filter since WebView otherwise consumes the
-		// scroll event itself for its own content scrolling.
-		webView.addEventFilter(ScrollEvent.SCROLL, event -> {
-			if (event.isControlDown()) {
-				setZoom(webView.getZoom() * Math.pow(ZOOM_STEP, event.getDeltaY() > 0 ? 1 : -1));
-				event.consume();
-			}
-		});
 
 		navigationBar = new HBox(10, previousButton, pageLabel, nextButton,
 				new Separator(), zoomOutButton, zoomLabel, zoomInButton, zoomResetButton);
@@ -77,9 +71,27 @@ public class SVGViewer extends BorderPane implements ArtifactViewer {
 	}
 
 	private void setZoom(double zoom) {
-		zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
-		webView.setZoom(zoom);
-		zoomLabel.setText(Math.round(zoom * 100) + "%");
+		this.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
+		if (this.webView != null)
+			this.webView.setZoom(this.zoom);
+		zoomLabel.setText(Math.round(this.zoom * 100) + "%");
+	}
+
+	/** The view of the pages, made on first use with the zoom chosen so far. */
+	private WebView webView() {
+		if (this.webView == null) {
+			this.webView = new WebView();
+			this.webView.setZoom(this.zoom);
+			// Ctrl+scroll to zoom; intercepted as a filter since WebView otherwise consumes the
+			// scroll event itself for its own content scrolling.
+			this.webView.addEventFilter(ScrollEvent.SCROLL, event -> {
+				if (event.isControlDown()) {
+					setZoom(this.zoom * Math.pow(ZOOM_STEP, event.getDeltaY() > 0 ? 1 : -1));
+					event.consume();
+				}
+			});
+		}
+		return this.webView;
 	}
 
 	@Override
@@ -102,7 +114,7 @@ public class SVGViewer extends BorderPane implements ArtifactViewer {
 					if (!compiledPages.isEmpty()) {
 						this.pages = compiledPages;
 						this.setTop(navigationBar);
-						this.setCenter(webView);
+						this.setCenter(webView());
 						showPage(0);
 						this.setBackground(Background.EMPTY);
 
@@ -126,7 +138,7 @@ public class SVGViewer extends BorderPane implements ArtifactViewer {
 			return;
 		}
 		currentPage = Math.max(0, Math.min(index, pages.size() - 1));
-		webView.getEngine().load(pages.get(currentPage).toUri().toString());
+		webView().getEngine().load(pages.get(currentPage).toUri().toString());
 		pageLabel.setText("Page " + (currentPage + 1) + " of " + pages.size());
 		previousButton.setDisable(currentPage == 0);
 		nextButton.setDisable(currentPage == pages.size() - 1);

@@ -375,7 +375,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     protected void checkInitialized() {
         if (!this.isInitialized()) {
-            throw new EccoException("Service is not initialized. No repository is loaded.");
+            throw new ServiceNotInitializedException();
         }
     }
 

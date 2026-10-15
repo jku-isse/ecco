@@ -95,6 +95,7 @@ graphstream-core = { module = "org.graphstream:gs-core", version.ref = "graphstr
 graphstream-algo = { module = "org.graphstream:gs-algo", version.ref = "graphstream" }
 graphstream-ui-javafx = { module = "org.graphstream:gs-ui-javafx", version.ref = "graphstream" }
 javafx-controls = { module = "org.openjfx:javafx-controls", version.ref = "javafx" }
+openjfx-monocle = { module = "org.testfx:openjfx-monocle", version = "21.0.2" }
 javafx-fxml = { module = "org.openjfx:javafx-fxml", version.ref = "javafx" }
 
 argparse4j = { module = "net.sourceforge.argparse4j:argparse4j", version.ref = "argparse4j" }

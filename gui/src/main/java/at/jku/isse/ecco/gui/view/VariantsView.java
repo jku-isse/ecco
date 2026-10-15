@@ -475,7 +475,7 @@ public class VariantsView extends BorderPane implements EccoListener {
         // modal "Service is not initialized" dialog.
         variantsRefreshTask.setOnFailed(event -> {
             VariantsView.this.toolBar.setDisable(false);
-            if (!VariantsView.this.service.isInitialized())
+            if (!VariantsView.this.service.isInitialized() || at.jku.isse.ecco.gui.TaskFailures.repositoryClosed(variantsRefreshTask.getException()))
                 return;
             new at.jku.isse.ecco.gui.ExceptionAlert(variantsRefreshTask.getException()).show();
         });

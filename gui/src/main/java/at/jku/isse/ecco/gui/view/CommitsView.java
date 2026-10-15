@@ -73,7 +73,8 @@ public class CommitsView extends BorderPane implements EccoListener {
 					// way to recover short of restarting the app - same gap ArtifactsView.refresh()
 					// had (see that fix's commit for why this matters at scale)
 					toolBar.setDisable(false);
-					new ExceptionAlert(commitsRefreshTask.getException()).show();
+					if (!at.jku.isse.ecco.gui.TaskFailures.repositoryClosed(commitsRefreshTask.getException()))
+						new ExceptionAlert(commitsRefreshTask.getException()).show();
 				});
 
 				new Thread(commitsRefreshTask).start();

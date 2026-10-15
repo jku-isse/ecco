@@ -28,8 +28,21 @@ public final class TaskFailures {
 		task.setOnFailed(event -> {
 			for (Node control : controls)
 				control.setDisable(false);
-			report.accept(task.getException());
+			if (!repositoryClosed(task.getException()))
+				report.accept(task.getException());
 		});
+	}
+
+	/**
+	 * Whether {@code failure} only says that the repository was closed while the work ran - a
+	 * refresh started by a commit or checkout, and Close right after: no error worth a dialog (it
+	 * showed "Service is not initialized").
+	 */
+	public static boolean repositoryClosed(Throwable failure) {
+		for (Throwable t = failure; t != null; t = t.getCause())
+			if (t instanceof at.jku.isse.ecco.service.ServiceNotInitializedException)
+				return true;
+		return false;
 	}
 
 	/**

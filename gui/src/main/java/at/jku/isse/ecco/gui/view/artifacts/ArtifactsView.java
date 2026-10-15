@@ -638,7 +638,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             if (refreshGeneration.get() == generation) {
                 toolBar.setDisable(false);
             }
-            new ExceptionAlert(refreshTask.getException()).show();
+            if (!at.jku.isse.ecco.gui.TaskFailures.repositoryClosed(refreshTask.getException()))
+                new ExceptionAlert(refreshTask.getException()).show();
         });
         new Thread(refreshTask).start();
     }
