@@ -933,8 +933,27 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         for (ArtifactPlugin plugin : this.artifactPlugins) {
             settings.putAll(plugin.newRepositorySettings());
         }
-        try (java.io.Writer out = Files.newBufferedWriter(this.repositoryDir.resolve(SETTINGS_FILE_NAME))) {
-            settings.store(out, "Chosen when this repository was created; changing them changes how files are read.");
+        writeSettings(this.repositoryDir.resolve(SETTINGS_FILE_NAME), settings, "Chosen when this repository was created; changing them changes how files are read.");
+    }
+
+    /**
+     * Writes [settings] to [file] as a whole or not at all: into a file beside it, moved over it. A
+     * failure - a full disk, a crash - while the file itself was being written left it truncated, and
+     * the repository read files without the settings they were committed with.
+     */
+    static void writeSettings(Path file, java.util.Properties settings, String comment) throws IOException {
+        Path written = Files.createTempFile(file.getParent(), SETTINGS_FILE_NAME.toString(), ".tmp");
+        try {
+            try (java.io.Writer out = Files.newBufferedWriter(written)) {
+                settings.store(out, comment);
+            }
+            try {
+                Files.move(written, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(written, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(written);
         }
     }
 
@@ -967,9 +986,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             adopted = true;
         }
         if (adopted) {
-            try (java.io.Writer out = Files.newBufferedWriter(file)) {
-                settings.store(out, "Chosen when this repository was created, or when it got its first file of a plugin; changing them changes how files are read.");
-            }
+            writeSettings(file, settings, "Chosen when this repository was created, or when it got its first file of a plugin; changing them changes how files are read.");
         }
     }
 
@@ -1083,10 +1100,32 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         all.putAll(settings);
         java.util.Properties properties = new java.util.Properties();
         properties.putAll(all);
-        try (java.io.Writer out = Files.newBufferedWriter(this.repositoryDir.resolve(SETTINGS_FILE_NAME))) {
-            properties.store(out, "Chosen when this repository was created, or taken over from the repository its first files of a plugin came from; changing them changes how files are read.");
+        try {
+            writeSettings(this.repositoryDir.resolve(SETTINGS_FILE_NAME), properties, "Chosen when this repository was created, or taken over from the repository its first files of a plugin came from; changing them changes how files are read.");
         } catch (IOException e) {
             throw new EccoException("Could not write the repository's settings.", e);
+        }
+    }
+
+    /**
+     * Ends the transaction of a merge (pull, push), taking over [settings] (see {@link #settingsToTakeOver})
+     * first: they were written after it and could fail, a merge stored without the settings its files
+     * were read with. Should ending fail, the settings are put back as they were.
+     */
+    void endTakingOverSettings(Map<String, String> settings) {
+        Map<String, String> before = settings.isEmpty() ? null : this.repositorySettings();
+        this.takeOverSettings(settings);
+        try {
+            this.transactionStrategy.end();
+        } catch (RuntimeException | Error e) {
+            if (before != null) {
+                try {
+                    this.replaceSettings(before);
+                } catch (RuntimeException restoring) {
+                    e.addSuppressed(restoring);
+                }
+            }
+            throw e;
         }
     }
 
@@ -1100,9 +1139,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             }
             java.util.Properties properties = new java.util.Properties();
             properties.putAll(settings);
-            try (java.io.Writer out = Files.newBufferedWriter(file)) {
-                properties.store(out, "Taken over from the repository this one was forked from; changing them changes how files are read.");
-            }
+            writeSettings(file, properties, "Taken over from the repository this one was forked from; changing them changes how files are read.");
         } catch (IOException e) {
             throw new EccoException("Could not take over the origin's settings.", e);
         }

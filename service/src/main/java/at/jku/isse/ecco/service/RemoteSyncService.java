@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -333,11 +334,17 @@ public class RemoteSyncService {
                     // server's whole lifetime and blocking every other operation until it stopped.)
                     switch (command) {
                         case "SETTINGS": { // how this repository reads files, for a pull to compare
-                            Map<String, String> settings;
+                            // the settings, or why they cannot be told: a closed connection is taken
+                            // for an older server, which was then synced with unchecked
+                            Object reply;
                             synchronized (owner) {
-                                settings = new HashMap<>(owner.repositorySettings());
+                                try {
+                                    reply = new HashMap<>(owner.repositorySettings());
+                                } catch (RuntimeException e) {
+                                    reply = "Could not tell its settings: " + messages(e);
+                                }
                             }
-                            oos.writeObject(settings);
+                            oos.writeObject(reply);
                             oos.flush();
                             sChannel.shutdownOutput();
                             break;
@@ -356,6 +363,8 @@ public class RemoteSyncService {
                                     reply = "OK";
                                 } catch (EccoException e) {
                                     reply = e.getMessage();
+                                } catch (RuntimeException e) { // answered, not closed (see SETTINGS)
+                                    reply = "Could not compare settings: " + messages(e);
                                 }
                             }
                             oos.writeObject(reply);
@@ -452,22 +461,62 @@ public class RemoteSyncService {
                             @SuppressWarnings("unchecked")
                             Collection<Artifact.Op<?>> pushedArtifacts = (Collection<Artifact.Op<?>>) ois.readObject();
                             subsetRepository.resolveArtifacts(pushedArtifacts);
+                            // the settings the files were read with; a client from before sends none,
+                            // after asking with MERGE_SETTINGS
+                            Map<String, String> pushedSettings = null;
+                            String pushedFrom = "a client";
+                            try {
+                                @SuppressWarnings("unchecked")
+                                Map<String, String> settings = (Map<String, String>) ois.readObject();
+                                pushedSettings = settings;
+                                pushedFrom = (String) ois.readObject();
+                            } catch (EOFException e) {
+                                LOGGER.warning("A push without the settings its files were read with (an older ECCO, which compared them before).");
+                            }
 
                             // copy it using this entity factory
                             Repository.Op copiedRepository = subsetRepository.copy(owner.entityFactory);
 
                             // merge into this repository - under the service monitor (see the
-                            // comment above the switch)
+                            // comment above the switch) - if both read the files the same way:
+                            // checked here, in the same transaction, also when MERGE_SETTINGS said
+                            // yes - a client need not ask, and the settings could have changed since
+                            String reply;
                             synchronized (owner) {
-                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                                Repository.Op repository = owner.repositoryDao.load();
-                                repository.merge(copiedRepository);
-                                owner.repositoryDao.store(repository);
-                                owner.transactionStrategy.end();
+                                try {
+                                    owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                                    Repository.Op repository = owner.repositoryDao.load();
+                                    Map<String, String> takeOver = pushedSettings == null ? Map.of()
+                                            : owner.settingsToTakeOver(EccoService.pluginsWithFiles(copiedRepository), pushedSettings,
+                                            owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
+                                    repository.merge(copiedRepository);
+                                    owner.repositoryDao.store(repository);
+                                    owner.endTakingOverSettings(takeOver);
+                                    reply = "OK";
+                                } catch (RuntimeException e) {
+                                    owner.rollbackIfTransactionActive();
+                                    LOGGER.warning("Push refused: " + messages(e));
+                                    owner.listeners.fireServerEvent("Push refused: " + messages(e));
+                                    reply = messages(e);
+                                }
+                            }
+                            // a client from before reads no answer and may have closed already
+                            try {
+                                oos.writeObject(reply);
+                                oos.flush();
+                                sChannel.shutdownOutput();
+                            } catch (IOException e) {
+                                LOGGER.fine("The pushing client did not wait for the answer: " + e);
                             }
                             break;
                         }
                     }
+                } catch (StackOverflowError e) {
+                    // a payload nested too deeply to read - sent by mistake or on purpose - fails
+                    // this request only; it stopped the server
+                    LOGGER.warning("Error receiving request: nested too deeply.");
+                    owner.listeners.fireServerEvent("Error receiving request: nested too deeply.");
+                    this.rollbackIfTransactionInProgress();
                 } catch (Error e) {
                     this.rollbackIfTransactionInProgress();
                     throw e;
@@ -602,6 +651,17 @@ public class RemoteSyncService {
         this.pull(remoteName, "");
     }
 
+    /** [e]'s message and its causes', for an answer to a client: "Error during merge.: No space left on device". */
+    static String messages(Throwable e) {
+        List<String> messages = new ArrayList<>();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            String message = t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName();
+            if (!messages.contains(message))
+                messages.add(message);
+        }
+        return String.join(": ", messages);
+    }
+
     /**
      * The settings of the repository [remote] serves, or null from a server too old to tell - it
      * closes the connection on a request it does not know.
@@ -621,7 +681,11 @@ public class RemoteSyncService {
             oos.writeObject("SETTINGS");
             oos.flush();
             sChannel.shutdownOutput();
-            return (Map<String, String>) SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream()).readObject();
+            Object reply = SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream()).readObject();
+            if (reply instanceof Map<?, ?> settings)
+                return (Map<String, String>) settings;
+            // not checked whether the files are read the same way: nothing is synced
+            throw new EccoException(name + ": " + reply);
         } catch (EOFException e) {
             LOGGER.warning(name + " does not tell its settings (an older ECCO): not checked whether it reads files the same way.");
             return null;
@@ -653,6 +717,72 @@ public class RemoteSyncService {
         }
         if (!"OK".equals(reply))
             throw new EccoException(reply);
+    }
+
+    /**
+     * Sends [subsetRepository], read with [settings], to [remote] to merge - which checks the settings
+     * itself, and answers whether it merged it.
+     */
+    void sendPush(Remote remote, Repository.Op subsetRepository, Map<String, String> settings) throws IOException, ClassNotFoundException {
+        try (SocketChannel sChannel = SocketChannel.open()) {
+            sChannel.configureBlocking(true);
+            if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
+                throw new EccoException("Error connecting to remote: " + remote.getAddress());
+            // oos wraps the progress-tracking stream (not the raw socket stream directly) so
+            // that the actual payload write below -- not just a separate scratch stream used
+            // only to estimate size, see below -- is what the progress listener observes.
+            ProgressOutputStream pos = new ProgressOutputStream(sChannel.socket().getOutputStream());
+            ObjectOutputStream oos = new ObjectOutputStream(pos);
+
+            oos.writeObject("PUSH");
+
+            // estimate size for the progress bar via a scratch stream -- the actual payload
+            // is sent through `oos` below (see PULL's server-side case in startServer() for
+            // why splicing a separate ObjectOutputStream's raw bytes directly onto the
+            // connection, as this used to do, corrupts the stream from the reader's side).
+            ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+            new ObjectOutputStream(byteOutputStream).writeObject(subsetRepository);
+            pos.setMaxBytes(byteOutputStream.size());
+            pos.resetProgress();
+
+            pos.addListener(owner);
+            oos.writeObject(subsetRepository);
+            // associations and artifacts travel as companion payloads -- see
+            // Repository.Op#restoreAssociations/#collectArtifacts/#resolveArtifacts.
+            oos.writeObject(new ArrayList<Association.Op>(subsetRepository.getAssociations()));
+            oos.writeObject(new ArrayList<Artifact.Op<?>>(subsetRepository.collectArtifacts()));
+            // the settings the files were read with, for the remote to check
+            oos.writeObject(new HashMap<>(settings));
+            oos.writeObject(remote.getName());
+            // flush() only pushes ObjectOutputStream's/pos's own buffers into the OS socket
+            // send buffer -- it does NOT wait for the peer to ACK receipt over TCP. Closing
+            // the channel (via the try-with-resources below) immediately after can race the
+            // OS's own transmission of that already-flushed data: if the close happens before
+            // the OS has actually sent + gotten an ACK for the last chunk, closing can emit a
+            // TCP RST that discards it, leaving the server's matching read blocked forever
+            // waiting for bytes that were "successfully written" on this end but never
+            // actually arrived. shutdownOutput() sends a proper FIN instead, which the OS
+            // guarantees only happens after already-written data has been handed off -- this
+            // is what actually fixed the intermittent (~1-in-3 to ~1-in-4) PUSH hang; oos.flush()
+            // alone was necessary but not sufficient (it fixed a distinct, contained,
+            // ~50%-reproducible bug: data that never left ObjectOutputStream's own buffer at
+            // all -- see the FETCH case in startServer() for that one).
+            oos.flush();
+            sChannel.shutdownOutput();
+            pos.removeListener(owner);
+
+            // whether the remote merged it. A server from before reads only the repository and
+            // answers nothing - it may reset the connection over the settings it did not read
+            Object reply;
+            try {
+                reply = SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream()).readObject();
+            } catch (EOFException | SocketException e) {
+                LOGGER.warning("Remote '" + remote.getName() + "' does not answer a push (an older ECCO): not known whether it merged it.");
+                return;
+            }
+            if (!"OK".equals(reply))
+                throw new EccoException("Remote '" + remote.getName() + "' did not merge the push: " + reply);
+        }
     }
 
     /**
@@ -762,8 +892,7 @@ public class RemoteSyncService {
                 owner.repositoryDao.store(repository);
             }
 
-            owner.transactionStrategy.end();
-            owner.takeOverSettings(takeOver);
+            owner.endTakingOverSettings(takeOver);
         } catch (Error e) {
             owner.rollbackIfTransactionActive();
             throw e;
@@ -805,52 +934,10 @@ public class RemoteSyncService {
                 // the remote merges only files it reads the same way - asked before sending anything
                 this.mergeSettingsIntoRemote(remote, EccoService.pluginsWithFiles(subsetRepository));
 
-                try (SocketChannel sChannel = SocketChannel.open()) {
-                    sChannel.configureBlocking(true);
-                    if (RemoteSyncService.connect(sChannel, socketAddressOf(remote))) {
-                        // oos wraps the progress-tracking stream (not the raw socket stream directly) so
-                        // that the actual payload write below -- not just a separate scratch stream used
-                        // only to estimate size, see below -- is what the progress listener observes.
-                        ProgressOutputStream pos = new ProgressOutputStream(sChannel.socket().getOutputStream());
-                        ObjectOutputStream oos = new ObjectOutputStream(pos);
-
-                        oos.writeObject("PUSH");
-
-                        // estimate size for the progress bar via a scratch stream -- the actual payload
-                        // is sent through `oos` below (see PULL's server-side case in startServer() for
-                        // why splicing a separate ObjectOutputStream's raw bytes directly onto the
-                        // connection, as this used to do, corrupts the stream from the reader's side).
-                        ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-                        new ObjectOutputStream(byteOutputStream).writeObject(subsetRepository);
-                        pos.setMaxBytes(byteOutputStream.size());
-                        pos.resetProgress();
-
-                        pos.addListener(owner);
-                        oos.writeObject(subsetRepository);
-                        // associations and artifacts travel as companion payloads -- see
-                        // Repository.Op#restoreAssociations/#collectArtifacts/#resolveArtifacts.
-                        oos.writeObject(new ArrayList<Association.Op>(subsetRepository.getAssociations()));
-                        oos.writeObject(new ArrayList<Artifact.Op<?>>(subsetRepository.collectArtifacts()));
-                        // flush() only pushes ObjectOutputStream's/pos's own buffers into the OS socket
-                        // send buffer -- it does NOT wait for the peer to ACK receipt over TCP. Closing
-                        // the channel (via the try-with-resources below) immediately after can race the
-                        // OS's own transmission of that already-flushed data: if the close happens before
-                        // the OS has actually sent + gotten an ACK for the last chunk, closing can emit a
-                        // TCP RST that discards it, leaving the server's matching read blocked forever
-                        // waiting for bytes that were "successfully written" on this end but never
-                        // actually arrived. shutdownOutput() sends a proper FIN instead, which the OS
-                        // guarantees only happens after already-written data has been handed off -- this
-                        // is what actually fixed the intermittent (~1-in-3 to ~1-in-4) PUSH hang; oos.flush()
-                        // alone was necessary but not sufficient (it fixed a distinct, contained,
-                        // ~50%-reproducible bug: data that never left ObjectOutputStream's own buffer at
-                        // all -- see the FETCH case in startServer() for that one).
-                        oos.flush();
-                        sChannel.shutdownOutput();
-                        pos.removeListener(owner);
-
-                    } else {
-                        throw new EccoException("Error connecting to remote: " + remote.getAddress());
-                    }
+                try {
+                    this.sendPush(remote, subsetRepository, owner.repositorySettings());
+                } catch (EccoException e) {
+                    throw e;
                 } catch (Exception e) {
                     throw new EccoException("Error during remote push.", e);
                 }
@@ -877,8 +964,7 @@ public class RemoteSyncService {
                         parentRepository.merge(subsetRepository);
                         parentService.repositoryDao.store(parentRepository);
 
-                        parentService.transactionStrategy.end();
-                        parentService.takeOverSettings(takeOver);
+                        parentService.endTakingOverSettings(takeOver);
                     } catch (Error e) {
                         parentService.rollbackIfTransactionActive();
                         throw e;
