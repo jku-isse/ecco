@@ -33,6 +33,27 @@ public class ArtifactDiagnosticsTest {
 		assertEquals("File > Parent", ArtifactDiagnostics.describePath(parentNode));
 	}
 
+	/** An adapter's name for a structure, like Markdown's "(paragraph)", is shown as the text of its leaves. */
+	@Test
+	public void textOf_aStructuresLabelIsReplacedByItsLeavesText() {
+		SerNode paragraph = new SerNode(new SerArtifact<>(new TestArtifactData("(paragraph)")));
+		paragraph.addChild(new SerNode(new SerArtifact<>(new TestArtifactData("A paragraph"))));
+		paragraph.addChild(new SerNode(new SerArtifact<>(new TestArtifactData("  about apples."))));
+		assertEquals("A paragraph about apples.", ArtifactDiagnostics.textOf(paragraph));
+
+		SerNode line = new SerNode(new SerArtifact<>(new TestArtifactData("int x = 1;")));
+		line.addChild(new SerNode(new SerArtifact<>(new TestArtifactData("child"))));
+		assertEquals("int x = 1;", ArtifactDiagnostics.textOf(line), "a text of its own stays");
+		assertEquals("(final newline)", ArtifactDiagnostics.textOf(new SerNode(new SerArtifact<>(new TestArtifactData("(final newline)")))), "no children: the label");
+
+		SerNode long_ = new SerNode(new SerArtifact<>(new TestArtifactData("(paragraph)")));
+		for (int i = 0; i < 100; i++)
+			long_.addChild(new SerNode(new SerArtifact<>(new TestArtifactData("word" + i))));
+		String text = ArtifactDiagnostics.textOf(long_);
+		assertEquals(ArtifactDiagnostics.MAX_TEXT, text.length());
+		assertTrue(text.endsWith("\u2026"));
+	}
+
 	@Test
 	public void describeChildren_rendersCurrentChildOrder() {
 		Artifact.Op<?> parentArtifact = new SerArtifact<>(new TestArtifactData("Parent"));

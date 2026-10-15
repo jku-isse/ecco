@@ -88,6 +88,58 @@ public class SourceSpanViewerTest {
                 "at.jku.isse.ecco.adapter.python.PythonPlugin", "python");
     }
 
+    /** What the reorder dialog shows and sends to an LLM for these adapters: each node's rendered source, not its label. */
+    @Test
+    @Timeout(180)
+    public void typeScriptSourceTextsAreTheRenderedSource() throws Exception {
+        assertSourceTexts("main.ts", "let x: number = 1;\nfunction f(a: string) {\n  return a;\n}\nlet y = 2;\n",
+                "at.jku.isse.ecco.adapter.typescript.TypeScriptPlugin", "let x: number = 1;", "let y = 2;");
+    }
+
+    @Test
+    @Timeout(180)
+    public void pythonSourceTextsAreTheRenderedSource() throws Exception {
+        assumeTrue(pythonAvailable(), "needs `python` with libcst and py4j on the PATH");
+        assertSourceTexts("main.py", "x = 1\n\ndef f(a):\n    return a\n\ny = 2\n",
+                "at.jku.isse.ecco.adapter.python.PythonPlugin", "x = 1", "y = 2");
+    }
+
+    private void assertSourceTexts(String file, String source, String pluginId, String... expected) throws Exception {
+        Path workDir = Files.createTempDirectory("source-span-texts");
+        Path content = Files.createDirectories(workDir.resolve("content"));
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(workDir.resolve(".ecco"));
+            service.init();
+            service.setBaseDir(content);
+            Files.writeString(content.resolve(file), source);
+            service.commit("first", "A");
+
+            AssociationInfoArtifactViewer viewer = service.getInjector()
+                    .getInstance(Key.get(new TypeLiteral<Set<AssociationInfoArtifactViewer>>() {
+                    })).stream().filter(v -> v.getPluginId().equals(pluginId)).findFirst()
+                    .orElseThrow(() -> new AssertionError("no preview registered for " + pluginId));
+            LazyCompositionRootNode root = new LazyCompositionRootNode();
+            for (Association association : service.getRepository().getAssociations())
+                root.addOrigNode(association.getRootNode());
+            Node fileNode = find(root, file);
+            assertNotNull(fileNode, file + " not in the composed tree");
+
+            List<Node> nodes = new ArrayList<>();
+            collect(fileNode, nodes);
+            List<String> texts = viewer.sourceTexts(nodes);
+            assertEquals(nodes.size(), texts.size());
+            List<String> trimmed = texts.stream().filter(java.util.Objects::nonNull).map(String::strip).toList();
+            for (String text : expected)
+                assertTrue(trimmed.contains(text), "\"" + text + "\" is a node's source, got " + trimmed);
+        }
+    }
+
+    private static void collect(Node node, List<Node> nodes) {
+        nodes.add(node);
+        for (Node child : node.getChildren())
+            collect(child, nodes);
+    }
+
     private void preview(String file, String first, String second, String pluginId, String name) throws Exception {
         Path workDir = Files.createTempDirectory("source-span-viewer");
         Path content = Files.createDirectories(workDir.resolve("content"));

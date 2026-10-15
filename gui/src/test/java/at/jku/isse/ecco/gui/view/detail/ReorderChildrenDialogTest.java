@@ -211,6 +211,50 @@ public class ReorderChildrenDialogTest {
         }
     }
 
+    /**
+     * The LLM gets the source a row stands for, whatever the adapter: TypeScript's from its renderer
+     * (a declaration's label is only "const"), a Markdown block's from its lines (its label is
+     * "(paragraph)") - and the rows show the same.
+     */
+    @Test
+    @Timeout(120)
+    public void theSuggestionIsAskedWithTheRowsSource(@TempDir Path tmp) throws Exception {
+        List<String> ts = askedTexts(tmp.resolve("ts"), "app.ts", "function run(): void {\n  init();\n%s  done();\n}\n",
+                "  const a = load();\n", "  console.log(\"b\");\n");
+        assertTrue(ts.contains("const a = load();"), ts.toString());
+        assertTrue(ts.contains("console.log(\"b\");"), ts.toString());
+
+        List<String> md = askedTexts(tmp.resolve("md"), "Doc.md", "# Title\n\nIntro paragraph.\n\n%s## End\n\nBye.\n",
+                "A paragraph about apples.\n\n", "- bullet from B\n- second bullet\n\n");
+        assertTrue(md.contains("A paragraph about apples."), md.toString());
+        assertTrue(md.stream().anyMatch(t -> t.equals("- bullet from B - second bullet")), md.toString());
+        assertTrue(md.stream().noneMatch(t -> t.startsWith("(")), md.toString());
+    }
+
+    /** The row texts asked for the ORDER warning of [file] when variants A and B insert [a] and [b] at %s of [template]. */
+    private static List<String> askedTexts(Path tmp, String file, String template, String a, String b) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "BASE", Map.of(file, String.format(template, "")));
+            commit(service, tmp.resolve("v2"), "BASE, A", Map.of(file, String.format(template, a)));
+            commit(service, tmp.resolve("v3"), "BASE, B", Map.of(file, String.format(template, b)));
+            service.setBaseDir(Files.createDirectories(tmp.resolve("out")));
+            Checkout checkout = service.checkout("BASE, A, B");
+            // the warning with the open rows (Markdown also reports one fully determined inside the paragraph)
+            Node.Op warning = (Node.Op) checkout.getOrderWarnings().stream()
+                    .filter(n -> at.jku.isse.ecco.tree.ArtifactDiagnostics.suggestOrderFix(n).startsWith("the order"))
+                    .findFirst().orElseThrow(() -> new AssertionError("no open order in " + file));
+            List<List<at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Row>> asked = new java.util.concurrent.CopyOnWriteArrayList<>();
+            ReorderChildrenDialog.OrderSuggester recording = (path, rows) -> {
+                asked.add(rows);
+                return new at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Suggestion(null, "recorded");
+            };
+            Fixture d = onFx(() -> new Fixture(new ReorderChildrenDialog(service, warning, recording)));
+            onFx(() -> suggestButton(d.dialog).fire());
+            waitUntil("the question", () -> !asked.isEmpty());
+            return asked.get(0).stream().map(at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Row::text).toList();
+        }
+    }
+
     /** A failed suggestion is reported and changes nothing; without a model the button is off, with the reason next to it. */
     @Test
     @Timeout(60)

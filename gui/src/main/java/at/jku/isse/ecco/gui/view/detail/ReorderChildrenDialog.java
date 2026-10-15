@@ -114,6 +114,11 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		// result should ever cause a lasting change).
 		List<Node.Op> originalChildren = new ArrayList<>(children);
 		List<String> labels = ArtifactDiagnostics.describeChildrenWithLines(node);
+		// the code preview (if any) shows the selected row's source (below); its viewer also knows the
+		// source of artifacts that don't hold their text (Python, TypeScript) - shown and sent to the
+		// LLM instead of their labels (a Python statement's label is its serialized bytes)
+		Pane codePreview = findCodePreview(service, node);
+		List<String> sourceTexts = codePreview instanceof ArtifactViewer viewer ? viewer.sourceTexts(children) : List.of();
 		// defensive: the 0-children fallback in ArtifactDiagnostics returns a 1-entry placeholder
 		// list, which would otherwise desync from `children`'s real size (should be unreachable here
 		// now that the real Node is threaded through, but this dialog should never index out of
@@ -126,8 +131,10 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 				markers.add(children.get(i));
 				continue;
 			}
-			String label = (labels.size() == children.size()) ? labels.get(i) : String.valueOf(children.get(i).getArtifact());
-			rowData.add(new ChildEntry(children.get(i), label));
+			String source = i < sourceTexts.size() && sourceTexts.get(i) != null && !sourceTexts.get(i).isBlank() ? oneLine(sourceTexts.get(i)) : null;
+			String label = source != null ? source : (labels.size() == children.size()) ? labels.get(i) : String.valueOf(children.get(i).getArtifact());
+			String text = source != null ? source : ArtifactDiagnostics.textOf(children.get(i));
+			rowData.add(new ChildEntry(children.get(i), label, text));
 		}
 
 		// used to disable a move that would cross a pair whose order the graph has already fixed -
@@ -214,7 +221,6 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 
 		// the code preview (if any) tracks whichever row is currently selected, so the user can see
 		// exactly what they're moving, not just its plain-text label.
-		Pane codePreview = findCodePreview(service, node);
 
 		Runnable updateCodePreview = () -> {
 			ChildEntry selected = table.getSelectionModel().getSelectedItem();
@@ -381,7 +387,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		}
 		List<LlmOrderSuggestionClient.Row> rows = new ArrayList<>();
 		for (int i = 0; i < window.size(); i++)
-			rows.add(new LlmOrderSuggestionClient.Row(String.valueOf(window.get(i).getNode().getArtifact()), !isRowFixed(from + i, rowData, pogNodesByChild)));
+			rows.add(new LlmOrderSuggestionClient.Row(window.get(i).getText(), !isRowFixed(from + i, rowData, pogNodesByChild)));
 		boolean[][] mustPrecede = mustPrecede(window, pogNodesByChild);
 		String path = ArtifactDiagnostics.describePath(node);
 
@@ -517,6 +523,12 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	 * text) or the service isn't initialized. Association-highlighting info is irrelevant here (this
 	 * dialog isn't the live Artifacts panel), so it's initialized with none.
 	 */
+	/** [source] on one line - its whitespace runs (line breaks, indentation) as one space - and shortened. */
+	static String oneLine(String source) {
+		String text = source.replaceAll("\\s+", " ").trim();
+		return text.length() <= 200 ? text : text.substring(0, 199) + "\u2026";
+	}
+
 	private Pane findCodePreview(EccoService service, Node node) {
 		if (!service.isInitialized()) return null;
 		service.getInjector().injectMembers(this);
@@ -537,14 +549,21 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	private static class ChildEntry {
 		private final Node.Op node;
 		private final SimpleStringProperty label;
+		/** The source text the row stands for, sent to the LLM (the label may add line numbers). */
+		private final String text;
 
-		ChildEntry(Node.Op node, String label) {
+		ChildEntry(Node.Op node, String label, String text) {
 			this.node = node;
 			this.label = new SimpleStringProperty(label);
+			this.text = text;
 		}
 
 		Node.Op getNode() {
 			return this.node;
+		}
+
+		String getText() {
+			return this.text;
 		}
 
 		SimpleStringProperty labelProperty() {

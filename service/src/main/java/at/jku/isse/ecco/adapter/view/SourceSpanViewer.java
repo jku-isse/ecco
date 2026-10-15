@@ -24,6 +24,7 @@ import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -97,6 +98,41 @@ public abstract class SourceSpanViewer extends BorderPane implements Association
 			this.setCenter(this.createListView(new ArrayList<>()));
 		else
 			this.setCenter(tabPane);
+	}
+
+	/** The text of each node's span in its file as rendered (each file rendered once); null if it has none. */
+	@Override
+	public List<String> sourceTexts(List<? extends Node> nodes) {
+		Map<Node, RenderedSource> sources = new IdentityHashMap<>();
+		List<String> texts = new ArrayList<>(nodes.size());
+		for (Node node : nodes) {
+			Node fileNode = this.fileNodeOf(node);
+			RenderedSource source = null;
+			if (fileNode != null) {
+				if (!sources.containsKey(fileNode)) {
+					try {
+						sources.put(fileNode, this.render(fileNode));
+					} catch (Exception e) {
+						sources.put(fileNode, null); // not again for its other nodes
+					}
+				}
+				source = sources.get(fileNode);
+			}
+			String text = null;
+			if (source != null) {
+				int start = Integer.MAX_VALUE, end = -1;
+				for (RenderedSource.Span span : source.getSpans()) {
+					if (span.node() == node) {
+						start = Math.min(start, span.start());
+						end = Math.max(end, span.end());
+					}
+				}
+				if (end >= start)
+					text = source.getText().substring(start, end);
+			}
+			texts.add(text);
+		}
+		return texts;
 	}
 
 	private ListView<List<RenderedSource.Segment>> createListView(List<List<RenderedSource.Segment>> lines) {

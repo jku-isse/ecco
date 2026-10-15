@@ -70,13 +70,45 @@ public final class ArtifactDiagnostics {
 	}
 
 	private static String describeChildWithLine(Node childNode) {
-		String text = String.valueOf(childNode.getArtifact());
+		String text = textOf(childNode);
 		Optional<Integer> lineStart = childNode.getProperty(LINE_START_PROPERTY);
 		Optional<Integer> lineEnd = childNode.getProperty(LINE_END_PROPERTY);
 		if (lineStart.isPresent() && lineEnd.isPresent()) {
 			text += lineStart.equals(lineEnd) ? " (line " + lineStart.get() + ")" : " (lines " + lineStart.get() + "-" + lineEnd.get() + ")";
 		}
 		return text;
+	}
+
+	/** At most this many characters of a structural node's text ({@link #textOf}). */
+	static final int MAX_TEXT = 200;
+
+	/**
+	 * The text [node] stands for: its artifact's text - unless that is only an adapter's name for a
+	 * structure whose text is in its children, like Markdown's "(paragraph)" or "(bullet list,
+	 * marker=-)": then the text of its subtree's leaves, joined by spaces, at most {@link #MAX_TEXT}
+	 * characters. What a human (or an LLM, see the reorder dialog) deciding an order needs to read.
+	 */
+	public static String textOf(Node node) {
+		String own = String.valueOf(node.getArtifact());
+		if (node.getChildren().isEmpty() || !(own.startsWith("(") && own.endsWith(")")))
+			return own;
+		StringBuilder leaves = new StringBuilder();
+		appendLeaves(node, leaves);
+		String text = leaves.toString().replaceAll("\\s+", " ").trim();
+		if (text.isEmpty())
+			return own;
+		return text.length() <= MAX_TEXT ? text : text.substring(0, MAX_TEXT - 1) + "\u2026";
+	}
+
+	private static void appendLeaves(Node node, StringBuilder leaves) {
+		if (leaves.length() > MAX_TEXT)
+			return;
+		if (node.getChildren().isEmpty()) {
+			leaves.append(node.getArtifact()).append(' ');
+			return;
+		}
+		for (Node child : node.getChildren())
+			appendLeaves(child, leaves);
 	}
 
 	/**
