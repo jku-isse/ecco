@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.storage.ser.feature;
 
+import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 
@@ -52,9 +53,7 @@ public class SerFeatureRevision implements FeatureRevision {
 		// sanitized here, but the feature name wasn't, so a hyphenated name (a legitimate,
 		// common feature-name style - e.g. "shopping-cart") produced a literal LogicNG's parser
 		// rejected outright, crashing every commit once more than one feature existed
-		String sanitizedFeatureName = this.getFeature().getName().replace(".", "_").replace("-", "_");
-		String sanitizedId = this.id.replace("-", "_");
-		return sanitizedFeatureName + "_" + sanitizedId;
+		return FeatureLiterals.revisionVariable(this);
 	}
 
 	@Override

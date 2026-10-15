@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.featuretrace;
 
+import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -42,7 +43,7 @@ public class ProactiveTraceCheck {
 			this.assignments.add(commit.getConfiguration().toAssignment());
 			Set<String> names = new TreeSet<>();
 			for (FeatureRevision revision : commit.getConfiguration().getFeatureRevisions())
-				names.add(sanitize(revision.getFeature().getName()));
+				names.add(FeatureLiterals.featureVariable(revision.getFeature()));
 			this.features.add(names);
 		}
 	}
@@ -120,10 +121,5 @@ public class ProactiveTraceCheck {
 		if (location.isPresent())
 			return location.get().getFilePath() + ":" + location.get().getStartLine();
 		return ArtifactDiagnostics.describePath(node);
-	}
-
-	// like SerFeatureTrace does to condition strings - '.' and '-' can't be parsed
-	private static String sanitize(String name) {
-		return name.replace(".", "_").replace("-", "_");
 	}
 }

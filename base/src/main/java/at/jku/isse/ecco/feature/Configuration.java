@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.feature;
 
 import at.jku.isse.ecco.dao.Persistable;
-import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import org.logicng.datastructures.Assignment;
@@ -93,22 +92,10 @@ public interface Configuration extends Persistable {
      * The assignment feature-trace conditions are evaluated with: for each selected feature revision,
      * its revision ("name_id", as retroactive conditions name it) and its feature ("name", as
      * proactive conditions such as VEVOS presence conditions name it) are true. Names are sanitized
-     * like condition strings ('.' and '-' become '_').
+     * like condition strings ('.' and '-' become '_') - see {@link FeatureLiterals}.
      */
     default Assignment toAssignment(){
-        Assignment assignment = new Assignment();
-        for (FeatureRevision featureRevision: this.getFeatureRevisions()){
-            // the specific revision is true
-            String literalString = featureRevision.getFeature().getName() + "." + featureRevision.getId();
-            literalString = literalString.replace(".", "_");
-            literalString = literalString.replace("-", "_");
-            Literal revisionLiteral = FormulaFactoryProvider.getFormulaFactory().literal(literalString, true);
-            assignment.addLiteral(revisionLiteral);
-            // and so is the feature - whichever revision is selected
-            String featureLiteralString = featureRevision.getFeature().getName().replace(".", "_").replace("-", "_");
-            assignment.addLiteral(FormulaFactoryProvider.getFormulaFactory().literal(featureLiteralString, true));
-        }
-        return assignment;
+        return FeatureLiterals.assignment(this);
     }
 
     @Override
