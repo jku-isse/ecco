@@ -61,7 +61,7 @@ def items(p, parent, x0, y0, w, h, labels, kind, cols, gap=10):
 # ---------------- Page 1: layered architecture ----------------
 p = Page('Architecture', 'arch')
 p.text(40, 10, 1100, 30, '<b style="font-size:18px">ECCO – Architecture Overview</b>', fs=18)
-p.text(40, 40, 1300, 20, 'Layers top→bottom depend downward. Colors = layer. Arrows = main runtime calls / data flow. Source of truth: settings.gradle + */build.gradle. Last reviewed: 2026-10-08 (6765398d).', fs=10)
+p.text(40, 40, 1300, 20, 'Layers top→bottom depend downward. Colors = layer. Arrows = main runtime calls / data flow. Source of truth: settings.gradle + */build.gradle. Last reviewed: 2026-10-15 (268aeed4).', fs=10)
 
 # Frontends
 F = p.box(40, 70, 1260, 170, 'Frontends', 'front', container=True)
@@ -87,12 +87,12 @@ items(p, mining, 10, 28, 135, 30, ['ConstraintMiner', 'ConstraintViolationChecke
 integ = p.box(620, 30, 250, 210, 'integrations', 'svc', parent=S, container=True)
 rss = p.box(10, 28, 230, 45, '<b>RemoteSyncService</b><br>fetch / pull / push over TCP sockets', 'svc', parent=integ, fs=10)
 git = p.box(10, 83, 230, 45, '<b>git</b>: GitHistoryReader, GitCommitInfo<br>(JGit – Import from Git)', 'svc', parent=integ, fs=10)
-llm = p.box(10, 138, 230, 45, '<b>llm</b>: LlmFeatureSuggestionClient<br>(HTTP; feature suggestions on import)', 'svc', parent=integ, fs=10)
+llm = p.box(10, 138, 230, 45, '<b>llm</b>: LlmFeatureSuggestionClient · LlmOrderSuggestionClient<br>(HTTP; features on import, order of siblings)', 'svc', parent=integ, fs=10)
 aspi = p.box(880, 30, 370, 100, 'adapter SPI', 'svc', parent=S, container=True)
 p.text(10, 20, 350, 78, '<b>ArtifactPlugin</b> (Guice module per adapter)<br>ArtifactReader · ArtifactWriter · ArtifactViewer · ArtifactExporter<br><b>dispatch</b>: DispatchReader / DispatchWriter route files → plugin by pattern<br><b>PythonFinder</b>: the python a py4j adapter runs - Preferences, else python, python3, usual locations; probed for its modules', fs=9, parent=aspi)
 sspi = p.box(880, 140, 370, 100, 'storage  (StoragePlugin SPI, chosen via property)', 'store', parent=S, container=True)
-ser = p.box(10, 28, 220, 62, '<b>ser</b> – SerPlugin (default)<br>Java serialization, per-entity files, dedup. artifact store, lazy mainTree; implements base.dao', 'store', parent=sspi, fs=10)
-mem = p.box(240, 28, 120, 62, '<b>mem</b> – MemPlugin<br>in-memory (tests)', 'store', parent=sspi, fs=10)
+ser = p.box(10, 24, 260, 70, '<b>ser</b> – SerPlugin (default), implements base.dao<br>Java serialization, one pack per write each for artifacts, associations and content-addressed tree pieces; crash-safe id swap<br>ArtifactPackStore · AssociationStore · PieceStore · CommitJournal · LoadResolver', 'store', parent=sspi, fs=8)
+mem = p.box(280, 24, 80, 70, '<b>mem</b> – MemPlugin<br>in-memory (tests)', 'store', parent=sspi, fs=9)
 
 # Base
 B = p.box(40, 530, 1260, 250, 'ecco-base  (core domain model &amp; algorithms, storage-agnostic)', 'base', container=True)
@@ -100,8 +100,8 @@ repo = p.box(10, 30, 290, 90, '<b>repository.Repository</b><br>commit (extract /
 dao = p.box(10, 130, 290, 110, '<b>dao</b> (persistence interfaces)<br>EntityFactory · RepositoryDao · CommitDao · AssociationDao · FeatureDao · RemoteDao · TransactionStrategy', 'base', parent=B, fs=10)
 dm = p.box(310, 30, 560, 210, 'domain model', 'base', parent=B, container=True)
 items(p, dm, 10, 28, 170, 52, ['<b>core</b><br>Association · Commit · Variant · Constraint · Remote · Checkout · Diff · DependencyGraph',
-      '<b>feature</b><br>Feature · FeatureRevision · Configuration',
-      '<b>module / counter</b><br>Module · ModuleRevision · Condition (presence conditions) · counters',
+      '<b>feature</b><br>Feature · FeatureRevision · Configuration · ConfigurationText · FeatureLiterals',
+      '<b>module / counter</b><br>Module · ModuleRevision · Condition (presence conditions) · ConditionText · counters',
       '<b>tree</b> + util.Trees<br>Node · RootNode · treeFusion / slice / merge',
       '<b>artifact</b><br>Artifact · ArtifactData · references',
       '<b>pog</b><br>PartialOrderGraph (sibling ordering)',
@@ -112,7 +112,7 @@ p.box(880, 130, 370, 50, '<b>tree.ArtifactDiagnostics</b> · core.Warning<br>(or
 
 # Foundation
 Fd = p.box(40, 800, 1260, 80, 'Foundation', 'found', container=True)
-logic = p.box(10, 28, 400, 42, '<b>ecco-logic</b> – boolean formulas on LogicNG (SAT, minimization)', 'found', parent=Fd, fs=10)
+logic = p.box(10, 28, 400, 42, '<b>ecco-logic</b> – boolean formulas on LogicNG (SAT, minimization) · LogicCondition: conditions as values, formulas per thread', 'found', parent=Fd, fs=10)
 util = p.box(420, 28, 250, 42, '<b>ecco-util</b> – commons-io helpers', 'found', parent=Fd, fs=10)
 p.box(680, 28, 570, 42, 'Third-party (see gradle/libs.versions.toml): Guice · Guava · Eclipse Collections · LogicNG · JGit · Jackson · JavaParser', 'ext', parent=Fd, fs=10)
 
@@ -136,7 +136,7 @@ pyx = p.box(1320, 28, 250, 50, '<b>Python</b> (libcst · tree-sitter · lymodel)
 # Edges: layer-to-layer only, fixed ports so they stay tidy when boxes move
 p.edge(F, S, 'call EccoService API', ex=0.12, ey=1, nx=0.12, ny=0)
 p.edge(S, B, 'Repository + base.dao', ex=0.12, ey=1, nx=0.12, ny=0)
-p.edge(B, Fd, 'formulas', ex=0.12, ey=1, nx=0.12, ny=0)
+p.edge(B, Fd, 'conditions, formulas (api)', ex=0.12, ey=1, nx=0.12, ny=0)
 p.edge(Fd, X, '', dashed=True, ex=0.5, ey=1, nx=0.5, ny=0, color='#999999')
 p.edge(A, aspi, 'implements', dashed=True, ex=0, ey=0.38, nx=1, ny=0.5)
 page1 = p
@@ -156,8 +156,7 @@ m['adapters'] = q.box(860, 340, 300, 90, '<b>adapter-*</b> (14)<br>file · text 
 m['util'] = q.box(200, 450, 160, 50, 'util', 'found', bold=True)
 m['base'] = q.box(420, 450, 160, 50, 'base', 'base', bold=True)
 m['logic'] = q.box(640, 580, 160, 50, 'logic', 'found', bold=True)
-m['experiment'] = q.box(1000, 580, 160, 50, 'experiment<br><i>(no main sources)</i>', 'ext')
-q.box(180, 670, 640, 70, '<b>runtimeOnly adapter sets</b><br>gui: all 14 · cli: file, text, markdown, image, golang · rest: file, text, image, java', 'ext', fs=10, dashed=True)
+q.box(180, 670, 640, 70, '<b>runtimeOnly adapter sets</b><br>gui, cli: all 14 · rest: file, text, image, java', 'ext', fs=10, dashed=True)
 q.edge(m['rest'], m['service'], ex=0.5, ey=1, nx=0.2, ny=0)
 q.edge(m['cli'], m['service'], ex=0.5, ey=1, nx=0.5, ny=0)
 q.edge(m['gui'], m['service'], ex=0.5, ey=1, nx=0.8, ny=0)
@@ -168,7 +167,7 @@ q.edge(m['extras-ly'], m['adapters'], 'lilypond', ex=0.7, ey=1, nx=0.85, ny=0)
 q.edge(m['service'], m['base'], 'api', ex=0.5, ey=1, nx=0.5, ny=0)
 q.edge(m['service'], m['util'], ex=0, ey=0.5, nx=0.5, ny=0)
 q.edge(m['service'], m['logic'], ex=1, ey=0.9, nx=0.5, ny=0)
-q.edge(m['base'], m['logic'], ex=0.5, ey=1, nx=0, ny=0.5)
+q.edge(m['base'], m['logic'], 'api', ex=0.5, ey=1, nx=0, ny=0.5)
 
 out = ('<mxfile host="drawio" version="24.0.0">\n' + page1.xml() + '\n' + q.xml() + '\n</mxfile>\n')
 path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ecco-architecture.drawio')
