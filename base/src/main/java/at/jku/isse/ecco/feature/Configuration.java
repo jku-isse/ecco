@@ -106,7 +106,8 @@ public interface Configuration extends Persistable {
 
 
     default String getConfigurationString() {
-        return Arrays.stream(this.getFeatureRevisions()).map(FeatureRevision::toString).collect(Collectors.joining(", "));
+        // sorted: the revisions' order is no part of a configuration (and came from a hash set)
+        return Arrays.stream(this.getFeatureRevisions()).map(FeatureRevision::toString).sorted().collect(Collectors.joining(", "));
     }
 
     /**

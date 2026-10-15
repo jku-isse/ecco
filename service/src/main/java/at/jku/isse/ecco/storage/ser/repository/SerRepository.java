@@ -396,7 +396,8 @@ public final class SerRepository implements Repository, Repository.Op {
 	@Override
 	public Variant getVariant(Configuration configuration) {
 		for (Variant v: this.variants) {
-			if(v.getConfiguration().getConfigurationString().equals(configuration.getConfigurationString())){
+			// the same revisions - the displayed strings compared ids cut to 7 characters, in array order
+			if (v.getConfiguration().equals(configuration)) {
 				return v;
 			}
 		}

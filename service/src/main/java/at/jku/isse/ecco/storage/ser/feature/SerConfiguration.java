@@ -4,6 +4,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
 
 import java.util.Arrays;
+import java.util.HashSet;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -50,17 +51,21 @@ public class SerConfiguration implements Configuration {
 	}
 
 
+	/**
+	 * The same feature revisions, in whatever order: "A, B" is "B, A" (the order came from a hash
+	 * set, and the same configuration committed again could become a second variant).
+	 */
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		SerConfiguration that = (SerConfiguration) o;
-		return Arrays.equals(featureRevisions, that.featureRevisions);
+		return new HashSet<>(Arrays.asList(featureRevisions)).equals(new HashSet<>(Arrays.asList(that.featureRevisions)));
 	}
 
 	@Override
 	public int hashCode() {
-		return Arrays.hashCode(featureRevisions);
+		return new HashSet<>(Arrays.asList(featureRevisions)).hashCode();
 	}
 
 	@Override
