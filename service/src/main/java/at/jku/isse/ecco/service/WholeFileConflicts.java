@@ -15,7 +15,9 @@ import java.util.List;
  * Files stored whole (the file adapter: binaries, files of no other adapter such as a Makefile) of
  * which a checkout combines more than one version: there is nothing to merge, and the checkout
  * failed as a whole (known gap #54). Such a file is not written - FileWriter skips it - and is
- * reported as a CONFLICT naming the commits each version comes from.
+ * reported as a CONFLICT naming the commits each version comes from. Likewise a file the
+ * combination has but none of its versions (none was committed with the combination): not written,
+ * reported.
  */
 final class WholeFileConflicts {
 
@@ -34,6 +36,9 @@ final class WholeFileConflicts {
 			if (child.getArtifact() != null && child.getArtifact().getData() instanceof PluginArtifactData plugin) {
 				if (DispatchReader.FILE_PLUGIN_ID.equals(plugin.getPluginId()) && child.getChildren().size() > 1)
 					conflicts.add(describe(plugin, child, repository));
+				else if (DispatchReader.FILE_PLUGIN_ID.equals(plugin.getPluginId()) && child.getChildren().isEmpty())
+					conflicts.add(plugin.getPath() + " has no version in this combination (none was committed with it), not written"
+							+ " -- suggested fix: commit the file as it should be in this configuration, or check out a configuration it was committed with");
 			} else {
 				find(child, repository, conflicts);
 			}

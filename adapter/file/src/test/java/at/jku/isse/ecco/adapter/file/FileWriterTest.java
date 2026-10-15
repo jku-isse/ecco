@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.adapter.file;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
@@ -31,14 +30,20 @@ public class FileWriterTest {
         assertEquals("hello", Files.readString(written[0]));
     }
 
+    /**
+     * A file the checked-out combination has, but none of its versions (none was committed with
+     * it): not written - not as an empty file either - and not returned; the checkout reports it as
+     * a CONFLICT. It used to throw and fail the whole checkout.
+     */
     @Test
-    public void writeThrowsWhenThePluginNodeHasNoChildren() throws IOException {
+    public void aFileWithNoVersionIsNotWritten() throws IOException {
         SerEntityFactory ef = new SerEntityFactory();
         Node.Op pluginNode = ef.createNode(ef.createArtifact(new PluginArtifactData(FilePlugin.class.getName(), Path.of("empty.bin"))));
 
         Path outputDir = Files.createTempDirectory("file-writer-no-children");
 
-        assertThrows(EccoException.class, () -> writer.write(outputDir, Set.<Node>of(pluginNode)));
+        assertEquals(0, writer.write(outputDir, Set.<Node>of(pluginNode)).length);
+        assertFalse(Files.exists(outputDir.resolve("empty.bin")));
     }
 
     /**

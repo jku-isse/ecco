@@ -55,4 +55,38 @@ public class WholeFileConflictTest {
             assertArrayEquals(new byte[]{0, 1, 3, (byte) 0xfe}, Files.readAllBytes(one.resolve("data.bin")));
         }
     }
+
+    /**
+     * The other way round: a combination no version of the file was committed with. Committed in
+     * "A, B" and "B" with one content, in "C" with another: the file belongs to every variant, its
+     * contents to B and to C - "A" has the file but neither content. "Expected exactly one child
+     * node (FileArtifactData) ... found 0" failed the whole checkout (seen in tinycc and zip4j). Now
+     * the file is not written and reported, the other files are.
+     */
+    @Test
+    @Timeout(120)
+    public void aFileWithNoVersionForTheCombinationIsReportedNotFailed() throws Exception {
+        Path work = Files.createTempDirectory("whole-file-no-version");
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(Files.createDirectories(work.resolve("repo")).resolve(".ecco"));
+            service.init();
+            service.setBaseDir(folder(work.resolve("v1"), new byte[]{2}, "x\n"));
+            service.commit("first", "A, B");
+            service.setBaseDir(folder(work.resolve("v2"), new byte[]{0}, "x\n"));
+            service.commit("second", "C");
+            service.setBaseDir(folder(work.resolve("v3"), new byte[]{2}, "x\n"));
+            service.commit("third", "B");
+
+            Path out = Files.createDirectories(work.resolve("out"));
+            service.setBaseDir(out);
+            Checkout checkout = service.checkout("A");
+
+            assertTrue(Files.exists(out.resolve("a.txt")), "the other files are written");
+            assertFalse(Files.exists(out.resolve("data.bin")), "no version to write");
+            assertEquals(1, checkout.getConflicts().size(), checkout.getConflicts().toString());
+            String conflict = checkout.getConflicts().get(0);
+            assertTrue(conflict.contains("data.bin") && conflict.contains("no version"), conflict);
+            assertTrue(Files.readString(out.resolve(EccoService.WARNINGS_FILE_NAME)).contains("CONFLICT: " + conflict));
+        }
+    }
 }

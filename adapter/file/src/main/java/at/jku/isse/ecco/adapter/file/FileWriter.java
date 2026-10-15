@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.adapter.file;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
@@ -47,12 +46,12 @@ public class FileWriter implements ArtifactWriter<Set<Node>, Path> {
 				// written, the checkout reports it as a CONFLICT (it used to fail the whole checkout)
 				LOGGER.warning("Not written, " + node.getChildren().size() + " versions combined: " + outputPath);
 				output.remove(outputPath);
-			} else if (node.getChildren().size() != 1) {
-				// A plugin node produced by FileReader always has exactly one FileArtifactData child;
-				// anything else is malformed input (e.g. a composed/merged checkout tree that ended up
-				// with more than one contributor for the same file) - failing loudly beats silently
-				// writing an empty file over real content with no signal that data was lost.
-				throw new EccoException("Expected exactly one child node (FileArtifactData) for plugin node at " + outputPath + " but found " + node.getChildren().size() + ".");
+			} else if (node.getChildren().isEmpty()) {
+				// the file belongs to this combination, but none of its versions does (none was
+				// committed with it): nothing to write - not an empty file - and the checkout reports
+				// it as a CONFLICT (it used to fail the whole checkout)
+				LOGGER.warning("Not written, no version for this combination: " + outputPath);
+				output.remove(outputPath);
 			} else {
 				for (Node childNode : node.getChildren()) {
 					FileArtifactData fileArtifact = (FileArtifactData) childNode.getArtifact().getData(); // TODO: node type must have Type parameter for artifact type it contains?
