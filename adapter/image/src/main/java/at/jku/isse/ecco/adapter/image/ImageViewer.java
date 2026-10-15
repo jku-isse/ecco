@@ -83,6 +83,11 @@ public class ImageViewer extends BorderPane implements AssociationInfoArtifactVi
 	}
 
 	@Override
+	public String getTabName() {
+		return "Image";
+	}
+
+	@Override
 	public String getPluginId() {
 		return ImagePlugin.class.getName();
 	}

@@ -16,7 +16,7 @@ import at.jku.isse.ecco.gui.io.FeatureTogglePanel;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
-import javafx.beans.binding.When;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.MapChangeListener;
@@ -31,8 +31,6 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
@@ -144,7 +142,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         useSimplifiedLabelsCheckBox.setSelected(true);
 
         Platform.runLater(() -> {
-            horizontalSplitPane.setDividerPosition(0, 0.2);
+            // the associations got a fifth of the height - one row at 1200x600
+            horizontalSplitPane.setDividerPosition(0, 0.35);
             if (!service.isInitialized())
                 this.setDisable(true);
         });
@@ -161,6 +160,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
      */
     private TableView<AssociationInfoImpl> buildAssociationsTable(CheckBox useSimplifiedLabelsCheckBox, FilteredList<AssociationInfoImpl> filteredData) {
         TableView<AssociationInfoImpl> associationsTable = new TableView<>();
+        associationsTable.setPlaceholder(new Label("No associations yet: commit a variant first."));
         associationsTable.setEditable(true);
         associationsTable.setTableMenuButtonVisible(true);
 
@@ -170,7 +170,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         TableColumn<AssociationInfoImpl, Boolean> selectedAssocationCol = new TableColumn<>("Selected");
 
-        TableColumn<AssociationInfoImpl, Color> highlightedAssocationCol = new TableColumn<>("Highlighted");
+        TableColumn<AssociationInfoImpl, Color> highlightedAssocationCol = new TableColumn<>("Colour");
 
         TableColumn<AssociationInfoImpl, String> associationsCol = new TableColumn<>("Associations");
 
@@ -194,7 +194,20 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             String rawCondition = ArtifactsView.this.service.isWriteInProgress()
                     ? "…"
                     : param.getValue().getAssociation().computeCondition().getModuleRevisionConditionString();
-            return new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().minimizedConditionProperty()).otherwise(rawCondition);
+            // simplified: the minimized condition where there is one - the full one until then; the
+            // column was empty until someone minimized the conditions (Feature Model tab)
+            StringProperty minimized = param.getValue().minimizedConditionProperty();
+            return Bindings.createStringBinding(() -> useSimplifiedLabelsCheckBox.isSelected() && minimized.get() != null && !minimized.get().isEmpty()
+                    ? minimized.get() : rawCondition, useSimplifiedLabelsCheckBox.selectedProperty(), minimized);
+        });
+        // a condition is often longer than the column: all of it in the tooltip
+        conditionAssociationsCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : item);
+                setTooltip(empty || item == null || item.isEmpty() ? null : new Tooltip(item));
+            }
         });
         numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
         numArtifactsAssociationsCol.setCellFactory(col -> new TableCell<AssociationInfoImpl, Integer>() {
@@ -246,6 +259,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 this.getStyleClass().add("color-picker-table-cell");
 
                 this.cp = new ColorPicker();
+                // the swatch only: its colour's name ("#c0392b") was cut off at the column's edge
+                this.cp.setStyle("-fx-color-label-visible: false;");
 
                 this.cp.editableProperty().bind(column.editableProperty());
                 this.cp.disableProperty().bind(column.editableProperty().not());
@@ -281,9 +296,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                     this.cp.setValue(item);
                     this.setGraphic(this.cp);
                 }
-
-                this.setBackground(new Background(new BackgroundFill(item, null, null)));
-                //this.backgroundProperty().bind(Bindings.createObjectBinding(() -> new Background(new BackgroundFill(this.cp.getValue(), null, null)), this.cp.valueProperty()));
             }
         }
 

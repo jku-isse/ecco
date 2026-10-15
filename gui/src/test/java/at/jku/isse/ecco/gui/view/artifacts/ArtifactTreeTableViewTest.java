@@ -55,6 +55,20 @@ public class ArtifactTreeTableViewTest {
         }
     }
 
+    /**
+     * The tree's internals are hidden at first - they took three quarters of the width, and the code
+     * was cut off; the table menu shows them.
+     */
+    @Test
+    @Timeout(60)
+    public void theInternalsAreHiddenAtFirst() throws Exception {
+        ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView());
+        for (String hidden : List.of("Ordered", "Atomic", "Unique", "Sequence Number", "Selected"))
+            assertFalse(onFx(() -> column(view, hidden).isVisible()), hidden);
+        for (String shown : List.of("Node", "Association"))
+            assertTrue(onFx(() -> column(view, shown).isVisible()), shown);
+    }
+
     /** The flag/sequence/association columns read the node's artifact; a node without one shows defaults. */
     @Test
     @Timeout(60)

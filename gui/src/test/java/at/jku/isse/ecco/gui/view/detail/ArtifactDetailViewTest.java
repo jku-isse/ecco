@@ -58,12 +58,12 @@ public class ArtifactDetailViewTest {
             ArtifactDetailView view = onFx(() -> new ArtifactDetailView(service));
 
             onFx(() -> view.showTree(file));
-            assertEquals(List.of("Info", "Graph", "TextViewer"), onFx(() -> tabNames(view)));
-            assertTrue(onFx(() -> infoText(view)).startsWith("Detail View\na.txt "));
+            assertEquals(List.of("Code", "Order graph", "Info"), onFx(() -> tabNames(view)));
+            assertTrue(onFx(() -> infoText(view)).startsWith("a.txt "));
 
             onFx(() -> view.showTree(file.getChildren().get(0)));
-            assertEquals(List.of("Info", "TextViewer"), onFx(() -> tabNames(view)));
-            assertEquals("Detail View\na1", onFx(() -> infoText(view)));
+            assertEquals(List.of("Code", "Info"), onFx(() -> tabNames(view)));
+            assertTrue(onFx(() -> infoText(view)).startsWith("a1\n"), onFx(() -> infoText(view)));
 
             // a directory has no plugin: its viewer tab goes
             onFx(() -> view.showTree(file.getParent()));
@@ -82,7 +82,7 @@ public class ArtifactDetailViewTest {
             assertNull(onFx(() -> view.getSelectedTabKey()), "nothing shown yet");
 
             onFx(() -> view.showTree(a));
-            onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Graph")));
+            onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Order graph")));
             String key = onFx(() -> view.getSelectedTabKey());
             assertEquals("pog", key);
 
@@ -90,14 +90,14 @@ public class ArtifactDetailViewTest {
                 view.reset();
                 view.showTree(b, key);
             });
-            assertEquals("Graph", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()));
+            assertEquals("Order graph", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()));
 
-            // a key whose tab no longer exists leaves the default selection
+            // a key whose tab no longer exists leaves the default selection: the first tab, the code
             onFx(() -> {
                 view.reset();
                 view.showTree(b.getChildren().get(0), key);
             });
-            assertEquals("Info", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()));
+            assertEquals("Code", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()));
 
             onFx(() -> view.showTree(null));
             assertEquals(List.of(), onFx(() -> tabNames(view)));
@@ -119,7 +119,7 @@ public class ArtifactDetailViewTest {
             onFx(() -> view.showTree(line));
             onFx(() -> view.setAssociationInfo(infos));
             onFx(() -> view.setAssociationInfo(null));
-            assertEquals(List.of("Info", "TextViewer"), onFx(() -> tabNames(view)));
+            assertEquals(List.of("Code", "Info"), onFx(() -> tabNames(view)));
 
             service.close();
             waitUntil("the tabs are cleared", () -> tabPane(view).getTabs().isEmpty());
@@ -166,7 +166,9 @@ public class ArtifactDetailViewTest {
     }
 
     private static TabPane tabPane(ArtifactDetailView view) {
-        return (TabPane) view.getCenter();
+        // the tabs, over the hint shown while there are none
+        return (TabPane) ((javafx.scene.Parent) view.getCenter()).getChildrenUnmodifiable().stream()
+                .filter(TabPane.class::isInstance).findFirst().orElseThrow();
     }
 
     private static List<String> tabNames(ArtifactDetailView view) {

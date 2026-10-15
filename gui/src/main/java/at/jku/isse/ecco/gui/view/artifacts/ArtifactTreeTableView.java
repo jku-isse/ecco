@@ -172,6 +172,22 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		this.setTableMenuButtonVisible(true);
 		this.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
+		// the tree's internals, hidden at first (the table menu, top right, shows them): they took
+		// three quarters of the width, and the code was cut off
+		for (TreeTableColumn<NodeWrapper, ?> internal : List.of(orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, isSelectedNodeCol))
+			internal.setVisible(false);
+		// the association by its first characters, as the associations table shows it; the root has none
+		associationNodeCol.setCellFactory(column -> new TreeTableCell<>() {
+			@Override
+			protected void updateItem(String item, boolean empty) {
+				super.updateItem(item, empty);
+				boolean none = empty || item == null || "null".equals(item);
+				setText(none ? null : TableColumns.shortIds(item));
+				setTooltip(none ? null : new Tooltip(item));
+			}
+		});
+		this.setPlaceholder(new Label("Tick associations above and press Compose Selected, or use Live Features, to see their artifacts."));
+
 		TableColumns.controlWidth(orderedNodeCol);
 		TableColumns.controlWidth(atomicNodeCol);
 		TableColumns.controlWidth(uniqueNodeCol);
@@ -198,7 +214,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 			expandAll(root);
 
 			TableColumns.fitToContent(snNodeCol, root);
-			TableColumns.fitToContent(associationNodeCol, root);
+
 		}
 	}
 

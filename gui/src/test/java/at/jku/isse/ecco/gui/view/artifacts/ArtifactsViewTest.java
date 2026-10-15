@@ -200,6 +200,21 @@ public class ArtifactsViewTest {
         }
     }
 
+    /** Before the conditions are minimized, simplified labels show the full condition: the column was empty. */
+    @Test
+    @Timeout(60)
+    public void aConditionNotMinimizedYetIsShownInFull(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFeatures(tmp)) {
+            ArtifactsView view = loaded(service, 2, new MinimizationResults(service));
+            AssociationInfoImpl row = onFx(() -> row(view, "a.txt"));
+
+            assertTrue(onFx(() -> checkBox(view, "Use Simplified Labels").isSelected()));
+            String shown = onFx(() -> conditionColumn(view).getCellObservableValue(row).getValue());
+            assertEquals(row.getAssociation().computeCondition().getModuleRevisionConditionString(), shown);
+            assertFalse(shown.isEmpty());
+        }
+    }
+
     /** Rendered rows show each association's artifact count and its highlight color in the picker. */
     @Test
     @Timeout(60)
@@ -221,7 +236,7 @@ public class ArtifactsViewTest {
             assertEquals(onFx(() -> table(view).getItems().stream().map(r -> String.valueOf(r.getNumArtifacts())).collect(Collectors.toSet())), counts);
 
             Set<Color> pickers = onFx(() -> table(view).lookupAll(".table-cell").stream()
-                    .filter(n -> n instanceof TableCell<?, ?> c && !c.isEmpty() && "Highlighted".equals(c.getTableColumn().getText()))
+                    .filter(n -> n instanceof TableCell<?, ?> c && !c.isEmpty() && "Colour".equals(c.getTableColumn().getText()))
                     .map(n -> ((ColorPicker) ((TableCell<?, ?>) n).getGraphic()).getValue())
                     .collect(Collectors.toSet()));
             assertEquals(onFx(() -> table(view).getItems().stream().map(r -> r.colorProperty().get()).collect(Collectors.toSet())), pickers);

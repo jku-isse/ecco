@@ -53,6 +53,11 @@ public class FileViewer extends BorderPane implements AssociationInfoArtifactVie
 
 
 	@Override
+	public String getTabName() {
+		return "File";
+	}
+
+	@Override
 	public String getPluginId() {
 		return FilePlugin.class.getName();
 	}

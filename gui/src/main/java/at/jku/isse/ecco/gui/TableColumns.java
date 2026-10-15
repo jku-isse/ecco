@@ -209,7 +209,10 @@ public final class TableColumns {
 		Runnable recompute = () -> recomputeTableGrow(table);
 		if (firstTimeForThisTable) {
 			table.widthProperty().addListener((observable, oldValue, newValue) -> recompute.run());
-			leaves(table).forEach(leaf -> leaf.widthProperty().addListener((observable, oldValue, newValue) -> recompute.run()));
+			leaves(table).forEach(leaf -> {
+				leaf.widthProperty().addListener((observable, oldValue, newValue) -> recompute.run());
+				leaf.visibleProperty().addListener((observable, oldValue, newValue) -> recompute.run());
+			});
 			whenRowsWidthKnown(table, recompute);
 		}
 		Platform.runLater(recompute);
@@ -220,7 +223,8 @@ public final class TableColumns {
 		if (grown == null || grown.isEmpty()) {
 			return;
 		}
-		List<TableColumn<?, ?>> siblings = leaves(table).filter(column -> !grown.contains(column)).toList();
+		// hidden columns (the table menu's unticked ones) take no room
+		List<TableColumn<?, ?>> siblings = leaves(table).filter(column -> !grown.contains(column) && column.isVisible()).toList();
 		double siblingsWidth = siblings.stream().mapToDouble(TableColumn::getWidth).sum();
 		double leftover = Math.max(0, rowsWidth(table) - siblingsWidth);
 		double share = Math.floor(leftover / grown.size());
@@ -323,7 +327,10 @@ public final class TableColumns {
 		Runnable recompute = () -> recomputeTreeGrow(table);
 		if (firstTimeForThisTable) {
 			table.widthProperty().addListener((observable, oldValue, newValue) -> recompute.run());
-			treeLeaves(table).forEach(leaf -> leaf.widthProperty().addListener((observable, oldValue, newValue) -> recompute.run()));
+			treeLeaves(table).forEach(leaf -> {
+				leaf.widthProperty().addListener((observable, oldValue, newValue) -> recompute.run());
+				leaf.visibleProperty().addListener((observable, oldValue, newValue) -> recompute.run());
+			});
 			whenRowsWidthKnown(table, recompute);
 		}
 		Platform.runLater(recompute);
@@ -334,7 +341,7 @@ public final class TableColumns {
 		if (grown == null || grown.isEmpty()) {
 			return;
 		}
-		List<TreeTableColumn<?, ?>> siblings = treeLeaves(table).filter(column -> !grown.contains(column)).toList();
+		List<TreeTableColumn<?, ?>> siblings = treeLeaves(table).filter(column -> !grown.contains(column) && column.isVisible()).toList();
 		double siblingsWidth = siblings.stream().mapToDouble(TreeTableColumn::getWidth).sum();
 		double leftover = Math.max(0, rowsWidth(table) - siblingsWidth);
 		double share = Math.floor(leftover / grown.size());

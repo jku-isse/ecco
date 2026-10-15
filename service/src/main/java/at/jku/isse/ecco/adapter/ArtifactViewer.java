@@ -13,4 +13,9 @@ public interface ArtifactViewer {
 
 	public void showTree(Node node);
 
+	/** The name of its tab in the artifact details: "Code", unless it shows something else (a score, an image). */
+	default String getTabName() {
+		return "Code";
+	}
+
 }

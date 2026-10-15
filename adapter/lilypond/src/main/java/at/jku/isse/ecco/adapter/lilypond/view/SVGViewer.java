@@ -145,6 +145,11 @@ public class SVGViewer extends BorderPane implements ArtifactViewer {
 	}
 
 	@Override
+	public String getTabName() {
+		return "Score";
+	}
+
+	@Override
 	public String getPluginId() {
 		return LilypondPlugin.class.getName();
 	}

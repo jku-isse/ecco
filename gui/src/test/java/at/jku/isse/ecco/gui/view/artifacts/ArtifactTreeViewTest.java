@@ -40,8 +40,9 @@ public class ArtifactTreeViewTest {
 
             onFx(() -> view.setRootNode(a.getRootNode()));
 
-            assertEquals(List.of("Info", "Graph", "TextViewer"), onFx(() -> tabNames(view)));
-            assertTrue(onFx(() -> infoText(view)).startsWith("Detail View\na.txt "), "the file, not the root: " + onFx(() -> infoText(view)));
+            assertEquals(List.of("Code", "Order graph", "Info"), onFx(() -> tabNames(view)));
+            assertEquals("Code", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()), "it opens on the code");
+            assertTrue(onFx(() -> infoText(view)).startsWith("a.txt "), "the file, not the root: " + onFx(() -> infoText(view)));
             assertNotNull(onFx(() -> table(view).getRoot()));
         }
     }
@@ -61,8 +62,8 @@ public class ArtifactTreeViewTest {
                 table.getSelectionModel().select(line);
             });
 
-            assertEquals("Detail View\na2", onFx(() -> infoText(view)));
-            assertEquals(List.of("Info", "TextViewer"), onFx(() -> tabNames(view)), "a line has no order graph");
+            assertTrue(onFx(() -> infoText(view)).startsWith("a2\n"), onFx(() -> infoText(view)));
+            assertEquals(List.of("Code", "Info"), onFx(() -> tabNames(view)), "a line has no order graph");
         }
     }
 
@@ -73,12 +74,12 @@ public class ArtifactTreeViewTest {
         try (EccoService service = twoFeatures(tmp)) {
             ArtifactTreeView view = onFx(() -> new ArtifactTreeView(service));
             onFx(() -> view.setRootNode(association(service, "a.txt").getRootNode()));
-            onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "TextViewer")));
+            onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Code")));
 
             onFx(() -> view.setRootNode(association(service, "b.txt").getRootNode()));
 
-            assertEquals("TextViewer", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()));
-            assertTrue(onFx(() -> infoText(view)).startsWith("Detail View\nb.txt "));
+            assertEquals("Code", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()));
+            assertTrue(onFx(() -> infoText(view)).startsWith("b.txt "));
 
             onFx(() -> view.setRootNode(null));
             assertEquals(List.of(), onFx(() -> tabNames(view)));

@@ -44,7 +44,11 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		service.addListener(this);
 
 		detailsTabPane = new TabPane();
-		setCenter(detailsTabPane);
+		// what to do, while no node is shown (the pane was blank)
+		Label placeholder = new Label("Select a node in the artifact tree to see its code, its order graph and details.");
+		placeholder.setWrapText(true);
+		placeholder.visibleProperty().bind(javafx.beans.binding.Bindings.isEmpty(detailsTabPane.getTabs()));
+		setCenter(new javafx.scene.layout.StackPane(placeholder, detailsTabPane));
 	}
 
 	/**
@@ -97,16 +101,36 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			return;
 		}
 
+		Tab selected = detailsTabPane.getSelectionModel().getSelectedItem();
 		updateInfoTab(node);
 		updatePartialOrderGraphTab(node);
-
-		//long tm = System.nanoTime();
 		updateArtifactViewerTabs(node);
-		//System.out.println("\nArtifactDetailsView:showTree->updateArtifactViewerTabs: " + ((System.nanoTime() - tm)/1000000) + "ms");
+		orderTabs();
 
-		if (restoreTabKey != null && openDetailsTabs.containsKey(restoreTabKey)) {
+		// the tab open before stays open (also across a recompose); else the first: the code
+		if (restoreTabKey != null && openDetailsTabs.containsKey(restoreTabKey))
 			detailsTabPane.getSelectionModel().select(openDetailsTabs.get(restoreTabKey));
-		}
+		else if (selected != null && detailsTabPane.getTabs().contains(selected))
+			detailsTabPane.getSelectionModel().select(selected);
+		else
+			detailsTabPane.getSelectionModel().selectFirst();
+	}
+
+	/**
+	 * The viewers' tabs first (the code, as the adapters show it), then the order graph, then the
+	 * node's details - it opened on the details, which said little, with the code in the last tab.
+	 */
+	private void orderTabs() {
+		List<Tab> ordered = new ArrayList<>();
+		openDetailsTabs.entrySet().stream().filter(e -> e.getKey().startsWith("AV_"))
+				.sorted(Comparator.comparingInt(e -> detailsTabPane.getTabs().indexOf(e.getValue())))
+				.forEach(e -> ordered.add(e.getValue()));
+		if (openDetailsTabs.containsKey("pog"))
+			ordered.add(openDetailsTabs.get("pog"));
+		if (openDetailsTabs.containsKey("info"))
+			ordered.add(openDetailsTabs.get("info"));
+		if (!ordered.equals(detailsTabPane.getTabs()))
+			detailsTabPane.getTabs().setAll(ordered);
 	}
 
 	private void updateInfoTab(Node node) {
@@ -117,11 +141,52 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			t = new Tab("Info");
 			t.setClosable(false);
 			openDetailsTabs.put("info", t);
-			detailsTabPane.getTabs().add(0, t);
+			detailsTabPane.getTabs().add(t);
 		}
 
-		// TODO: show some general info
-		t.setContent(new Label("Detail View\n" + node.toString()));
+		Label info = new Label(describe(node));
+		info.setWrapText(true);
+		info.setPadding(new javafx.geometry.Insets(8));
+		t.setContent(info);
+	}
+
+	/** What the Info tab says about a node: what it is, where, its association and how its children are kept. */
+	private String describe(Node node) {
+		StringBuilder text = new StringBuilder(node.toString());
+		List<String> path = new ArrayList<>();
+		for (Node parent = node.getParent(); parent != null; parent = parent.getParent())
+			if (parent.getArtifact() != null && !String.valueOf(parent.getArtifact()).isBlank())
+				path.add(0, String.valueOf(parent.getArtifact()));
+		if (!path.isEmpty())
+			text.append("\n\nIn: ").append(String.join(" > ", path));
+		if (node.getArtifact() != null) {
+			at.jku.isse.ecco.core.Association association = node.getArtifact().getContainingNode() == null ? null
+					: node.getArtifact().getContainingNode().getContainingAssociation();
+			if (association != null) {
+				text.append("\n\nAssociation: ").append(at.jku.isse.ecco.gui.TableColumns.shortIds(association.getId()));
+				String condition = this.conditionOf(association);
+				if (condition != null)
+					text.append("\nCondition: ").append(condition);
+			}
+			text.append("\n\nOrdered children: ").append(node.getArtifact().isOrdered() ? "yes" : "no");
+			if (node.getArtifact().getSequenceNumber() >= 0)
+				text.append("\nPosition in its parent's order: ").append(node.getArtifact().getSequenceNumber());
+		}
+		text.append("\nUnique to its association: ").append(node.isUnique() ? "yes" : "no")
+				.append("\nAtomic (compared as a whole): ").append(node.isAtomic() ? "yes" : "no");
+		return text.toString();
+	}
+
+	/** The association's minimized condition, as the associations table shows it, else its full condition. */
+	private String conditionOf(at.jku.isse.ecco.core.Association association) {
+		if (this.associationInfos != null)
+			for (AssociationInfo info : this.associationInfos)
+				if (info.getAssociation() == association && info instanceof AssociationInfoImpl impl
+						&& impl.getMinimizedCondition() != null && !impl.getMinimizedCondition().isEmpty())
+					return impl.getMinimizedCondition();
+		if (this.service.isWriteInProgress())
+			return null;
+		return association.computeCondition().getModuleRevisionConditionString();
 	}
 
 	private void updatePartialOrderGraphTab(Node node) {
@@ -140,12 +205,12 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			th.start();
 
 			if (!openDetailsTabs.containsKey("pog")) {
-				Tab t = new Tab("Graph");
+				Tab t = new Tab("Order graph");
 				t.setClosable(false);
 				t.setTooltip(new Tooltip("Partial order graph"));
 				t.setContent(partialOrderGraphView);
 				openDetailsTabs.put("pog", t);
-				detailsTabPane.getTabs().add(1, t);
+				detailsTabPane.getTabs().add(t);
 			}
 
 		} else if (openDetailsTabs.containsKey("pog")) {
@@ -168,7 +233,8 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			if (openDetailsTabs.containsKey(key)) {
 				t = openDetailsTabs.get(key);
 			} else {
-				t = new Tab(v.getClass().getSimpleName());
+				t = new Tab(v.getTabName());
+				t.setTooltip(new Tooltip(v.getClass().getSimpleName()));
 				t.setClosable(false);
 				openDetailsTabs.put(key, t);
 				detailsTabPane.getTabs().add(t);
