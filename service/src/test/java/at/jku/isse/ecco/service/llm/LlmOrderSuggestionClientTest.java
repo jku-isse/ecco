@@ -43,9 +43,12 @@ public class LlmOrderSuggestionClientTest {
     public void aReplyIsReadAsAPermutation() {
         assertEquals(List.of(0, 2, 1, 3), LlmOrderSuggestionClient.parseOrder(reply("{\"order\": [1, 3, 2, 4]}"), 4));
         assertEquals(List.of(1, 0), LlmOrderSuggestionClient.parseOrder(reply("Here you go:\n```json\n{\"order\": [2, 1]}\n```"), 2), "inside prose and fences");
-        assertNull(LlmOrderSuggestionClient.parseOrder(reply("{\"order\": [1, 1, 2]}"), 3), "a number twice");
-        assertNull(LlmOrderSuggestionClient.parseOrder(reply("{\"order\": [1, 2]}"), 3), "one missing");
-        assertNull(LlmOrderSuggestionClient.parseOrder(reply("{\"order\": [0, 1, 2]}"), 3), "out of range");
+        // a local model's sloppy answers are used: repeats and numbers out of range ignored, a row
+        // left out kept after the row it follows now
+        assertEquals(List.of(1, 0, 2), LlmOrderSuggestionClient.parseOrder(reply("{\"order\": [2, 1, 1, 3]}"), 3), "a number twice");
+        assertEquals(List.of(2, 0, 1), LlmOrderSuggestionClient.parseOrder(reply("{\"order\": [3, 1]}"), 3), "2 left out: after 1");
+        assertEquals(List.of(0, 2, 1), LlmOrderSuggestionClient.parseOrder(reply("{\"order\": [0, 3, 2, 7]}"), 3), "out of range; 1 left out: first");
+        assertNull(LlmOrderSuggestionClient.parseOrder(reply("{\"order\": [7, 8]}"), 3), "none of them");
         assertNull(LlmOrderSuggestionClient.parseOrder(reply("no idea"), 3));
         assertNull(LlmOrderSuggestionClient.parseOrder("not json", 3));
     }

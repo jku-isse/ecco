@@ -146,8 +146,11 @@ public final class LlmOrderSuggestionClient {
 	}
 
 	/**
-	 * Network-free: the order in a chat-completions reply, as 0-based indices - null unless it is a
-	 * permutation of 1..[count] (as JSON, also inside prose or code fences). Package-visible for testing.
+	 * Network-free: the order in a chat-completions reply (as JSON, also inside prose or code
+	 * fences), as 0-based indices of all [count] rows - null if it names none of them. A local model
+	 * sometimes leaves out a few numbers or repeats one (qwen2.5-coder:32b did, for 40 lines): a
+	 * repeat or a number out of range is ignored, and a row left out keeps its place after the row
+	 * it follows now. Package-visible for testing.
 	 */
 	static List<Integer> parseOrder(String responseBody, int count) {
 		try {
@@ -159,18 +162,26 @@ public final class LlmOrderSuggestionClient {
 			if (start < 0 || end <= start)
 				return null;
 			JsonNode order = MAPPER.readTree(content.substring(start, end + 1)).path("order");
-			if (!order.isArray() || order.size() != count)
+			if (!order.isArray())
 				return null;
 			boolean[] seen = new boolean[count];
 			List<Integer> indices = new ArrayList<>(count);
 			for (JsonNode n : order) {
-				if (!n.canConvertToInt())
-					return null;
-				int i = n.asInt() - 1;
-				if (i < 0 || i >= count || seen[i])
-					return null;
+				int i = n.canConvertToInt() ? n.asInt() - 1 : -1;
+				if (i >= 0 && i < count && !seen[i]) {
+					seen[i] = true;
+					indices.add(i);
+				}
+			}
+			if (indices.isEmpty())
+				return null;
+			// the rows left out, each after the row it follows now (or first)
+			for (int i = 0; i < count; i++) {
+				if (seen[i])
+					continue;
+				int at = i == 0 ? 0 : indices.indexOf(i - 1) + 1;
+				indices.add(at, i);
 				seen[i] = true;
-				indices.add(i);
 			}
 			return indices;
 		} catch (IOException e) {
