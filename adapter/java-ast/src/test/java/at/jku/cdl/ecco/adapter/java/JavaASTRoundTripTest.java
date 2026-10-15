@@ -6,7 +6,6 @@ import at.jku.isse.ecco.tree.Node;
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.printer.configuration.PrettyPrinterConfiguration;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -188,8 +187,8 @@ public class JavaASTRoundTripTest {
 
     /**
      * Comments JavaParser does not print where they were: they move (a trailing comment above its
-     * statement, a comment in a type argument after the type) or are written twice, but none is
-     * lost and the code stays the same.
+     * statement, a comment in a type argument after the type), but none is lost and the code stays
+     * the same.
      */
     @Test
     public void commentsInsideExpressionsMoveButTheCodeStays() throws IOException {
@@ -209,8 +208,29 @@ public class JavaASTRoundTripTest {
             assertTrue(written.contains(c[1]), written);
             assertEquals(withoutComments(source), withoutComments(written), written);
         }
-        // currently written twice: "// one\n int // one\n a = 1 + 2;" - see the report of this test's commit
-        assertEquals(method("        // one\n        int // one\n        a = 1 + 2;\n"), readWrite("C.java", method("        int a = 1 + // one\n        2;\n")));
+        // JavaParser prints a comment before the code it belongs to: "1 + // one" belongs to "1"
+        assertEquals(method("        int a = // one\n        1 + 2;\n"), readWrite("C.java", method("        int a = 1 + // one\n        2;\n")));
+    }
+
+    /**
+     * A line comment behind code was written twice, or more: JavaParser gives it to every node
+     * ending on its line - when read ("g(xs.length // len" to g and xs.length) and when the text
+     * printed with it is parsed to be written ("int a = // one" to int and a).
+     */
+    @Test
+    public void aCommentIsWrittenOnce() throws IOException {
+        String[][] cases = {
+                {"        int a = 1 + // one\n        2;\n", "// one"},
+                {"        g(xs.length // len\n        );\n", "// len"},
+                {"        g(1); g(2); // c\n", "// c"},
+                {"        g(xs.length + // a\n        xs.length + // b\n        1);\n", "// a"},
+        };
+        for (String[] c : cases) {
+            String written = readWrite("C.java", method(c[0]));
+            assertEquals(1, written.split(java.util.regex.Pattern.quote(c[1]), -1).length - 1, written);
+            assertEquals(withoutComments(method(c[0])), withoutComments(written), written);
+        }
+        assertEquals(method("        g(// len\n        xs.length);\n"), readWrite("C.java", method("        g(xs.length // len\n        );\n")));
     }
 
     // ---- what does not round-trip ----
@@ -238,15 +258,15 @@ public class JavaASTRoundTripTest {
         assertEquals(source, readWrite("C.java", source));
     }
 
+    /** Was written without "// logging" (#52). */
     @Test
-    @Disabled("bug: comments of module directives are read but not written - JavaASTWriteHandler.addModuleDeclaration()")
     public void aModuleDirectiveKeepsItsComment() throws IOException {
         String source = "module m {\n    requires java.sql;\n    // logging\n    requires java.logging;\n}\n";
-        assertEquals(source, readWrite("module-info.java", source)); // written without "// logging"
+        assertEquals(source, readWrite("module-info.java", source));
     }
 
+    /** These comments were lost: stored as text printed without comments (#52). */
     @Test
-    @Disabled("bug: comments that JavaParser keeps as orphans of an expression, parameter, resource or label are lost")
     public void commentsInPartsOfStatementsAndDeclarationsAreKept() throws IOException {
         String[] sources = {
                 method("        g(/* nothing */);\n"),
@@ -255,9 +275,19 @@ public class JavaASTRoundTripTest {
                 method("        try {\n            g(1);\n        } catch (/* c */ RuntimeException e) {\n            g(2);\n        }\n"),
                 method("        switch(xs.length) {\n            case /* c */ 1:\n                g(1);\n        }\n"),
                 "class C {\n    C(/* c */ int a) {\n    }\n}\n",
+                // more of the same kind
+                method("        g(/* a */ 1);\n"),
+                method("        new Object(/* nothing */);\n"),
+                method("        java.util.function.IntUnaryOperator op = x -> /* c */ x + 1;\n"),
+                method("        try (/* a */ java.io.Reader r = null;\n            /* b */ java.io.Reader s = null) {\n            g(1);\n        }\n"),
+                method("        try {\n            g(1);\n        } catch (/* c */ IllegalStateException | IllegalArgumentException e) {\n            g(2);\n        }\n"),
+                method("        switch(xs.length) {\n            case /* one */ 1, /* two */ 2 ->\n                g(1);\n            default ->\n                g(0);\n        }\n"),
+                method("        Object o = xs;\n        switch(o) {\n            case Integer i when /* positive */ i > 0 ->\n                g(i);\n            default ->\n                g(0);\n        }\n"),
+                "class C {\n    C(int a, /* c */ int b, int c) {\n    }\n}\n",
+                "module m {\n    // sql\n    requires java.sql;\n    /* api */\n    exports p;\n    // reflection\n    opens q;\n    uses s.S;\n    // impl\n    provides s.S with s.A;\n}\n",
         };
         for (String source : sources)
-            assertEquals(source, readWrite("C.java", source));
+            assertEquals(source, readWrite(source.startsWith("module") ? "module-info.java" : "C.java", source));
     }
 
     // ---- errors ----

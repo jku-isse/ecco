@@ -2,10 +2,6 @@ package at.jku.cdl.ecco.adapter.java;
 
 import java.util.ArrayList;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTComment;
-import com.github.javaparser.printer.configuration.PrinterConfiguration;
-import com.github.javaparser.printer.configuration.DefaultPrinterConfiguration;
-import com.github.javaparser.printer.DefaultPrettyPrinterVisitor;
-import com.github.javaparser.printer.DefaultPrettyPrinter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,6 +9,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -37,6 +34,7 @@ import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.modules.ModuleDeclaration;
+import com.github.javaparser.ast.modules.ModuleDirective;
 import com.github.javaparser.ast.nodeTypes.NodeWithBlockStmt;
 import com.github.javaparser.ast.nodeTypes.NodeWithBody;
 import com.github.javaparser.ast.nodeTypes.NodeWithExpression;
@@ -129,27 +127,29 @@ public class JavaASTWriteHandler {
 				.filter(JavaASTData.class::isInstance).map(JavaASTData.class::cast)
 				.filter(data -> data.getType() == ASTNodeType.PACKAGEDECLARATION)
 				.forEach(cuData -> cuData.getOrphanComments().forEach(orphan -> cu.addOrphanComment(orphan.toComment())));
-		return new DefaultPrettyPrinter(MemberSpacingVisitor::new, new DefaultPrinterConfiguration()).print(cu);
+		return JavaASTPrinter.print(cu);
 	}
 
 	/**
-	 * JavaParser's printer puts an empty line before every member of a type - including the first,
-	 * so every class body started with an empty line. Members are separated by one here instead.
+	 * A part kept as text, parsed: its text with comments ({@code withComments}, metadata, see
+	 * JavaASTData#getTextWithComments) if there is one and it parses, else its identifying text.
 	 */
-	private static final class MemberSpacingVisitor extends DefaultPrettyPrinterVisitor {
-		MemberSpacingVisitor(PrinterConfiguration configuration) {
-			super(configuration);
-		}
-
-		@Override
-		protected void printMembers(NodeList<BodyDeclaration<?>> members, Void arg) {
-			for (int i = 0; i < members.size(); i++) {
-				if (i > 0)
-					this.printer.println();
-				members.get(i).accept(this, arg);
-				this.printer.println();
+	private static <T extends com.github.javaparser.ast.Node> T parse(String withComments, String text, Function<String, T> parse) {
+		if (withComments != null) {
+			try {
+				T parsed = parse.apply(withComments);
+				JavaASTPrinter.giveCommentsToTheCodeAfter(parsed);
+				return parsed;
+			} catch (ParseProblemException e) {
+				LOGGER.warning("Writing without its comments, they do not parse: " + withComments);
 			}
 		}
+		return parse.apply(text);
+	}
+
+	/** {@code withComments.get(i)} if there are as many as {@code texts}, else null. */
+	private static String withComments(List<String> withComments, List<String> texts, int i) {
+		return withComments != null && withComments.size() == texts.size() ? withComments.get(i) : null;
 	}
 
 	/**
@@ -250,21 +250,12 @@ public class JavaASTWriteHandler {
 
 	private static Statement addStatement(Node child, com.github.javaparser.ast.Node parent) {
 		JavaASTSimpleStringData stmtData = (JavaASTSimpleStringData) child.getArtifact().getData();
-		Statement stmt = null;
+		Statement stmt;
 		// the text with the comments inside the statement, if there are any
-		if (stmtData.getTextWithComments() != null) {
-			try {
-				stmt = StaticJavaParser.parseStatement(stmtData.getTextWithComments());
-			} catch (ParseProblemException e) {
-				LOGGER.warning("Writing a statement without its inner comments, they do not parse: " + stmtData.getTextWithComments());
-			}
-		}
-		if (stmt == null) {
-			try {
-				stmt = StaticJavaParser.parseStatement(stmtData.getData());
-			} catch (ParseProblemException e) {
-				throw new EccoException("JavaPlugin - Writer Error - Cannot parse statement: " + stmtData.getData(), e);
-			}
+		try {
+			stmt = parse(stmtData.getTextWithComments(), stmtData.getData(), StaticJavaParser::parseStatement);
+		} catch (ParseProblemException e) {
+			throw new EccoException("JavaPlugin - Writer Error - Cannot parse statement: " + stmtData.getData(), e);
 		}
 		if (parent instanceof NodeWithBlockStmt<?>) {
 			NodeWithBlockStmt<?> blockParent = (NodeWithBlockStmt<?>) parent;
@@ -422,6 +413,7 @@ public class JavaASTWriteHandler {
 		JavaASTSimpleStringData childData = (JavaASTSimpleStringData) child.getArtifact().getData();
 		InitializerDeclaration parsedInit = StaticJavaParser.parseBodyDeclaration(childData.getData())
 				.asInitializerDeclaration();
+		JavaASTPrinter.giveCommentsToTheCodeAfter(parsedInit);
 		if (parent instanceof NodeWithMembers<?>) {
 			((NodeWithMembers<?>) parent).addMember(parsedInit);
 		} else {
@@ -449,8 +441,11 @@ public class JavaASTWriteHandler {
 		ModuleDeclaration module = new ModuleDeclaration(StaticJavaParser.parseName(data.getName()), data.isOpen());
 		for (Node directiveNode : child.getChildren()) {
 			Object raw = directiveNode.getArtifact().getData();
-			if (raw instanceof JavaASTSimpleStringData) {
-				module.getDirectives().add(StaticJavaParser.parseModuleDirective(((JavaASTSimpleStringData) raw).getData()));
+			if (raw instanceof JavaASTSimpleStringData directiveData) {
+				ModuleDirective directive = StaticJavaParser.parseModuleDirective(directiveData.getData());
+				// read with its comment, which used to be left out here
+				attachComments(directiveData, directive);
+				module.getDirectives().add(directive);
 			}
 		}
 		if (parent instanceof CompilationUnit) {
@@ -487,7 +482,9 @@ public class JavaASTWriteHandler {
 
 		ConstructorDeclaration constDecl = ((TypeDeclaration<?>) parent).addConstructor(modifiers);
 		constDecl.setBody(body);
-		childData.getParameters().forEach(p -> constDecl.addParameter(StaticJavaParser.parseParameter(p)));
+		for (int i = 0; i < childData.getParameters().size(); i++)
+			constDecl.addParameter(parse(withComments(childData.getParametersWithComments(), childData.getParameters(), i),
+					childData.getParameters().get(i), StaticJavaParser::parseParameter));
 		childData.getTypeParameters().forEach(tp -> constDecl.addTypeParameter(tp));
 		childData.getThrowExceptions()
 				.forEach(te -> constDecl.addThrownException(StaticJavaParser.parseType(te).asReferenceType()));
@@ -663,10 +660,9 @@ public class JavaASTWriteHandler {
 		JavaASTTryData tryData = (JavaASTTryData) child.getArtifact().getData();
 		if (!tryData.getExpressions().isEmpty()) {
 			NodeList<Expression> resourceList = new NodeList<>();
-			for (String catchParam : tryData.getExpressions()) {
-				Expression e = parseTryResource(catchParam);
-				resourceList.add(e);
-			}
+			for (int i = 0; i < tryData.getExpressions().size(); i++)
+				resourceList.add(parse(withComments(tryData.getExpressionsWithComments(), tryData.getExpressions(), i),
+						tryData.getExpressions().get(i), JavaASTWriteHandler::parseTryResource));
 			tryStmt.setResources(resourceList);
 		}
 		BlockStmt body = new BlockStmt();
@@ -684,6 +680,7 @@ public class JavaASTWriteHandler {
 					.orElse(null);
 			if (finalNode != null) {
 				BlockStmt finalBlock = StaticJavaParser.parseBlock(finalNode.getArtifact().toString());
+				JavaASTPrinter.giveCommentsToTheCodeAfter(finalBlock);
 				tryStmt.setFinallyBlock(finalBlock);
 			}
 		}
@@ -700,7 +697,7 @@ public class JavaASTWriteHandler {
 				&& ((JavaASTData) cc.getArtifact().getData()).getType() == ASTNodeType.CATCHCLAUSE) {
 			JavaASTSimpleStringData ccData = (JavaASTSimpleStringData) cc.getArtifact().getData();
 			CatchClause catchClause = new CatchClause();
-			Parameter param = parseCatchParameter(ccData.getData());
+			Parameter param = parse(ccData.getTextWithComments(), ccData.getData(), JavaASTWriteHandler::parseCatchParameter);
 			catchClause.setParameter(param);
 			cc.getChildren().forEach(c -> addNode(c, catchClause));
 			attachComments(ccData, catchClause);
@@ -743,9 +740,15 @@ public class JavaASTWriteHandler {
 			boolean arrow = label.endsWith(JavaASTReader.ARROW);
 			if (arrow)
 				label = label.substring(0, label.length() - JavaASTReader.ARROW.length());
+			// the label with its comments (case /* c */ 1:), if it has any
+			String labelWithComments = entryData.getTextWithComments();
+			if (labelWithComments != null && arrow == labelWithComments.endsWith(JavaASTReader.ARROW))
+				labelWithComments = arrow ? labelWithComments.substring(0, labelWithComments.length() - JavaASTReader.ARROW.length()) : labelWithComments;
+			else
+				labelWithComments = null;
 			SwitchEntry entry = new SwitchEntry();
 			if (!label.equals("DEFAULT")) {
-				SwitchEntry parsed = parseSwitchEntry(label);
+				SwitchEntry parsed = parse(labelWithComments, label, JavaASTWriteHandler::parseSwitchEntry);
 				entry.setLabels(parsed.getLabels());
 				entry.setDefault(parsed.isDefault());
 				parsed.getGuard().ifPresent(entry::setGuard);

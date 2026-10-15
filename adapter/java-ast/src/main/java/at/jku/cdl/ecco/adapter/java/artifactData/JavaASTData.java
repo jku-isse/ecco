@@ -37,7 +37,9 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 	 * expression): its text with those comments, which the identifying text leaves out. Like the
 	 * comments above, not part of the artifact's identity and taken from the newest commit; null when
 	 * the statement has no inner comments, and in repositories committed before it was kept (the
-	 * writer then writes the text without them, as it always did).
+	 * writer then writes the text without them, as it always did). The same for a catch clause's
+	 * parameter and a switch entry's label; a try statement's resources and a constructor's
+	 * parameters keep theirs in JavaASTTryData and JavaASTConstructorData.
 	 */
 	private String textWithComments;
 

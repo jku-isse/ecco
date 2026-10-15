@@ -186,6 +186,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 				// reconstruction of the original AST Elements
 				CompilationUnit cu = parseResult.getResult().orElse(null);
 				if (cu != null) {
+					JavaASTPrinter.keepCommentsOnce(cu);
 					attributeOrphanComments(cu);
 					// module-info.java parses cleanly (no problems) but its content lives in
 					// cu.getModule(), a ModuleDeclaration - a file shaped nothing like a regular
@@ -425,6 +426,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			constrNode.putProperty(PROPERTY_LINE_END, getEndLine(constructor));
 			constructor.getModifiers().forEach(m -> constrData.addModifier(m.getKeyword().asString()));
 			constructor.getParameters().forEach(p -> constrData.addParameter(p.toString(PPC)));
+			constrData.setParametersWithComments(withComments(constructor.getParameters()));
 			constructor.getTypeParameters().forEach(tp -> constrData.addTypeParameter(tp.toString(PPC)));
 			constructor.getThrownExceptions().forEach(te -> constrData.addThrowException(te.toString(PPC)));
 			constructor.getAnnotations().forEach(a -> constrData.addAnnotation(a.toString(PPC)));
@@ -485,9 +487,33 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			return;
 		Statement withoutOwnComment = statement.clone();
 		withoutOwnComment.removeComment();
-		String text = withoutOwnComment.toString(PPC_WITH_COMMENTS);
+		String text = JavaASTPrinter.print(withoutOwnComment);
 		if (!text.equals(statement.toString(PPC)))
 			data.setTextWithComments(text);
+	}
+
+	/**
+	 * A part of a statement or declaration stored as text without comments (a try resource, a catch
+	 * or constructor parameter, a case label) printed with its comments, or null if it has none:
+	 * kept as metadata outside the artifact's identity, as withInnerComments() does for statements.
+	 */
+	private String withComments(com.github.javaparser.ast.Node part) {
+		if (!hasComments(part))
+			return null;
+		String text = JavaASTPrinter.print(part.clone());
+		return text.equals(part.toString(PPC)) ? null : text;
+	}
+
+	/** withComments() of each part, or null if none of them has comments. */
+	private List<String> withComments(List<? extends com.github.javaparser.ast.Node> parts) {
+		List<String> texts = new ArrayList<>(parts.size());
+		boolean any = false;
+		for (com.github.javaparser.ast.Node part : parts) {
+			String text = withComments(part);
+			any |= text != null;
+			texts.add(text != null ? text : part.toString(PPC));
+		}
+		return any ? texts : null;
 	}
 
 	private void addChildren(Statement body, Node.Op parent) {
@@ -576,6 +602,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			for (Expression e : trystmt.getResources()) {
 				tryData.addExpression(e.toString(PPC));
 			}
+			tryData.setExpressionsWithComments(withComments(trystmt.getResources()));
 		}
 
 		for (CatchClause cc : trystmt.getCatchClauses()) {
@@ -584,6 +611,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			}
 			JavaASTSimpleStringData catchclause = new JavaASTSimpleStringData(cc.getParameter().toString(PPC));
 			catchclause.setType(ASTNodeType.CATCHCLAUSE);
+			catchclause.setTextWithComments(withComments(cc.getParameter()));
 			commented(catchclause, cc);
 			orphans(catchclause, cc.getBody());
 			Artifact.Op<JavaASTSimpleStringData> ccArtifact = this.entityFactory.createArtifact(catchclause);
@@ -622,24 +650,15 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		switchNode.putProperty(PROPERTY_LINE_END, getEndLine(sw.getSelector()));
 		parent.addChild(switchNode);
 		for (SwitchEntry se : sw.getEntries()) {
-			String label = String.join(",",
-					se.getLabels().stream().map(lab -> lab.toString(PPC)).collect(Collectors.toList()));
-			if (label.equals("")) {
-				label = "DEFAULT";
-			} else {
-				// "case null, default" and a pattern's guard ("case Integer i when i > 0") were left
-				// out, which changed the code; an entry without them is stored as before
-				if (se.isDefault())
-					label += ",default";
-				if (se.getGuard().isPresent())
-					label += " when " + se.getGuard().get().toString(PPC);
-			}
-			// "case A -> ..." does not fall through, unlike "case A:" - it used to be written as the latter
-			if (se.getType() != SwitchEntry.Type.STATEMENT_GROUP) {
-				label += ARROW;
-			}
+			String label = label(se, part -> part.toString(PPC));
 			JavaASTSimpleStringData entryData = new JavaASTSimpleStringData(label);
 			entryData.setType(ASTNodeType.SWITCH_ENTRIES);
+			// the label with its comments (case /* c */ 1:), which the identifying label leaves out
+			if (se.getLabels().stream().anyMatch(JavaASTReader::hasComments) || se.getGuard().filter(JavaASTReader::hasComments).isPresent()) {
+				String withComments = label(se, part -> JavaASTPrinter.print(part.clone()));
+				if (!withComments.equals(label))
+					entryData.setTextWithComments(withComments);
+			}
 			commented(entryData, se);
 			Artifact.Op<JavaASTSimpleStringData> entryArtifact = this.entityFactory.createArtifact(entryData);
 			Node.Op entryNode = this.entityFactory.createOrderedNode(entryArtifact);
@@ -648,6 +667,31 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			switchNode.addChild(entryNode);
 			se.getStatements().forEach(stmt -> addStatement(stmt, entryNode));
 		}
+	}
+
+	private static boolean hasComments(com.github.javaparser.ast.Node node) {
+		return node.getComment().isPresent() || !node.getAllContainedComments().isEmpty();
+	}
+
+	/** The data of a switch entry: its labels, a "default" among them and its guard, printed by {@code print}. */
+	private static String label(SwitchEntry se, java.util.function.Function<Expression, String> print) {
+		String label = String.join(",",
+				se.getLabels().stream().map(print).collect(Collectors.toList()));
+		if (label.equals("")) {
+			label = "DEFAULT";
+		} else {
+			// "case null, default" and a pattern's guard ("case Integer i when i > 0") were left
+			// out, which changed the code; an entry without them is stored as before
+			if (se.isDefault())
+				label += ",default";
+			if (se.getGuard().isPresent())
+				label += " when " + print.apply(se.getGuard().get());
+		}
+		// "case A -> ..." does not fall through, unlike "case A:" - it used to be written as the latter
+		if (se.getType() != SwitchEntry.Type.STATEMENT_GROUP) {
+			label += ARROW;
+		}
+		return label;
 	}
 
 	private void addIfStatement(IfStmt ifstmt, Op parent) {

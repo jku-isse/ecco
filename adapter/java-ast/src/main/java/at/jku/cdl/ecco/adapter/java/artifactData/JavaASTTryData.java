@@ -10,6 +10,13 @@ public class JavaASTTryData extends JavaASTData {
 	private boolean isFinally;
 
 	/**
+	 * The resources with their comments ({@code try (/* c *&#47; Reader r = ...)}), which the
+	 * identifying expressions leave out; null when they have none. Like JavaASTData's text with
+	 * comments, not part of the artifact's identity and taken from the newest commit.
+	 */
+	private List<String> expressionsWithComments;
+
+	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
@@ -42,6 +49,21 @@ public class JavaASTTryData extends JavaASTData {
 
 	public List<String> getCatchParams() {
 		return catchParams;
+	}
+
+	public List<String> getExpressionsWithComments() {
+		return expressionsWithComments;
+	}
+
+	public void setExpressionsWithComments(List<String> expressionsWithComments) {
+		this.expressionsWithComments = expressionsWithComments == null ? null : new ArrayList<>(expressionsWithComments);
+	}
+
+	@Override
+	public void adoptMetadataFrom(at.jku.isse.ecco.artifact.ArtifactData newer) {
+		super.adoptMetadataFrom(newer);
+		if (newer instanceof JavaASTTryData other)
+			this.expressionsWithComments = other.expressionsWithComments;
 	}
 
 	public boolean hasFinally() {

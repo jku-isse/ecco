@@ -18,6 +18,13 @@ public class JavaASTConstructorData extends JavaASTData {
 	// differently. See JavaASTReader.extractConstructors() and JavaASTWriteHandler.addConstructor().
 	private boolean compact;
 
+	/**
+	 * The parameters with their comments ({@code C(/* c *&#47; int a)}), which the identifying
+	 * parameters leave out; null when they have none. Like JavaASTData's text with comments, not
+	 * part of the artifact's identity and taken from the newest commit.
+	 */
+	private List<String> parametersWithComments;
+
 	public JavaASTConstructorData(String name) {
 		this.data = name;
 		this.modifiers = new ArrayList<>();
@@ -91,6 +98,21 @@ public class JavaASTConstructorData extends JavaASTData {
 			return modifiers.add(modifier);
 		}
 		return false;
+	}
+
+	public List<String> getParametersWithComments() {
+		return parametersWithComments;
+	}
+
+	public void setParametersWithComments(List<String> parametersWithComments) {
+		this.parametersWithComments = parametersWithComments == null ? null : new ArrayList<>(parametersWithComments);
+	}
+
+	@Override
+	public void adoptMetadataFrom(at.jku.isse.ecco.artifact.ArtifactData newer) {
+		super.adoptMetadataFrom(newer);
+		if (newer instanceof JavaASTConstructorData other)
+			this.parametersWithComments = other.parametersWithComments;
 	}
 
 	public boolean addParameter(String parameter) {
