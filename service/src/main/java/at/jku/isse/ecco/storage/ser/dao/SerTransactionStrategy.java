@@ -1051,6 +1051,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 		this.resolveCrossAssociationReferences(repo);
 		this.resolveModuleReferences(repo);
+		// the retroactive conditions stored on the nodes are derived from the counters: recomputed,
+		// so that a repository written before an untouched association's changed conditions were
+		// written too (a commit changes them, see Repository.Op#setRetroactiveConditions) checks out
+		// by the right ones. An association whose conditions were outdated is marked dirty - the
+		// next write stores the corrected ones (ReopenEquivalenceTest).
+		repo.setRetroactiveConditions();
 
 		// SerRepository.mainTree is purely derived from associations (see buildMainTree()) but
 		// isn't transient, so a freshly-loaded repository initially holds whatever copy was

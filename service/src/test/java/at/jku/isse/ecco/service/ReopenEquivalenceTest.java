@@ -39,6 +39,50 @@ public class ReopenEquivalenceTest {
             assertReopenEquivalent(Files.createDirectories(tmp.resolve("seed" + seed)), seed);
     }
 
+    /**
+     * A repository written before that fix holds outdated conditions: opening it recomputes them
+     * (here, conditions made wrong on purpose and stored), and the next write stores the right ones.
+     */
+    @Test
+    @Timeout(120)
+    public void outdatedStoredConditionsAreRecomputedOnOpen(@TempDir Path tmp) throws Exception {
+        Path repo = tmp.resolve(".ecco");
+        List<String> configurations = List.of("A", "B", "A, B");
+        Map<String, String> conditions;
+        Map<String, Map<String, String>> checkouts = new TreeMap<>();
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repo);
+            service.init();
+            int i = 0;
+            for (String configuration : configurations) {
+                Path variant = Files.createDirectories(tmp.resolve("v" + i++));
+                Files.writeString(variant.resolve("base.txt"), "base\n");
+                for (String feature : configuration.split(", "))
+                    Files.writeString(variant.resolve(feature + ".txt"), feature + "\n");
+                service.setBaseDir(variant);
+                service.commit("c" + i, configuration);
+            }
+            conditions = conditions(service);
+            for (String configuration : configurations)
+                checkouts.put(configuration, checkout(service, tmp.resolve("before"), configuration));
+            // what an older build could leave behind: every node's stored condition outdated
+            service.writeTransaction(repository -> {
+                for (Association.Op association : repository.getAssociations()) {
+                    ((Node.Op) association.getRootNode()).traverse(new at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditionSetterVisitor("$false"));
+                    repository.addAssociation(association);
+                }
+                return repository;
+            });
+        }
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repo);
+            service.open();
+            assertEquals(conditions, conditions(service), "recomputed on open");
+            for (String configuration : configurations)
+                assertEquals(checkouts.get(configuration), checkout(service, tmp.resolve("reopened"), configuration), configuration);
+        }
+    }
+
     private static void assertReopenEquivalent(Path work, int seed) throws Exception {
         Random random = new Random(seed);
         Path repo = work.resolve(".ecco");
