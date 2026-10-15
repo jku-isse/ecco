@@ -1,0 +1,3 @@
+Path;File Condition;Block Condition;Presence Condition;Line Type;start;end
+main.c;True;True;True;ROOT;1;11
+main.c;True;LOG;LOG;artifact;3;5
