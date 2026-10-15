@@ -78,6 +78,9 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	/** Ends the data of a switch entry written with an arrow ({@code case A -> ...}). */
 	public static final String ARROW = " ->";
 
+	/** The label stored for a switch's default entry (a label named DEFAULT is stored with a trailing space). */
+	public static final String DEFAULT_ENTRY = "DEFAULT";
+
 	private static Map<Integer, String[]> prioritizedPatterns;
 
 	// defines file extensions which can be handled by this plugn
@@ -678,7 +681,12 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		String label = String.join(",",
 				se.getLabels().stream().map(print).collect(Collectors.toList()));
 		if (label.equals("")) {
-			label = "DEFAULT";
+			label = DEFAULT_ENTRY;
+		} else if (label.equals(DEFAULT_ENTRY)) {
+			// a constant named DEFAULT (case DEFAULT:) was stored like the default entry and written
+			// as "default:", which changed what the switch does; a trailing space tells it apart and
+			// parses the same. The default entry stays "DEFAULT", as stored before.
+			label = DEFAULT_ENTRY + " ";
 		} else {
 			// "case null, default" and a pattern's guard ("case Integer i when i > 0") were left
 			// out, which changed the code; an entry without them is stored as before

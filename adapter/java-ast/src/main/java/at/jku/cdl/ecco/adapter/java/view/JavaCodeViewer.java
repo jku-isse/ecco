@@ -434,7 +434,7 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 			label = label.substring(0, label.length() - JavaASTReader.ARROW.length());
 			separator = " ->";
 		}
-		String line = ("DEFAULT".equals(label) ? "default" : "case " + label) + separator;
+		String line = (JavaASTReader.DEFAULT_ENTRY.equals(label) ? "default" : "case " + label.strip()) + separator;
 		addLine(n, association, line, indent, lines, indexByNode);
 		for (Node child : n.getChildren()) {
 			renderNode(child, indent + 1, lines, indexByNode);

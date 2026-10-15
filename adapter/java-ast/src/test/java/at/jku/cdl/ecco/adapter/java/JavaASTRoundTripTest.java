@@ -237,6 +237,33 @@ public class JavaASTRoundTripTest {
 
     // ---- fixed: they did not round-trip ----
 
+    /**
+     * A constant named DEFAULT was stored like the default entry and written as "default:" - the
+     * switch then took that branch for every value it did not name.
+     */
+    @Test
+    public void caseDefaultStaysACaseLabel() throws IOException {
+        String[] bodies = {
+                "        Object o = xs;\n        switch(m) {\n            case DEFAULT:\n                g(1);\n                break;\n            case OTHER:\n                g(2);\n                break;\n        }\n",
+                "        Object o = xs;\n        switch(m) {\n            case DEFAULT:\n                g(1);\n                break;\n            default:\n                g(2);\n        }\n",
+                "        Object o = xs;\n        switch(m) {\n            case DEFAULT ->\n                g(1);\n            default ->\n                g(2);\n        }\n",
+        };
+        for (String body : bodies) {
+            String source = method(body);
+            assertEquals(source, readWrite("C.java", source));
+        }
+    }
+
+    /** The Javadoc and comments of enum constants were read but not written. */
+    @Test
+    public void enumConstantsKeepTheirComments() throws IOException {
+        String source = "enum E {\n\n    /**\n     * The first.\n     */\n    A,\n    // the second\n    B\n}\n";
+        String written = readWrite("E.java", source);
+        assertTrue(written.contains("The first."), written);
+        assertTrue(written.contains("// the second"), written);
+        assertEquals(withoutComments(source), withoutComments(written), written);
+    }
+
     /** The guard of a pattern case was lost. */
     @Test
     public void aCaseGuardIsKept() throws IOException {

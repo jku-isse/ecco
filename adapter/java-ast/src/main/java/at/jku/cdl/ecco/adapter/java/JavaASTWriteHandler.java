@@ -550,6 +550,9 @@ public class JavaASTWriteHandler {
 				.collect(Collectors.toList());
 		for (Node enumDataNode : enumConstDataNodes) {
 			EnumConstantDeclaration enumConstDecl = enumConstant(enumDataNode.getArtifact().getData().toString());
+			// its Javadoc and comments, stored by the reader, were not written
+			if (enumDataNode.getArtifact().getData() instanceof JavaASTData constantData)
+				attachComments(constantData, enumConstDecl);
 			List<Expression> arguments = enumDataNode.getChildren().stream().map(n -> n.getArtifact().getData())
 					.filter(JavaASTData.class::isInstance).map(JavaASTData.class::cast)
 					.filter(data -> data.getType() == ASTNodeType.EXPRESSION)
@@ -747,7 +750,7 @@ public class JavaASTWriteHandler {
 			else
 				labelWithComments = null;
 			SwitchEntry entry = new SwitchEntry();
-			if (!label.equals("DEFAULT")) {
+			if (!label.equals(JavaASTReader.DEFAULT_ENTRY)) {
 				SwitchEntry parsed = parse(labelWithComments, label, JavaASTWriteHandler::parseSwitchEntry);
 				entry.setLabels(parsed.getLabels());
 				entry.setDefault(parsed.isDefault());
