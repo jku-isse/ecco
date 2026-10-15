@@ -12,6 +12,7 @@ import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.body.BodyDeclaration;
+import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.comments.BlockComment;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.comments.LineComment;
@@ -157,12 +158,40 @@ final class JavaASTPrinter {
 			this.printer.print(n.getFooter());
 		}
 
-		/** The comments in an empty argument list ({@code g(/* nothing *&#47;)}), which belong to no argument. */
+		/**
+		 * The comments in an empty argument list ({@code g(/* nothing *&#47;)}), and after the last
+		 * argument ({@code g(x // why} / {@code )}), which belong to no argument: JavaParser's printer
+		 * prints only those before an argument.
+		 */
 		@Override
 		protected <T extends Expression> void printArguments(NodeList<T> args, Void arg) {
 			Node owner = args.getParentNode().orElse(null);
-			if (!args.isEmpty() || owner == null || owner.getOrphanComments().isEmpty()) {
+			if (owner == null || owner.getOrphanComments().isEmpty()) {
 				super.printArguments(args, arg);
+				return;
+			}
+			if (!args.isEmpty()) {
+				List<Comment> trailing = afterLast(args, owner.getOrphanComments());
+				if (trailing.isEmpty()) {
+					super.printArguments(args, arg);
+					return;
+				}
+				this.printer.print("(");
+				for (int i = 0; i < args.size(); i++) {
+					if (i > 0)
+						this.printer.print(", ");
+					args.get(i).accept(this, arg);
+				}
+				for (Comment comment : trailing) {
+					if (comment instanceof BlockComment block) {
+						this.printer.print(" ");
+						printInline(block);
+					} else {
+						this.printer.print(" ");
+						comment.accept(this, arg);
+					}
+				}
+				this.printer.print(")");
 				return;
 			}
 			this.printer.print("(");
@@ -179,6 +208,71 @@ final class JavaASTPrinter {
 				}
 			}
 			this.printer.print(")");
+		}
+
+		/** The comments among [comments] after the last of [nodes], in order. */
+		private static List<Comment> afterLast(NodeList<? extends Node> nodes, List<Comment> comments) {
+			Node last = nodes.get(nodes.size() - 1);
+			List<Comment> after = new ArrayList<>();
+			if (last.getRange().isEmpty())
+				return after;
+			for (Comment comment : comments)
+				if (comment.getRange().isPresent() && comment.getRange().get().begin.isAfter(last.getRange().get().end))
+					after.add(comment);
+			after.sort((a, b) -> a.getRange().get().begin.compareTo(b.getRange().get().begin));
+			return after;
+		}
+
+		/**
+		 * An enum's comments that belong to no constant or member (e.g. one after its last constant) -
+		 * JavaParser's printer leaves them out, as it does not for a class; printed at its end, as there.
+		 */
+		@Override
+		public void visit(EnumDeclaration n, Void arg) {
+			if (n.getOrphanComments().isEmpty()) {
+				super.visit(n, arg);
+				return;
+			}
+			// JavaParser's visit(EnumDeclaration), with printOrphanCommentsEnding(n) before the closing brace
+			printOrphanCommentsBeforeThisChildNode(n);
+			printComment(n.getComment(), arg);
+			printMemberAnnotations(n.getAnnotations(), arg);
+			printModifiers(n.getModifiers());
+			this.printer.print("enum ");
+			n.getName().accept(this, arg);
+			if (!n.getImplementedTypes().isEmpty()) {
+				this.printer.print(" implements ");
+				for (int i = 0; i < n.getImplementedTypes().size(); i++) {
+					if (i > 0)
+						this.printer.print(", ");
+					n.getImplementedTypes().get(i).accept(this, arg);
+				}
+			}
+			this.printer.println(" {");
+			this.printer.indent();
+			if (n.getEntries().isNonEmpty()) {
+				boolean alignVertically = n.getEntries().size() > getOption(ConfigOption.MAX_ENUM_CONSTANTS_TO_ALIGN_HORIZONTALLY).get().asInteger()
+						|| n.getEntries().stream().anyMatch(e -> e.getComment().isPresent());
+				this.printer.println();
+				for (int i = 0; i < n.getEntries().size(); i++) {
+					n.getEntries().get(i).accept(this, arg);
+					if (i + 1 < n.getEntries().size()) {
+						if (alignVertically)
+							this.printer.println(",");
+						else
+							this.printer.print(", ");
+					}
+				}
+			}
+			if (!n.getMembers().isEmpty()) {
+				this.printer.println(";");
+				printMembers(n.getMembers(), arg);
+			} else if (!n.getEntries().isEmpty()) {
+				this.printer.println();
+			}
+			printOrphanCommentsEnding(n);
+			this.printer.unindent();
+			this.printer.print("}");
 		}
 
 		// JavaParser's printer leaves out the comments of module directives

@@ -48,7 +48,9 @@ public class JavaASTRemainingCommentTest {
             + "        for (int i = 0; i < 3; i++) // more\n            g();\n"
             + "        if (x > 0 /* positive */) {\n            g();\n        }\n"
             + "        if (x > 0)\n            g();\n            // else if (x < 0)\n            //     h();\n        else\n            h();\n"
-            + "        return \"\";\n    }\n}\n";
+            + "        g(h(new Object() {\n        }) // after the last argument\n        );\n"
+            + "        return \"\";\n    }\n\n"
+            + "    private enum State {\n\n        ON,\n        OFF\n        //#if feature\n        , WAIT\n        // after the last constant\n    }\n}\n";
 
     @Test
     public void commentsBeforeCommentsAndInSwitchesAndElseIfsAreWrittenWhereTheyWere() throws IOException {
