@@ -64,7 +64,7 @@ public class ConstraintSuggestionsViewTest {
     @Timeout(60)
     public void pendingFollowsTheThresholdsAndLeavesOutReviewedSuggestions(@TempDir Path tmp) throws Exception {
         try (EccoService service = minedRepository(tmp)) {
-            service.acceptConstraint(ConstraintMiner.Kind.EXCLUDES, "A", "C");
+            service.acceptConstraint(Constraint.Kind.EXCLUDES, "A", "C");
             service.rejectConstraints(List.of(mined(service, B_EXCLUDES_C)));
             CountingMinimizationResults minimization = new CountingMinimizationResults(service);
             ConstraintSuggestionsView view = show(service, minimization);
@@ -108,8 +108,8 @@ public class ConstraintSuggestionsViewTest {
             assertEquals(1, minimization.runs.get(), "one minimization for the whole selection");
             // only MANDATORY Base clears the production threshold (4 witnesses)
             waitUntil("trust labels", () -> cellTexts(accepted(view)).equals(Set.of(
-                    "MANDATORY: Base [trusted]",
-                    "REQUIRES: B → A [not yet trusted -- needs 4 witnesses, has 3]")));
+                    "MANDATORY Base [trusted]",
+                    "REQUIRES B -> A [not yet trusted -- needs 4 witnesses, has 3]")));
         }
     }
 
@@ -118,11 +118,11 @@ public class ConstraintSuggestionsViewTest {
     public void anAcceptedSuggestionNoLongerMinedIsNotTrusted(@TempDir Path tmp) throws Exception {
         try (EccoService service = minedRepository(tmp)) {
             // A and B occur together three times: never mined as excluding each other
-            service.acceptConstraint(ConstraintMiner.Kind.EXCLUDES, "A", "B");
+            service.acceptConstraint(Constraint.Kind.EXCLUDES, "A", "B");
             ConstraintSuggestionsView view = show(service, new CountingMinimizationResults(service));
 
             waitUntil("the label", () -> cellTexts(accepted(view)).equals(Set.of(
-                    "EXCLUDES: A → B [not yet trusted -- not currently reproducible]")));
+                    "EXCLUDES A / B [not yet trusted -- not currently reproducible]")));
         }
     }
 
@@ -142,7 +142,7 @@ public class ConstraintSuggestionsViewTest {
             assertEquals(Set.of(MANDATORY_BASE), ids(service.getRepository().getRejectedConstraints()));
             assertEquals(Set.of(), ids(service.getRepository().getConstraints()));
             assertEquals(1, minimization.runs.get(), "a rejection withdraws an acceptance, so minimization runs again");
-            waitUntil("shown without a trust label", () -> cellTexts(rejected(view)).equals(Set.of("MANDATORY: Base")));
+            waitUntil("shown without a trust label", () -> cellTexts(rejected(view)).equals(Set.of("MANDATORY Base")));
 
             onFx(() -> {
                 rejected(view).getSelectionModel().select(MANDATORY_BASE);
@@ -223,7 +223,7 @@ public class ConstraintSuggestionsViewTest {
     public void aClosedRepositoryEmptiesTheLists(@TempDir Path tmp) throws Exception {
         EccoService service = minedRepository(tmp);
         try {
-            service.acceptConstraint(ConstraintMiner.Kind.EXCLUDES, "A", "C");
+            service.acceptConstraint(Constraint.Kind.EXCLUDES, "A", "C");
             ConstraintSuggestionsView view = show(service, new CountingMinimizationResults(service));
             waitUntil("loaded", () -> !pending(view).isEmpty() && !accepted(view).getItems().isEmpty());
 

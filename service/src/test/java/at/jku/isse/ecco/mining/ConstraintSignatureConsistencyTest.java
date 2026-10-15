@@ -27,7 +27,7 @@ public class ConstraintSignatureConsistencyTest {
 		String featureB = "Feature,With,Commas";
 
 		ConstraintMiner.Suggestion suggestion = new ConstraintMiner.Suggestion(
-				ConstraintMiner.Kind.REQUIRES, featureA, featureB, 1.0, 1.0, 4, List.of());
+				Constraint.Kind.REQUIRES, featureA, featureB, 1.0, 1.0, 4, List.of());
 		SerConstraint constraint = new SerConstraint(Constraint.Kind.REQUIRES, featureA, featureB);
 
 		String fromSuggestion = ConstraintSuggestionPreferences.signatureOf(suggestion);
@@ -45,12 +45,12 @@ public class ConstraintSignatureConsistencyTest {
 		String featureA = "Feature|With|Pipes";
 		String featureB = "Feature|B";
 		ConstraintMiner.Suggestion suggestion = new ConstraintMiner.Suggestion(
-				ConstraintMiner.Kind.EXCLUDES, featureA, featureB, 1.0, 1.0, 4, List.of());
+				Constraint.Kind.EXCLUDES, featureA, featureB, 1.0, 1.0, 4, List.of());
 
 		String signature = ConstraintSuggestionPreferences.signatureOf(suggestion);
 		ConstraintSuggestionPreferences.AcceptedConstraint parsed = ConstraintSuggestionPreferences.parseSignature(signature);
 
-		assertEquals(ConstraintMiner.Kind.EXCLUDES.name(), parsed.kind.name());
+		assertEquals(Constraint.Kind.EXCLUDES.name(), parsed.kind.name());
 		assertEquals(featureA, parsed.a);
 		assertEquals(featureB, parsed.b);
 	}
@@ -59,7 +59,7 @@ public class ConstraintSignatureConsistencyTest {
 	public void signatureContainingACommaHasNoRawCommaLeftToCorruptCommaJoinedStorage() {
 		String featureA = "Feature, Extended";
 		ConstraintMiner.Suggestion suggestion = new ConstraintMiner.Suggestion(
-				ConstraintMiner.Kind.MANDATORY, featureA, null, 1.0, 1.0, 4, List.of());
+				Constraint.Kind.MANDATORY, featureA, null, 1.0, 1.0, 4, List.of());
 
 		String signature = ConstraintSuggestionPreferences.signatureOf(suggestion);
 

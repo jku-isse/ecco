@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.*;
 import at.jku.isse.ecco.adapter.*;
 import at.jku.isse.ecco.adapter.dispatch.*;
@@ -1586,7 +1587,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param featureA antecedent / first feature / mandatory feature name.
      * @param featureB consequent / second feature name; null for MANDATORY.
      */
-    public synchronized void acceptConstraint(ConstraintMiner.Kind kind, String featureA, String featureB) {
+    public synchronized void acceptConstraint(Constraint.Kind kind, String featureA, String featureB) {
         this.constraintService.acceptConstraint(kind, featureA, featureB);
     }
 
@@ -1635,7 +1636,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * Rejects one constraint given by kind and features (e.g. from the command line). See
      * {@link ConstraintService#rejectConstraints}.
      */
-    public synchronized void rejectConstraint(ConstraintMiner.Kind kind, String featureA, String featureB) {
+    public synchronized void rejectConstraint(Constraint.Kind kind, String featureA, String featureB) {
         this.constraintService.rejectConstraint(kind, featureA, featureB);
     }
 

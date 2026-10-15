@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.io;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -140,7 +141,7 @@ public class FeatureTogglePanel extends VBox {
 	private void applyMandatoryLocks(Map<Feature, CheckBox> checkBoxesByFeature) {
 		Set<String> mandatoryFeatureNames = new HashSet<>();
 		for (ConstraintMiner.Suggestion suggestion : this.acceptedSuggestions) {
-			if (suggestion.isHard() && suggestion.kind == ConstraintMiner.Kind.MANDATORY) {
+			if (suggestion.isHard() && suggestion.kind == Constraint.Kind.MANDATORY) {
 				mandatoryFeatureNames.add(suggestion.a);
 			}
 		}

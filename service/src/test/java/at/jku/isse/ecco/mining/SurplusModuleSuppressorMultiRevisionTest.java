@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -100,7 +101,7 @@ public class SurplusModuleSuppressorMultiRevisionTest {
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
             ConstraintMiner.Suggestion excludesCoreExtra = null;
             for (ConstraintMiner.Suggestion suggestion : mined) {
-                if (suggestion.kind == ConstraintMiner.Kind.EXCLUDES
+                if (suggestion.kind == Constraint.Kind.EXCLUDES
                         && ((suggestion.a.equals("Core") && "Extra".equals(suggestion.b))
                         || (suggestion.a.equals("Extra") && "Core".equals(suggestion.b)))) {
                     excludesCoreExtra = suggestion;

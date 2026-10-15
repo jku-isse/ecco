@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -48,7 +49,7 @@ public class SurplusModuleSuppressorTest {
         checkout.getSurplusModules().put(surplusRevision, "assoc-1");
 
         ConstraintMiner.Suggestion excludes = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.EXCLUDES, "Core", "SomeFeature", 0.5, 1.0, 4, List.of());
+                Constraint.Kind.EXCLUDES, "Core", "SomeFeature", 0.5, 1.0, 4, List.of());
         Formula revisionAwareFeatureModel = FeatureModelFormula.compileRevisionAware(List.of(excludes), List.of(core, someFeature));
 
         SurplusModuleSuppressor.suppressEntailed(checkout, Set.of(desiredRevision), revisionAwareFeatureModel);

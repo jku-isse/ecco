@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation.checkout;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryVisitor;
@@ -322,7 +323,7 @@ public class CheckoutViewTest {
             commit(service, tmp.resolve("extra-" + i), "Extra", Map.of("extra.txt", "extra " + i + "\n"));
         }
         ConstraintMiner.Suggestion excludes = new ConstraintMiner(4, 0.9, null).mine(ConfigurationBridge.readConfigurations(service)).stream()
-                .filter(s -> s.kind == ConstraintMiner.Kind.EXCLUDES && List.of(s.a, String.valueOf(s.b)).containsAll(List.of("Core", "Extra")))
+                .filter(s -> s.kind == Constraint.Kind.EXCLUDES && List.of(s.a, String.valueOf(s.b)).containsAll(List.of("Core", "Extra")))
                 .findFirst().orElseThrow();
         service.acceptConstraint(excludes);
         return service;

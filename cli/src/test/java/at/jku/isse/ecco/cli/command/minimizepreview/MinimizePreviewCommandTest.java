@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.cli.command.minimizepreview;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.cli.writer.StringWriter;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.mining.ConstraintMiner;
@@ -83,7 +84,7 @@ public class MinimizePreviewCommandTest {
                 service.setBaseDir(variantDir);
                 service.commit("variant " + i, i % 2 == 0 ? "Core, Extra" : "Core");
             }
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Core", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "Core", null);
 
             List<Association> associations = new java.util.ArrayList<>(service.getRepository().getAssociations());
             assertTrue(associations.size() > 1, "sanity check: need more than one association for the id filter to prove anything");

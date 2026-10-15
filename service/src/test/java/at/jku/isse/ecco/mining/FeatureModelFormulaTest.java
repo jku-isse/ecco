@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.storage.ser.feature.SerFeature;
 import at.jku.isse.ecco.storage.ser.feature.SerFeatureRevision;
@@ -35,7 +36,7 @@ public class FeatureModelFormulaTest {
     @Test
     public void hardRequires_forbidsAWithoutB() {
         ConstraintMiner.Suggestion requires = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.REQUIRES, "A", "B", 0.5, 1.0, 4, List.of());
+                Constraint.Kind.REQUIRES, "A", "B", 0.5, 1.0, 4, List.of());
         Formula formula = FeatureModelFormula.compile(List.of(requires));
         FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
 
@@ -50,7 +51,7 @@ public class FeatureModelFormulaTest {
     @Test
     public void hardExcludes_forbidsBothTogether() {
         ConstraintMiner.Suggestion excludes = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.EXCLUDES, "A", "B", 0.5, 1.0, 4, List.of());
+                Constraint.Kind.EXCLUDES, "A", "B", 0.5, 1.0, 4, List.of());
         Formula formula = FeatureModelFormula.compile(List.of(excludes));
         FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
 
@@ -61,7 +62,7 @@ public class FeatureModelFormulaTest {
     @Test
     public void mandatory_forcesFeatureTrue() {
         ConstraintMiner.Suggestion mandatory = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.MANDATORY, "M", null, 1.0, 1.0, 5, List.of());
+                Constraint.Kind.MANDATORY, "M", null, 1.0, 1.0, 5, List.of());
         Formula formula = FeatureModelFormula.compile(List.of(mandatory));
         FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
 
@@ -73,7 +74,7 @@ public class FeatureModelFormulaTest {
     public void nearMissSuggestion_isSkipped() {
         // a near-miss REQUIRES has a real counterexample, so it must never become a hard clause
         ConstraintMiner.Suggestion nearMiss = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.REQUIRES, "A", "B", 0.5, 0.8, 5, List.of(4));
+                Constraint.Kind.REQUIRES, "A", "B", 0.5, 0.8, 5, List.of(4));
         Formula formula = FeatureModelFormula.compile(List.of(nearMiss));
         FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
 
@@ -119,7 +120,7 @@ public class FeatureModelFormulaTest {
         SerFeature other = new SerFeature("f2", "SomeFeature");
 
         ConstraintMiner.Suggestion excludes = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.EXCLUDES, "Core", "SomeFeature", 0.5, 1.0, 4, List.of());
+                Constraint.Kind.EXCLUDES, "Core", "SomeFeature", 0.5, 1.0, 4, List.of());
         Formula formula = FeatureModelFormula.compileRevisionAware(List.of(excludes), List.of(core, other));
         FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
 

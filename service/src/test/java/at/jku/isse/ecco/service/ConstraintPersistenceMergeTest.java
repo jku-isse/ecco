@@ -39,7 +39,7 @@ public class ConstraintPersistenceMergeTest {
         serviceA.init();
         serviceA.setBaseDir(xDir);
         serviceA.commit("x", "X");
-        serviceA.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "X", null);
+        serviceA.acceptConstraint(Constraint.Kind.MANDATORY, "X", null);
 
         // fork B from A -- constraints must travel via subset()+merge(), the same as features/modules
         EccoService serviceB = new EccoService();
@@ -51,8 +51,8 @@ public class ConstraintPersistenceMergeTest {
 
         // B independently re-accepts the SAME constraint (should dedup, not duplicate) plus a
         // genuinely different one
-        serviceB.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "X", null);
-        serviceB.acceptConstraint(ConstraintMiner.Kind.EXCLUDES, "X", "Y");
+        serviceB.acceptConstraint(Constraint.Kind.MANDATORY, "X", null);
+        serviceB.acceptConstraint(Constraint.Kind.EXCLUDES, "X", "Y");
 
         Repository.Op repoAOp = (Repository.Op) serviceA.getRepository();
         Repository.Op repoBOp = (Repository.Op) serviceB.getRepository();

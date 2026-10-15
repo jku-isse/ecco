@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -52,7 +53,7 @@ public class ConstraintViolationWarningTest {
                     new ConstraintMiner(4, 0.9, null).mine(
                             at.jku.isse.ecco.mining.ConfigurationBridge.readConfigurations(service));
             ConstraintMiner.Suggestion excludesCoreExtra = hypotheses.stream()
-                    .filter(s -> s.kind == ConstraintMiner.Kind.EXCLUDES
+                    .filter(s -> s.kind == Constraint.Kind.EXCLUDES
                             && ((s.a.equals("Core") && "Extra".equals(s.b)) || (s.a.equals("Extra") && "Core".equals(s.b))))
                     .findFirst().orElseThrow();
             service.acceptConstraint(excludesCoreExtra);
@@ -101,7 +102,7 @@ public class ConstraintViolationWarningTest {
                     new ConstraintMiner(4, 0.9, null).mine(
                             at.jku.isse.ecco.mining.ConfigurationBridge.readConfigurations(service));
             ConstraintMiner.Suggestion excludesCoreExtra = hypotheses.stream()
-                    .filter(s -> s.kind == ConstraintMiner.Kind.EXCLUDES
+                    .filter(s -> s.kind == Constraint.Kind.EXCLUDES
                             && ((s.a.equals("Core") && "Extra".equals(s.b)) || (s.a.equals("Extra") && "Core".equals(s.b))))
                     .findFirst().orElseThrow();
             service.acceptConstraint(excludesCoreExtra);

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.io;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
@@ -83,7 +84,7 @@ public class FeatureTogglePanelTest {
     @Timeout(60)
     public void aMandatoryFeatureIsLockedOn(@TempDir Path tmp) throws Exception {
         try (EccoService service = constrained(tmp)) {
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "A", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "A", null);
             List<Configuration> reported = new CopyOnWriteArrayList<>();
             FeatureTogglePanel panel = onFx(() -> new FeatureTogglePanel(service, reported::add));
             onFx(() -> {
@@ -102,7 +103,7 @@ public class FeatureTogglePanelTest {
     @Timeout(60)
     public void anAcceptedRequiresPullsInOrDropsTheOtherFeature(@TempDir Path tmp) throws Exception {
         try (EccoService service = constrained(tmp)) {
-            service.acceptConstraint(ConstraintMiner.Kind.REQUIRES, "B", "C");
+            service.acceptConstraint(Constraint.Kind.REQUIRES, "B", "C");
             List<Configuration> reported = new CopyOnWriteArrayList<>();
             FeatureTogglePanel panel = onFx(() -> new FeatureTogglePanel(service, reported::add));
 
@@ -127,7 +128,7 @@ public class FeatureTogglePanelTest {
             FeatureTogglePanel panel = onFx(() -> new FeatureTogglePanel(service, c -> { }));
             assertFalse(onFx(() -> box(panel, "A").isSelected() || box(panel, "A").isDisabled()));
 
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "A", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "A", null);
             onFx(panel::reloadConstraints);
             assertTrue(onFx(() -> box(panel, "A").isSelected() && box(panel, "A").isDisabled()));
 

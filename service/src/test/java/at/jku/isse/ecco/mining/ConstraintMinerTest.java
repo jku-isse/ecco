@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -36,7 +37,7 @@ public class ConstraintMinerTest {
         List<ConstraintMiner.Suggestion> out = new ConstraintMiner(4, 1.0, null).mine(configs);
 
         List<ConstraintMiner.Suggestion> requires = out.stream()
-                .filter(s -> s.kind == ConstraintMiner.Kind.REQUIRES)
+                .filter(s -> s.kind == Constraint.Kind.REQUIRES)
                 .toList();
         assertEquals(1, requires.size());
         ConstraintMiner.Suggestion s = requires.get(0);
@@ -61,7 +62,7 @@ public class ConstraintMinerTest {
         List<ConstraintMiner.Suggestion> out = new ConstraintMiner(4, 0.5, null).mine(configs);
 
         ConstraintMiner.Suggestion s = out.stream()
-                .filter(x -> x.kind == ConstraintMiner.Kind.REQUIRES && x.a.equals("A") && x.b.equals("B"))
+                .filter(x -> x.kind == Constraint.Kind.REQUIRES && x.a.equals("A") && x.b.equals("B"))
                 .findFirst().orElseThrow();
 
         assertTrue(!s.isHard());
@@ -85,7 +86,7 @@ public class ConstraintMinerTest {
         List<ConstraintMiner.Suggestion> out = new ConstraintMiner(4, 1.0, null).mine(configs);
 
         ConstraintMiner.Suggestion s = out.stream()
-                .filter(x -> x.kind == ConstraintMiner.Kind.EXCLUDES)
+                .filter(x -> x.kind == Constraint.Kind.EXCLUDES)
                 .findFirst().orElseThrow();
         assertEquals("A", s.a);
         assertEquals("B", s.b);
@@ -105,11 +106,11 @@ public class ConstraintMinerTest {
         List<ConstraintMiner.Suggestion> out = new ConstraintMiner(1, 1.0, null).mine(configs);
 
         boolean mandatory = out.stream()
-                .anyMatch(s -> s.kind == ConstraintMiner.Kind.MANDATORY && s.a.equals("M"));
+                .anyMatch(s -> s.kind == Constraint.Kind.MANDATORY && s.a.equals("M"));
         assertTrue(mandatory);
 
         boolean requiresInvolvingM = out.stream()
-                .anyMatch(s -> s.kind == ConstraintMiner.Kind.REQUIRES && (s.a.equals("M") || s.b.equals("M")));
+                .anyMatch(s -> s.kind == Constraint.Kind.REQUIRES && (s.a.equals("M") || s.b.equals("M")));
         assertTrue(!requiresInvolvingM);
     }
 
@@ -133,7 +134,7 @@ public class ConstraintMinerTest {
         List<ConstraintMiner.Suggestion> out = new ConstraintMiner(4, 1.0, groupKey).mine(configs);
 
         boolean excludesBetweenRevisions = out.stream()
-                .anyMatch(s -> s.kind == ConstraintMiner.Kind.EXCLUDES
+                .anyMatch(s -> s.kind == Constraint.Kind.EXCLUDES
                         && Set.of(s.a, s.b).equals(Set.of("Foo.rev1", "Foo.rev2")));
         assertTrue(!excludesBetweenRevisions);
     }
@@ -151,7 +152,7 @@ public class ConstraintMinerTest {
         List<ConstraintMiner.Suggestion> out = new ConstraintMiner(3, 1.0, null).mine(configs);
 
         boolean requiresAB = out.stream()
-                .anyMatch(s -> s.kind == ConstraintMiner.Kind.REQUIRES && s.a.equals("A") && s.b.equals("B"));
+                .anyMatch(s -> s.kind == Constraint.Kind.REQUIRES && s.a.equals("A") && s.b.equals("B"));
         assertTrue(!requiresAB);
     }
 

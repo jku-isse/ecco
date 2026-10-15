@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
@@ -179,7 +180,7 @@ public class CommitBaseDirViewTest {
             // an accepted constraint only counts while the commits still witness it (at least 4)
             for (int i = 0; i < 4; i++)
                 commit(service, tmp.resolve("seed" + i), "BASE, A", Map.of("seed.txt", "seed " + i + "\n"));
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "A", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "A", null);
             // the .config is checked when the configuration is left blank
             Path work = CommitViewTest.variant(tmp, "work", "BASE", "base\n");
             service.setBaseDir(work);

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +31,7 @@ public class ConstraintSuggestionPreferencesCapacityTest {
         Set<String> expected = new HashSet<>();
         for (int i = 0; i < 600; i++) {
             // same construction as ConstraintSuggestionPreferences.signatureOf()
-            String signature = at.jku.isse.ecco.core.Constraint.buildId(ConstraintMiner.Kind.REQUIRES.name(), "featureWithALongName" + i, "anotherFeature" + i);
+            String signature = at.jku.isse.ecco.core.Constraint.buildId(Constraint.Kind.REQUIRES.name(), "featureWithALongName" + i, "anotherFeature" + i);
             ConstraintSuggestionPreferences.reject(repositoryDir, signature);
             expected.add(signature);
         }

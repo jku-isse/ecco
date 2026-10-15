@@ -20,7 +20,54 @@ import java.nio.charset.StandardCharsets;
  */
 public interface Constraint extends Persistable {
 
-	enum Kind { REQUIRES, EXCLUDES, MANDATORY }
+	/**
+	 * What a constraint between feature names says, defined once: its clause (the feature model the
+	 * minimization and the checks use), when a selection violates it, and how it reads.
+	 */
+	enum Kind {
+		/** A requires B: ~A | B. */
+		REQUIRES,
+		/** A excludes B: ~A | ~B. */
+		EXCLUDES,
+		/** A is in every configuration: A (B is null). */
+		MANDATORY;
+
+		/** The clause over the feature-name variables a and b. */
+		public org.logicng.formulas.Formula clause(org.logicng.formulas.FormulaFactory f, String a, String b) {
+			return switch (this) {
+				case REQUIRES -> f.or(f.literal(a, false), f.literal(b, true));
+				case EXCLUDES -> f.or(f.literal(a, false), f.literal(b, false));
+				case MANDATORY -> f.literal(a, true);
+			};
+		}
+
+		/** Whether [selected] feature names violate the constraint on a and b. */
+		public boolean isViolatedBy(java.util.Set<String> selected, String a, String b) {
+			return switch (this) {
+				case REQUIRES -> selected.contains(a) && !selected.contains(b);
+				case EXCLUDES -> selected.contains(a) && selected.contains(b);
+				case MANDATORY -> !selected.contains(a);
+			};
+		}
+
+		/** The constraint as people read it: "REQUIRES a -> b", "EXCLUDES a / b", "MANDATORY a". */
+		public String describe(String a, String b) {
+			return switch (this) {
+				case REQUIRES -> "REQUIRES " + a + " -> " + b;
+				case EXCLUDES -> "EXCLUDES " + a + " / " + b;
+				case MANDATORY -> "MANDATORY " + a;
+			};
+		}
+
+		/** Why a selection violates it - see {@link #isViolatedBy}. */
+		public String violation(String a, String b) {
+			return switch (this) {
+				case REQUIRES -> describe(a, b) + " violated: " + a + " is selected without " + b;
+				case EXCLUDES -> describe(a, b) + " violated: both are selected";
+				case MANDATORY -> describe(a, b) + " violated: not selected";
+			};
+		}
+	}
 
 	/**
 	 * The natural id: {@code kind.name() + "|" + featureA + "|" + (featureB == null ? "" : featureB)},
@@ -38,7 +85,7 @@ public interface Constraint extends Persistable {
 	 * caller that joins multiple ids with "," (e.g. {@code ConstraintSuggestionPreferences}).
 	 *
 	 * @param kindName Kind#name(), passed as a plain string so this isn't tied to any one Kind enum
-	 *                 (service's {@code ConstraintMiner.Kind} has the identical constant names but
+	 *                 (service's {@code Constraint.Kind} has the identical constant names but
 	 *                 is a distinct type from this interface's own {@link Kind}).
 	 */
 	static String buildId(String kindName, String featureA, String featureB) {

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.junit.jupiter.api.Test;
 import org.logicng.datastructures.Tristate;
@@ -32,7 +33,7 @@ public class PresenceConditionMinimizerTest {
     @Test
     public void requiresConstraint_dropsRedundantPositiveLiteral() {
         ConstraintMiner.Suggestion requires = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.REQUIRES, "A", "B", 0.5, 1.0, 4, List.of());
+                Constraint.Kind.REQUIRES, "A", "B", 0.5, 1.0, 4, List.of());
         Formula featureModel = FeatureModelFormula.compile(List.of(requires));
 
         List<PresenceConditionMinimizer.Term> terms = List.of(
@@ -48,7 +49,7 @@ public class PresenceConditionMinimizerTest {
     @Test
     public void excludesConstraint_dropsRedundantNegativeLiteral() {
         ConstraintMiner.Suggestion excludes = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.EXCLUDES, "A", "B", 0.5, 1.0, 4, List.of());
+                Constraint.Kind.EXCLUDES, "A", "B", 0.5, 1.0, 4, List.of());
         Formula featureModel = FeatureModelFormula.compile(List.of(excludes));
 
         List<PresenceConditionMinimizer.Term> terms = List.of(
@@ -77,7 +78,7 @@ public class PresenceConditionMinimizerTest {
     @Test
     public void mandatoryFeature_collapsesDisjunctionToTautology() {
         ConstraintMiner.Suggestion mandatory = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.MANDATORY, "A", null, 1.0, 1.0, 5, List.of());
+                Constraint.Kind.MANDATORY, "A", null, 1.0, 1.0, 5, List.of());
         Formula featureModel = FeatureModelFormula.compile(List.of(mandatory));
 
         // "A or B" is trivially true once A is mandatory, regardless of B
@@ -106,9 +107,9 @@ public class PresenceConditionMinimizerTest {
     @Test
     public void minimizedResult_isEquivalentToOriginalUnderFeatureModel() {
         ConstraintMiner.Suggestion requiresAB = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.REQUIRES, "A", "B", 0.5, 1.0, 4, List.of());
+                Constraint.Kind.REQUIRES, "A", "B", 0.5, 1.0, 4, List.of());
         ConstraintMiner.Suggestion excludesBC = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.EXCLUDES, "B", "C", 0.5, 1.0, 4, List.of());
+                Constraint.Kind.EXCLUDES, "B", "C", 0.5, 1.0, 4, List.of());
         Formula featureModel = FeatureModelFormula.compile(List.of(requiresAB, excludesBC));
 
         List<PresenceConditionMinimizer.Term> terms = List.of(

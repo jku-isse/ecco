@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.mining.ConstraintMiner;
@@ -71,12 +72,12 @@ public class FeaturesViewTest {
     @Timeout(60)
     public void acceptedConstraintsAreDrawnAgainstTheTree(@TempDir Path tmp) throws Exception {
         try (EccoService service = sample(tmp)) {
-            service.acceptConstraint(ConstraintMiner.Kind.REQUIRES, "B", "A");
-            service.acceptConstraint(ConstraintMiner.Kind.EXCLUDES, "A", "C");
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Base", null);
+            service.acceptConstraint(Constraint.Kind.REQUIRES, "B", "A");
+            service.acceptConstraint(Constraint.Kind.EXCLUDES, "A", "C");
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "Base", null);
             // about a feature the repository does not know: nothing to draw it against
-            service.acceptConstraint(ConstraintMiner.Kind.REQUIRES, "B", "Unknown");
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Unknown", null);
+            service.acceptConstraint(Constraint.Kind.REQUIRES, "B", "Unknown");
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "Unknown", null);
             FeaturesView view = loaded(service);
 
             assertEquals(Set.of("B->A"), onFx(() -> edges(view, "requires")));
@@ -96,7 +97,7 @@ public class FeaturesViewTest {
             FeaturesView view = loaded(service);
             assertEquals(Set.of(), onFx(() -> edges(view, "requires")));
 
-            service.acceptConstraint(ConstraintMiner.Kind.REQUIRES, "C", "Base");
+            service.acceptConstraint(Constraint.Kind.REQUIRES, "C", "Base");
             waitUntil("the REQUIRES edge", () -> edges(view, "requires").equals(Set.of("C->Base")));
             assertEquals(Set.of("Base->A", "A->B", "Base->C"), onFx(() -> edges(view, "tree")), "the tree is drawn again with it");
         }
@@ -106,7 +107,7 @@ public class FeaturesViewTest {
     @Timeout(60)
     public void theTreeLayoutPlacesEachFeatureWhereTheModelTreeSays(@TempDir Path tmp) throws Exception {
         try (EccoService service = sample(tmp)) {
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Base", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "Base", null);
             FeaturesView view = loaded(service);
 
             onFx(() -> layoutChoice(view).getSelectionModel().select(1));

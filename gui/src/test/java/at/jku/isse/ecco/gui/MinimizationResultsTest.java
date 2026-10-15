@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
@@ -177,7 +178,7 @@ public class MinimizationResultsTest {
         String[] configurations = {"Base, A, B", "Base, A, B", "Base, A, B", "Base, A", "Base, C"};
         for (int i = 0; i < configurations.length; i++)
             commit(service, tmp.resolve("v" + i), configurations[i], Map.of("f" + i + ".txt", i + "\n"));
-        service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Base", null);
+        service.acceptConstraint(Constraint.Kind.MANDATORY, "Base", null);
         return service;
     }
 

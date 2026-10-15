@@ -353,14 +353,12 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
     }
 
     /**
-     * Renders a raw {@code KIND|a|b} signature as {@code "KIND: a → b"} (or just {@code "KIND: a"}
-     * for MANDATORY, which has no second feature). The list's backing data stays the raw signature
+     * Renders a raw {@code KIND|a|b} signature as constraints read everywhere ({@code Constraint.Kind#describe}:
+     * "REQUIRES a -> b", "EXCLUDES a / b", "MANDATORY a"). The list's backing data stays the raw signature
      * -- needed verbatim by {@link ConstraintSuggestionPreferences#clearDecision} -- only the cell's
      * displayed text is reformatted.
      */
     private static final class SignatureCell extends ListCell<String> {
-        private static final String ARROW = " → "; // "→" = RIGHTWARDS ARROW (real symbol, not "-->")
-
         /** signature -> trust-status suffix (e.g. " [trusted]"); null for lists with no such concept
          * (rejected suggestions were never trusted to begin with). */
         private final java.util.Map<String, String> statusSuffixBySignature;
@@ -377,9 +375,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                 return;
             }
             ConstraintSuggestionPreferences.AcceptedConstraint parsed = ConstraintSuggestionPreferences.parseSignature(signature);
-            String base = parsed == null ? signature
-                    : parsed.b == null ? parsed.kind + ": " + parsed.a
-                    : parsed.kind + ": " + parsed.a + ARROW + parsed.b;
+            String base = parsed == null ? signature : parsed.kind.describe(parsed.a, parsed.b);
             String suffix = statusSuffixBySignature == null ? "" : statusSuffixBySignature.getOrDefault(signature, "");
             setText(base + suffix);
         }

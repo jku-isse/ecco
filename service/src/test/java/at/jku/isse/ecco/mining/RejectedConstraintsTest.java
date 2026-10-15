@@ -23,9 +23,9 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class RejectedConstraintsTest {
 
-    private static final ConstraintMiner.Suggestion MANDATORY_A = suggestion(ConstraintMiner.Kind.MANDATORY, "A", null);
-    private static final ConstraintMiner.Suggestion B_REQUIRES_A = suggestion(ConstraintMiner.Kind.REQUIRES, "B", "A");
-    private static final ConstraintMiner.Suggestion A_EXCLUDES_C = suggestion(ConstraintMiner.Kind.EXCLUDES, "A", "C");
+    private static final ConstraintMiner.Suggestion MANDATORY_A = suggestion(Constraint.Kind.MANDATORY, "A", null);
+    private static final ConstraintMiner.Suggestion B_REQUIRES_A = suggestion(Constraint.Kind.REQUIRES, "B", "A");
+    private static final ConstraintMiner.Suggestion A_EXCLUDES_C = suggestion(Constraint.Kind.EXCLUDES, "A", "C");
 
     @Test
     @Timeout(30)
@@ -170,7 +170,7 @@ public class RejectedConstraintsTest {
         return service;
     }
 
-    private static ConstraintMiner.Suggestion suggestion(ConstraintMiner.Kind kind, String a, String b) {
+    private static ConstraintMiner.Suggestion suggestion(Constraint.Kind kind, String a, String b) {
         return new ConstraintMiner.Suggestion(kind, a, b, 1.0, 1.0, 5, List.of());
     }
 

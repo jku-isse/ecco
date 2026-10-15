@@ -46,9 +46,9 @@ public class ConstraintBatchAcceptTest {
             });
 
             List<ConstraintMiner.Suggestion> suggestions = List.of(
-                    new ConstraintMiner.Suggestion(ConstraintMiner.Kind.MANDATORY, "A", null, 1.0, 1.0, 5, List.of()),
-                    new ConstraintMiner.Suggestion(ConstraintMiner.Kind.MANDATORY, "B", null, 1.0, 1.0, 5, List.of()),
-                    new ConstraintMiner.Suggestion(ConstraintMiner.Kind.EXCLUDES, "C", "D", 1.0, 1.0, 5, List.of()));
+                    new ConstraintMiner.Suggestion(Constraint.Kind.MANDATORY, "A", null, 1.0, 1.0, 5, List.of()),
+                    new ConstraintMiner.Suggestion(Constraint.Kind.MANDATORY, "B", null, 1.0, 1.0, 5, List.of()),
+                    new ConstraintMiner.Suggestion(Constraint.Kind.EXCLUDES, "C", "D", 1.0, 1.0, 5, List.of()));
 
             service.acceptConstraints(suggestions);
 
@@ -93,9 +93,9 @@ public class ConstraintBatchAcceptTest {
             service.setRepositoryDir(repoDir);
             service.init();
 
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "A", null);
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "B", null);
-            service.acceptConstraint(ConstraintMiner.Kind.EXCLUDES, "C", "D");
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "A", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "B", null);
+            service.acceptConstraint(Constraint.Kind.EXCLUDES, "C", "D");
             assertEquals(3, service.getRepository().getConstraints().size());
 
             AtomicInteger eventCount = new AtomicInteger();

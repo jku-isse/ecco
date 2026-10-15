@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import java.util.List;
 import java.util.Set;
 
@@ -47,7 +48,7 @@ public final class FeatureSelectionPropagator {
             for (ConstraintMiner.Suggestion suggestion : acceptedSuggestions) {
                 if (!suggestion.isHard()) continue;
 
-                if (suggestion.kind == ConstraintMiner.Kind.REQUIRES
+                if (suggestion.kind == Constraint.Kind.REQUIRES
                         && selected.contains(suggestion.a) && !selected.contains(suggestion.b)) {
                     if (suggestion.b.equals(justToggled)) {
                         // b was just (deliberately) unchecked -- can't re-select it, relax a instead.
@@ -59,7 +60,7 @@ public final class FeatureSelectionPropagator {
                         changed = true;
                         break;
                     }
-                } else if (suggestion.kind == ConstraintMiner.Kind.EXCLUDES
+                } else if (suggestion.kind == Constraint.Kind.EXCLUDES
                         && selected.contains(suggestion.a) && selected.contains(suggestion.b)) {
                     String toDeselect = suggestion.a.equals(justToggled) ? suggestion.b : suggestion.a;
                     if (!lockedFeatureNames.contains(toDeselect) && selected.remove(toDeselect)) {

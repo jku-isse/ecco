@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -18,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class FeatureSelectionPropagatorTest {
 
-    private static ConstraintMiner.Suggestion hard(ConstraintMiner.Kind kind, String a, String b) {
+    private static ConstraintMiner.Suggestion hard(Constraint.Kind kind, String a, String b) {
         return new ConstraintMiner.Suggestion(kind, a, b, 1.0, 1.0, 4, List.of());
     }
 
@@ -26,9 +27,9 @@ public class FeatureSelectionPropagatorTest {
     public void requires_selectingAntecedent_selectsConsequent() {
         Set<String> selected = new HashSet<>(Set.of("A"));
         FeatureSelectionPropagator.propagate(
-                selected, "A", List.of(hard(ConstraintMiner.Kind.REQUIRES, "A", "B")), Set.of());
+                selected, "A", List.of(hard(Constraint.Kind.REQUIRES, "A", "B")), Set.of());
         assertTrue(selected.contains("B"));
-        assertTrue(ConstraintViolationChecker.checkViolations(selected, List.of(hard(ConstraintMiner.Kind.REQUIRES, "A", "B"))).isEmpty());
+        assertTrue(ConstraintViolationChecker.checkViolations(selected, List.of(hard(Constraint.Kind.REQUIRES, "A", "B"))).isEmpty());
     }
 
     @Test
@@ -36,7 +37,7 @@ public class FeatureSelectionPropagatorTest {
         Set<String> selected = new HashSet<>(Set.of("A", "B"));
         selected.remove("B"); // the user just unchecked B
         FeatureSelectionPropagator.propagate(
-                selected, "B", List.of(hard(ConstraintMiner.Kind.REQUIRES, "A", "B")), Set.of());
+                selected, "B", List.of(hard(Constraint.Kind.REQUIRES, "A", "B")), Set.of());
         assertFalse(selected.contains("B"), "the just-toggled checkbox is authoritative, never overridden");
         assertFalse(selected.contains("A"), "A requires B, so A must be relaxed instead");
     }
@@ -45,7 +46,7 @@ public class FeatureSelectionPropagatorTest {
     public void excludes_selectingOneDeselectsTheOther() {
         Set<String> selected = new HashSet<>(Set.of("A", "B"));
         FeatureSelectionPropagator.propagate(
-                selected, "B", List.of(hard(ConstraintMiner.Kind.EXCLUDES, "A", "B")), Set.of());
+                selected, "B", List.of(hard(Constraint.Kind.EXCLUDES, "A", "B")), Set.of());
         assertTrue(selected.contains("B"), "the just-toggled checkbox is authoritative");
         assertFalse(selected.contains("A"));
     }
@@ -57,7 +58,7 @@ public class FeatureSelectionPropagatorTest {
         // locked set is still honored defensively if a locked feature is ever left unselected.
         Set<String> selected = new HashSet<>(Set.of("A"));
         FeatureSelectionPropagator.propagate(
-                selected, "A", List.of(hard(ConstraintMiner.Kind.REQUIRES, "A", "B")), Set.of("B"));
+                selected, "A", List.of(hard(Constraint.Kind.REQUIRES, "A", "B")), Set.of("B"));
         assertFalse(selected.contains("B"), "locked features must never be adjusted by propagation");
     }
 
@@ -68,8 +69,8 @@ public class FeatureSelectionPropagatorTest {
         // are forced into disagreement, nothing can resolve without touching the just-clicked "A"
         // -- the bounded fixpoint must give up instead of oscillating forever.
         List<ConstraintMiner.Suggestion> contradictory = List.of(
-                hard(ConstraintMiner.Kind.REQUIRES, "A", "B"),
-                hard(ConstraintMiner.Kind.EXCLUDES, "A", "B"));
+                hard(Constraint.Kind.REQUIRES, "A", "B"),
+                hard(Constraint.Kind.EXCLUDES, "A", "B"));
         Set<String> selected = new HashSet<>(Set.of("A"));
         FeatureSelectionPropagator.propagate(selected, "A", contradictory, Set.of());
         assertTrue(selected.contains("A"), "the just-toggled checkbox is still never overridden");

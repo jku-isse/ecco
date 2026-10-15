@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint.Kind;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -25,7 +26,6 @@ import java.util.function.Function;
  */
 public final class ConstraintMiner {
 
-    public enum Kind { REQUIRES, EXCLUDES, MANDATORY }
 
     /** A single ranked constraint hypothesis. */
     public static final class Suggestion {

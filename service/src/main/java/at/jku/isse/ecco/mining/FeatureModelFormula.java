@@ -31,17 +31,7 @@ public final class FeatureModelFormula {
         List<Formula> clauses = new ArrayList<>();
         for (ConstraintMiner.Suggestion suggestion : acceptedSuggestions) {
             if (!suggestion.isHard()) continue;
-            switch (suggestion.kind) {
-                case REQUIRES:
-                    clauses.add(f.or(f.literal(suggestion.a, false), f.literal(suggestion.b, true))); // ~A | B
-                    break;
-                case EXCLUDES:
-                    clauses.add(f.or(f.literal(suggestion.a, false), f.literal(suggestion.b, false))); // ~A | ~B
-                    break;
-                case MANDATORY:
-                    clauses.add(f.literal(suggestion.a, true)); // A
-                    break;
-            }
+            clauses.add(suggestion.kind.clause(f, suggestion.a, suggestion.b));
         }
         return clauses.isEmpty() ? f.verum() : f.and(clauses);
     }

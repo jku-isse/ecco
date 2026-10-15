@@ -49,22 +49,18 @@ public class ConstraintService {
         return result;
     }
 
-    private static Constraint.Kind toConstraintKind(ConstraintMiner.Kind kind) {
-        return Constraint.Kind.valueOf(kind.name());
-    }
-
     public void acceptConstraint(ConstraintMiner.Suggestion suggestion) {
         owner.checkInitialized();
         checkNotNull(suggestion);
         acceptConstraint(suggestion.kind, suggestion.a, suggestion.b);
     }
 
-    public void acceptConstraint(ConstraintMiner.Kind kind, String featureA, String featureB) {
+    public void acceptConstraint(Constraint.Kind kind, String featureA, String featureB) {
         owner.checkInitialized();
         checkNotNull(kind);
         checkNotNull(featureA);
         owner.writeTransaction(repository -> {
-            accept(repository, toConstraintKind(kind), featureA, featureB);
+            accept(repository, kind, featureA, featureB);
             return repository;
         });
     }
@@ -101,7 +97,7 @@ public class ConstraintService {
         owner.writeTransaction(repository -> {
             for (ConstraintMiner.Suggestion suggestion : suggestions) {
                 checkNotNull(suggestion);
-                accept(repository, toConstraintKind(suggestion.kind), suggestion.a, suggestion.b);
+                accept(repository, suggestion.kind, suggestion.a, suggestion.b);
             }
             return repository;
         });
@@ -147,19 +143,19 @@ public class ConstraintService {
         owner.writeTransaction(repository -> {
             for (ConstraintMiner.Suggestion suggestion : suggestions) {
                 checkNotNull(suggestion);
-                reject(repository, toConstraintKind(suggestion.kind), suggestion.a, suggestion.b);
+                reject(repository, suggestion.kind, suggestion.a, suggestion.b);
             }
             return repository;
         });
     }
 
     /** Rejects one constraint given by kind and features - see {@link #rejectConstraints}. */
-    public void rejectConstraint(ConstraintMiner.Kind kind, String featureA, String featureB) {
+    public void rejectConstraint(Constraint.Kind kind, String featureA, String featureB) {
         owner.checkInitialized();
         checkNotNull(kind);
         checkNotNull(featureA);
         owner.writeTransaction(repository -> {
-            reject(repository, toConstraintKind(kind), featureA, featureB);
+            reject(repository, kind, featureA, featureB);
             return repository;
         });
     }
@@ -194,7 +190,7 @@ public class ConstraintService {
             for (String signature : local) {
                 ConstraintSuggestionPreferences.AcceptedConstraint parsed = ConstraintSuggestionPreferences.parseSignature(signature);
                 if (parsed != null && repository.getConstraint(signature) == null)
-                    repository.addRejectedConstraint(toConstraintKind(parsed.kind), parsed.a, parsed.b);
+                    repository.addRejectedConstraint(parsed.kind, parsed.a, parsed.b);
             }
             return repository;
         });

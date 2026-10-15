@@ -47,9 +47,9 @@ public class ConstraintDecisionCommand implements Command {
 
     @Override
     public void run(Namespace namespace) {
-        ConstraintMiner.Kind kind;
+        Constraint.Kind kind;
         try {
-            kind = ConstraintMiner.Kind.valueOf(namespace.getString(KIND_KEY).toUpperCase());
+            kind = Constraint.Kind.valueOf(namespace.getString(KIND_KEY).toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new CliException("No constraint kind \"" + namespace.getString(KIND_KEY) + "\": REQUIRES, EXCLUDES or MANDATORY.");
         }
@@ -57,12 +57,12 @@ public class ConstraintDecisionCommand implements Command {
         String b = namespace.getString(FEATURE_B_KEY);
         boolean undo = Boolean.TRUE.equals(namespace.getBoolean(UNDO_KEY));
 
-        if (kind == ConstraintMiner.Kind.MANDATORY && b != null)
+        if (kind == Constraint.Kind.MANDATORY && b != null)
             throw new CliException("MANDATORY takes one feature, not two.");
-        if (kind != ConstraintMiner.Kind.MANDATORY && b == null)
+        if (kind != Constraint.Kind.MANDATORY && b == null)
             throw new CliException(kind + " takes two features.");
         // the miner names an EXCLUDES pair in alphabetical order; either order means the same
-        if (kind == ConstraintMiner.Kind.EXCLUDES && a.compareTo(b) > 0) {
+        if (kind == Constraint.Kind.EXCLUDES && a.compareTo(b) > 0) {
             String first = b;
             b = a;
             a = first;
@@ -86,7 +86,7 @@ public class ConstraintDecisionCommand implements Command {
                     return;
                 }
                 if (accept)
-                    eccoService.unacceptConstraint(Constraint.Kind.valueOf(kind.name()), a, b);
+                    eccoService.unacceptConstraint(kind, a, b);
                 else
                     eccoService.unrejectConstraints(List.of(ConstraintSuggestionPreferences.parseSignature(signature)));
                 writer.println(text + " is pending again.");
@@ -106,11 +106,7 @@ public class ConstraintDecisionCommand implements Command {
     }
 
     /** As suggest-constraints prints it, without the figures. */
-    static String describe(ConstraintMiner.Kind kind, String a, String b) {
-        return switch (kind) {
-            case REQUIRES -> "REQUIRES " + a + " -> " + b;
-            case EXCLUDES -> "EXCLUDES " + a + " / " + b;
-            case MANDATORY -> "MANDATORY " + a;
-        };
+    static String describe(Constraint.Kind kind, String a, String b) {
+        return kind.describe(a, b);
     }
 }

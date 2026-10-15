@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.service.EccoService;
@@ -62,7 +63,7 @@ public class ParallelMinimizationTest {
             service.setBaseDir(branchBDir);
             service.commit("branch B", "Core, BranchB");
 
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Core", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "Core", null);
 
             List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);

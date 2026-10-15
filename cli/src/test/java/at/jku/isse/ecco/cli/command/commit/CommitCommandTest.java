@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.cli.command.commit;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.cli.writer.StringWriter;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
@@ -97,7 +98,7 @@ public class CommitCommandTest {
             // an accepted constraint only counts while the commits still witness it (at least 4)
             for (int i = 0; i < 4; i++)
                 commitFile(real, tmp.resolve("seed" + i), "seed " + i, "BASE, A");
-            real.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "A", null);
+            real.acceptConstraint(Constraint.Kind.MANDATORY, "A", null);
         }
         EccoService real = new EccoService();
         real.setRepositoryDir(repo);

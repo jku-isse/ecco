@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
@@ -71,7 +72,7 @@ public class PresenceConditionMinimizerRealRepoTest {
             service.commit("branch B", "Core, BranchB");
 
             // a real accept, exactly like a human reviewing `suggest-constraints` output would do
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Core", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "Core", null);
 
             // same pipeline as MinimizePreviewCommand/AssociationsView's "Minimize Presence
             // Conditions" button: re-mine fresh, filter to accepted signatures, compile once.

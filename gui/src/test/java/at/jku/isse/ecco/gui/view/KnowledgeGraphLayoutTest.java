@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
@@ -64,9 +65,9 @@ public class KnowledgeGraphLayoutTest {
 		service.setBaseDir(dir4);
 		service.commit("commit 4", "C");
 
-		service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "A", null);
-		service.acceptConstraint(ConstraintMiner.Kind.REQUIRES, "B", "A");
-		service.acceptConstraint(ConstraintMiner.Kind.EXCLUDES, "B", "C");
+		service.acceptConstraint(Constraint.Kind.MANDATORY, "A", null);
+		service.acceptConstraint(Constraint.Kind.REQUIRES, "B", "A");
+		service.acceptConstraint(Constraint.Kind.EXCLUDES, "B", "C");
 
 		return service;
 	}

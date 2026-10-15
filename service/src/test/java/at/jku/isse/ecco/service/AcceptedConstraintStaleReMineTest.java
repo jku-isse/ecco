@@ -58,7 +58,7 @@ public class AcceptedConstraintStaleReMineTest {
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
             ConstraintMiner.Suggestion excludesCoreExtra = null;
             for (ConstraintMiner.Suggestion suggestion : mined) {
-                if (suggestion.kind == ConstraintMiner.Kind.EXCLUDES
+                if (suggestion.kind == Constraint.Kind.EXCLUDES
                         && ((suggestion.a.equals("Core") && "Extra".equals(suggestion.b))
                         || (suggestion.a.equals("Extra") && "Core".equals(suggestion.b)))) {
                     excludesCoreExtra = suggestion;
@@ -72,7 +72,7 @@ public class AcceptedConstraintStaleReMineTest {
 
             // before any contradiction: the accepted constraint is trusted
             List<ConstraintMiner.Suggestion> trustedBefore = service.acceptedSuggestions(service.getRepository());
-            assertTrue(trustedBefore.stream().anyMatch(s -> s.kind == ConstraintMiner.Kind.EXCLUDES
+            assertTrue(trustedBefore.stream().anyMatch(s -> s.kind == Constraint.Kind.EXCLUDES
                             && ((s.a.equals("Core") && "Extra".equals(s.b)) || (s.a.equals("Extra") && "Core".equals(s.b)))),
                     "accepted EXCLUDES(Core,Extra) must be trusted while it still re-mines as hard");
 
@@ -93,7 +93,7 @@ public class AcceptedConstraintStaleReMineTest {
 
             // (2) but it must no longer be TRUSTED -- excluded from the fresh-mined-and-filtered result
             List<ConstraintMiner.Suggestion> trustedAfter = service.acceptedSuggestions(service.getRepository());
-            assertFalse(trustedAfter.stream().anyMatch(s -> s.kind == ConstraintMiner.Kind.EXCLUDES
+            assertFalse(trustedAfter.stream().anyMatch(s -> s.kind == Constraint.Kind.EXCLUDES
                             && ((s.a.equals("Core") && "Extra".equals(s.b)) || (s.a.equals("Extra") && "Core".equals(s.b)))),
                     "a persisted-but-now-contradicted constraint must be excluded from the trusted set, "
                             + "even though it's still recorded as accepted -- this is the safety rule that must survive "

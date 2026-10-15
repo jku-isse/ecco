@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.service.EccoService;
 import org.junit.jupiter.api.Test;
@@ -92,7 +93,7 @@ public class MinimizedConditionValidityTest {
             // (which would refuse to leave a changed association unwritten - verifyUnchangedAssociations)
             any.setMinimizedCondition(condition, basis);
 
-            service.acceptConstraint(ConstraintMiner.Kind.REQUIRES, "B", "A");
+            service.acceptConstraint(Constraint.Kind.REQUIRES, "B", "A");
             assertTrue(service.validMinimizedConditions().isEmpty(), "the feature model changed");
         }
     }

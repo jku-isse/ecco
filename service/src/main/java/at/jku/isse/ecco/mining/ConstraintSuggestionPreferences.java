@@ -33,11 +33,11 @@ public final class ConstraintSuggestionPreferences {
 
     /** The kind/a/b identity an accepted or rejected signature decodes back into. */
     public static final class AcceptedConstraint {
-        public final ConstraintMiner.Kind kind;
+        public final Constraint.Kind kind;
         public final String a;
         public final String b; // null for MANDATORY
 
-        AcceptedConstraint(ConstraintMiner.Kind kind, String a, String b) {
+        AcceptedConstraint(Constraint.Kind kind, String a, String b) {
             this.kind = kind;
             this.a = a;
             this.b = b;
@@ -60,7 +60,7 @@ public final class ConstraintSuggestionPreferences {
         String[] parts = signature.split("\\|", 3);
         if (parts.length != 3) return null;
         try {
-            ConstraintMiner.Kind kind = ConstraintMiner.Kind.valueOf(parts[0]);
+            Constraint.Kind kind = Constraint.Kind.valueOf(parts[0]);
             return new AcceptedConstraint(kind, Constraint.decodeIdPart(parts[1]),
                     parts[2].isEmpty() ? null : Constraint.decodeIdPart(parts[2]));
         } catch (IllegalArgumentException e) {

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -214,7 +215,7 @@ public class CommitViewTest {
             // an accepted constraint only counts while the commits still witness it (at least 4)
             for (int i = 0; i < 4; i++)
                 commit(service, tmp.resolve("seed" + i), "BASE, A", Map.of("seed.txt", "seed " + i + "\n"));
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "A", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "A", null);
             Path parent = tmp.resolve("variants");
             Path ok = variant(parent, "ok", "BASE, A", "a\n");
             Path violating = variant(parent, "violating", "BASE", "base\n");

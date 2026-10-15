@@ -30,7 +30,7 @@ public class ConstraintRoundTripTest {
             service.init();
             service.setBaseDir(xDir);
             service.commit("x", "X");
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "X", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "X", null);
         }
 
         // a real serialization round-trip: a brand new EccoService instance, reopening from disk --
@@ -57,11 +57,11 @@ public class ConstraintRoundTripTest {
             service.setRepositoryDir(repoDir);
             service.init();
 
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Core", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "Core", null);
             assertTrue(hasConstraint(service, Constraint.Kind.MANDATORY, "Core"));
 
             // accepting the same constraint again is idempotent -- still exactly one entry
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Core", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "Core", null);
             assertEquals(1, service.getRepository().getConstraints().size());
 
             service.unacceptConstraint(Constraint.Kind.MANDATORY, "Core", null);
@@ -73,7 +73,7 @@ public class ConstraintRoundTripTest {
             assertEquals(0, service.getRepository().getConstraints().size());
 
             // re-accepting after undo works again
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Core", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "Core", null);
             assertTrue(hasConstraint(service, Constraint.Kind.MANDATORY, "Core"));
         }
     }
@@ -95,7 +95,7 @@ public class ConstraintRoundTripTest {
             service.setRepositoryDir(repoDir);
             service.init();
 
-            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Feature A", null);
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "Feature A", null);
             assertTrue(hasConstraint(service, Constraint.Kind.MANDATORY, "Feature A"));
 
             service.unacceptConstraint(Constraint.Kind.MANDATORY, "Feature A", null);

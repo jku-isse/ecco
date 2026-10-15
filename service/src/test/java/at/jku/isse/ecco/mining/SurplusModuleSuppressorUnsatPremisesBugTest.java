@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -64,7 +65,7 @@ public class SurplusModuleSuppressorUnsatPremisesBugTest {
         SerModuleRevision desiredRevision = desiredModule.addRevision(new FeatureRevision[]{bodyR1}, new Feature[]{header});
 
         ConstraintMiner.Suggestion mandatoryHeader = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.MANDATORY, "header", null, 1.0, 1.0, 52, List.of());
+                Constraint.Kind.MANDATORY, "header", null, 1.0, 1.0, 52, List.of());
         Formula revisionAwareFeatureModel =
                 FeatureModelFormula.compileRevisionAware(List.of(mandatoryHeader), List.of(header));
 
@@ -93,7 +94,7 @@ public class SurplusModuleSuppressorUnsatPremisesBugTest {
         SerModuleRevision desiredRevision = desiredModule.addRevision(new FeatureRevision[]{bodyR1}, new Feature[]{header});
 
         ConstraintMiner.Suggestion mandatoryHeader = new ConstraintMiner.Suggestion(
-                ConstraintMiner.Kind.MANDATORY, "header", null, 1.0, 1.0, 52, List.of());
+                Constraint.Kind.MANDATORY, "header", null, 1.0, 1.0, 52, List.of());
         Formula revisionAwareFeatureModel =
                 FeatureModelFormula.compileRevisionAware(List.of(mandatoryHeader), List.of(header, unrelated, body));
 

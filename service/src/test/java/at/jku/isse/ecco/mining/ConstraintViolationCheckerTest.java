@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -14,18 +15,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class ConstraintViolationCheckerTest {
 
-    private static ConstraintMiner.Suggestion hard(ConstraintMiner.Kind kind, String a, String b) {
+    private static ConstraintMiner.Suggestion hard(Constraint.Kind kind, String a, String b) {
         return new ConstraintMiner.Suggestion(kind, a, b, 1.0, 1.0, 4, List.of());
     }
 
-    private static ConstraintMiner.Suggestion nearMiss(ConstraintMiner.Kind kind, String a, String b) {
+    private static ConstraintMiner.Suggestion nearMiss(Constraint.Kind kind, String a, String b) {
         return new ConstraintMiner.Suggestion(kind, a, b, 1.0, 0.9, 4, List.of(0));
     }
 
     @Test
     public void requires_selectedWithoutConsequent_isViolation() {
         List<String> violations = ConstraintViolationChecker.checkViolations(
-                Set.of("A"), List.of(hard(ConstraintMiner.Kind.REQUIRES, "A", "B")));
+                Set.of("A"), List.of(hard(Constraint.Kind.REQUIRES, "A", "B")));
         assertEquals(1, violations.size());
         assertTrue(violations.get(0).contains("REQUIRES"));
     }
@@ -33,21 +34,21 @@ public class ConstraintViolationCheckerTest {
     @Test
     public void requires_bothSelected_noViolation() {
         List<String> violations = ConstraintViolationChecker.checkViolations(
-                Set.of("A", "B"), List.of(hard(ConstraintMiner.Kind.REQUIRES, "A", "B")));
+                Set.of("A", "B"), List.of(hard(Constraint.Kind.REQUIRES, "A", "B")));
         assertTrue(violations.isEmpty());
     }
 
     @Test
     public void requires_antecedentNotSelected_noViolation() {
         List<String> violations = ConstraintViolationChecker.checkViolations(
-                Set.of("C"), List.of(hard(ConstraintMiner.Kind.REQUIRES, "A", "B")));
+                Set.of("C"), List.of(hard(Constraint.Kind.REQUIRES, "A", "B")));
         assertTrue(violations.isEmpty());
     }
 
     @Test
     public void excludes_bothSelected_isViolation() {
         List<String> violations = ConstraintViolationChecker.checkViolations(
-                Set.of("A", "B"), List.of(hard(ConstraintMiner.Kind.EXCLUDES, "A", "B")));
+                Set.of("A", "B"), List.of(hard(Constraint.Kind.EXCLUDES, "A", "B")));
         assertEquals(1, violations.size());
         assertTrue(violations.get(0).contains("EXCLUDES"));
     }
@@ -55,14 +56,14 @@ public class ConstraintViolationCheckerTest {
     @Test
     public void excludes_onlyOneSelected_noViolation() {
         List<String> violations = ConstraintViolationChecker.checkViolations(
-                Set.of("A"), List.of(hard(ConstraintMiner.Kind.EXCLUDES, "A", "B")));
+                Set.of("A"), List.of(hard(Constraint.Kind.EXCLUDES, "A", "B")));
         assertTrue(violations.isEmpty());
     }
 
     @Test
     public void mandatory_notSelected_isViolation() {
         List<String> violations = ConstraintViolationChecker.checkViolations(
-                Set.of("B"), List.of(hard(ConstraintMiner.Kind.MANDATORY, "A", null)));
+                Set.of("B"), List.of(hard(Constraint.Kind.MANDATORY, "A", null)));
         assertEquals(1, violations.size());
         assertTrue(violations.get(0).contains("MANDATORY"));
     }
@@ -70,14 +71,14 @@ public class ConstraintViolationCheckerTest {
     @Test
     public void mandatory_selected_noViolation() {
         List<String> violations = ConstraintViolationChecker.checkViolations(
-                Set.of("A"), List.of(hard(ConstraintMiner.Kind.MANDATORY, "A", null)));
+                Set.of("A"), List.of(hard(Constraint.Kind.MANDATORY, "A", null)));
         assertTrue(violations.isEmpty());
     }
 
     @Test
     public void nearMissSuggestion_isIgnoredEvenIfViolated() {
         List<String> violations = ConstraintViolationChecker.checkViolations(
-                Set.of("A"), List.of(nearMiss(ConstraintMiner.Kind.REQUIRES, "A", "B")));
+                Set.of("A"), List.of(nearMiss(Constraint.Kind.REQUIRES, "A", "B")));
         assertTrue(violations.isEmpty(), "only hard (accepted, exception-free) rules should be checked");
     }
 
