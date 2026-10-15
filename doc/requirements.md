@@ -268,7 +268,7 @@ Postcondition: The repository holds the commit, and the presence condition of ev
 
 **Specific alternative flow SA1** (RFS 3)
 
-1. The system reports the configuration error: invalid syntax, an ambiguous feature name, an unknown feature id, or "A commit needs at least one feature: ... (e.g. BASE).".
+1. The system reports the configuration error: invalid syntax, an ambiguous feature name, an unknown feature id, a feature name conditions could not tell from another's (FR-F6), or "A commit needs at least one feature: ... (e.g. BASE).".
 2. ABORT.
 
 Postcondition: The repository is unchanged.
@@ -1042,6 +1042,7 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | FR-F3 | An ambiguous feature name shall be rejected with a hint to use the feature id. | Code `ConfigurationParser:175` |
 | FR-F4 | Parsing a configuration shall not persist revisions as a side effect. | Test `ParseConfigurationPhantomRevisionTest` |
 | FR-F5 | A configuration shall hold at most one revision per feature. | Code REPO:509-516 |
+| FR-F6 | A feature or revision whose logic variable (`.` and `-` read as `_`) is another's - `shopping-cart` next to `shopping_cart`, `A.B_1` next to `A_B.1`, `A_1` next to `A.1` - shall be refused on commit and pull; conditions could not tell them apart and checked out wrong content. | Test `FeatureVariableCollisionTest`; Code `FeatureLiterals.checkDistinct` |
 | FR-F6 | `[<id>]` shall name an existing feature, with the same meaning as its name in every form; an unknown id is rejected. | Test `UnknownFeatureIdTest` |
 
 ### Commit

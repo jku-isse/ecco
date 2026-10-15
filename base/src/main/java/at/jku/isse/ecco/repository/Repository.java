@@ -16,6 +16,7 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
@@ -287,6 +288,7 @@ public interface Repository extends Persistable {
 		void invalidateMainTree();
 
 		default Collection<FeatureRevision> addFeatureRevisions(FeatureRevision[] featureRevisions){
+			FeatureLiterals.checkDistinct(this.getFeatures(), Arrays.asList(featureRevisions));
 			Collection<FeatureRevision> repoFeatureRevisions = new ArrayList<>();
 			for (FeatureRevision featureRevision : featureRevisions) {
 				Feature feature = featureRevision.getFeature();
@@ -1141,6 +1143,10 @@ public interface Repository extends Persistable {
 			checkNotNull(otherRepository);
 			this.checkArtifactFormats();
 			otherRepository.checkArtifactFormats();
+			List<FeatureRevision> otherRevisions = new ArrayList<>();
+			for (Feature otherFeature : otherRepository.getFeatures())
+				otherRevisions.addAll(otherFeature.getRevisions());
+			FeatureLiterals.checkDistinct(this.getFeatures(), otherRevisions);
 
 			// copy every constraint from other repository into this one that doesn't already exist
 			// here (by natural kind|a|b id). Kept deliberately independent of the module/association
