@@ -188,20 +188,32 @@ public class JavaASTVariantEqualityTest {
 	private static final String TWO_EQUAL_INITIALIZERS = "class C {\n    static int x;\n    static {\n        x++;\n    }\n    static {\n        x++;\n    }\n}\n";
 
 	/**
-	 * Bug: two initializer blocks with the same text (legal Java) are equal artifacts under the
-	 * class node, whose children are unordered, so reading the file fails with "An equivalent child
-	 * is already contained" (JavaASTReader.addInitializer) - the file cannot be committed.
+	 * Two initializer blocks with the same text (legal Java) were equal artifacts under the class
+	 * node, whose children must differ: reading the file failed ("An equivalent child is already
+	 * contained"), and it was committed by the text adapter (gap #64). The second is told apart by
+	 * its occurrence; both are written back; a class with one such block is read as before.
 	 */
 	@Test
-	@Disabled("bug: equal initializer blocks are rejected as duplicate children of the unordered class node")
 	public void classWithTwoEqualInitializersCanBeRead() throws IOException {
 		assertNotNull(read("C.java", TWO_EQUAL_INITIALIZERS));
+		String written = JavaASTRoundTripTest.readWrite("C.java", TWO_EQUAL_INITIALIZERS);
+		assertEquals(2, written.split("static \\{", -1).length - 1, written);
+		assertEquals(2, written.split("x\\+\\+;", -1).length - 1, written);
 	}
 
 	@Test
-	public void classWithTwoEqualInitializersFailsToReadToday() {
-		Exception e = assertThrows(Exception.class, () -> read("C.java", TWO_EQUAL_INITIALIZERS));
-		assertTrue(String.valueOf(rootMessage(e)).contains("equivalent child"), String.valueOf(rootMessage(e)));
+	public void aSingleInitializerIsReadAsBefore() throws IOException {
+		String one = "class C {\n    static int x;\n    static {\n        x++;\n    }\n}\n";
+		java.util.List<Object> data = new java.util.ArrayList<>();
+		collectData(read("C.java", one), data);
+		assertTrue(data.stream().noneMatch(d -> d instanceof at.jku.cdl.ecco.adapter.java.artifactData.JavaASTRepeatedData), data.toString());
+	}
+
+	private static void collectData(at.jku.isse.ecco.tree.Node node, java.util.List<Object> data) {
+		if (node.getArtifact() != null)
+			data.add(node.getArtifact().getData());
+		for (at.jku.isse.ecco.tree.Node child : node.getChildren())
+			collectData(child, data);
 	}
 
 	private static String rootMessage(Throwable t) {

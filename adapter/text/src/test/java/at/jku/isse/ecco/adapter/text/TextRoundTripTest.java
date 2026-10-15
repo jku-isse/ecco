@@ -18,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Read -> write of text files must give back the same bytes (TextFileFormat records charset, line
- * separator and final newline). The one documented exception: a file mixing line separators gets
- * the first one throughout.
+ * separator and final newline) - also a file that mixes line separators, which got the first one
+ * throughout (gap #53).
  */
 public class TextRoundTripTest {
 
@@ -119,13 +119,14 @@ public class TextRoundTripTest {
         assertArrayEquals(mixed, roundTrip(mixed));
     }
 
-    /** Documented limitation of TextFileFormat: a file mixing line separators gets the first one throughout. */
+    /** A file mixing line separators keeps each (gap #53): it got the first one throughout. */
     @Test
-    public void mixedLineEndingsGetTheFirstSeparatorCurrentBehaviour() throws IOException {
-        assertArrayEquals("a\r\nb\r\nc\r\n".getBytes(StandardCharsets.UTF_8), roundTrip("a\r\nb\nc\r\n".getBytes(StandardCharsets.UTF_8)));
-        assertArrayEquals("a\nb\nc".getBytes(StandardCharsets.UTF_8), roundTrip("a\nb\r\nc".getBytes(StandardCharsets.UTF_8)));
-        // LF followed by CR is two separators, the CR becomes an LF
-        assertArrayEquals("a\n\nb".getBytes(StandardCharsets.UTF_8), roundTrip("a\n\rb".getBytes(StandardCharsets.UTF_8)));
+    public void mixedLineEndingsAreKept() throws IOException {
+        assertRoundTrips("a\r\nb\nc\r\n");
+        assertRoundTrips("a\nb\r\nc");
+        // LF followed by CR is two separators
+        assertRoundTrips("a\n\rb");
+        assertRoundTrips("a\rb\r\nc\nd\r");
     }
 
     @Test

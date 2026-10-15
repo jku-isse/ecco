@@ -60,6 +60,7 @@ import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTData;
 import at.jku.cdl.ecco.adapter.java.artifactData.ASTNodeType;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTConstructorData;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTModuleData;
+import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTRepeatedData;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTSimpleStringData;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTTryData;
 import at.jku.isse.ecco.EccoException;
@@ -311,14 +312,24 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		extractConstructors(clazz).forEach(c -> clazzNode.addChild(c));
 		extractMethods(clazz).forEach(c -> clazzNode.addChild(c));
 		clazz.getMembers().stream().filter(BodyDeclaration::isInitializerDeclaration)
-				.map(InitializerDeclaration.class::cast).forEach(init -> addInitializer(init, clazzNode));
+				.map(InitializerDeclaration.class::cast).forEach(new java.util.function.Consumer<>() {
+					// how often each text occurred before in this class: a repeated one is told apart
+					private final Map<String, Integer> seen = new HashMap<>();
+
+					@Override
+					public void accept(InitializerDeclaration init) {
+						String text = init.toString(PPC_WITH_COMMENTS);
+						addInitializer(text, this.seen.merge(text, 1, Integer::sum) - 1, clazzNode);
+					}
+				});
 		clazz.getMembers().stream().filter(BodyDeclaration::isTypeDeclaration).map(TypeDeclaration.class::cast)
 				.forEach(type -> addTypeDeclaration(type, clazzNode));
 		parent.addChild(clazzNode);
 	}
 
-	private void addInitializer(InitializerDeclaration init, Op clazzNode) {
-		JavaASTSimpleStringData initData = new JavaASTSimpleStringData(init.toString(PPC_WITH_COMMENTS));
+	/** An initializer block; [occurrence] how many blocks with the same text came before it in the class. */
+	private void addInitializer(String text, int occurrence, Op clazzNode) {
+		JavaASTSimpleStringData initData = occurrence == 0 ? new JavaASTSimpleStringData(text) : new JavaASTRepeatedData(text, occurrence);
 		initData.setType(ASTNodeType.INITIALIZER_DECLARATION);
 		Artifact.Op<JavaASTSimpleStringData> initArtifact = this.entityFactory.createArtifact(initData);
 		Node.Op initNode = this.entityFactory.createOrderedNode(initArtifact);

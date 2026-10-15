@@ -13,6 +13,7 @@ import javax.imageio.ImageIO;
 import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -68,7 +69,7 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 				Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
 				nodes.add(pluginNode);
 
-				final BufferedImage image = ImageIO.read(resolvedPath.toFile());
+				final BufferedImage image = readImage(resolvedPath);
 				if (image == null)
 					throw new EccoException("Could not read image: " + resolvedPath);
 				pluginNode.addChild(parseImage(image));
@@ -83,6 +84,34 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 		}
 
 		return nodes;
+	}
+
+	/**
+	 * The image in [file], or null if no decoder knows its format. A file the decoder reads with
+	 * warnings is refused: a truncated JPEG was read without an error, with the missing part filled
+	 * in by the decoder, and committed so ("Premature end of JPEG file"). Refused, it is stored whole
+	 * by the file adapter instead (see DispatchReader), byte for byte.
+	 */
+	static BufferedImage readImage(Path file) throws IOException {
+		if (!Files.isReadable(file))
+			throw new javax.imageio.IIOException("Can't read input file!");
+		try (javax.imageio.stream.ImageInputStream in = ImageIO.createImageInputStream(file.toFile())) {
+			java.util.Iterator<javax.imageio.ImageReader> readers = in == null ? java.util.Collections.emptyIterator() : ImageIO.getImageReaders(in);
+			if (!readers.hasNext())
+				return null;
+			javax.imageio.ImageReader reader = readers.next();
+			List<String> warnings = new ArrayList<>();
+			try {
+				reader.setInput(in, true, true);
+				reader.addIIOReadWarningListener((source, warning) -> warnings.add(warning));
+				BufferedImage image = reader.read(0, reader.getDefaultReadParam());
+				if (!warnings.isEmpty())
+					throw new EccoException("Could not read image: " + file + ": the image is damaged (" + String.join("; ", warnings) + ")");
+				return image;
+			} finally {
+				reader.dispose();
+			}
+		}
 	}
 
 	private Node.Op parseImage(final BufferedImage image) {

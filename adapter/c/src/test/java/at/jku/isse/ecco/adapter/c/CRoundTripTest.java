@@ -141,13 +141,11 @@ public class CRoundTripTest {
         assertExact("int f() {\n  if (x) {\n    return 1;\n}\n");
     }
 
-    /**
-     * TextFileFormat's documented limitation: a file mixing line separators gets the first one
-     * throughout. Whitespace only - the lines are the same.
-     */
+    /** A file mixing line separators keeps each (gap #53): it got the first one throughout - tinycc's tcctest.c mixes them on purpose. */
     @Test
-    public void mixedLineSeparatorsBecomeTheFirst() throws IOException {
-        assertEquals("int a;\r\nint b;\r\nint c;\r\n", new String(roundTrip("int a;\r\nint b;\nint c;\r\n".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
+    public void mixedLineSeparatorsAreKept() throws IOException {
+        assertExact("int a;\r\nint b;\nint c;\r\n");
+        assertExact("int f() {\r\n    return 1;\n}\r\n");
     }
 
     private static final String SHARED_LINE = "int f() {\n    return 1;\n} int g() {\n    return 2;\n}\n";

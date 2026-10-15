@@ -121,11 +121,11 @@ public class MarkdownConstructsRoundTripTest {
 		assertArrayEquals(bom, this.roundTrip(bom));
 	}
 
-	/** A file mixing line endings gets its first one throughout - documented in TextFileFormat: whitespace only. */
+	/** A file mixing line endings keeps each (gap #53): it got its first one throughout. */
 	@Test
-	public void aFileMixingLineEndingsGetsItsFirstOneThroughout() throws IOException {
+	public void aFileMixingLineEndingsKeepsThem() throws IOException {
 		byte[] mixed = "# a\r\nb\nc\r\n".getBytes(StandardCharsets.UTF_8);
-		assertArrayEquals("# a\r\nb\r\nc\r\n".getBytes(StandardCharsets.UTF_8), this.roundTrip(mixed));
+		assertArrayEquals(mixed, this.roundTrip(mixed));
 	}
 
 	/** The overloads without a base directory resolve against the working directory. */

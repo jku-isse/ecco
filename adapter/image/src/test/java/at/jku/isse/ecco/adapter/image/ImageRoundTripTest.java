@@ -328,15 +328,20 @@ public class ImageRoundTripTest {
         assertSamePixels(image, rt.checkedOut());
     }
 
-    /** A truncated JPEG is read without an error: the missing part is committed as whatever the decoder filled in. */
+    /**
+     * A truncated JPEG is refused (gap #55): it was read without an error, the missing part committed
+     * as whatever the decoder filled in. Refused, the file adapter stores it whole (DispatchReader).
+     */
     @Test
-    public void truncatedJpegIsReadWithoutErrorCurrentBehaviour() throws IOException {
+    public void truncatedJpegIsRefused() throws IOException {
         Path dir = Files.createTempDirectory("truncated-jpeg");
         ImageIO.write(gradient(50, 50, BufferedImage.TYPE_INT_RGB), "jpg", dir.resolve("full.jpg").toFile());
         byte[] full = Files.readAllBytes(dir.resolve("full.jpg"));
         Files.write(dir.resolve("a.jpg"), Arrays.copyOf(full, full.length / 2));
-        Set<Node.Op> nodes = new ImageReader(new SerEntityFactory()).read(dir, new Path[]{Path.of("a.jpg")});
-        assertEquals(1, nodes.size());
+        EccoException e = assertThrows(EccoException.class, () -> new ImageReader(new SerEntityFactory()).read(dir, new Path[]{Path.of("a.jpg")}));
+        assertTrue(e.getMessage().contains("damaged"), e.getMessage());
+        // the whole one is read as before
+        assertEquals(1, new ImageReader(new SerEntityFactory()).read(dir, new Path[]{Path.of("full.jpg")}).size());
     }
 
     // --- unreadable input ---

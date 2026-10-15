@@ -15,6 +15,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Reads and writes line-based text files so that a commit/checkout round trip reproduces them byte
@@ -27,7 +29,9 @@ import java.util.List;
  * {@link PluginArtifactData}. Lines are split exactly like {@link java.io.BufferedReader#readLine()}
  * (on \n, \r\n and \r), so the line artifacts of existing repositories stay the same. Files whose
  * format was never recorded (committed before this existed) are written exactly as before.
- * Limitation: a file mixing line separators gets the first one throughout. Each variant's final
+ * A file mixing line separators keeps the others in its format ({@link TextFormatArtifactData#getOtherSeparators()};
+ * it got the first one throughout); a checkout combining variants in different formats writes the
+ * newest commit's main separator throughout. Each variant's final
  * newline ({@link FinalNewlineArtifactData}) and its charset and line separator
  * ({@link TextFormatArtifactData}) are children of the file's node, traced like lines - recorded on
  * the plugin artifact, which the variants of a file share, the newest commit's were written into
@@ -38,7 +42,8 @@ public final class TextFileFormat {
 	private TextFileFormat() {
 	}
 
-	public record Decoded(List<String> lines, Charset charset, String lineSeparator, boolean endsWithNewline) {
+	/** [otherSeparators]: the separator after each line (by index) that ends otherwise than with [lineSeparator]. */
+	public record Decoded(List<String> lines, Charset charset, String lineSeparator, boolean endsWithNewline, Map<Integer, String> otherSeparators) {
 
 		/**
 		 * Records this file's format on its plugin artifact data, for {@link #newLineWriter}.
@@ -59,7 +64,7 @@ public final class TextFileFormat {
 				fileNode.addChild(entityFactory.createNode(entityFactory.createArtifact(new FinalNewlineArtifactData())));
 			// an empty file is written the same in every format
 			if (!this.lines.isEmpty())
-				fileNode.addChild(entityFactory.createNode(entityFactory.createArtifact(new TextFormatArtifactData(this.charset.name(), this.lineSeparator))));
+				fileNode.addChild(entityFactory.createNode(entityFactory.createArtifact(new TextFormatArtifactData(this.charset.name(), this.lineSeparator, this.otherSeparators))));
 		}
 	}
 
@@ -93,6 +98,7 @@ public final class TextFileFormat {
 
 		List<String> lines = new ArrayList<>();
 		String lineSeparator = null;
+		Map<Integer, String> otherSeparators = new TreeMap<>();
 		int start = 0;
 		int i = 0;
 		while (i < text.length()) {
@@ -100,8 +106,11 @@ public final class TextFileFormat {
 			if (c == '\n' || c == '\r') {
 				lines.add(text.substring(start, i));
 				int terminatorLength = (c == '\r' && i + 1 < text.length() && text.charAt(i + 1) == '\n') ? 2 : 1;
+				String separator = text.substring(i, i + terminatorLength);
 				if (lineSeparator == null)
-					lineSeparator = text.substring(i, i + terminatorLength);
+					lineSeparator = separator;
+				else if (!separator.equals(lineSeparator))
+					otherSeparators.put(lines.size() - 1, separator);
 				i += terminatorLength;
 				start = i;
 			} else {
@@ -111,7 +120,7 @@ public final class TextFileFormat {
 		boolean endsWithNewline = start == text.length() && !text.isEmpty();
 		if (start < text.length())
 			lines.add(text.substring(start));
-		return new Decoded(lines, charset, lineSeparator == null ? "\n" : lineSeparator, endsWithNewline);
+		return new Decoded(lines, charset, lineSeparator == null ? "\n" : lineSeparator, endsWithNewline, otherSeparators);
 	}
 
 	/**
@@ -121,9 +130,10 @@ public final class TextFileFormat {
 	 */
 	public static LineWriter newLineWriter(Path file, PluginArtifactData data, Node fileNode) throws IOException {
 		if (!data.hasTextFormat())
-			return new LineWriter(Files.newBufferedWriter(file), System.lineSeparator(), true);
+			return new LineWriter(Files.newBufferedWriter(file), System.lineSeparator(), true, Map.of());
 		TextFormatArtifactData format = format(data, fileNode);
-		return new LineWriter(Files.newBufferedWriter(file, Charset.forName(format.getCharset())), format.getLineSeparator(), endsWithNewline(data, fileNode));
+		return new LineWriter(Files.newBufferedWriter(file, Charset.forName(format.getCharset())), format.getLineSeparator(), endsWithNewline(data, fileNode),
+				format.getOtherSeparators());
 	}
 
 	/**
@@ -160,26 +170,33 @@ public final class TextFileFormat {
 		private final BufferedWriter writer;
 		private final String lineSeparator;
 		private final boolean endsWithNewline;
-		private boolean first = true;
+		private final Map<Integer, String> otherSeparators;
+		private int written;
 
-		private LineWriter(BufferedWriter writer, String lineSeparator, boolean endsWithNewline) {
+		private LineWriter(BufferedWriter writer, String lineSeparator, boolean endsWithNewline, Map<Integer, String> otherSeparators) {
 			this.writer = writer;
 			this.lineSeparator = lineSeparator;
 			this.endsWithNewline = endsWithNewline;
+			this.otherSeparators = otherSeparators;
+		}
+
+		/** The separator after the line with index [line]. */
+		private String separatorAfter(int line) {
+			return this.otherSeparators.getOrDefault(line, this.lineSeparator);
 		}
 
 		public void writeLine(String line) throws IOException {
-			if (!this.first)
-				this.writer.write(this.lineSeparator);
+			if (this.written > 0)
+				this.writer.write(this.separatorAfter(this.written - 1));
 			this.writer.write(line);
-			this.first = false;
+			this.written++;
 		}
 
 		@Override
 		public void close() throws IOException {
 			try {
-				if (!this.first && this.endsWithNewline)
-					this.writer.write(this.lineSeparator);
+				if (this.written > 0 && this.endsWithNewline)
+					this.writer.write(this.separatorAfter(this.written - 1));
 			} finally {
 				this.writer.close();
 			}

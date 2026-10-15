@@ -175,7 +175,7 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 
 | Adapter | Files | Granularity and notes |
 | --- | --- | --- |
-| Text | `*.txt`, `*.xml`, `*.html`, `*.css`, `*.js`, `*.java` | lines; keeps each variant's encoding (UTF-8, else ISO-8859-1), line separators, and final newline - a file that mixes line separators gets its first one throughout |
+| Text | `*.txt`, `*.xml`, `*.html`, `*.css`, `*.js`, `*.java` | lines; keeps each variant's encoding (UTF-8, else ISO-8859-1), line separators, and final newline, also where a file mixes them |
 | Markdown | `*.md`, `*.markdown` | markdown blocks; keeps encoding, line separators and final newline like the text adapter |
 | Java (AST) | `*.java` | Java syntax tree, Java up to 21 (before the text adapter's `*.java`), laid out by JavaParser's printer; keeps comments, except a few, e.g. in an `if` condition, a field's initializer or a method's header |
 | C | `*.c`, `*.h` | lines, grouped by function; keeps each variant's encoding, line separators, and final newline like the text adapter. Preprocessor directives are ordinary lines; VEVOS presence conditions (`pcs.variant.csv`) become proactive feature traces; a trace that contradicts the commit history is not used and is reported as a `TRACE` warning |
@@ -183,7 +183,7 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | TypeScript | `*.ts` | statements and blocks; parsed with the TypeScript compiler running in an embedded Node.js (Javet) |
 | Python | `*.py`, `*.ipynb`, `*.json` | Python syntax tree (libcst), notebook cells, JSON values. **Needs `python` 3 with the modules `libcst` and `py4j` on the `PATH`** |
 | LilyPond | `*.ly`, `*.ily` | LilyPond tokens; in a repository created since musical tokens (the default), a note, rest or chord end is one token that goes by the music it means, however it is spelled, and each top-level variable (a voice) is a context of its name. **Needs `python` 3 with the modules `tree-sitter` and `py4j`, and lymodel, the lilypond-idea-plugin's `python/` package** (`python -m pip install <lilypond-idea-plugin>/python`, or `LYPYTHON` set to that directory), whose tree-sitter parse reads the files; a repository created before it (read with parce) checks out, but takes no more commits; rendering scores in the GUI needs LilyPond (see [its README](adapter/lilypond/README.md)) |
-| Image | `*.png`, `*.jpg`, `*.jpeg`, `*.bmp`, `*.gif` | pixels, one artifact each, 8 bits per channel (a 16-bit image loses its low bits; JPEG is encoded again on checkout): for large images, see [Images](#images) |
+| Image | `*.png`, `*.jpg`, `*.jpeg`, `*.bmp`, `*.gif` | pixels, one artifact each, 8 bits per channel (a 16-bit image loses its low bits; JPEG is encoded again on checkout; a damaged image, e.g. a truncated JPEG, is stored whole by the file adapter): for large images, see [Images](#images) |
 | File | everything else | whole files (binary); a checkout that combines variants with different versions of such a file writes the other files and reports this one as a `CONFLICT` naming the commits of each version, since there is nothing to compose |
 
 ### Images

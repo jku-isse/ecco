@@ -254,10 +254,11 @@ public class CppRoundTripTest {
         assertEquals(List.of("int f() {", "  return 1;", "} int g() {"), linesOf(scope(file, "function int f()")));
     }
 
-    /** TextFileFormat's documented limitation: mixed line separators become the first. Whitespace only. */
+    /** A file mixing line separators keeps each (gap #53): they became the first. */
     @Test
-    public void mixedLineSeparatorsBecomeTheFirst() throws IOException {
-        assertEquals("int a;\r\nint b;\r\nint c;\r\n", new String(roundTrip("int a;\r\nint b;\nint c;\r\n".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
+    public void mixedLineSeparatorsAreKept() throws IOException {
+        String mixed = "int a;\r\nint b;\nint c;\r\n";
+        assertEquals(mixed, new String(roundTrip(mixed.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
     }
 
     /**
