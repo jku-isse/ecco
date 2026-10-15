@@ -245,8 +245,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		for (DependencyGraph.Dependency dep : dg.getDependencies()) {
 			Condition depFromCondition = dep.getFrom().computeCondition();
 			Condition depToCondition = dep.getTo().computeCondition();
-			if (!hideImpliedDependencies || !depFromCondition.implies(depToCondition)) {
-//			boolean implied = Condition.implies(dep.getFrom().getPresenceCondition(), dep.getTo().getPresenceCondition());
+			if (!hideImpliedDependencies || !isImplied(depFromCondition, depToCondition)) {
 				Node from = this.graph.getNode(String.valueOf(dep.getFrom().getId()));
 				if (from == null) {
 					from = this.graph.addNode(String.valueOf(dep.getFrom().getId()));
@@ -303,6 +302,16 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	 * GraphStream mutation in this class) now runs right after, so opening a repository, switching
 	 * commits, or switching back to this tab all show current data without a manual click first.
 	 */
+	/**
+	 * Whether a dependency of [from] on [to] says nothing new - "Hide Implied Dependencies": wherever
+	 * from is there, to is too (from implies to), as for a line in a file every variant with the
+	 * line has. Package-visible for testing; it checked the other way round, hiding the
+	 * dependencies that do say something and showing the self-evident ones.
+	 */
+	static boolean isImplied(Condition from, Condition to) {
+		return to.isImpliedBy(from);
+	}
+
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {

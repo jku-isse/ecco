@@ -130,7 +130,7 @@ public interface Condition extends Persistable {
 		for (ModuleRevision candidate : moduleRevisions) {
 			boolean absorbed = false;
 			for (ModuleRevision smaller : kept) {
-				if (containsAll(candidate.getPos(), smaller.getPos()) && containsAll(candidate.getNeg(), smaller.getNeg())) {
+				if (smaller.isImpliedBy(candidate)) {
 					absorbed = true;
 					break;
 				}
@@ -141,36 +141,20 @@ public interface Condition extends Persistable {
 		return kept;
 	}
 
-	private static boolean containsAll(Object[] larger, Object[] smaller) {
-		for (Object element : smaller) {
-			boolean found = false;
-			for (Object other : larger) {
-				if (element.equals(other)) {
-					found = true;
-					break;
-				}
-			}
-			if (!found)
-				return false;
-		}
-		return true;
-	}
-
 	/**
-	 * Checks if this condition implies other condition.
-	 * This means every module in this must be implied by at least one module in other.
-	 *
-	 * @param other The other condition.
-	 * @return True if this condition implies the other condition, false otherwise.
+	 * Whether [other] implies this condition, as far as their terms show: every module revision of
+	 * [other] implies one of this ({@link ModuleRevision#isImpliedBy}) - so wherever [other] holds,
+	 * this holds. (Named implies before, which read the wrong way round: the dependency graph hid
+	 * the dependencies it should have shown.)
 	 */
-	default boolean implies(Condition other) {
+	default boolean isImpliedBy(Condition other) {
 		for (Map.Entry<Module, Collection<ModuleRevision>> otherEntry : other.getModules().entrySet()) {
 			for (ModuleRevision otherModuleRevision : otherEntry.getValue()) {
 				boolean implied = false;
 				for (Map.Entry<Module, Collection<ModuleRevision>> thisEntry : this.getModules().entrySet()) {
-					if (thisEntry.getKey().implies(otherEntry.getKey())) {
+					if (thisEntry.getKey().isImpliedBy(otherEntry.getKey())) {
 						for (ModuleRevision thisModuleRevision : thisEntry.getValue()) {
-							if (thisModuleRevision.implies(otherModuleRevision)) {
+							if (thisModuleRevision.isImpliedBy(otherModuleRevision)) {
 								implied = true;
 								break;
 							}

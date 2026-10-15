@@ -112,33 +112,15 @@ public interface ModuleRevision extends Persistable {
 		return true;
 	}
 
-	default boolean implies(ModuleRevision other) {
-		// check that all positive features of this are contained in other
-		for (FeatureRevision thisFeatureRevision : this.getPos()) {
-			boolean found = false;
-			for (FeatureRevision otherFeatureRevision : other.getPos()) {
-				if (thisFeatureRevision.equals(otherFeatureRevision)) {
-					found = true;
-					break;
-				}
-			}
-			if (!found)
-				return false;
-		}
-		// check that all negative features of this are contained in other as well - see
-		// Module.implies(Module)
-		for (Feature thisFeature : this.getNeg()) {
-			boolean found = false;
-			for (Feature otherFeature : other.getNeg()) {
-				if (thisFeature.equals(otherFeature)) {
-					found = true;
-					break;
-				}
-			}
-			if (!found)
-				return false;
-		}
-		return true;
+	/**
+	 * Whether [other] implies this one: every literal of this - its feature revisions and its
+	 * absent features - is one of [other]'s, so wherever [other] holds, this holds ("A" is implied
+	 * by "A and B" and by "A and not C"). The one check of this kind on module revisions: absorption
+	 * (Condition), trimming MISSING ones (ModuleRevisions) and Condition#isImpliedBy use it.
+	 */
+	default boolean isImpliedBy(ModuleRevision other) {
+		return Arrays.asList(other.getPos()).containsAll(Arrays.asList(this.getPos()))
+				&& Arrays.asList(other.getNeg()).containsAll(Arrays.asList(this.getNeg()));
 	}
 
 

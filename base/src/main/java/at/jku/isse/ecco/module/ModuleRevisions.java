@@ -25,17 +25,6 @@ public final class ModuleRevisions {
 	}
 
 	/**
-	 * True if every {@link FeatureRevision} in {@code sub.getPos()} is in {@code sup.getPos()}, and
-	 * every {@link Feature} in {@code sub.getNeg()} is in {@code sup.getNeg()} -- a symmetric
-	 * two-set-containment check. Deliberately not {@link ModuleRevision#implies}, which is
-	 * asymmetric (ignores {@code this.getNeg()}) and is relied on elsewhere with that semantics.
-	 */
-	private static boolean isSubCombination(ModuleRevision sub, ModuleRevision sup) {
-		return Arrays.asList(sup.getPos()).containsAll(Arrays.asList(sub.getPos()))
-				&& Arrays.asList(sup.getNeg()).containsAll(Arrays.asList(sub.getNeg()));
-	}
-
-	/**
 	 * Drops any missing module revision that is redundant because a strictly-smaller-order missing
 	 * module revision already explains it -- resolves the "trim set of missing modules" TODO in
 	 * {@link at.jku.isse.ecco.repository.Repository.Op#compose}. A single lower-order match is sufficient: the repository's
@@ -48,7 +37,7 @@ public final class ModuleRevisions {
 		for (ModuleRevision candidate : missing) {
 			boolean redundant = false;
 			for (ModuleRevision other : missing) {
-				if (other.getOrder() < candidate.getOrder() && isSubCombination(other, candidate)) {
+				if (other.getOrder() < candidate.getOrder() && other.isImpliedBy(candidate)) {
 					redundant = true;
 					break;
 				}

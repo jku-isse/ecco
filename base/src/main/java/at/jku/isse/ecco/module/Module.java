@@ -146,34 +146,10 @@ public interface Module extends Persistable {
 		return true;
 	}
 
-	public default boolean implies(Module other) {
-		// check that all positive features of this are contained in other
-		for (Feature thisFeature : this.getPos()) {
-			boolean found = false;
-			for (Feature otherFeature : other.getPos()) {
-				if (thisFeature.equals(otherFeature)) {
-					found = true;
-					break;
-				}
-			}
-			if (!found)
-				return false;
-		}
-		// check that all negative features of this are contained in other as well - a module is a
-		// conjunction of literals, so this implies other (whenever other holds, this holds) exactly
-		// when every literal of this occurs in other
-		for (Feature thisFeature : this.getNeg()) {
-			boolean found = false;
-			for (Feature otherFeature : other.getNeg()) {
-				if (thisFeature.equals(otherFeature)) {
-					found = true;
-					break;
-				}
-			}
-			if (!found)
-				return false;
-		}
-		return true;
+	/** Whether [other] implies this module: every feature and absent feature of this is one of [other]'s - see {@link ModuleRevision#isImpliedBy}. */
+	public default boolean isImpliedBy(Module other) {
+		return Arrays.asList(other.getPos()).containsAll(Arrays.asList(this.getPos()))
+				&& Arrays.asList(other.getNeg()).containsAll(Arrays.asList(this.getNeg()));
 	}
 
 

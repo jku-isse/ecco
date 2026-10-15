@@ -66,4 +66,26 @@ public class DependencyGraphViewTest {
             Thread.setDefaultUncaughtExceptionHandler(before);
         }
     }
+
+    /**
+     * "Hide Implied Dependencies" hides a dependency that says nothing new: from (A and B, say a line)
+     * needs to (A, its file) - wherever from is, to is. It checked the other way round.
+     */
+    @Test
+    public void aDependencyIsImpliedWhenItsSourceImpliesItsTarget() {
+        at.jku.isse.ecco.dao.EntityFactory ef = new at.jku.isse.ecco.storage.ser.dao.SerEntityFactory();
+        at.jku.isse.ecco.repository.Repository.Op repository = ef.createRepository();
+        repository.setMaxOrder(2);
+        at.jku.isse.ecco.feature.FeatureRevision a = repository.addFeature("a", "A").addRevision("1");
+        at.jku.isse.ecco.feature.FeatureRevision b = repository.addFeature("b", "B").addRevision("1");
+        at.jku.isse.ecco.module.Module moduleA = repository.addModule(new at.jku.isse.ecco.feature.Feature[]{a.getFeature()}, new at.jku.isse.ecco.feature.Feature[0]);
+        at.jku.isse.ecco.module.Module moduleAB = repository.addModule(new at.jku.isse.ecco.feature.Feature[]{a.getFeature(), b.getFeature()}, new at.jku.isse.ecco.feature.Feature[0]);
+        at.jku.isse.ecco.module.Condition onlyA = new at.jku.isse.ecco.storage.ser.module.SerCondition();
+        onlyA.addModuleRevision(moduleA.addRevision(new at.jku.isse.ecco.feature.FeatureRevision[]{a}, new at.jku.isse.ecco.feature.Feature[0]));
+        at.jku.isse.ecco.module.Condition aAndB = new at.jku.isse.ecco.storage.ser.module.SerCondition();
+        aAndB.addModuleRevision(moduleAB.addRevision(new at.jku.isse.ecco.feature.FeatureRevision[]{a, b}, new at.jku.isse.ecco.feature.Feature[0]));
+
+        assertTrue(DependencyGraphView.isImplied(aAndB, onlyA), "A and B needs A: wherever A and B is, A is - nothing new");
+        org.junit.jupiter.api.Assertions.assertFalse(DependencyGraphView.isImplied(onlyA, aAndB), "A needs A and B: A can be without B - shown");
+    }
 }

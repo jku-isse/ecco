@@ -82,15 +82,15 @@ public class ConditionTest {
         ModuleRevision moduleRevisionA = moduleA.addRevision(new FeatureRevision[]{revisionA}, new Feature[0]);
         ModuleRevision moduleRevisionAB = moduleAB.addRevision(new FeatureRevision[]{revisionA, revisionB}, new Feature[0]);
 
-        // "A" (the broader condition) implies "A AND B" (the narrower one): whenever A-and-B holds, A alone holds too.
+        // "A" (the broader condition) is implied by "A AND B" (the narrower one): whenever A-and-B holds, A holds too.
         Condition broader = new SerCondition();
         broader.addModuleRevision(moduleRevisionA);
 
         Condition narrower = new SerCondition();
         narrower.addModuleRevision(moduleRevisionAB);
 
-        assertTrue(broader.implies(narrower));
-        assertFalse(narrower.implies(broader), "A-and-B does not imply A alone holding without B");
+        assertTrue(broader.isImpliedBy(narrower));
+        assertFalse(narrower.isImpliedBy(broader), "A-and-B is not implied by A: A can hold without B");
     }
 
     @Test

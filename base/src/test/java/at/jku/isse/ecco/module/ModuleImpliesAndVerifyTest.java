@@ -13,8 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * {@code m1.implies(m2)} means "whenever m2 holds, m1 holds" (see ConditionTest: "A" implies
- * "A and B"). A module is a conjunction of positive and negated features, so that is the case
+ * {@code m1.isImpliedBy(m2)} means "whenever m2 holds, m1 holds" (see ConditionTest: "A" is implied
+ * by "A and B"). A module is a conjunction of positive and negated features, so that is the case
  * exactly when every literal of m1 also occurs in m2 - including the negated ones. The negative
  * check used to iterate this.getPos() instead of this.getNeg(), so it could never fail: "A and not
  * B" was reported to imply "A", although A-with-B satisfies the latter but not the former.
@@ -38,13 +38,13 @@ public class ModuleImpliesAndVerifyTest {
 
     @Test
     public void moduleImpliesRequiresTheNegativeFeaturesToo() {
-        assertTrue(module(pos(a)).implies(module(pos(a, b))), "A implies A and B");
-        assertTrue(module(pos(a), b).implies(module(pos(a, c), b)), "A and not B implies A and C and not B");
-        assertTrue(module(pos(a)).implies(module(pos(a), b)), "A implies A and not B");
+        assertTrue(module(pos(a)).isImpliedBy(module(pos(a, b))), "A is implied by A and B");
+        assertTrue(module(pos(a), b).isImpliedBy(module(pos(a, c), b)), "A and not B is implied by A and C and not B");
+        assertTrue(module(pos(a)).isImpliedBy(module(pos(a), b)), "A is implied by A and not B");
 
-        assertFalse(module(pos(a), b).implies(module(pos(a))), "A and not B does not imply A (A with B)");
-        assertFalse(module(pos(a), b).implies(module(pos(a, b))), "A and not B does not imply A and B");
-        assertFalse(module(pos(a, b)).implies(module(pos(a))), "A and B does not imply A");
+        assertFalse(module(pos(a), b).isImpliedBy(module(pos(a))), "A and not B is not implied by A (A with B)");
+        assertFalse(module(pos(a), b).isImpliedBy(module(pos(a, b))), "A and not B is not implied by A and B");
+        assertFalse(module(pos(a, b)).isImpliedBy(module(pos(a))), "A and B is not implied by A");
     }
 
     @Test
@@ -59,10 +59,10 @@ public class ModuleImpliesAndVerifyTest {
         ModuleRevision revisionANotB = new SerModuleRevision(moduleANotB, new FeatureRevision[]{a1}, new Feature[]{b});
         ModuleRevision revisionAB = new SerModuleRevision(moduleAB, new FeatureRevision[]{a1, b1}, new Feature[0]);
 
-        assertTrue(revisionA.implies(revisionAB));
-        assertTrue(revisionA.implies(revisionANotB));
-        assertFalse(revisionANotB.implies(revisionA), "A.1 and not B does not imply A.1");
-        assertFalse(revisionANotB.implies(revisionAB), "A.1 and not B does not imply A.1 and B.1");
+        assertTrue(revisionA.isImpliedBy(revisionAB));
+        assertTrue(revisionA.isImpliedBy(revisionANotB));
+        assertFalse(revisionANotB.isImpliedBy(revisionA), "A.1 and not B is not implied by A.1");
+        assertFalse(revisionANotB.isImpliedBy(revisionAB), "A.1 and not B is not implied by A.1 and B.1");
     }
 
     @Test
