@@ -77,7 +77,7 @@ public interface Condition extends Persistable {
 	 * literals are sorted, so an unchanged condition gives an identical string.
 	 */
 	default String toLogicString(){
-		List<ModuleRevision> kept = this.absorbedModuleRevisions();
+		List<ModuleRevision> kept = this.getAbsorbedModuleRevisions();
 		if (kept.isEmpty())
 			return "$false";
 		SortedSet<String> terms = new TreeSet<>();
@@ -106,13 +106,16 @@ public interface Condition extends Persistable {
 	/** {@link #toDisplayString()}, with the features' revisions or by their names only. */
 	default String toDisplayString(boolean withRevisions) {
 		List<SortedSet<String>> terms = new ArrayList<>();
-		for (ModuleRevision moduleRevision : this.absorbedModuleRevisions())
+		for (ModuleRevision moduleRevision : this.getAbsorbedModuleRevisions())
 			terms.add(ConditionText.literals(moduleRevision, withRevisions));
 		return ConditionText.join(terms);
 	}
 
-	/** The module revisions no other one absorbs (one with a subset of its literals: X | X & Y = X). */
-	private List<ModuleRevision> absorbedModuleRevisions() {
+	/**
+	 * The module revisions no other one absorbs (one with a subset of its literals: X | X & Y = X) -
+	 * the terms of {@link #toLogicString()} and {@link #toDisplayString()}; the others change nothing.
+	 */
+	default List<ModuleRevision> getAbsorbedModuleRevisions() {
 		List<ModuleRevision> moduleRevisions = new ArrayList<>();
 		for (Collection<ModuleRevision> revisions : this.getModules().values())
 			moduleRevisions.addAll(revisions);
