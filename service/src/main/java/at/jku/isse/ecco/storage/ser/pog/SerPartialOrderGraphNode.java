@@ -87,11 +87,29 @@ public class SerPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 		});
 	}
 
-	public void deserializeCollections(Map<Integer, SerPartialOrderGraphNode> sequenceNumberNodeMap){
+	public void deserializeCollections(Map<Integer, SerPartialOrderGraphNode> sequenceNumberNodeMap) throws java.io.InvalidObjectException {
 		if (this.next == null) { this.next = new ArrayList<>(); }
 		if (this.previous == null) { this.previous = new ArrayList<>(); }
-		this.nextSequenceNumbers.forEach(i -> this.next.add(sequenceNumberNodeMap.get(i)));
-		this.previousSequenceNumbers.forEach(i -> this.previous.add(sequenceNumberNodeMap.get(i)));
+		if (this.nextSequenceNumbers != null)
+			for (Integer i : this.nextSequenceNumbers)
+				this.next.add(neighbor(sequenceNumberNodeMap, i));
+		if (this.previousSequenceNumbers != null)
+			for (Integer i : this.previousSequenceNumbers)
+				this.previous.add(neighbor(sequenceNumberNodeMap, i));
+	}
+
+	// an edge to a node the graph does not have was added as null, which failed far from here
+	private static SerPartialOrderGraphNode neighbor(Map<Integer, SerPartialOrderGraphNode> sequenceNumberNodeMap, Integer sequenceNumber) throws java.io.InvalidObjectException {
+		SerPartialOrderGraphNode node = sequenceNumberNodeMap.get(sequenceNumber);
+		if (node == null)
+			throw new java.io.InvalidObjectException("An order graph refers to a node (sequence number " + sequenceNumber + ") it does not have - the repository is damaged.");
+		return node;
+	}
+
+	/** After the graph was written or read: the sequence numbers standing for the edges are not needed. */
+	public void releaseSerialization() {
+		this.nextSequenceNumbers = null;
+		this.previousSequenceNumbers = null;
 	}
 
 	public void addPrevious(PartialOrderGraph.Node.Op node){

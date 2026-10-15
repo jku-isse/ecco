@@ -16,7 +16,8 @@ public class SerPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 	private Node.Op tail;
 	private int maxIdentifier = INITIAL_SEQUENCE_NUMBER;
 
-	// used to iteratively serialize in order not to overflow stack
+	// used to iteratively serialize in order not to overflow stack - only while this graph is
+	// written or read (null otherwise: kept, it held a map per ordered artifact for nothing)
 	private Map<Integer, SerPartialOrderGraphNode> sequenceNumberNodeMap;
 
 	public SerPartialOrderGraph() {
@@ -51,6 +52,10 @@ public class SerPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 			serPartialOrderGraphNode.prepareSerialization(this.head, this.tail);
 		}
 		out.defaultWriteObject();
+		// every node is written now (they are reached through head, tail and the map)
+		for (Node.Op node : nodes)
+			((SerPartialOrderGraphNode) node).releaseSerialization();
+		this.sequenceNumberNodeMap = null;
 	}
 
 	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
@@ -102,6 +107,12 @@ public class SerPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 			}
 		});
 
+		// wired: the sequence numbers that stood for the edges are not needed anymore
+		for (SerPartialOrderGraphNode node : this.sequenceNumberNodeMap.values())
+			node.releaseSerialization();
+		memPartialOrderGraphHead.releaseSerialization();
+		memPartialOrderGraphTail.releaseSerialization();
+		this.sequenceNumberNodeMap = null;
 
 	}
 
