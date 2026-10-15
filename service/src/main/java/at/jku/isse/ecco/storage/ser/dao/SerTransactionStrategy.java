@@ -3,44 +3,21 @@ package at.jku.isse.ecco.storage.ser.dao;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.SyncedFolders;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.counter.ModuleCounter;
-import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.TransactionStrategy;
-import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.storage.common.dao.Database;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
-import at.jku.isse.ecco.storage.ser.artifact.SerArtifactReference;
 import at.jku.isse.ecco.storage.ser.core.SerCommit;
-import at.jku.isse.ecco.storage.ser.counter.CompactCounters;
-import at.jku.isse.ecco.storage.ser.counter.SerAssociationCounter;
-import at.jku.isse.ecco.storage.ser.counter.SerModuleCounter;
-import at.jku.isse.ecco.storage.ser.counter.SerModuleRevisionCounter;
-import at.jku.isse.ecco.storage.ser.module.SerModule;
-import at.jku.isse.ecco.storage.ser.module.SerModuleRevision;
-import at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraphNode;
 import at.jku.isse.ecco.storage.ser.repository.SerRepository;
 import at.jku.isse.ecco.storage.ser.tree.SerNode;
-import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 
 import java.io.BufferedInputStream;
-import java.io.ObjectOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.BufferedOutputStream;
-import java.util.zip.Deflater;
-import java.util.Comparator;
 import java.util.Set;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.nio.file.DirectoryStream;
-import java.util.zip.ZipFile;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -48,26 +25,17 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -79,33 +47,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 	private static final String ID_FILENAME = "id";
 	private static final String WRITELOCK_FILENAME = "write";
-	private static final String DB_FILE_SUFFIX = ".ser.zip";
 	private static final String ASSOCIATIONS_DIRNAME = "associations";
 	private static final String ARTIFACTS_DIRNAME = "artifacts";
-	private static final String PACK_PREFIX = "pack-";
-	private static final String PACK_SUFFIX = ".zip";
-	private static final String TMP_SUFFIX = ".tmp";
-
-	/**
-	 * Serialize the artifacts a write skips as unchanged anyway, and fail if one has changed - a
-	 * change made without Artifact.Op#markModified() would otherwise not be stored. On in the tests
-	 * (build.gradle); -Decco.verifyUnchangedArtifacts=true for a replay.
-	 */
-	static final boolean VERIFY_UNCHANGED_ARTIFACTS = Boolean.getBoolean("ecco.verifyUnchangedArtifacts");
-	/**
-	 * Serialize the associations a write leaves alone (not added again since they were read), and
-	 * fail if one differs from what is stored - a change made without Repository.Op#addAssociation()
-	 * would otherwise not be stored, as the retroactive conditions of untouched associations were
-	 * not (ReopenEquivalenceTest). On in the tests (build.gradle); -Decco.verifyUnchangedAssociations=true for a replay.
-	 */
-	static final boolean VERIFY_UNCHANGED_ASSOCIATIONS = Boolean.getBoolean("ecco.verifyUnchangedAssociations");
-	/** Once a write would leave more packs than this, the smallest are merged down to half of it. */
-	private static final int MAX_PACKS = 20;
-	private static final String PACK_ARTIFACTS_ENTRY = "artifacts";
-	private static final String PACK_DIGESTS_ENTRY = "digests";
-	private static final int ARTIFACT_DIGEST_LENGTH = 16;
-	private static final String ZIP_ENTRY_NAME = "ecco.ser";
-	private static final String PENDING_SUFFIX = ".pending";
 
 	// repository directory
 	private final Path repositoryDir;
@@ -132,20 +75,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private FileChannel writeFileChannel;
 	// write file lock
 	private FileLock writeFileLock;
-	// SHA-256 of the serialized bytes of every stable artifact/association file as last read or
-	// written by this process - lets endReadWrite() skip entities whose bytes didn't change. Cleared
-	// by reset(); rebuilt by the full reload that follows.
-	private final Map<Path, byte[]> persistedDigests = new HashMap<>();
-	/**
-	 * Only with {@link #VERIFY_UNCHANGED_ASSOCIATIONS}: the digest of each association as serialized
-	 * when it was last read or written. Not the file's: an association read back serializes to the
-	 * same content in different bytes (a boxed property value its file shares by reference is its
-	 * own object after reading).
-	 */
-	private final Map<String, byte[]> verifiedAssociationDigests = new HashMap<>();
-	// the same for artifacts, by their id: a path per artifact - built, hashed and compared for every
-	// artifact of every write - took longer than the comparison it was for
-	private final Map<String, byte[]> artifactDigests = new HashMap<>();
+	// the parts of the storage - the strategy itself holds the transactions, the locks and the core,
+	// and the order of the steps of reading and writing
+	private final CommitJournal journal;
+	private final AssociationStore associations;
+	private final ArtifactPackStore packs;
+
 
 
 	@Inject
@@ -156,262 +91,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.writeLockFile = repositoryDir.resolve(WRITELOCK_FILENAME);
 		this.associationsDir = repositoryDir.resolve(ASSOCIATIONS_DIRNAME);
 		this.artifactsDir = repositoryDir.resolve(ARTIFACTS_DIRNAME);
+		this.journal = new CommitJournal(this.associationsDir, this.artifactsDir);
+		this.associations = new AssociationStore(this.associationsDir);
+		this.packs = new ArtifactPackStore(this.artifactsDir);
 		this.reset();
 	}
 
-	/**
-	 * Serializes object as the single zip entry of file, compressed at the fastest level (see
-	 * writeStoredBytes()).
-	 * <p>
-	 * Writes fully to a temp file in {@code file}'s own directory first, then atomically renames
-	 * it into place - writing directly to {@code file} (as this used to do, via
-	 * {@code Files.newOutputStream(file, CREATE)}, which truncates an already-existing file before
-	 * writing the new bytes) is not crash-safe when {@code file} already exists and is already
-	 * referenced by the current, not-yet-swapped core (true for any dirty association/artifact
-	 * that already existed before this transaction, not just brand new ones): a crash between the
-	 * truncate and the write completing would leave that file empty/partial, corrupting state the
-	 * still-current core expects to load successfully on the next open. Same directory guarantees
-	 * the rename is on the same filesystem, a precondition for {@link StandardCopyOption#ATOMIC_MOVE}.
-	 */
-	private static void writeStored(Object object, Path file) throws IOException {
-		writeStoredBytes(serialize(object), file);
-	}
-
-	private static byte[] serialize(Object object) throws IOException {
-		ByteArrayOutputStream serialized = new ByteArrayOutputStream();
-		try (ObjectOutputStream oos = new ObjectOutputStream(serialized)) {
-			oos.writeObject(object);
-		}
-		return serialized.toByteArray();
-	}
-
-	/** Like {@link #serialize}, with the association's counters in compact form - see {@link CompactCounters}. */
-	private static byte[] serializeAssociation(Object association) throws IOException {
-		ByteArrayOutputStream serialized = new ByteArrayOutputStream();
-		try (ObjectOutputStream oos = new CompactCounters.Stream(serialized)) {
-			oos.writeObject(association);
-		}
-		return serialized.toByteArray();
-	}
-
-	private static byte[] digest(byte[] bytes) {
-		try {
-			return MessageDigest.getInstance("SHA-256").digest(bytes);
-		} catch (NoSuchAlgorithmException e) {
-			throw new EccoException("SHA-256 not available.", e);
-		}
-	}
-
-	/**
-	 * Stages a dirty entity's file for the transaction tagged {@code pendingSuffix} (see
-	 * {@link #endReadWrite()}) - unless its serialized bytes are identical to the stable file already
-	 * on disk (known from {@link #persistedDigests}), in which case nothing is written at all. Most
-	 * "dirty" entities of a commit are unchanged: Trees.slice() re-slices every touched association
-	 * against the whole working tree, so far more is marked dirty than actually differs, and writing
-	 * one file per artifact dominated commit time (see UnchangedArtifactRewriteTest).
-	 */
-	private void stageIfChanged(Object entity, Path stableFile, String pendingSuffix, Map<Path, byte[]> staged) throws IOException {
-		byte[] bytes = entity instanceof Association ? serializeAssociation(entity) : serialize(entity);
-		byte[] digest = digest(bytes);
-		if (Arrays.equals(digest, this.persistedDigests.get(stableFile)) && Files.exists(stableFile))
-			return;
-		writeStoredBytes(bytes, stableFile.resolveSibling(stableFile.getFileName() + pendingSuffix));
-		staged.put(stableFile, digest);
-	}
-
-	/** See {@link #VERIFY_UNCHANGED_ASSOCIATIONS}: before anything is written, so a failure leaves the repository as it was. */
-	private void verifyUnchangedAssociations(SerRepository repo) throws IOException {
-		Set<Association.Op> dirty = Collections.newSetFromMap(new IdentityHashMap<>());
-		dirty.addAll(repo.getDirtyAssociations());
-		for (Association.Op association : repo.getAssociations()) {
-			if (dirty.contains(association))
-				continue;
-			byte[] stored = this.verifiedAssociationDigests.get(association.getId());
-			if (stored == null)
-				throw new IllegalStateException("Association " + association.getId() + " is neither stored nor marked to be written (Repository.Op#addAssociation).");
-			if (!Arrays.equals(stored, digest(serializeAssociation(association))))
-				throw new IllegalStateException("Association " + association.getId() + " changed without being marked to be written (Repository.Op#addAssociation) - the change would not be stored.");
-		}
-	}
-
-	/** See {@link #verifiedAssociationDigests}: records [associations] as they serialize now. */
-	private void recordVerifiedDigests(Collection<? extends Association> associations) throws IOException {
-		for (Association association : associations)
-			this.verifiedAssociationDigests.put(association.getId(), digest(serializeAssociation(association)));
-	}
-
-	private static void writeStoredBytes(byte[] serializedBytes, Path file) throws IOException {
-		Path tmpFile = file.resolveSibling(file.getFileName() + "." + UUID.randomUUID() + ".tmp");
-		// compressed at the fastest level, the whole array at once, into a buffered stream: 2-3.6x
-		// smaller for about 0.1 s per 15 MB. (Compressing used to cost 10-15 s per commit and was
-		// turned off - streamed through ZipOutputStream's 512 byte buffer into an unbuffered file.)
-		try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpFile, StandardOpenOption.CREATE), 1 << 16))) {
-			zos.setLevel(Deflater.BEST_SPEED);
-			zos.putNextEntry(new ZipEntry(ZIP_ENTRY_NAME));
-			zos.write(serializedBytes);
-		}
-		try {
-			Files.move(tmpFile, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-		} catch (IOException e) {
-			Files.deleteIfExists(tmpFile);
-			throw e;
-		}
-	}
-
-	/**
-	 * Suffix of a dirty association/artifact file staged by {@link #endReadWrite()} for the
-	 * transaction that will make {@code txId} the current core id - see {@link #endReadWrite()}.
-	 */
-	private static String pendingSuffix(String txId) {
-		return "." + txId + PENDING_SUFFIX;
-	}
-
-	/**
-	 * Resolves the staged files of an interrupted-but-committed transaction and discards those of
-	 * aborted ones, in both per-entity directories - see {@link #endReadWrite()} for the protocol.
-	 * <p>
-	 * Pending files tagged with {@code currentId} belong to a transaction whose id-file swap (its
-	 * commit point) already happened, so they are the authoritative versions and are renamed over
-	 * their stable names (roll forward). Any other pending file belongs to a transaction that never
-	 * reached its swap; those are only deleted when {@code discardAborted} is set, i.e. when the
-	 * caller holds the exclusive write lock - otherwise they might be the in-flight files of a
-	 * concurrent writer in another process, which must not be touched.
-	 */
-	private void recoverPendingFiles(String currentId, boolean discardAborted) throws IOException {
-		for (Path dir : List.of(this.associationsDir, this.artifactsDir)) {
-			if (!Files.isDirectory(dir)) continue;
-			List<Path> pendingFiles;
-			try (var files = Files.list(dir)) {
-				pendingFiles = files.filter(f -> f.getFileName().toString().endsWith(PENDING_SUFFIX)).toList();
-			}
-			String committedSuffix = currentId == null ? null : pendingSuffix(currentId);
-			for (Path pending : pendingFiles) {
-				String name = pending.getFileName().toString();
-				if (committedSuffix != null && name.endsWith(committedSuffix)) {
-					Path stable = pending.resolveSibling(name.substring(0, name.length() - committedSuffix.length()));
-					try {
-						Files.move(pending, stable, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-					} catch (NoSuchFileException e) {
-						// another process rolled this one forward concurrently - nothing left to do
-					}
-				} else if (discardAborted) {
-					Files.deleteIfExists(pending);
-				}
-			}
-		}
-	}
-
-	/**
-	 * Reads the object of a zip file's single entry, and remembers the digest of its bytes, so an unchanged
-	 * entity isn't written again (see {@link #stageIfChanged}).
-	 */
-	private Object readZippedTracked(Path file) throws IOException, ClassNotFoundException {
-		try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(Files.newInputStream(file)))) {
-			ZipEntry e;
-			while ((e = zis.getNextEntry()) != null) {
-				if (e.getName().equals(ZIP_ENTRY_NAME)) {
-					byte[] bytes = zis.readAllBytes();
-					this.persistedDigests.put(file, digest(bytes));
-					try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
-						return ois.readObject();
-					}
-				}
-			}
-		}
-		throw new EccoException("No " + ZIP_ENTRY_NAME + " entry found in " + file);
-	}
-
-	/**
-	 * Reads every artifact of a pack (see {@link #writePack}) as the current one - the packs being read
-	 * in the order they were written - recording where each is and its digest.
-	 */
-	private void readOrderedPack(String packName, Map<String, Artifact.Op<?>> loadedById, SerRepository repo) throws IOException, ClassNotFoundException {
-		Path pack = this.artifactsDir.resolve(packName);
-		if (!Files.exists(pack))
-			throw new EccoException("The artifact pack " + packName + " is missing - the repository is damaged.");
-		try (ZipFile zip = new ZipFile(pack.toFile())) {
-			ZipEntry artifactsEntry = zip.getEntry(PACK_ARTIFACTS_ENTRY);
-			if (artifactsEntry == null)
-				throw new EccoException("The artifact pack " + packName + " has no " + PACK_ARTIFACTS_ENTRY + " - the repository is damaged.");
-			byte[] digests = packDigests(zip, packName);
-			try (ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(zip.getInputStream(artifactsEntry), 1 << 16))) {
-				int count = ois.readInt();
-				for (int i = 0; i < count; i++) {
-					SerArtifact<?> artifact = (SerArtifact<?>) ois.readObject();
-					String id = artifact.getStorageId();
-					loadedById.put(id, artifact);
-					repo.setArtifactPack(id, packName);
-					this.recordDigest(id, digests, i);
-				}
-			}
-		}
-	}
-
-	/**
-	 * The digests of a pack's artifacts, or none if its {@value #PACK_DIGESTS_ENTRY} entry is missing.
-	 * They only tell a later write which artifacts it need not write again: without them the
-	 * artifacts are read all the same (a missing entry threw a NullPointerException), and written
-	 * again by the next write.
-	 */
-	private static byte[] packDigests(ZipFile zip, String packName) throws IOException {
-		ZipEntry entry = zip.getEntry(PACK_DIGESTS_ENTRY);
-		if (entry == null) {
-			LOGGER.warning("The artifact pack " + packName + " has no " + PACK_DIGESTS_ENTRY + " entry - its artifacts are written again by the next write.");
-			return new byte[0];
-		}
-		try (InputStream in = zip.getInputStream(entry)) {
-			return in.readAllBytes();
-		}
-	}
-
-	/** Records the digest of the [index]th artifact of a pack, if [digests] has one for it. */
-	private void recordDigest(String id, byte[] digests, int index) {
-		int end = (index + 1) * ARTIFACT_DIGEST_LENGTH;
-		if (end <= digests.length)
-			this.artifactDigests.put(id, Arrays.copyOfRange(digests, end - ARTIFACT_DIGEST_LENGTH, end));
-	}
-
-	/** Reads the given artifacts from a pack (see {@link #writePack}), recording their digests. */
-	private void readPack(Path pack, List<String> artifactIds, Map<String, Artifact.Op<?>> loadedById) throws IOException, ClassNotFoundException {
-		if (!Files.exists(pack))
-			throw new EccoException("The artifact pack " + pack.getFileName() + " is missing - the repository is damaged.");
-		Set<String> wanted = new HashSet<>(artifactIds);
-		try (ZipFile zip = new ZipFile(pack.toFile())) {
-			ZipEntry artifactsEntry = zip.getEntry(PACK_ARTIFACTS_ENTRY);
-			if (artifactsEntry != null) {
-				byte[] digests = packDigests(zip, pack.getFileName().toString());
-				try (ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(zip.getInputStream(artifactsEntry), 1 << 16))) {
-					int count = ois.readInt();
-					for (int i = 0; i < count; i++) {
-						SerArtifact<?> artifact = (SerArtifact<?>) ois.readObject();
-						String id = artifact.getStorageId();
-						if (!wanted.contains(id))
-							continue; // superseded by a later pack
-						loadedById.put(id, artifact);
-						this.recordDigest(id, digests, i);
-					}
-				}
-			} else {
-				// the first packs: one entry per artifact
-				for (String id : artifactIds) {
-					ZipEntry entry = zip.getEntry(id);
-					if (entry == null)
-						continue;
-					byte[] bytes;
-					try (InputStream in = zip.getInputStream(entry)) {
-						bytes = in.readAllBytes();
-					}
-					this.artifactDigests.put(id, artifactDigest(bytes));
-					try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
-						loadedById.put(id, (Artifact.Op<?>) ois.readObject());
-					}
-				}
-			}
-		}
-		for (String id : artifactIds)
-			if (!loadedById.containsKey(id))
-				throw new EccoException("Artifact " + id + " is missing from " + pack.getFileName() + " - the repository is damaged.");
-	}
 
 	public Database getDatabase() {
 		return this.database;
@@ -569,61 +254,36 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// same associations below). May register some artifacts that didn't actually change this
 		// commit (anything reachable from a dirty association, not just what's new) - harmless,
 		// same over-inclusive-but-safe tradeoff associations' own dirty-tracking already makes.
-		for (Association association : repo.getDirtyAssociations()) {
-			if (association.getRootNode() instanceof Node.Op rootNode) {
-				this.registerReachableArtifacts(rootNode, repo);
-			}
-		}
+		ArtifactPackStore.registerDirtyArtifacts(repo);
 
 		// write dirty artifacts before dirty associations: an association's nodes only carry
 		// artifact IDs now (see SerNode.artifactId's javadoc), so on a fresh load the artifact files
 		// need to already exist for the resolution pass to find - writing them first is not itself
 		// required for crash-safety (nothing points at them until the id-file swap below, same as
 		// associations), just keeps the two writes in the same order load reads them back in.
-		if (!repo.getDirtyArtifacts().isEmpty()) {
-			Files.createDirectories(this.artifactsDir);
-		}
 		// compute the new core id up front: every dirty file below is staged under a name tagged with
 		// it, so that the id-file swap further down is the single commit point for the whole
 		// transaction (see the javadoc on this method)
 		String newId = UUID.randomUUID().toString();
-		String pendingSuffix = pendingSuffix(newId);
+		String pendingSuffix = CommitJournal.pendingSuffix(newId);
 		// discard leftovers of earlier transactions that failed before their swap - safe here, we
 		// hold the exclusive write lock, so no other writer can have files in flight
-		this.recoverPendingFiles(this.id, true);
+		this.journal.recoverPendingFiles(this.id, true);
 
-		Map<Path, byte[]> staged = new HashMap<>();
 		Map<String, byte[]> stagedArtifacts = new HashMap<>();
-		Set<String> looseArtifactFiles = this.writeArtifactPack(repo, newId, stagedArtifacts);
+		Set<String> looseArtifactFiles = this.packs.write(repo, newId, stagedArtifacts);
 
-		// write only the associations actually touched this transaction, one file each, rather
-		// than the whole database - most associations are untouched by any given commit but were,
-		// before this, being fully reserialized every single time anyway. See the class javadoc on
-		// SerCommit for why commits/the repository hold association IDs rather than direct
-		// references (that's what makes it safe to leave everything else out of the "core" write
-		// below). Staged under pending names like the artifacts above, never over the stable files
-		// the still-current core loads.
-		if (VERIFY_UNCHANGED_ASSOCIATIONS)
-			this.verifyUnchangedAssociations(repo);
-		if (!repo.getDirtyAssociations().isEmpty()) {
-			Files.createDirectories(this.associationsDir);
-		}
-		for (Association association : repo.getDirtyAssociations()) {
-			this.stageIfChanged(association, this.associationsDir.resolve(association.getId() + DB_FILE_SUFFIX), pendingSuffix, staged);
-		}
-		if (VERIFY_UNCHANGED_ASSOCIATIONS) {
-			this.recordVerifiedDigests(repo.getDirtyAssociations());
-			this.verifiedAssociationDigests.keySet().removeAll(repo.getRemovedAssociationIds());
-		}
+		// then the associations it touched (see AssociationStore#stage)
+		Map<Path, byte[]> staged = this.associations.stage(repo, pendingSuffix);
 
 		// serialize to new db file
-		Path newDbFile = this.repositoryDir.resolve(newId + DB_FILE_SUFFIX);
+		Path newDbFile = this.repositoryDir.resolve(newId + StorageFiles.DB_FILE_SUFFIX);
 		// this "core" write is now cheap regardless of repository size: SerRepository.associations
 		// and SerCommit.associations are both ID-only now (see their javadocs), so the only things
 		// actually reachable from `database` here are IDs, commit/feature/module metadata, and
 		// similar - not the (large, POG-heavy) association trees themselves.
 		this.database.recordStorageFormat();
-		writeStored(this.database, newDbFile);
+		StorageFiles.writeStored(this.database, newDbFile);
 
 		// whether no reader holds the previous core anymore - only then may files it references go
 		boolean oldCoreReleased = false;
@@ -680,20 +340,11 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 */
 	private void finishCommitted(SerRepository repo, String newId, Map<Path, byte[]> staged, Map<String, byte[]> stagedArtifacts,
 								 boolean oldCoreReleased, Set<String> looseArtifactFiles) throws IOException {
-		this.recoverPendingFiles(newId, false);
-		this.persistedDigests.putAll(staged);
-		this.artifactDigests.putAll(stagedArtifacts);
-
-		// best-effort cleanup of association files no longer referenced by the now-current core -
-		// after the id-file swap above, so a failure here never leaves the repository in a state
-		// where the current core references a file that got deleted
-		for (String removedId : repo.getRemovedAssociationIds()) {
-			Path removedFile = this.associationsDir.resolve(removedId + DB_FILE_SUFFIX);
-			Files.deleteIfExists(removedFile);
-			this.persistedDigests.remove(removedFile);
-		}
+		this.journal.recoverPendingFiles(newId, false);
+		this.associations.committed(repo, staged);
+		this.packs.committed(stagedArtifacts);
 		if (oldCoreReleased)
-			this.deleteSupersededArtifactFiles(repo, looseArtifactFiles);
+			this.packs.deleteSupersededArtifactFiles(repo, looseArtifactFiles);
 		// stored as they are now: unchanged until changed again
 		for (Artifact.Op<?> artifact : repo.getDirtyArtifacts())
 			if (artifact instanceof SerArtifact<?> serArtifact)
@@ -701,224 +352,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		repo.clearDirtyTracking();
 	}
 
-	/**
-	 * Writes this transaction's changed artifacts into one new pack file - a zip holding one entry per
-	 * artifact, named by its id, with the bytes its own file used to hold - and records them in the
-	 * repository's pack index, which the core written afterwards persists. One file per artifact made
-	 * a commit cost a file creation per artifact: 67 s for a 71,000 pixel image (142,000 artifacts),
-	 * almost all of it file system calls, and half a second for a 1,000 line text file.
-	 * <p>
-	 * The pack gets its final name right away: until the id file swap nothing references it, so a
-	 * crash leaves an unreferenced pack behind, which a later write deletes. Artifacts whose bytes did
-	 * not change are not written (as before, via {@link #persistedDigests}). Packs of which less than
-	 * half of the artifacts are still current are compacted: their current artifacts go into the new
-	 * pack too, and the old pack is deleted once nothing references it; so are the smallest packs once
-	 * there are more than {@link #MAX_PACKS}.
-	 *
-	 * @return the ids of artifacts with a file of their own, written into the new pack: their files go once committed
-	 */
-	private Set<String> writeArtifactPack(SerRepository repo, String newId, Map<String, byte[]> staged) throws IOException {
-		// the artifacts of the new pack, with the digest of each one's serialization - not the
-		// serialization itself: held for every artifact of a repository converted to ordered packs
-		// (below), that took as much memory as the artifacts' bytes, besides the artifacts
-		Map<String, byte[]> entries = new LinkedHashMap<>();
-		// whether each pack still exists, asked once per pack rather than once per artifact
-		Map<String, Boolean> packExists = new HashMap<>();
-		for (Artifact.Op<?> artifact : repo.getDirtyArtifacts()) {
-			if (!(artifact instanceof SerArtifact<?> serArtifact)) continue;
-			String id = serArtifact.getStorageId();
-			// stored, not changed since it was loaded, and without an order graph (which changes
-			// without the artifact knowing): cannot have changed - not serialized (gap #49)
-			boolean unchanged = !serArtifact.isModified() && !serArtifact.isOrdered() && serArtifact.getPartialOrderGraph() == null
-					&& this.artifactDigests.containsKey(id) && this.isArtifactStored(repo, id, packExists);
-			if (unchanged && !VERIFY_UNCHANGED_ARTIFACTS)
-				continue;
-			byte[] bytes = serialize(artifact);
-			byte[] digest = artifactDigest(bytes);
-			if (Arrays.equals(digest, this.artifactDigests.get(id)) && this.isArtifactStored(repo, id, packExists))
-				continue;
-			if (unchanged)
-				throw new IllegalStateException("An artifact changed without being marked modified (Artifact.Op#markModified): "
-						+ artifact + " (" + artifact.getData().getClass().getName() + ")");
-			entries.put(id, digest);
-			staged.put(id, digest);
-		}
 
-		// a core written before packs were ordered: every current artifact goes into the new pack, so
-		// that its packs need no order (see SerRepository.hasLegacyArtifactIndex()); the files of
-		// artifacts that had one of their own go too
-		Set<String> looseFiles = new HashSet<>();
-		boolean legacy = repo.hasLegacyArtifactIndex();
-		if (legacy) {
-			for (String id : repo.getArtifactIds()) {
-				if (repo.getArtifactPack(id) == null)
-					looseFiles.add(id);
-				if (!entries.containsKey(id) && repo.getArtifact(id) != null) {
-					byte[] digest = artifactDigest(serialize(repo.getArtifact(id)));
-					entries.put(id, digest);
-					staged.put(id, digest);
-				}
-			}
-		}
-
-		// how many current artifacts each pack keeps once the new one supersedes those it holds
-		Map<String, Integer> superseded = new HashMap<>();
-		for (String id : entries.keySet()) {
-			String pack = repo.getArtifactPack(id);
-			if (pack != null)
-				superseded.merge(pack, 1, Integer::sum);
-		}
-		Map<String, Integer> currentAfter = new HashMap<>();
-		for (String pack : repo.getPackOrder())
-			currentAfter.put(pack, repo.currentArtifacts(pack) - superseded.getOrDefault(pack, 0));
-		List<String> kept = new ArrayList<>();
-		for (String pack : repo.getPackOrder()) {
-			int current = currentAfter.get(pack);
-			if (current <= 0)
-				continue;
-			if (current * 2 >= repo.getPackSizes().getOrDefault(pack, current) || !this.repack(repo, this.stillCurrent(repo, pack, entries), entries, staged))
-				kept.add(pack);
-		}
-		// every write adds a pack: once there are too many, the smallest are merged into the new one
-		if (kept.size() + 1 > MAX_PACKS) {
-			kept.sort(Comparator.comparingInt(currentAfter::get));
-			for (String pack : kept.subList(0, kept.size() + 1 - MAX_PACKS / 2))
-				this.repack(repo, this.stillCurrent(repo, pack, entries), entries, staged);
-		}
-
-		if (legacy)
-			repo.dropLegacyArtifactIndex();
-		if (!entries.isEmpty()) {
-			String packName = PACK_PREFIX + newId + PACK_SUFFIX;
-			writePack(repo, entries, this.artifactsDir.resolve(packName));
-			for (String id : entries.keySet())
-				repo.setArtifactPack(id, packName);
-			repo.addPack(packName);
-			repo.getPackSizes().put(packName, entries.size());
-		}
-		// packs nothing is current in anymore leave the order (their files go once committed)
-		repo.dropEmptyPacks();
-		return looseFiles;
-	}
-
-	/** The artifacts [pack] holds the current copy of that the new pack does not supersede. */
-	private List<String> stillCurrent(SerRepository repo, String pack, Map<String, byte[]> entries) {
-		List<String> ids = repo.currentArtifactsOf(pack);
-		ids.removeIf(entries::containsKey);
-		return ids;
-	}
-
-	/** Adds the given (current) artifacts of an old pack to the entries of the new one; false if one is not loaded. */
-	private boolean repack(SerRepository repo, List<String> artifactIds, Map<String, byte[]> entries, Map<String, byte[]> staged) throws IOException {
-		if (artifactIds.stream().anyMatch(id -> repo.getArtifact(id) == null))
-			return false;
-		for (String id : artifactIds) {
-			byte[] digest = artifactDigest(serialize(repo.getArtifact(id)));
-			entries.put(id, digest);
-			staged.put(id, digest);
-		}
-		return true;
-	}
-
-	/**
-	 * Writes a pack: entry {@value #PACK_ARTIFACTS_ENTRY} holds the artifacts in one serialization
-	 * stream - class descriptions written once, not per artifact (4.6x smaller for pixels) - compressed
-	 * at the fastest level (another 3-4x); entry {@value #PACK_DIGESTS_ENTRY} the digest of each
-	 * artifact's own serialization in the same order, so that a later write can still tell unchanged
-	 * artifacts without serializing everything it loaded. The first packs held one entry per artifact
-	 * instead; they are still read.
-	 */
-	private static void writePack(SerRepository repo, Map<String, byte[]> entries, Path pack) throws IOException {
-		Path tmpFile = pack.resolveSibling(pack.getFileName() + "." + UUID.randomUUID() + TMP_SUFFIX);
-		try {
-			try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpFile, StandardOpenOption.CREATE_NEW), 1 << 16))) {
-				zos.setLevel(Deflater.BEST_SPEED);
-				zos.putNextEntry(new ZipEntry(PACK_ARTIFACTS_ENTRY));
-				// serialized straight into the compressed entry: it was serialized into memory first, a
-				// second copy of every artifact's bytes - of all of them when a repository was converted
-				ObjectOutputStream out = new ObjectOutputStream(new FilterOutputStream(zos) {
-					@Override
-					public void write(byte[] b, int off, int len) throws IOException {
-						this.out.write(b, off, len);
-					}
-
-					@Override
-					public void close() throws IOException {
-						this.flush(); // the zip entry stays open
-					}
-				});
-				out.writeInt(entries.size());
-				for (String id : entries.keySet())
-					out.writeObject(repo.getArtifact(id));
-				out.close();
-				zos.closeEntry();
-				zos.putNextEntry(new ZipEntry(PACK_DIGESTS_ENTRY));
-				for (byte[] digest : entries.values())
-					zos.write(digest);
-				zos.closeEntry();
-			}
-			Files.move(tmpFile, pack, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-		} finally {
-			// a write that failed (e.g. out of memory or disk space) left it behind for good
-			Files.deleteIfExists(tmpFile);
-		}
-	}
-
-	/** A digest of an artifact's own serialization - the first half of its SHA-256, to keep packs small. */
-	private static byte[] artifactDigest(byte[] bytes) {
-		return Arrays.copyOf(digest(bytes), ARTIFACT_DIGEST_LENGTH);
-	}
-
-	/** The file an artifact had of its own before packs - also the key of its digest. */
-	private Path artifactFile(String artifactId) {
-		return this.artifactsDir.resolve(artifactId + DB_FILE_SUFFIX);
-	}
-
-	private boolean isArtifactStored(SerRepository repo, String artifactId, Map<String, Boolean> packExists) {
-		String pack = repo.getArtifactPack(artifactId);
-		if (pack == null)
-			return Files.exists(this.artifactFile(artifactId));
-		return packExists.computeIfAbsent(pack, p -> Files.exists(this.artifactsDir.resolve(p)));
-	}
-
-	/**
-	 * After a committed write: deletes the files of the artifacts just packed that still had a file
-	 * of their own, and every pack nothing is in anymore (also one left by a crashed write). Only
-	 * called when no reader holds the previous core, which may still reference them.
-	 */
-	private void deleteSupersededArtifactFiles(SerRepository repo, Set<String> looseFiles) throws IOException {
-		for (String id : looseFiles)
-			Files.deleteIfExists(this.artifactFile(id));
-		if (!Files.isDirectory(this.artifactsDir))
-			return;
-		Set<String> referenced = new HashSet<>(repo.getPackOrder());
-		try (DirectoryStream<Path> packs = Files.newDirectoryStream(this.artifactsDir, PACK_PREFIX + "*" + PACK_SUFFIX)) {
-			for (Path pack : packs) {
-				if (!referenced.contains(pack.getFileName().toString()))
-					Files.deleteIfExists(pack);
-			}
-		}
-		// packs being written when a write crashed (none is being written now: this write holds the lock)
-		try (DirectoryStream<Path> unfinished = Files.newDirectoryStream(this.artifactsDir, PACK_PREFIX + "*" + PACK_SUFFIX + ".*" + TMP_SUFFIX)) {
-			for (Path pack : unfinished)
-				Files.deleteIfExists(pack);
-		}
-	}
-
-	private void registerReachableArtifacts(Node.Op node, SerRepository repo) {
-		if (node.getArtifact() != null) {
-			repo.registerArtifact(node.getArtifact());
-		}
-		for (Node.Op child : node.getChildren()) {
-			this.registerReachableArtifacts(child, repo);
-		}
-	}
 
 
 	private void reset() {
-		this.persistedDigests.clear();
-		this.artifactDigests.clear();
-		this.verifiedAssociationDigests.clear();
+		this.associations.clear();
+		this.packs.clear();
 		this.id = null;
 		this.dbFile = null;
 		this.database = null;
@@ -977,7 +416,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 				return;
 			this.id = id;
 
-			Path dbFile = this.repositoryDir.resolve(this.id + DB_FILE_SUFFIX);
+			Path dbFile = this.repositoryDir.resolve(this.id + StorageFiles.DB_FILE_SUFFIX);
 			if (Files.exists(dbFile)) {
 				this.dbFile = dbFile;
 				try (FileChannel dbFileChannel = FileChannel.open(this.dbFile, StandardOpenOption.READ); FileLock dbFileLock = dbFileChannel.lock(0, Long.MAX_VALUE, true)) {
@@ -989,7 +428,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					ZipEntry e = null;
 					Database loaded = null;
 					while ((e = zis.getNextEntry()) != null) {
-						if (e.getName().equals(ZIP_ENTRY_NAME)) {
+						if (e.getName().equals(StorageFiles.ZIP_ENTRY_NAME)) {
 							ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(zis.readAllBytes()));
 							loaded = (Database) ois.readObject();
 							break;
@@ -997,7 +436,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					}
 					// used to leave the previous (or no) database in place and fail later with an NPE
 					if (loaded == null)
-						throw new EccoException("Repository core file " + dbFile + " is damaged: it has no " + ZIP_ENTRY_NAME + " entry.");
+						throw new EccoException("Repository core file " + dbFile + " is damaged: it has no " + StorageFiles.ZIP_ENTRY_NAME + " entry.");
 					if (loaded.getStorageFormat() > Database.STORAGE_FORMAT)
 						throw new EccoException("This repository (" + this.repositoryDir + ") was written by a newer version of ECCO (storage format "
 								+ loaded.getStorageFormat() + "; this version reads up to " + Database.STORAGE_FORMAT + "). Open it with that version or a later one.");
@@ -1006,7 +445,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 				// delete db file if we can get exclusive lock and it does not match id file
 				String currentId = this.readCurrentId();
-				Path currentDbFile = this.repositoryDir.resolve(currentId + DB_FILE_SUFFIX);
+				Path currentDbFile = this.repositoryDir.resolve(currentId + StorageFiles.DB_FILE_SUFFIX);
 				if (!currentDbFile.equals(dbFile)) {
 					// try to delete db file
 					try (FileChannel oldDbFileChannel = FileChannel.open(dbFile, StandardOpenOption.WRITE); FileLock oldDbFileLock = oldDbFileChannel.lock(0, Long.MAX_VALUE, false)) {
@@ -1035,55 +474,17 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// finish a committed transaction whose staged files weren't all moved into place yet (see
 		// endReadWrite()); pending files of aborted transactions are only discarded while holding
 		// the write lock, as they might belong to a concurrent writer otherwise
-		this.recoverPendingFiles(this.id, this.transaction == TRANSACTION.READ_WRITE && this.writeFileLock != null);
+		this.journal.recoverPendingFiles(this.id, this.transaction == TRANSACTION.READ_WRITE && this.writeFileLock != null);
 
-		// load every artifact from its own file BEFORE any association - association trees' nodes
-		// only carry an artifactId now (see SerNode.artifactId's javadoc), so the global artifact
-		// store needs to already be in place for the resolution pass below to resolve them against.
-		// This is what actually fixes the duplicated-shared-artifact bug: an artifact is
-		// now loaded exactly once, from its own file, regardless of how many associations reference
-		// it - structurally impossible for it to come back as multiple distinct objects sharing one
-		// storageId, rather than merely hoping a name-tag-scan-and-overwrite (the old approach)
-		// happens to land on a usable one.
-		Map<String, Artifact.Op<?>> loadedById = new HashMap<>();
-		if (repo.hasLegacyArtifactIndex()) {
-			// a core written before packs were ordered holds the index itself
-			Map<String, List<String>> idsByPack = new LinkedHashMap<>();
-			for (String artifactId : repo.legacyArtifactIds()) {
-				String pack = repo.legacyArtifactPack(artifactId);
-				if (pack == null) {
-					Path file = this.artifactFile(artifactId);
-					loadedById.put(artifactId, (Artifact.Op<?>) this.readZippedTracked(file));
-					byte[] digest = this.persistedDigests.remove(file);
-					if (digest != null)
-						this.artifactDigests.put(artifactId, Arrays.copyOf(digest, ARTIFACT_DIGEST_LENGTH));
-					repo.addLooseArtifact(artifactId);
-				}
-				else
-					idsByPack.computeIfAbsent(pack, p -> new ArrayList<>()).add(artifactId);
-			}
-			for (Map.Entry<String, List<String>> pack : idsByPack.entrySet()) {
-				this.readPack(this.artifactsDir.resolve(pack.getKey()), pack.getValue(), loadedById);
-				for (String artifactId : pack.getValue())
-					repo.setArtifactPack(artifactId, pack.getKey());
-			}
-		} else {
-			// the packs in the order they were written: a later pack's copy is the current one
-			for (String pack : repo.getPackOrder())
-				this.readOrderedPack(pack, loadedById, repo);
-		}
-		List<Artifact.Op<?>> loadedArtifacts = new ArrayList<>(repo.getArtifactIds().size());
-		for (String artifactId : repo.getArtifactIds())
-			loadedArtifacts.add(loadedById.get(artifactId));
-		repo.restoreArtifacts(loadedArtifacts);
+		// the artifacts before any association (see ArtifactPackStore#load)
+		this.packs.load(repo);
 
 		// load each association from its own file (eagerly: every association is loaded on open) and wire up the
 		// resolver every commit needs to turn the IDs it holds back into Association objects. A
 		// no-op for a brand new repository (SerRepository starts with an empty association-id set).
 		List<Association.Op> loadedAssociations = new ArrayList<>(repo.getAssociationIds().size());
 		for (String associationId : repo.getAssociationIds()) {
-			Path associationFile = this.associationsDir.resolve(associationId + DB_FILE_SUFFIX);
-			loadedAssociations.add((Association.Op) this.readZippedTracked(associationFile));
+			loadedAssociations.add(this.associations.read(associationId));
 		}
 		repo.restoreAssociations(loadedAssociations);
 		// the repository's commits (Commit.getAssociations() needs the resolver after a reload -
@@ -1094,17 +495,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			}
 		}
 
-		this.resolveCrossAssociationReferences(repo);
-		this.resolveModuleReferences(repo);
+		LoadResolver.resolveCrossAssociationReferences(repo);
+		LoadResolver.resolveModuleReferences(repo);
 		// the nodes' retroactive conditions are derived from the counters and not stored
 		// (SerFeatureTrace): set here, as after every commit
 		repo.setRetroactiveConditions();
-		if (VERIFY_UNCHANGED_ASSOCIATIONS) {
-			this.verifiedAssociationDigests.clear();
-			Set<Association.Op> dirty = Collections.newSetFromMap(new IdentityHashMap<>());
-			dirty.addAll(repo.getDirtyAssociations());
-			this.recordVerifiedDigests(repo.getAssociations().stream().filter(a -> !dirty.contains(a)).toList());
-		}
+		this.associations.loaded(repo);
 
 		// SerRepository.mainTree is purely derived from associations (see buildMainTree()) but
 		// isn't transient, so a freshly-loaded repository initially holds whatever copy was
@@ -1122,151 +518,4 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// real-world regression (slow repo open in the GUI's Artifacts tab).
 		repo.invalidateMainTree();
 	}
-
-	/**
-	 * Each association was just deserialized from its own, independent file/stream, so any
-	 * reference that points OUTSIDE that association's own tree (SerNode.artifactId,
-	 * SerArtifactReference.source/target - transient, carrying only an id; and
-	 * SerArtifact.containingNode, not persisted at all but derived from the trees) was not restored
-	 * by the default deserialization of that file. artifactsById comes
-	 * directly from the global artifact store (restoreArtifacts(), already loaded above) rather than
-	 * being harvested by walking nodes - that's what actually fixes
-	 * the duplicated-shared-artifact bug, since it means there is structurally exactly one
-	 * instance per artifact id, not "whichever association's independently-deserialized copy
-	 * happened to be indexed last". This walks every loaded association's tree once to wire each
-	 * node's artifactId to that instance (and each artifact's containing node to the unique node
-	 * holding it), then fills in the remaining transient fields - always resolving to a real, properly-reconstructed
-	 * instance, never a dangling or independently-duplicated fragment. See
-	 * TreesObjectIdentityDependencyTest and the node sharing across associations that broke per-association writing for why
-	 * this matters.
-	 */
-	private void resolveCrossAssociationReferences(SerRepository repo) {
-		Map<String, Artifact.Op<?>> artifactsById = new HashMap<>();
-		for (String artifactId : repo.getArtifactIds()) {
-			Artifact.Op<?> artifact = repo.getArtifact(artifactId);
-			if (artifact != null) {
-				artifactsById.put(artifactId, artifact);
-			}
-		}
-
-		for (Association.Op association : repo.getAssociations()) {
-			if (association.getRootNode() != null) {
-				this.resolveNodeArtifacts(association.getRootNode(), artifactsById);
-			}
-		}
-
-		for (Artifact.Op<?> artifact : artifactsById.values()) {
-			if (!(artifact instanceof SerArtifact<?> serArtifact)) continue;
-
-			this.resolveReferences(serArtifact.getUses(), artifactsById);
-			this.resolveReferences(serArtifact.getUsedBy(), artifactsById);
-
-			if (serArtifact.getPartialOrderGraph() != null) {
-				this.resolvePartialOrderGraph(serArtifact.getPartialOrderGraph(), artifactsById);
-			}
-		}
-	}
-
-	/**
-	 * Each association's AssociationCounter -> ModuleCounter -> ModuleRevisionCounter chain holds
-	 * direct (non-transient) references to Module/ModuleRevision - deserialized independently once
-	 * per association file (SerModuleCounter.module, SerModuleRevisionCounter.moduleRevision), so
-	 * every association ends up with its own data-equal-but-object-distinct copy instead of sharing
-	 * the repository's one canonical instance (SerRepository.modules/features, part of the "core"
-	 * blob, not split into per-association files). Association.computeCondition() reads a mutable
-	 * count directly off whichever ModuleRevision instance a counter happens to reference
-	 * (moduleRevisionCounter.getObject().getCount()), not off the per-association counter itself -
-	 * so that divergence corrupts presence-condition computation for every association after any
-	 * reload, in a way a single continuous session never exhibits (the repository's registry is the
-	 * only source of Module/ModuleRevision objects there, so everything shares by construction).
-	 * Unlike artifacts/nodes, Module/ModuleRevision equality is already content-based (feature id
-	 * strings all the way down), so no id surrogate is needed - resolving is just replacing each
-	 * counter's reference with the repository's own lookup result.
-	 */
-	private void resolveModuleReferences(SerRepository repo) {
-		// counters read in compact form are built on the repository's modules right away; only
-		// those read in the old form hold copies to replace
-		for (Association.Op association : repo.getAssociations()) {
-			if (association.getCounter() instanceof SerAssociationCounter serAssociationCounter
-					&& serAssociationCounter.resolveCompactChildren(repo))
-				continue;
-			for (ModuleCounter moduleCounter : association.getCounter().getChildren()) {
-				if (!(moduleCounter instanceof SerModuleCounter serModuleCounter)) continue;
-
-				Module module = moduleCounter.getObject();
-				SerModule canonicalModule = repo.getModule(module.getPos(), module.getNeg());
-				if (canonicalModule != null) {
-					serModuleCounter.resolveModule(canonicalModule);
-				}
-				Module lookupModule = canonicalModule != null ? canonicalModule : module;
-
-				for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
-					if (!(moduleRevisionCounter instanceof SerModuleRevisionCounter serModuleRevisionCounter)) continue;
-
-					ModuleRevision moduleRevision = moduleRevisionCounter.getObject();
-					ModuleRevision canonicalModuleRevision = lookupModule.getRevision(moduleRevision.getPos(), moduleRevision.getNeg());
-					if (canonicalModuleRevision instanceof SerModuleRevision serCanonicalModuleRevision) {
-						serModuleRevisionCounter.resolveModuleRevision(serCanonicalModuleRevision);
-					}
-				}
-			}
-		}
-	}
-
-	/**
-	 * PartialOrderGraphs get merged across nodes that can belong to different associations
-	 * (Trees.slice(), Trees.java:115), so a POG node's artifact (SerPartialOrderGraphNode.artifact)
-	 * can be a foreign, side-channel-serialized reference for the same reason
-	 * SerArtifact.containingNode was - resolved here against the same global artifact-id index.
-	 */
-	private void resolvePartialOrderGraph(PartialOrderGraph.Op graph, Map<String, Artifact.Op<?>> artifactsById) {
-		for (PartialOrderGraph.Node.Op node : graph.collectNodes()) {
-			if (!(node instanceof SerPartialOrderGraphNode serNode)) continue;
-
-			String artifactId = serNode.getArtifactId();
-			if (artifactId == null) continue; // head/tail sentinel nodes have no artifact
-
-			Artifact.Op<?> artifact = artifactsById.get(artifactId);
-			if (artifact == null) {
-				throw new EccoException("Could not resolve POG node artifact " + artifactId + " after loading all associations.");
-			}
-			serNode.resolveArtifact(artifact);
-		}
-	}
-
-	private void resolveNodeArtifacts(Node.Op node, Map<String, Artifact.Op<?>> artifactsById) {
-		if (node instanceof SerNode serNode) {
-
-			String artifactId = serNode.getArtifactId();
-			if (artifactId != null) {
-				Artifact.Op<?> artifact = artifactsById.get(artifactId);
-				if (artifact == null) {
-					throw new EccoException("Could not resolve node artifact " + artifactId + " after loading all associations.");
-				}
-				serNode.resolveArtifact(artifact);
-				// an artifact's containing node is the unique node holding it - derived here rather than
-				// persisted (see SerArtifact's containingNode field); verified to equal the previously
-				// persisted value on every repository examined
-				if (node.isUnique() && artifact instanceof SerArtifact<?> serArtifact)
-					serArtifact.resolveContainingNode(node);
-			}
-		}
-		for (Node.Op child : node.getChildren()) {
-			this.resolveNodeArtifacts(child, artifactsById);
-		}
-	}
-
-	private void resolveReferences(Iterable<ArtifactReference.Op> references, Map<String, Artifact.Op<?>> artifactsById) {
-		for (ArtifactReference.Op reference : references) {
-			if (!(reference instanceof SerArtifactReference serReference)) continue;
-
-			Artifact.Op<?> source = artifactsById.get(serReference.getSourceId());
-			Artifact.Op<?> target = artifactsById.get(serReference.getTargetId());
-			if (source == null || target == null) {
-				throw new EccoException("Could not resolve artifact reference (source=" + serReference.getSourceId() + ", target=" + serReference.getTargetId() + ") after loading all associations.");
-			}
-			serReference.resolveReferences(source, target);
-		}
-	}
-
 }
