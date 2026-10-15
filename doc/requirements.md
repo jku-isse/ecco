@@ -457,6 +457,15 @@ Postcondition: The repository records the chosen order, and later checkouts that
 
 Postcondition: The checkout directory and the repository are unchanged.
 
+**Specific alternative flow SA2** (RFS 4)
+
+1. The variant developer asks for a suggested order.
+2. The system asks the LLM configured in the preferences for an order of the children around those that can move.
+3. The system shows the suggested order, keeping every order earlier commits fixed.
+4. RESUME STEP 4.
+
+Postcondition: The dialog shows the suggestion; nothing is recorded until the variant developer confirms. If no model is configured, the system says so instead; if the LLM cannot be reached or answers with no usable order, the system reports it and the order is unchanged.
+
 **Bounded alternative flow BA1** (RFS 4-5)
 
 1. IF the variant developer cancels the dialog THEN ABORT ENDIF.
@@ -1191,7 +1200,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-G5 | The feature model view shall show the feature model derived from the commits and let users accept, reject or return mined constraints, and minimize presence conditions with them. | Code `FeaturesView`, `ConstraintSuggestionsView` |
 | IF-G6 | Users shall be able to list and compare commits, list associations with their full and simplified conditions, and browse the artifact tree of any selection of associations - composed as soon as it changes, and selected by hand or by a configuration, which selects the associations a checkout of it takes - then check out exactly that selection into a folder they choose. | Code `CommitsView`, `CommitComparisonView`, `AssociationsView`, `ArtifactsView`, `FeatureTogglePanel`; Test `ArtifactsViewTest` |
 | IF-G7 | Wherever associations are listed, an association preview shall show their artifacts in their files, coloured by association, for every mapped adapter. | Doc; Code `ArtifactDetailView` viewers |
-| IF-G8 | Checkout results shall show their warnings with a suggested fix; an ambiguous order shall be resolvable by reordering in a dialog, which records the order without a commit (FR-K11). | Code `CheckoutDetailView`, `ReorderChildrenDialog`; Test `CheckoutDetailViewRecordOrderTest` |
+| IF-G8 | Checkout results shall show their warnings with a suggested fix; an ambiguous order shall be resolvable by reordering in a dialog, which records the order without a commit (FR-K11), and in which a configured local LLM can suggest an order - shown for review, never across an order earlier commits fixed. | Code `CheckoutDetailView`, `ReorderChildrenDialog`, `LlmOrderSuggestionClient`; Test `CheckoutDetailViewRecordOrderTest`, `ReorderChildrenDialogTest`, `LlmOrderSuggestionClientTest` |
 | IF-G9 | The GUI shall visualize a knowledge graph (features, commits, variants, associations), the artifact graph and the dependency graph, plus charts, each exportable. | Code `view/graph/*`, `ChartsView` |
 | IF-G10 | The GUI shall manage remotes - add, remove, change a remote's name, address and type (keeping what was fetched from it) and fetch it - fetch, pull and push, and start a sync server on a chosen port, local-only unless "accept connections from other machines" is set. | Code `RemotesView`, `RemoteDetailView`, `EccoService#updateRemote`, `ServerView`; Test `RemotesViewTest`, `RemoteDetailViewTest`, `UpdateRemoteTest` |
 | IF-G11 | Users shall be able to enable or disable adapters (effective on the next open), and set minimization thresholds, LilyPond paths, and the Python the Python and LilyPond adapters run (and LilyPond's lymodel directory) when it is not found (AD-9). | Code `PreferencesView` |

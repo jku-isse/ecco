@@ -6,6 +6,8 @@ import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.LlmPreferences;
+import at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient;
 import at.jku.isse.ecco.tree.ArtifactDiagnostics;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
@@ -76,7 +78,30 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	@Inject
 	private Set<AssociationInfoArtifactViewer> associationInfoArtifactViewers;
 
+	/**
+	 * Proposes an order for rows of a file (see {@link LlmOrderSuggestionClient}); the dialog asks it
+	 * from "Suggest order". Pluggable so tests need no LLM.
+	 */
+	@FunctionalInterface
+	public interface OrderSuggester {
+		LlmOrderSuggestionClient.Suggestion suggest(String path, List<LlmOrderSuggestionClient.Row> rows);
+	}
+
+	/** The LLM endpoint and model of the preferences, or null if no model is chosen there. */
+	static OrderSuggester suggesterFromPreferences() {
+		String model = LlmPreferences.getModelName();
+		if (model == null || model.isBlank())
+			return null;
+		LlmOrderSuggestionClient client = new LlmOrderSuggestionClient(LlmPreferences.getEndpointUrl(), model);
+		return client::suggestOrder;
+	}
+
 	public ReorderChildrenDialog(EccoService service, Node.Op node) {
+		this(service, node, suggesterFromPreferences());
+	}
+
+	/** @param suggester asked for an order by "Suggest order"; null disables it (no model chosen) */
+	public ReorderChildrenDialog(EccoService service, Node.Op node, OrderSuggester suggester) {
 		setTitle("Reorder Children");
 		setHeaderText("Choose the order for the children of: " + node.getArtifact());
 		setResizable(true);
@@ -254,6 +279,24 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			}
 		});
 
+		// "Suggest order": an LLM proposes an order of the rows that may move (see suggestOrder);
+		// shown in the table to review and edit, recorded only with OK
+		Button suggestButton = new Button("Suggest order", new FontIcon(Feather.ZAP));
+		suggestButton.setMinWidth(Region.USE_PREF_SIZE); // the text next to it wraps, the button keeps its label
+		Label suggestStatus = new Label();
+		suggestStatus.setWrapText(true);
+		suggestStatus.setMaxWidth(Double.MAX_VALUE);
+		if (suggester == null) {
+			suggestButton.setDisable(true);
+			// a disabled control shows no tooltip: the reason goes next to it
+			suggestStatus.setText("To have an LLM suggest an order, choose a model in Preferences (LLM).");
+		}
+		suggestButton.setOnAction(e -> this.suggestOrder(suggester, node, rowData, pogNodesByChild, table, suggestButton, suggestStatus,
+				() -> {
+					updateButtonStates.run();
+					updateCodePreview.run();
+				}));
+
 		// the Move buttons are guaranteed permanently disabled when nothing's reorderable - pure
 		// clutter next to the banner below explaining exactly that, so they're left out of the layout
 		// entirely rather than shown disabled.
@@ -261,7 +304,10 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		if (anyReorderable) {
 			VBox buttons = new VBox(10, moveUpButton, moveDownButton);
 			buttons.setAlignment(Pos.TOP_CENTER);
-			tableAndButtons = new HBox(10, table, buttons);
+			VBox tableAndSuggestion = new VBox(8, table, suggestButton, suggestStatus);
+			VBox.setVgrow(table, Priority.ALWAYS);
+			tableAndButtons = new HBox(10, tableAndSuggestion, buttons);
+			HBox.setHgrow(tableAndSuggestion, Priority.ALWAYS);
 		} else {
 			tableAndButtons = new HBox(10, table);
 		}
@@ -304,6 +350,107 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		}
 
 		setResultConverter(buttonType -> buttonType != ButtonType.OK ? null : withMarkers(rowData, markers));
+	}
+
+	/** Rows sent around the ones that may move, as context. */
+	private static final int SUGGESTION_CONTEXT_ROWS = 3;
+
+	/**
+	 * Asks [suggester] for an order of the window of rows around those that may move (with a few
+	 * rows of context before and after), in the background, and puts it into the table - for the
+	 * user to review, edit, and record with OK. The order graph's fixed precedences always win
+	 * (LlmOrderSuggestionClient#respecting): a suggestion never breaks an order a commit fixed.
+	 */
+	private void suggestOrder(OrderSuggester suggester, Node.Op node, ObservableList<ChildEntry> rowData, Map<Node, PartialOrderGraph.Node> pogNodesByChild,
+							  TableView<ChildEntry> table, Button suggestButton, Label status, Runnable afterReorder) {
+		int first = -1, last = -1;
+		for (int i = 0; i < rowData.size(); i++) {
+			if (!isRowFixed(i, rowData, pogNodesByChild)) {
+				if (first < 0)
+					first = i;
+				last = i;
+			}
+		}
+		if (first < 0)
+			return;
+		int from = Math.max(0, first - SUGGESTION_CONTEXT_ROWS), to = Math.min(rowData.size() - 1, last + SUGGESTION_CONTEXT_ROWS);
+		List<ChildEntry> window = new ArrayList<>(rowData.subList(from, to + 1));
+		if (window.size() > LlmOrderSuggestionClient.MAX_ROWS) {
+			status.setText(window.size() + " lines are open to reordering - too many for a suggestion (at most " + LlmOrderSuggestionClient.MAX_ROWS + ").");
+			return;
+		}
+		List<LlmOrderSuggestionClient.Row> rows = new ArrayList<>();
+		for (int i = 0; i < window.size(); i++)
+			rows.add(new LlmOrderSuggestionClient.Row(String.valueOf(window.get(i).getNode().getArtifact()), !isRowFixed(from + i, rowData, pogNodesByChild)));
+		boolean[][] mustPrecede = mustPrecede(window, pogNodesByChild);
+		String path = ArtifactDiagnostics.describePath(node);
+
+		suggestButton.setDisable(true);
+		status.setText("Asking the LLM for an order...");
+		int windowFrom = from;
+		javafx.concurrent.Task<LlmOrderSuggestionClient.Suggestion> task = new javafx.concurrent.Task<>() {
+			@Override
+			protected LlmOrderSuggestionClient.Suggestion call() {
+				return suggester.suggest(path, rows);
+			}
+		};
+		task.setOnSucceeded(e -> {
+			suggestButton.setDisable(false);
+			LlmOrderSuggestionClient.Suggestion suggestion = task.getValue();
+			if (suggestion == null || !suggestion.succeeded()) {
+				status.setText("No suggestion: " + (suggestion == null ? "no answer" : suggestion.failureReason()));
+				return;
+			}
+			List<Integer> order = LlmOrderSuggestionClient.respecting(suggestion.order(), mustPrecede);
+			List<ChildEntry> reordered = new ArrayList<>(rowData.subList(0, windowFrom));
+			for (int i : order)
+				reordered.add(window.get(i));
+			reordered.addAll(rowData.subList(windowFrom + window.size(), rowData.size()));
+			ChildEntry selected = table.getSelectionModel().getSelectedItem();
+			rowData.setAll(reordered);
+			if (selected != null)
+				table.getSelectionModel().select(selected);
+			table.refresh();
+			afterReorder.run();
+			status.setText("Suggested by the LLM - review it; OK records the order, Cancel leaves everything as it was.");
+		});
+		task.setOnFailed(e -> {
+			suggestButton.setDisable(false);
+			status.setText("No suggestion: " + task.getException());
+		});
+		Thread thread = new Thread(task, "order-suggestion");
+		thread.setDaemon(true);
+		thread.start();
+	}
+
+	/** [a][b]: the order graph fixed row a before row b, directly or transitively. */
+	private static boolean[][] mustPrecede(List<ChildEntry> rows, Map<Node, PartialOrderGraph.Node> pogNodesByChild) {
+		int n = rows.size();
+		boolean[][] precede = new boolean[n][n];
+		Map<PartialOrderGraph.Node, Integer> indexOf = new java.util.IdentityHashMap<>();
+		for (int i = 0; i < n; i++) {
+			PartialOrderGraph.Node pogNode = pogNodesByChild.get(rows.get(i).getNode());
+			if (pogNode != null)
+				indexOf.put(pogNode, i);
+		}
+		for (int a = 0; a < n; a++) {
+			PartialOrderGraph.Node start = pogNodesByChild.get(rows.get(a).getNode());
+			if (start == null)
+				continue;
+			// everything reachable from it comes after it
+			java.util.Set<PartialOrderGraph.Node> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+			java.util.Deque<PartialOrderGraph.Node> pending = new java.util.ArrayDeque<>(start.getNext());
+			while (!pending.isEmpty()) {
+				PartialOrderGraph.Node next = pending.pop();
+				if (!seen.add(next))
+					continue;
+				Integer b = indexOf.get(next);
+				if (b != null && b != a)
+					precede[a][b] = true;
+				pending.addAll(next.getNext());
+			}
+		}
+		return precede;
 	}
 
 	/** The rows' nodes in their order, then the final newline, if the file has one. */

@@ -175,6 +175,78 @@ public class ReorderChildrenDialogTest {
     }
 
     /** The dialog's controls, found in its content; rows are rendered by laying the dialog pane out. */
+    /**
+     * "Suggest order": the suggester gets the window of rows around those that may move, marked so,
+     * and its order is put into the table - but never across an order a commit fixed: a suggester
+     * reversing everything gets a b y c x, the fixed a < b < y < c and a < x kept. Nothing is
+     * recorded before OK.
+     */
+    @Test
+    @Timeout(60)
+    public void aSuggestedOrderIsShownAndTheFixedOrdersWin(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "BASE, A", Map.of("f.txt", "a\nb\nc\n"));
+            commit(service, tmp.resolve("v2"), "BASE, B", Map.of("f.txt", "a\nx\n"));
+            commit(service, tmp.resolve("v3"), "BASE, A, C", Map.of("f.txt", "a\nb\ny\nc\n"));
+            Node.Op file = orderWarning(service, tmp.resolve("out"), "BASE, A, B, C");
+            List<List<at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Row>> asked = new java.util.concurrent.CopyOnWriteArrayList<>();
+            ReorderChildrenDialog.OrderSuggester reversing = (path, rows) -> {
+                asked.add(rows);
+                List<Integer> reversed = new ArrayList<>();
+                for (int i = rows.size() - 1; i >= 0; i--)
+                    reversed.add(i);
+                return new at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Suggestion(reversed, null);
+            };
+
+            Fixture d = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file, reversing)));
+            onFx(() -> suggestButton(d.dialog).fire());
+            waitUntil("the suggestion", () -> status(d.dialog).startsWith("Suggested"));
+
+            assertEquals(List.of("a", "b", "y", "c", "x"), onFx(d::order));
+            assertEquals(1, asked.size());
+            assertEquals(List.of("a", "x", "b", "y", "c"), asked.get(0).stream().map(at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Row::text).toList());
+            assertEquals(List.of(false, true, true, false, false), asked.get(0).stream().map(at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Row::movable).toList());
+            assertEquals(List.of("a", "x", "b", "y", "c"), texts(file.getChildren()), "nothing recorded before OK");
+            assertNull(onFx(() -> d.dialog.getResultConverter().call(ButtonType.CANCEL)));
+        }
+    }
+
+    /** A failed suggestion is reported and changes nothing; without a model the button is off, with the reason next to it. */
+    @Test
+    @Timeout(60)
+    public void aFailedSuggestionChangesNothingAndNoModelDisablesIt(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "BASE, A", Map.of("f.txt", "a\nb\n"));
+            commit(service, tmp.resolve("v2"), "BASE, B", Map.of("f.txt", "a\nc\n"));
+            Node.Op file = orderWarning(service, tmp.resolve("out"), "BASE, A, B");
+
+            Fixture failing = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file,
+                    (path, rows) -> new at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Suggestion(null, "the endpoint is offline"))));
+            onFx(() -> suggestButton(failing.dialog).fire());
+            waitUntil("the failure", () -> status(failing.dialog).startsWith("No suggestion"));
+            assertTrue(onFx(() -> status(failing.dialog)).contains("the endpoint is offline"));
+            assertEquals(List.of("a", "c", "b"), onFx(failing::order));
+            assertFalse(onFx(() -> suggestButton(failing.dialog).isDisabled()), "it can be asked again");
+
+            Fixture noModel = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file, null)));
+            assertTrue(onFx(() -> suggestButton(noModel.dialog).isDisabled()));
+            assertTrue(onFx(() -> status(noModel.dialog)).contains("choose a model in Preferences"), onFx(() -> status(noModel.dialog)));
+        }
+    }
+
+    private static Button suggestButton(ReorderChildrenDialog dialog) {
+        return (Button) find(dialog.getDialogPane().getContent(), n -> n instanceof Button b && "Suggest order".equals(b.getText()));
+    }
+
+    /** The text under "Suggest order". */
+    private static String status(ReorderChildrenDialog dialog) {
+        javafx.scene.Node button = suggestButton(dialog);
+        for (javafx.scene.Node sibling : button.getParent().getChildrenUnmodifiable())
+            if (sibling instanceof Label label)
+                return label.getText() == null ? "" : label.getText();
+        return "";
+    }
+
     private static final class Fixture {
         final ReorderChildrenDialog dialog;
         final TableView<?> table;
