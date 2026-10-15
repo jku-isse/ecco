@@ -9,7 +9,9 @@ import at.jku.isse.ecco.repository.Repository;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -41,6 +43,8 @@ class ConfigurationParser {
      */
     Configuration parseConfigurationString(String configurationString) {
         checkNotNull(configurationString);
+        // spaces around the whole (" A, B ", a pasted line) are no part of it
+        configurationString = configurationString.strip();
 
         if (!configurationString.matches(Configuration.CONFIGURATION_STRING_REGULAR_EXPRESSION))
             throw new EccoException("Invalid configuration string provided: " + configurationString);
@@ -55,17 +59,25 @@ class ConfigurationParser {
             Repository.Op repository = owner.repositoryDao.load();
 
             Set<FeatureRevision> featureRevisions = new HashSet<>();
+            // the features of this string not in the repository yet, by name: "X.1, X.2" names one
+            // new feature twice, not two features named X
+            Map<String, Feature> newFeatures = new HashMap<>();
+            // a configuration has one revision per feature (a commit refused two, a checkout took both)
+            Map<String, String> revisionByFeatureId = new HashMap<>();
 
+            Set<String> mentioned = new HashSet<>();
             String[] featureRevisionStrings = configurationString.split(",");
             for (String featureRevisionString : featureRevisionStrings) {
                 featureRevisionString = featureRevisionString.trim();
+                if (!mentioned.add(featureRevisionString))
+                    continue; // "A, A": the same once
 
                 if (featureRevisionString.contains(".")) { // use specified feature revision
                     String[] pair = featureRevisionString.split("\\.");
                     String featureName = pair[0];
                     String featureRevisionId = pair[1];
 
-                    Feature feature = getFeature(repository, featureName);
+                    Feature feature = getFeature(repository, featureName, newFeatures);
 
                     FeatureRevision featureRevision = feature.getRevision(featureRevisionId);
                     if (featureRevision == null) {
@@ -84,14 +96,14 @@ class ConfigurationParser {
                 } else if (featureRevisionString.endsWith("'")) { // create new feature revision for feature
                     String featureName = featureRevisionString.substring(0, featureRevisionString.length() - 1);
 
-                    Feature feature = getFeature(repository, featureName);
+                    Feature feature = getFeature(repository, featureName, newFeatures);
 
                     FeatureRevision featureRevision = this.temporaryCopyOf(feature).addRevision(UUID.randomUUID().toString());
                     featureRevisions.add(featureRevision);
                 } else { // use most recent feature revision of feature (or create a new one if none existed so far)
                     String featureName = featureRevisionString;
 
-                    Feature feature = getFeature(repository, featureName);
+                    Feature feature = getFeature(repository, featureName, newFeatures);
 
                     FeatureRevision featureRevision = feature.getLatestRevision();
                     if (featureRevision == null) {
@@ -100,6 +112,11 @@ class ConfigurationParser {
 
                     featureRevisions.add(featureRevision);
                 }
+            }
+            for (FeatureRevision featureRevision : featureRevisions) {
+                String other = revisionByFeatureId.put(featureRevision.getFeature().getId(), featureRevision.getId());
+                if (other != null)
+                    throw new EccoException("Feature " + featureRevision.getFeature().getName() + " is selected twice, in different revisions: a configuration selects one revision of a feature.");
             }
 
             Configuration configuration = owner.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
@@ -153,7 +170,7 @@ class ConfigurationParser {
         return owner.entityFactory.createFeature(feature.getId(), feature.getName());
     }
 
-    private Feature getFeature(Repository.Op repository, String featureName) {
+    private Feature getFeature(Repository.Op repository, String featureName, Map<String, Feature> newFeatures) {
         Feature feature;
         if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
             featureName = featureName.substring(1, featureName.length() - 1);
@@ -167,9 +184,14 @@ class ConfigurationParser {
         } else { // feature name
             Collection<Feature> features = repository.getFeaturesByName(featureName);
             if (features.isEmpty()) {
-                //feature = this.addFeature(UUID.randomUUID().toString(), featureName);
-                // create temporary feature object
-                feature = owner.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
+                if (featureName.startsWith("-")) {
+                    // "-B" read like "without B" (the Git import's feature suggestions write a removal
+                    // so) and silently committed a new feature named "-B"
+                    throw new EccoException("\"" + featureName + "\" is no feature: a configuration lists the selected features - to not select "
+                            + featureName.substring(1) + ", leave it out.");
+                }
+                // a temporary feature object, the same for each mention in this configuration
+                feature = newFeatures.computeIfAbsent(featureName, name -> owner.entityFactory.createFeature(UUID.randomUUID().toString(), name));
             } else if (features.size() == 1) {
                 feature = features.iterator().next();
             } else {
