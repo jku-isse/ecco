@@ -55,6 +55,8 @@ import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -69,6 +71,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 @Singleton
 public class SerTransactionStrategy implements TransactionStrategy {
+
+	private static final Logger LOGGER = Logger.getLogger(SerTransactionStrategy.class.getName());
 
 	private static final boolean DELETE_OLD_DB_FILES = true;
 	private static final boolean REUSE_DB_ACROSS_TRANSACTIONS = true;
@@ -294,10 +298,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			ZipEntry artifactsEntry = zip.getEntry(PACK_ARTIFACTS_ENTRY);
 			if (artifactsEntry == null)
 				throw new EccoException("The artifact pack " + packName + " has no " + PACK_ARTIFACTS_ENTRY + " - the repository is damaged.");
-			byte[] digests;
-			try (InputStream in = zip.getInputStream(zip.getEntry(PACK_DIGESTS_ENTRY))) {
-				digests = in.readAllBytes();
-			}
+			byte[] digests = packDigests(zip, packName);
 			try (ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(zip.getInputStream(artifactsEntry), 1 << 16))) {
 				int count = ois.readInt();
 				for (int i = 0; i < count; i++) {
@@ -305,10 +306,34 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					String id = artifact.getStorageId();
 					loadedById.put(id, artifact);
 					repo.setArtifactPack(id, packName);
-					this.artifactDigests.put(id, Arrays.copyOfRange(digests, i * ARTIFACT_DIGEST_LENGTH, (i + 1) * ARTIFACT_DIGEST_LENGTH));
+					this.recordDigest(id, digests, i);
 				}
 			}
 		}
+	}
+
+	/**
+	 * The digests of a pack's artifacts, or none if its {@value #PACK_DIGESTS_ENTRY} entry is missing.
+	 * They only tell a later write which artifacts it need not write again: without them the
+	 * artifacts are read all the same (a missing entry threw a NullPointerException), and written
+	 * again by the next write.
+	 */
+	private static byte[] packDigests(ZipFile zip, String packName) throws IOException {
+		ZipEntry entry = zip.getEntry(PACK_DIGESTS_ENTRY);
+		if (entry == null) {
+			LOGGER.warning("The artifact pack " + packName + " has no " + PACK_DIGESTS_ENTRY + " entry - its artifacts are written again by the next write.");
+			return new byte[0];
+		}
+		try (InputStream in = zip.getInputStream(entry)) {
+			return in.readAllBytes();
+		}
+	}
+
+	/** Records the digest of the [index]th artifact of a pack, if [digests] has one for it. */
+	private void recordDigest(String id, byte[] digests, int index) {
+		int end = (index + 1) * ARTIFACT_DIGEST_LENGTH;
+		if (end <= digests.length)
+			this.artifactDigests.put(id, Arrays.copyOfRange(digests, end - ARTIFACT_DIGEST_LENGTH, end));
 	}
 
 	/** Reads the given artifacts from a pack (see {@link #writePack}), recording their digests. */
@@ -319,11 +344,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		try (ZipFile zip = new ZipFile(pack.toFile())) {
 			ZipEntry artifactsEntry = zip.getEntry(PACK_ARTIFACTS_ENTRY);
 			if (artifactsEntry != null) {
-				ZipEntry digestsEntry = zip.getEntry(PACK_DIGESTS_ENTRY);
-				byte[] digests;
-				try (InputStream in = zip.getInputStream(digestsEntry)) {
-					digests = in.readAllBytes();
-				}
+				byte[] digests = packDigests(zip, pack.getFileName().toString());
 				try (ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(zip.getInputStream(artifactsEntry), 1 << 16))) {
 					int count = ois.readInt();
 					for (int i = 0; i < count; i++) {
@@ -332,7 +353,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 						if (!wanted.contains(id))
 							continue; // superseded by a later pack
 						loadedById.put(id, artifact);
-						this.artifactDigests.put(id, Arrays.copyOfRange(digests, i * ARTIFACT_DIGEST_LENGTH, (i + 1) * ARTIFACT_DIGEST_LENGTH));
+						this.recordDigest(id, digests, i);
 					}
 				}
 			} else {
@@ -620,8 +641,32 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			// release exclusive id lock automatically when exiting try block
 		}
 
-		// the swap above committed the transaction: move its staged files over their stable names.
-		// If this fails or the process dies part way, the next load finishes it (loadDatabase()).
+		// the swap above committed the transaction: whatever fails from here on must not report it as
+		// failed - the user would retry, and a retried commit is a second commit. The next load
+		// finishes what is left (loadDatabase() rolls pending files forward).
+		try {
+			this.finishCommitted(repo, newId, staged, stagedArtifacts, oldCoreReleased, looseArtifactFiles);
+		} catch (IOException | RuntimeException e) {
+			LOGGER.log(Level.WARNING, "The write to " + this.repositoryDir + " is committed, but finishing it failed; the next read of the repository finishes it.", e);
+			// nothing held in memory is trusted: the next transaction reads the repository again
+			this.reset();
+			return;
+		}
+
+		// release exclusive write lock - via releaseWriteLock() rather than closing directly, so the
+		// fields are nulled too; otherwise the next reset() (e.g. close()) tried to release the
+		// already-closed lock again and printed "Error releasing write lock: null" after every write
+		this.releaseWriteLock();
+
+		this.transaction = null;
+	}
+
+	/**
+	 * After the commit point of {@link #endReadWrite()}: moves the staged files over their stable
+	 * names, deletes the files the new core no longer references, and records what is stored now.
+	 */
+	private void finishCommitted(SerRepository repo, String newId, Map<Path, byte[]> staged, Map<String, byte[]> stagedArtifacts,
+								 boolean oldCoreReleased, Set<String> looseArtifactFiles) throws IOException {
 		this.recoverPendingFiles(newId, false);
 		this.persistedDigests.putAll(staged);
 		this.artifactDigests.putAll(stagedArtifacts);
@@ -641,13 +686,6 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			if (artifact instanceof SerArtifact<?> serArtifact)
 				serArtifact.clearModified();
 		repo.clearDirtyTracking();
-
-		// release exclusive write lock - via releaseWriteLock() rather than closing directly, so the
-		// fields are nulled too; otherwise the next reset() (e.g. close()) tried to release the
-		// already-closed lock again and printed "Error releasing write lock: null" after every write
-		this.releaseWriteLock();
-
-		this.transaction = null;
 	}
 
 	/**

@@ -140,4 +140,58 @@ public class ArtifactPackTest {
             assertTrue(messages.toString().contains("damaged"), messages.toString());
         }
     }
+
+    /**
+     * A pack whose digests entry is missing or cut short opens all the same (missing, it threw a
+     * NullPointerException): the digests only spare a later write rewriting unchanged artifacts.
+     */
+    @Test
+    @Timeout(120)
+    public void aPackWithoutOrWithShortDigestsStillOpens() throws Exception {
+        for (boolean missing : new boolean[]{true, false}) {
+            Path work = Files.createTempDirectory("artifact-packs-digests");
+            Path repoDir = work.resolve(".ecco");
+            Path content = Files.createDirectories(work.resolve("content"));
+            try (EccoService service = new EccoService()) {
+                service.setRepositoryDir(repoDir);
+                service.init();
+                service.setBaseDir(content);
+                Files.writeString(content.resolve("f.txt"), "a\nb\n");
+                service.commit("one", "A.1");
+            }
+            for (Path pack : packs(repoDir))
+                rewriteDigests(pack, missing);
+
+            assertEquals("a\nb\n", checkout(repoDir, work.resolve("out1"), "A.1"), missing ? "no digests" : "short digests");
+            try (EccoService service = new EccoService()) {
+                service.setRepositoryDir(repoDir);
+                service.open();
+                service.setBaseDir(content);
+                Files.writeString(content.resolve("f.txt"), "a\nx\nb\n");
+                service.commit("two", "A.2");
+            }
+            assertEquals("a\nb\n", checkout(repoDir, work.resolve("out2"), "A.1"));
+            assertEquals("a\nx\nb\n", checkout(repoDir, work.resolve("out3"), "A.2"));
+        }
+    }
+
+    /** Copies [pack] without its digests entry, or with only half of it. */
+    private static void rewriteDigests(Path pack, boolean missing) throws Exception {
+        Path copy = pack.resolveSibling(pack.getFileName() + ".copy");
+        try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(pack.toFile());
+             java.util.zip.ZipOutputStream out = new java.util.zip.ZipOutputStream(Files.newOutputStream(copy))) {
+            for (java.util.zip.ZipEntry entry : java.util.Collections.list(zip.entries())) {
+                byte[] bytes = zip.getInputStream(entry).readAllBytes();
+                if (entry.getName().equals("digests")) {
+                    if (missing)
+                        continue;
+                    bytes = java.util.Arrays.copyOf(bytes, bytes.length / 2);
+                }
+                out.putNextEntry(new java.util.zip.ZipEntry(entry.getName()));
+                out.write(bytes);
+                out.closeEntry();
+            }
+        }
+        Files.move(copy, pack, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    }
 }

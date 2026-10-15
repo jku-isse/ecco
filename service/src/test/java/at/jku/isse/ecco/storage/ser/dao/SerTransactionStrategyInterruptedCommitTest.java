@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -86,6 +88,58 @@ public class SerTransactionStrategyInterruptedCommitTest {
      * file is gone/stale and the authoritative version is still "<name>.<currentId>.pending". The
      * next load must roll it forward.
      */
+    /**
+     * A failure after the id swap - here, a staged association file cannot be moved over its stable
+     * name - concerns a commit that is in: it is not reported as failed (a retry would commit it
+     * again), and the next read finishes it.
+     */
+    @Test
+    @Timeout(60)
+    public void aFailureAfterTheIdSwapDoesNotFailTheCommit() throws IOException {
+        Path workDir = Files.createTempDirectory("ser-transaction-strategy-after-swap");
+        Path repoDir = workDir.resolve(".ecco");
+        Path contentDir = Files.createDirectories(workDir.resolve("content"));
+        Path file = contentDir.resolve("file.txt");
+        Files.writeString(file, "a\nb\n");
+        Path associationsDir = repoDir.resolve("associations");
+        List<Path> blocked = new ArrayList<>();
+
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repoDir);
+            service.init();
+            service.setBaseDir(contentDir);
+            service.commit("commit 1", "A");
+
+            // every association file a directory that is not empty: moving a file over it fails
+            try (Stream<Path> files = Files.list(associationsDir)) {
+                for (Path association : files.toList()) {
+                    Files.delete(association);
+                    Files.createDirectories(association.resolve("blocker"));
+                    blocked.add(association);
+                }
+            }
+            Files.writeString(file, "a\nx\nb\n");
+            assertDoesNotThrow(() -> service.commit("commit 2", "A.2"), "the commit is in once the id file names its core");
+        }
+
+        for (Path association : blocked) {
+            Files.delete(association.resolve("blocker"));
+            Files.delete(association);
+        }
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repoDir);
+            service.open();
+            assertEquals(2, service.getRepository().getCommits().size(), "both commits, once each");
+            Path checkoutDir = Files.createDirectories(workDir.resolve("checkout"));
+            service.setBaseDir(checkoutDir);
+            service.checkout("A.2");
+            assertEquals("a\nx\nb\n", Files.readString(checkoutDir.resolve("file.txt")), "the second commit's content, rolled forward on open");
+        }
+        try (Stream<Path> leftovers = Files.walk(repoDir)) {
+            assertTrue(leftovers.noneMatch(p -> p.getFileName().toString().endsWith(".pending")), "no pending files left");
+        }
+    }
+
     @Test
     @Timeout(60)
     public void pendingFilesOfTheCurrentTransactionAreRolledForwardOnLoad() throws IOException {
