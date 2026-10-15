@@ -1,0 +1,5 @@
+#Chosen when this repository was created; changing them changes how files are read.
+#Tue Oct 13 23:06:56 CEST 2026
+lilypond.musicalTokens=true
+lilypond.parser=lybar-2
+lilypond.variableContexts=true
