@@ -103,7 +103,10 @@ public class JavaASTWriteHandler {
 					JavaASTSimpleStringData cuData = (JavaASTSimpleStringData) astData;
 					if (!cuData.getData().isEmpty()) {
 						cu.setPackageDeclaration(cuData.getData());
-						cu.getPackageDeclaration().ifPresent(pd -> pd.setComment(comment(cuData)));
+						cu.getPackageDeclaration().ifPresent(pd -> {
+							pd.setComment(comment(cuData));
+							attachLeadingComments(cuData, pd);
+						});
 					} else {
 						cu.setComment(comment(cuData));
 					}
@@ -161,8 +164,29 @@ public class JavaASTWriteHandler {
 	}
 
 	private static void attachComments(JavaASTData data, com.github.javaparser.ast.Node node) {
+		// a comment from the text with comments (one behind an annotation, which JavaParser gives to
+		// the declaration when parsing it alone) is not replaced by the node's own: it goes before it
+		com.github.javaparser.ast.comments.Comment parsed = node.getComment().orElse(null);
 		if (data.getComment() != null)
 			node.setComment(data.getComment().toComment());
+		attachLeadingComments(data, node);
+		if (parsed != null && data.getComment() != null) {
+			List<com.github.javaparser.ast.comments.Comment> leading = new ArrayList<>(node.containsData(JavaASTPrinter.LEADING_COMMENTS)
+					? node.getData(JavaASTPrinter.LEADING_COMMENTS) : List.of());
+			leading.add(parsed);
+			node.setData(JavaASTPrinter.LEADING_COMMENTS, leading);
+		}
+		attachOrphanComments(data, node);
+	}
+
+	/** The comments before {@code node}'s own one, printed before it by JavaASTPrinter. */
+	private static void attachLeadingComments(JavaASTData data, com.github.javaparser.ast.Node node) {
+		if (!data.getLeadingComments().isEmpty())
+			node.setData(JavaASTPrinter.LEADING_COMMENTS, data.getLeadingComments().stream().map(JavaASTComment::toComment).collect(Collectors.toList()));
+	}
+
+	/** The comments kept with {@code data} that belonged to no node inside {@code node}'s body - see attachComments(). */
+	private static void attachOrphanComments(JavaASTData data, com.github.javaparser.ast.Node node) {
 		if (data.getOrphanComments().isEmpty())
 			return;
 		com.github.javaparser.ast.Node container = node;
@@ -180,6 +204,9 @@ public class JavaASTWriteHandler {
 			container = block;
 		else if (node instanceof NodeWithBlockStmt<?> withBlock)
 			container = withBlock.getBody();
+		// printed at the end of the last entry, before the switch's closing brace (see JavaASTPrinter)
+		else if (node instanceof SwitchStmt switchStmt && switchStmt.getEntries().isNonEmpty())
+			container = switchStmt.getEntries().getLast().get();
 		for (JavaASTComment orphan : data.getOrphanComments())
 			container.addOrphanComment(orphan.toComment());
 	}
@@ -365,7 +392,7 @@ public class JavaASTWriteHandler {
 
 	private static MethodDeclaration addMethodDeclaration(Node child, com.github.javaparser.ast.Node parent) {
 		JavaASTSimpleStringData methodDeclData = (JavaASTSimpleStringData) child.getArtifact().getData();
-		MethodDeclaration methodDecl = StaticJavaParser.parseMethodDeclaration(methodDeclData.getData());
+		MethodDeclaration methodDecl = parse(methodDeclData.getTextWithComments(), methodDeclData.getData(), StaticJavaParser::parseMethodDeclaration);
 		BlockStmt body = new BlockStmt();
 		child.getChildren().forEach(c -> addNode(c, body));
 		
@@ -399,7 +426,8 @@ public class JavaASTWriteHandler {
 
 	private static FieldDeclaration addFieldDeclaration(Node child, com.github.javaparser.ast.Node parent) {
 		JavaASTSimpleStringData childData = (JavaASTSimpleStringData) child.getArtifact().getData();
-		FieldDeclaration parsedFd = StaticJavaParser.parseBodyDeclaration(childData.getData()).asFieldDeclaration();
+		FieldDeclaration parsedFd = parse(childData.getTextWithComments(), childData.getData(),
+				text -> StaticJavaParser.parseBodyDeclaration(text).asFieldDeclaration());
 		if (parent instanceof NodeWithMembers<?>) {
 			((NodeWithMembers<?>) parent).addMember(parsedFd);
 		} else {
@@ -626,14 +654,19 @@ public class JavaASTWriteHandler {
 	}
 
 	private static void addIfCondition(Node child, IfStmt parent) {
-		Expression e = StaticJavaParser.<Expression>parseExpression(child.getArtifact().getData().toString());
+		JavaASTData conditionData = (JavaASTData) child.getArtifact().getData();
+		Expression e = parse(conditionData.getTextWithComments(), conditionData.toString(), StaticJavaParser::parseExpression);
 		parent.setCondition(e);
+		// an else-if's comment (the first condition's is the if statement's)
+		if (conditionData.getComment() != null)
+			parent.setComment(conditionData.getComment().toComment());
+		attachLeadingComments(conditionData, parent);
 		List<Node> thenBranch = getThenBranch(child);
 		if (thenBranch != null) {
 			BlockStmt thenBlock = new BlockStmt();
 			parent.setThenStmt(thenBlock);
 			thenBranch.forEach(tb -> addNode(tb, thenBlock));
-			attachComments((JavaASTData) child.getArtifact().getData(), thenBlock);
+			attachOrphanComments(conditionData, thenBlock);
 		} else {
 			parent.setThenStmt(new EmptyStmt());
 		}

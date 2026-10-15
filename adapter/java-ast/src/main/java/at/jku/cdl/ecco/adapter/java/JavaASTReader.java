@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +49,9 @@ import com.github.javaparser.ast.stmt.IfStmt;
 import com.github.javaparser.ast.stmt.Statement;
 import com.github.javaparser.ast.stmt.SwitchEntry;
 import com.github.javaparser.ast.stmt.TryStmt;
+import com.github.javaparser.ast.stmt.LabeledStmt;
+import com.github.javaparser.ast.stmt.LocalClassDeclarationStmt;
+import com.github.javaparser.ast.stmt.LocalRecordDeclarationStmt;
 import com.github.javaparser.printer.configuration.PrettyPrinterConfiguration;
 import com.google.inject.Inject;
 
@@ -208,9 +213,16 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 						packDeclData.setTreeFormat(JavaASTData.TREE_FORMAT);
 						if (pd != null)
 							commented(packDeclData, pd);
-						// a comment heading the file (e.g. a license) belongs to the compilation unit
-						if (packDeclData.getComment() == null)
+						// a comment heading the file (e.g. a license) belongs to the compilation unit; with
+						// one of the package's own as well, it was dropped - it comes before the package's
+						if (packDeclData.getComment() == null) {
 							commented(packDeclData, cu);
+						} else if (cu.getComment().isPresent()) {
+							List<JavaASTComment> leading = new ArrayList<>();
+							leading.add(JavaASTComment.of(cu.getComment().get()));
+							leading.addAll(packDeclData.getLeadingComments());
+							packDeclData.setLeadingComments(leading);
+						}
 						orphans(packDeclData, cu);
 						Artifact.Op<JavaASTSimpleStringData> packDeclArtifact = this.entityFactory
 								.createArtifact(packDeclData);
@@ -288,6 +300,8 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 				Artifact.Op<JavaASTSimpleStringData> fdArtifact = this.entityFactory.createArtifact(fdData);
 				fdData.setType(ASTNodeType.FIELD_DECLARATION);
 				commented(fdData, fd);
+				// e.g. in an array initializer: { RED, // the first
+				fdData.setTextWithComments(textWithInnerComments(fd));
 				Node.Op fieldNode = this.entityFactory.createNode(fdArtifact);
 				fieldNode.putProperty(PROPERTY_LINE_START, getStartLine(fd));
 				fieldNode.putProperty(PROPERTY_LINE_END, getEndLine(fd));
@@ -369,35 +383,76 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	 * the next declaration or statement after it instead, if that has no comment of its own; only
 	 * comments after the last one stay with the container.
 	 */
-	private static void attributeOrphanComments(CompilationUnit cu) {
+	private void attributeOrphanComments(CompilationUnit cu) {
+		this.leadingComments.clear();
 		List<com.github.javaparser.ast.Node> containers = new ArrayList<>();
 		cu.walk(node -> {
 			if (!node.getOrphanComments().isEmpty())
 				containers.add(node);
 		});
 		for (com.github.javaparser.ast.Node container : containers) {
-			for (Comment orphan : new ArrayList<>(container.getOrphanComments())) {
-				if (orphan.getRange().isEmpty())
-					continue;
+			boolean decomposed = decomposed(container);
+			Map<com.github.javaparser.ast.Node, List<Comment>> before = new LinkedHashMap<>();
+			List<Comment> orphans = new ArrayList<>(container.getOrphanComments());
+			orphans.removeIf(orphan -> orphan.getRange().isEmpty());
+			orphans.sort(Comparator.comparing(orphan -> orphan.getRange().get().begin));
+			for (Comment orphan : orphans) {
 				com.github.javaparser.ast.Node next = container.getChildNodes().stream()
 						.filter(child -> child instanceof BodyDeclaration<?> || child instanceof Statement
 								|| child instanceof ImportDeclaration || child instanceof PackageDeclaration
-								|| child instanceof ModuleDirective)
+								|| child instanceof ModuleDirective || child instanceof SwitchEntry)
 						.filter(child -> child.getRange().isPresent()
 								&& child.getRange().get().begin.isAfterOrEqual(orphan.getRange().get().end))
 						.min(Comparator.comparing(child -> child.getRange().get().begin))
 						.orElse(null);
-				if (next != null && next.getComment().isEmpty()) {
+				if (next == null)
+					continue;
+				if (decomposed && !(next instanceof InitializerDeclaration)) {
+					before.computeIfAbsent(next, n -> new ArrayList<>()).add(orphan);
+				} else if (next.getComment().isEmpty()) {
+					// printed as text with its comments: one comment per node, the others stay where they are
 					container.removeOrphanComment(orphan);
 					next.setComment(orphan);
 				}
 			}
+			// all comments before a node stay before it, in order: the last is its comment, if it has none
+			before.forEach((next, comments) -> {
+				comments.forEach(container::removeOrphanComment);
+				if (next.getComment().isEmpty())
+					next.setComment(comments.remove(comments.size() - 1));
+				if (!comments.isEmpty())
+					this.leadingComments.put(next, comments);
+			});
 		}
 	}
 
-	/** Keeps the comment JavaParser attributed to {@code source} with {@code data} - see JavaASTData. */
-	private static <T extends JavaASTData> T commented(T data, com.github.javaparser.ast.Node source) {
+	/** The comments before a node besides its own (see JavaASTData#getLeadingComments), by the node. */
+	private final Map<com.github.javaparser.ast.Node, List<Comment>> leadingComments = new IdentityHashMap<>();
+
+	/**
+	 * Whether the reader makes the children of {@code container} nodes of the tree, which keep their
+	 * comments (commented()), rather than text printed with its comments: not inside an expression (a
+	 * lambda, an anonymous class), a labeled statement, a local class, an initializer, an enum
+	 * constant's body or a finally block.
+	 */
+	private static boolean decomposed(com.github.javaparser.ast.Node container) {
+		for (com.github.javaparser.ast.Node node = container; node != null; node = node.getParentNode().orElse(null)) {
+			if (node instanceof Expression || node instanceof InitializerDeclaration || node instanceof LabeledStmt
+					|| node instanceof LocalClassDeclarationStmt || node instanceof LocalRecordDeclarationStmt
+					|| node instanceof EnumConstantDeclaration)
+				return false;
+			if (node.getParentNode().orElse(null) instanceof TryStmt tryStmt && tryStmt.getFinallyBlock().orElse(null) == node)
+				return false;
+		}
+		return true;
+	}
+
+	/** Keeps the comments JavaParser attributed to {@code source}, and those before them, with {@code data} - see JavaASTData. */
+	private <T extends JavaASTData> T commented(T data, com.github.javaparser.ast.Node source) {
 		source.getComment().ifPresent(comment -> data.setComment(JavaASTComment.of(comment)));
+		List<Comment> leading = this.leadingComments.get(source);
+		if (leading != null)
+			data.setLeadingComments(leading.stream().map(JavaASTComment::of).collect(Collectors.toList()));
 		return data;
 	}
 
@@ -408,6 +463,20 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		List<JavaASTComment> orphans = new ArrayList<>(data.getOrphanComments());
 		container.getOrphanComments().forEach(comment -> orphans.add(JavaASTComment.of(comment)));
 		data.setOrphanComments(orphans);
+	}
+
+	/**
+	 * The comments inside a body, as orphans(): also the body's own comment, which JavaParser gives
+	 * to a block from a comment before its brace ({@code if (x > 0 /* c *&#47;) {}) and which was lost -
+	 * a body is no node of its own. It is written inside the block.
+	 */
+	private static void bodyOrphans(JavaASTData data, Statement body) {
+		if (body instanceof BlockStmt && body.getComment().isPresent()) {
+			List<JavaASTComment> orphans = new ArrayList<>(data.getOrphanComments());
+			orphans.add(JavaASTComment.of(body.getComment().get()));
+			data.setOrphanComments(orphans);
+		}
+		orphans(data, body);
 	}
 
 	private int getEndLine(com.github.javaparser.ast.Node node) {
@@ -467,6 +536,8 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			JavaASTSimpleStringData mdData = new JavaASTSimpleStringData(temp.toString(PPC));
 			mdData.setType(ASTNodeType.METHOD_DECLARATION);
 			commented(mdData, mdec);
+			// in its header: at an annotation, a parameter, before the return type
+			mdData.setTextWithComments(textWithInnerComments(temp));
 			mdec.getBody().ifPresent(methodBody -> orphans(mdData, methodBody));
 			Artifact.Op<JavaASTSimpleStringData> constrArtifact = this.entityFactory.createArtifact(mdData);
 			Node.Op methNode = this.entityFactory.createOrderedNode(constrArtifact);
@@ -486,13 +557,22 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	 * by commented(), so only the text without it is printed with comments.
 	 */
 	private void withInnerComments(JavaASTData data, Statement statement) {
-		if (statement.getAllContainedComments().isEmpty())
-			return;
-		Statement withoutOwnComment = statement.clone();
+		String text = textWithInnerComments(statement);
+		if (text != null)
+			data.setTextWithComments(text);
+	}
+
+	/**
+	 * {@code node} printed with the comments inside it, but not its own (kept by commented()), or
+	 * null if it has none: its identifying text, printed without comments, loses them.
+	 */
+	private String textWithInnerComments(com.github.javaparser.ast.Node node) {
+		if (node.getAllContainedComments().isEmpty())
+			return null;
+		com.github.javaparser.ast.Node withoutOwnComment = node.clone();
 		withoutOwnComment.removeComment();
 		String text = JavaASTPrinter.print(withoutOwnComment);
-		if (!text.equals(statement.toString(PPC)))
-			data.setTextWithComments(text);
+		return text.equals(withoutOwnComment.toString(PPC)) ? null : text;
 	}
 
 	/**
@@ -532,7 +612,9 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			sdData.setType(ASTNodeType.STATEMENT);
 			sdData.setBlockBody(((NodeWithBody<?>) body).getBody() instanceof BlockStmt);
 			commented(sdData, body);
-			orphans(sdData, ((NodeWithBody<?>) body).getBody());
+			// in its header: for (int i = 0; i < n; i++ // c
+			sdData.setTextWithComments(textWithInnerComments(tmp));
+			bodyOrphans(sdData, ((NodeWithBody<?>) body).getBody());
 			Artifact.Op<JavaASTSimpleStringData> sdArtifact = this.entityFactory.createArtifact(sdData);
 			Node.Op node = this.entityFactory.createOrderedNode(sdArtifact);
 			node.putProperty(PROPERTY_LINE_START, getStartLine(body));
@@ -578,6 +660,12 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		JavaASTSimpleStringData data = new JavaASTSimpleStringData(text);
 		data.setType(ASTNodeType.STATEMENT);
 		commented(data, stmt);
+		// in its header: synchronized (/* c */ lock)
+		if (stmt instanceof NodeWithBlockStmt<?> && !(stmt instanceof BlockStmt)) {
+			Statement header = stmt.clone();
+			((NodeWithBlockStmt<?>) header).setBody(new BlockStmt());
+			data.setTextWithComments(textWithInnerComments(header));
+		}
 		orphans(data, block);
 		Artifact.Op<JavaASTSimpleStringData> artifact = this.entityFactory.createArtifact(data);
 		Node.Op node = this.entityFactory.createOrderedNode(artifact);
@@ -647,6 +735,8 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		JavaASTSimpleStringData switchData = new JavaASTSimpleStringData(sw.getSelector().toString(PPC));
 		switchData.setType(ASTNodeType.SWITCH_STATEMENT);
 		commented(switchData, (com.github.javaparser.ast.Node) sw);
+		// e.g. commented-out case labels, more than one before an entry
+		orphans(switchData, (com.github.javaparser.ast.Node) sw);
 		Artifact.Op<JavaASTSimpleStringData> switchArtifact = this.entityFactory.createArtifact(switchData);
 		Node.Op switchNode = this.entityFactory.createOrderedNode(switchArtifact);
 		switchNode.putProperty(PROPERTY_LINE_START, getStartLine(sw.getSelector()));
@@ -663,6 +753,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 					entryData.setTextWithComments(withComments);
 			}
 			commented(entryData, se);
+			orphans(entryData, se);
 			Artifact.Op<JavaASTSimpleStringData> entryArtifact = this.entityFactory.createArtifact(entryData);
 			Node.Op entryNode = this.entityFactory.createOrderedNode(entryArtifact);
 			entryNode.putProperty(PROPERTY_LINE_START, getStartLine(se));
@@ -713,8 +804,11 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		parent.addChild(ifNode);
 		JavaASTSimpleStringData conditionData = new JavaASTSimpleStringData(ifstmt.getCondition().toString(PPC));
 		conditionData.setType(ASTNodeType.IF_CONDITION);
+		conditionData.setTextWithComments(withComments(ifstmt.getCondition()));
 		conditionData.setBlockBody(ifstmt.getThenStmt() instanceof BlockStmt);
-		orphans(conditionData, ifstmt.getThenStmt());
+		bodyOrphans(conditionData, ifstmt.getThenStmt());
+		// between the then branch and else (e.g. a commented-out else-if): at the then branch's end
+		orphans(conditionData, ifstmt);
 		Artifact.Op<JavaASTSimpleStringData> conditionArtifact = this.entityFactory.createArtifact(conditionData);
 		Node.Op conditionNode = this.entityFactory.createOrderedNode(conditionArtifact);
 		addChildren(ifstmt.getThenStmt(), conditionNode);
@@ -725,7 +819,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			JavaASTSimpleStringData elseData = new JavaASTSimpleStringData("else " + ifstmt.getCondition());
 			elseData.setType(ASTNodeType.ELSE_BRANCH);
 			elseData.setBlockBody(ifstmt.getElseStmt().get() instanceof BlockStmt);
-			orphans(elseData, ifstmt.getElseStmt().get());
+			bodyOrphans(elseData, ifstmt.getElseStmt().get());
 			Artifact.Op<JavaASTSimpleStringData> elseArtifact = this.entityFactory.createArtifact(elseData);
 			Node.Op elseNode = this.entityFactory.createOrderedNode(elseArtifact);
 			elseNode.putProperty(PROPERTY_LINE_START, getStartLine(ifstmt.getElseStmt().get()));
@@ -738,8 +832,13 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	private void addIfCondition(IfStmt ifstmt, Op ifNode) {
 		JavaASTSimpleStringData conditionData = new JavaASTSimpleStringData(ifstmt.getCondition().toString(PPC));
 		conditionData.setType(ASTNodeType.IF_CONDITION);
+		conditionData.setTextWithComments(withComments(ifstmt.getCondition()));
+		// the comment of an else-if: } else // c  if (...)
+		commented(conditionData, ifstmt);
 		conditionData.setBlockBody(ifstmt.getThenStmt() instanceof BlockStmt);
-		orphans(conditionData, ifstmt.getThenStmt());
+		bodyOrphans(conditionData, ifstmt.getThenStmt());
+		// between the then branch and else (e.g. a commented-out else-if): at the then branch's end
+		orphans(conditionData, ifstmt);
 		Artifact.Op<JavaASTSimpleStringData> conditionArtifact = this.entityFactory.createArtifact(conditionData);
 		Node.Op conditionNode = this.entityFactory.createOrderedNode(conditionArtifact);
 		conditionNode.putProperty(PROPERTY_LINE_START, getStartLine(ifstmt));
@@ -752,7 +851,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			JavaASTSimpleStringData elseData = new JavaASTSimpleStringData("else" + ifstmt.getCondition());
 			elseData.setType(ASTNodeType.ELSE_BRANCH);
 			elseData.setBlockBody(ifstmt.getElseStmt().get() instanceof BlockStmt);
-			orphans(elseData, ifstmt.getElseStmt().get());
+			bodyOrphans(elseData, ifstmt.getElseStmt().get());
 			Artifact.Op<JavaASTSimpleStringData> elseArtifact = this.entityFactory.createArtifact(elseData);
 			Node.Op elseNode = this.entityFactory.createOrderedNode(elseArtifact);
 			elseNode.putProperty(PROPERTY_LINE_START, getStartLine(ifstmt.getElseStmt().get()));

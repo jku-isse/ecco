@@ -25,6 +25,14 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 	private List<JavaASTComment> orphanComments;
 
 	/**
+	 * Comments before the node's own one (e.g. commented-out code, a comment above a Javadoc), in
+	 * order: a node has one comment in JavaParser's model, and the others were kept with the
+	 * container and written at its end, or not at all in a switch. Like the comment, not part of the
+	 * artifact's identity; null in repositories committed before they were kept.
+	 */
+	private List<JavaASTComment> leadingComments;
+
+	/**
 	 * For a node with a body (loop, if condition, else branch): whether the body was written as a
 	 * block ({@code for (...) { x(); }}) or as a single statement ({@code for (...) x();}). Like the
 	 * comments, not part of the artifact's identity. Null in repositories committed before it was
@@ -71,6 +79,14 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 		this.orphanComments = orphanComments == null || orphanComments.isEmpty() ? null : new ArrayList<>(orphanComments);
 	}
 
+	public List<JavaASTComment> getLeadingComments() {
+		return this.leadingComments == null ? List.of() : this.leadingComments;
+	}
+
+	public void setLeadingComments(List<JavaASTComment> leadingComments) {
+		this.leadingComments = leadingComments == null || leadingComments.isEmpty() ? null : new ArrayList<>(leadingComments);
+	}
+
 	public Boolean getBlockBody() {
 		return this.blockBody;
 	}
@@ -109,6 +125,7 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 		if (newer instanceof JavaASTData other) {
 			this.comment = other.comment;
 			this.orphanComments = other.orphanComments;
+			this.leadingComments = other.leadingComments;
 			this.blockBody = other.blockBody;
 			this.textWithComments = other.textWithComments;
 		}

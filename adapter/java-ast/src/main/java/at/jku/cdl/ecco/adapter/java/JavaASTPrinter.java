@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.DataKey;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.NodeList;
@@ -44,6 +45,10 @@ final class JavaASTPrinter {
 
 	private JavaASTPrinter() {
 	}
+
+	/** The comments before a node's own one (JavaASTData#getLeadingComments), kept on the node written. */
+	static final DataKey<List<Comment>> LEADING_COMMENTS = new DataKey<>() {
+	};
 
 	/** {@code node} printed with its comments. */
 	static String print(Node node) {
@@ -206,6 +211,25 @@ final class JavaASTPrinter {
 		public void visit(ModuleUsesDirective n, Void arg) {
 			printComment(n.getComment(), arg);
 			super.visit(n, arg);
+		}
+
+		/** A node's leading comments (see LEADING_COMMENTS), before its own comment. */
+		@Override
+		protected void printOrphanCommentsBeforeThisChildNode(Node node) {
+			super.printOrphanCommentsBeforeThisChildNode(node);
+			if (node.containsData(LEADING_COMMENTS))
+				for (Comment comment : node.getData(LEADING_COMMENTS))
+					comment.accept(this, null);
+		}
+
+		/**
+		 * The comments at the end of a switch entry - JavaParser's printer leaves them out: comments
+		 * after an entry's last statement, and commented-out case labels (kept with the last entry).
+		 */
+		@Override
+		public void visit(SwitchEntry n, Void arg) {
+			super.visit(n, arg);
+			printOrphanCommentsEnding(n);
 		}
 
 		/** The comment before a lambda's expression body ({@code () -> /* c *&#47; g(1)}). */
