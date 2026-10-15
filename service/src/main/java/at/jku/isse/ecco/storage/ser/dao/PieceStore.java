@@ -36,12 +36,16 @@ import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.TMP_SUFFIX;
  * Which pack holds a piece is found by listing the packs when a repository is read; a pack nothing
  * refers to anymore (also one a crashed write left) is deleted after a committed write, once no
  * reader holds the previous core; one of which less than half is still referred to is compacted -
- * its pieces still referred to go into the new pack.
+ * its pieces still referred to go into the new pack - and so are the smallest once there are more
+ * than {@link #MAX_PACKS}.
  */
 final class PieceStore {
 
 	private static final String PACK_PREFIX = "pack-";
 	private static final String PACK_SUFFIX = ".zip";
+	// every write adds a pack: once there are more, the smallest are merged into the new one (as the
+	// artifact and association packs are) - else every open reads a pack per commit ever made
+	private static final int MAX_PACKS = 20;
 
 	private final Path dir;
 	// the pack of each stored piece, by its digest
@@ -146,17 +150,20 @@ final class PieceStore {
 				packReferenced.merge(stored.getValue(), 1, Integer::sum);
 		}
 		Map<String, byte[]> entries = new LinkedHashMap<>(this.staged);
+		List<String> kept = new ArrayList<>();
 		for (Map.Entry<String, Integer> pack : packSize.entrySet()) {
 			int stillReferred = packReferenced.getOrDefault(pack.getKey(), 0);
-			if (stillReferred == 0 || stillReferred * 2 >= pack.getValue())
-				continue; // nothing to keep (deleted once committed), or worth keeping
-			try (ZipFile zip = new ZipFile(this.dir.resolve(pack.getKey()).toFile())) {
-				for (ZipEntry entry : java.util.Collections.list(zip.entries()))
-					if (referenced.contains(entry.getName()) && !entries.containsKey(entry.getName()))
-						try (InputStream in = zip.getInputStream(entry)) {
-							entries.put(entry.getName(), in.readAllBytes());
-						}
-			}
+			if (stillReferred == 0)
+				continue; // nothing to keep: deleted once committed
+			if (stillReferred * 2 >= pack.getValue())
+				kept.add(pack.getKey()); // worth keeping
+			else
+				this.moveReferencedPieces(pack.getKey(), referenced, entries);
+		}
+		if (kept.size() + 1 > MAX_PACKS) {
+			kept.sort(java.util.Comparator.comparingInt(packReferenced::get));
+			for (String pack : kept.subList(0, kept.size() + 1 - MAX_PACKS / 2))
+				this.moveReferencedPieces(pack, referenced, entries);
 		}
 		if (entries.isEmpty())
 			return;
@@ -180,6 +187,17 @@ final class PieceStore {
 		for (String digest : entries.keySet())
 			this.packOf.put(digest, packName);
 		this.staged.clear();
+	}
+
+	/** Adds the pieces of [pack] that are still [referenced] to the new pack's [entries]. */
+	private void moveReferencedPieces(String pack, Set<String> referenced, Map<String, byte[]> entries) throws IOException {
+		try (ZipFile zip = new ZipFile(this.dir.resolve(pack).toFile())) {
+			for (ZipEntry entry : java.util.Collections.list(zip.entries()))
+				if (referenced.contains(entry.getName()) && !entries.containsKey(entry.getName()))
+					try (InputStream in = zip.getInputStream(entry)) {
+						entries.put(entry.getName(), in.readAllBytes());
+					}
+		}
 	}
 
 	/**

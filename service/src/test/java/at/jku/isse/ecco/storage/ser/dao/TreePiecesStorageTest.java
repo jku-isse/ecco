@@ -120,6 +120,35 @@ public class TreePiecesStorageTest {
         assertEquals("zero\none\ntwo\n", Files.readString(out.resolve("f.txt")));
     }
 
+    /** Every commit writes a pack of new pieces: they are merged once there are many, as artifact and association packs are. */
+    @Test
+    @Timeout(300)
+    public void piecePacksStayFew(@TempDir Path tmp) throws Exception {
+        Path repo = tmp.resolve(".ecco");
+        Path content = Files.createDirectories(tmp.resolve("content"));
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repo);
+            service.init();
+            service.setBaseDir(content);
+            for (int c = 1; c <= 40; c++) {
+                // a file of its own per commit, so every commit stores a new piece and keeps the old ones
+                Files.writeString(content.resolve("f" + c + ".txt"), "commit " + c + "\n");
+                service.commit("c" + c, "A." + c);
+            }
+        }
+        List<Path> packs = piecePacks(repo);
+        assertTrue(packs.size() <= 20, packs.size() + " piece packs");
+        Path out = Files.createDirectories(tmp.resolve("out"));
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repo);
+            service.open();
+            service.setBaseDir(out);
+            service.checkout("A.40");
+        }
+        for (int c = 1; c <= 40; c++)
+            assertEquals("commit " + c + "\n", Files.readString(out.resolve("f" + c + ".txt")));
+    }
+
     private static void copyTree(Path from, Path to) throws Exception {
         try (Stream<Path> walk = Files.walk(from)) {
             for (Path p : walk.sorted().toList()) {
