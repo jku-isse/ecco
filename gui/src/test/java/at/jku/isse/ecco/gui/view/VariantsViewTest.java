@@ -310,6 +310,37 @@ public class VariantsViewTest {
 
     // --- helpers -------------------------------------------------------------------------------------
 
+    /**
+     * A refresh that finds the repository closed (a checkout or commit fires one, and Close can
+     * follow at once) ends quietly: it showed a modal "Service is not initialized" dialog, which
+     * another test then found open.
+     */
+    @Test
+    @Timeout(60)
+    public void aRefreshThatFindsTheRepositoryClosedShowsNoError(@TempDir Path tmp) throws Exception {
+        EccoService service = repository(tmp.resolve("repo"));
+        commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
+        VariantsView view = loaded(service, 1);
+        int dialogsBefore = onFx(VariantsViewTest::openDialogs);
+
+        // the refresh this event queues runs after the close, on the FX thread
+        onFx(() -> {
+            view.statusChangedEvent(service);
+            service.close();
+        });
+        Thread.sleep(500);
+        onFx(() -> { });
+
+        assertEquals(dialogsBefore, onFx(VariantsViewTest::openDialogs));
+        assertTrue(onFx(view::isDisable), "disabled with the repository closed");
+    }
+
+    private static int openDialogs() {
+        return (int) javafx.stage.Window.getWindows().stream()
+                .filter(w -> w.getScene() != null && w.getScene().getRoot() instanceof javafx.scene.control.DialogPane)
+                .count();
+    }
+
     private static VariantsView loaded(EccoService service, int variants) throws Exception {
         VariantsView view = onFx(() -> new VariantsView(service));
         waitUntil(variants + " variants", () -> view.variantsDataSelected.size() == variants && !toolBar(view).isDisable());

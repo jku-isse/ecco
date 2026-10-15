@@ -470,9 +470,14 @@ public class VariantsView extends BorderPane implements EccoListener {
         // surfaced rather than silently swallowed -- e.g. getRepository() can throw if the
         // repository is uninitialized/mid-transaction, and this Task previously had no failure
         // handler at all, so such a failure looked identical to "nothing to refresh".
+        // A repository closed while the refresh was under way (a checkout or commit fires it, and
+        // Close can follow at once) is no error: the view is being disabled anyway. This showed a
+        // modal "Service is not initialized" dialog.
         variantsRefreshTask.setOnFailed(event -> {
             VariantsView.this.toolBar.setDisable(false);
-            new at.jku.isse.ecco.gui.ExceptionAlert(variantsRefreshTask.getException()).showAndWait();
+            if (!VariantsView.this.service.isInitialized())
+                return;
+            new at.jku.isse.ecco.gui.ExceptionAlert(variantsRefreshTask.getException()).show();
         });
 
         new Thread(variantsRefreshTask).start();
