@@ -960,8 +960,6 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		this.view.setVisible(false);
 		try {
 			this.viewer.disableAutoLayout();
-			this.graph.removeSink(this.forceDirectedLayout);
-			this.forceDirectedLayout.removeAttributeSink(this.graph);
 			this.forceDirectedLayout.clear();
 			this.graph.clear();
 
@@ -1008,8 +1006,6 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 
 			this.layoutGeneration++;
 			if (this.layoutMode == LayoutMode.FORCE_DIRECTED) {
-				this.graph.addSink(this.forceDirectedLayout);
-				this.forceDirectedLayout.addAttributeSink(this.graph);
 				this.viewer.enableAutoLayout(this.forceDirectedLayout);
 				this.scheduleForceDirectedFreeze(this.layoutGeneration);
 			}

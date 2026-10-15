@@ -30,8 +30,6 @@ public class PartialOrderGraphView extends BorderPane {
 		this.graph = new SingleGraph("PartialOrderGraph");
 
 		this.layout = new SpringBox(false);
-		this.graph.addSink(layout);
-		layout.addAttributeSink(this.graph);
 
 		this.setOnScroll(event -> {
 			if (null != view) {
@@ -126,8 +124,6 @@ public class PartialOrderGraphView extends BorderPane {
 		}
 		try {
 			viewer.disableAutoLayout();
-			this.graph.removeSink(this.layout);
-			this.layout.removeAttributeSink(this.graph);
 			this.layout.clear();
 
 			this.graph.clear();
@@ -148,8 +144,6 @@ public class PartialOrderGraphView extends BorderPane {
 			for (int[] edge : snapshot.edges())
 				this.graph.addEdge("E" + edge[0] + "-" + edge[1], gsNodes.get(edge[0]), gsNodes.get(edge[1]), true);
 
-			this.graph.addSink(this.layout);
-			this.layout.addAttributeSink(this.graph);
 			viewer.enableAutoLayout(this.layout);
 
 			view.getCamera().resetView();

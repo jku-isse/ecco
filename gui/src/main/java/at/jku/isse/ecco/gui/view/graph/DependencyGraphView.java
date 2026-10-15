@@ -158,8 +158,6 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		this.graph = new SingleGraph("DependencyGraph");
 
 		this.layout = new SpringBox(false);
-		this.graph.addSink(this.layout);
-		this.layout.addAttributeSink(this.graph);
 
 		this.setOnScroll(event -> {
 			if (null != view) {
@@ -220,8 +218,6 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 
 		this.viewer.disableAutoLayout();
 
-		this.graph.removeSink(this.layout);
-		this.layout.removeAttributeSink(this.graph);
 		this.layout.clear();
 		this.graph.clear();
 
@@ -282,10 +278,6 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 //				edge.setAttribute("hide");
 			}
 		}
-
-
-		this.graph.addSink(this.layout);
-		this.layout.addAttributeSink(this.graph);
 
 		this.viewer.enableAutoLayout(this.layout);
 	}

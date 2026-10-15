@@ -124,8 +124,6 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 		this.graph = new SingleGraph("ArtifactsGraph");
 
 		this.layout = new SpringBox(false);
-		this.graph.addSink(this.layout);
-		this.layout.addAttributeSink(this.graph);
 
 		this.setOnScroll(event -> {
 			if (null != view) {
@@ -456,8 +454,6 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 		try {
 			this.viewer.disableAutoLayout();
 
-			this.graph.removeSink(this.layout);
-			this.layout.removeAttributeSink(this.graph);
 			this.layout.clear();
 			this.graph.clear();
 
@@ -499,10 +495,6 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 
 			this.updateNodesAndEdgesStyles();
 			this.updateGraphStylehseet(showLabels);
-
-
-			this.graph.addSink(this.layout);
-			this.layout.addAttributeSink(this.graph);
 
 			this.viewer.enableAutoLayout(this.layout);
 		} finally {
