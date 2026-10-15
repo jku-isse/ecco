@@ -37,6 +37,12 @@ public final class LlmOrderSuggestionClient {
 	/** The most rows sent in one request: a suggestion for a window of a long file, not the whole file. */
 	public static final int MAX_ROWS = 300;
 
+	/**
+	 * How long an answer may take. It waited 5 minutes, as the Git import's suggestions do, and the
+	 * dialog seemed to hang; a user waiting in a dialog can also stop it sooner (see the dialog).
+	 */
+	public static final Duration TIMEOUT = Duration.ofMinutes(2);
+
 	private static final String SYSTEM_PROMPT = """
 			You order the lines of a source file. The file is part of a software product line: \
 			several variants of it were committed, and a checkout combining variants got some lines \
@@ -89,7 +95,7 @@ public final class LlmOrderSuggestionClient {
 			HttpRequest request = HttpRequest.newBuilder()
 					.uri(uri)
 					.header("Content-Type", "application/json")
-					.timeout(Duration.ofMinutes(5)) // a local model may first have to load
+					.timeout(TIMEOUT)
 					.POST(HttpRequest.BodyPublishers.ofString(buildRequestBody(path, rows, this.modelName)))
 					.build();
 			HttpResponse<String> response;
@@ -102,11 +108,14 @@ public final class LlmOrderSuggestionClient {
 			if (order == null)
 				return new Suggestion(null, "The LLM's reply is no order of the " + rows.size() + " lines: " + response.body());
 			return new Suggestion(order, null);
-		} catch (IOException | InterruptedException | RuntimeException e) {
-			if (e instanceof InterruptedException)
-				Thread.currentThread().interrupt();
+		} catch (java.net.http.HttpTimeoutException e) {
+			return new Suggestion(null, "The LLM at " + uri + " did not answer within " + TIMEOUT.toSeconds() + " s - a large model may take longer; a smaller one, or fewer open lines, may help.");
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return new Suggestion(null, "Stopped.");
+		} catch (IOException | RuntimeException e) {
 			LOGGER.log(Level.WARNING, "Error asking " + uri + " for an order", e);
-			return new Suggestion(null, "Could not ask the LLM endpoint " + uri + ": " + e.getMessage());
+			return new Suggestion(null, "Could not ask the LLM endpoint " + uri + ": " + e);
 		}
 	}
 
@@ -117,6 +126,9 @@ public final class LlmOrderSuggestionClient {
 		root.put("stream", false);
 		root.put("temperature", 0);
 		root.putObject("response_format").put("type", "json_object");
+		// the answer is a short list of numbers: a cap keeps a model from writing pages first (a
+		// "thinking" model's reasoning) - cut off, the answer is reported as unusable instead of awaited
+		root.put("max_tokens", maxTokens(rows.size()));
 		ArrayNode messages = root.putArray("messages");
 		messages.addObject().put("role", "system").put("content", SYSTEM_PROMPT);
 		StringBuilder user = new StringBuilder("File: ").append(path).append('\n');
@@ -126,6 +138,11 @@ public final class LlmOrderSuggestionClient {
 		}
 		messages.addObject().put("role", "user").put("content", user.toString());
 		return root.toString();
+	}
+
+	/** Enough tokens for an order of [rows] numbers, with room to spare. Package-visible for testing. */
+	static int maxTokens(int rows) {
+		return 256 + 8 * rows;
 	}
 
 	/**

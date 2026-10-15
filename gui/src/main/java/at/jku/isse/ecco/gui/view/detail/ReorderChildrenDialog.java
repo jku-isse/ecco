@@ -385,8 +385,6 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		boolean[][] mustPrecede = mustPrecede(window, pogNodesByChild);
 		String path = ArtifactDiagnostics.describePath(node);
 
-		suggestButton.setDisable(true);
-		status.setText("Asking the LLM for an order...");
 		int windowFrom = from;
 		javafx.concurrent.Task<LlmOrderSuggestionClient.Suggestion> task = new javafx.concurrent.Task<>() {
 			@Override
@@ -394,8 +392,28 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 				return suggester.suggest(path, rows);
 			}
 		};
+		// while it waits: how long, and "Stop" in place of "Suggest order" (it seemed to hang)
+		long started = System.nanoTime();
+		javafx.animation.Timeline ticker = new javafx.animation.Timeline(new javafx.animation.KeyFrame(javafx.util.Duration.seconds(1),
+				e -> status.setText("Asking the LLM for an order of " + rows.size() + " lines... " + (System.nanoTime() - started) / 1_000_000_000 + " s")));
+		ticker.setCycleCount(javafx.animation.Animation.INDEFINITE);
+		String suggestText = suggestButton.getText();
+		javafx.event.EventHandler<javafx.event.ActionEvent> suggestAction = suggestButton.getOnAction();
+		Runnable restore = () -> {
+			ticker.stop();
+			suggestButton.setText(suggestText);
+			suggestButton.setOnAction(suggestAction);
+		};
+		suggestButton.setText("Stop");
+		suggestButton.setOnAction(e -> {
+			task.cancel(true);
+			restore.run();
+			status.setText("Stopped - the order is unchanged.");
+		});
+		status.setText("Asking the LLM for an order of " + rows.size() + " lines... 0 s");
+		ticker.play();
 		task.setOnSucceeded(e -> {
-			suggestButton.setDisable(false);
+			restore.run();
 			LlmOrderSuggestionClient.Suggestion suggestion = task.getValue();
 			if (suggestion == null || !suggestion.succeeded()) {
 				status.setText("No suggestion: " + (suggestion == null ? "no answer" : suggestion.failureReason()));
@@ -415,8 +433,15 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			status.setText("Suggested by the LLM - review it; OK records the order, Cancel leaves everything as it was.");
 		});
 		task.setOnFailed(e -> {
-			suggestButton.setDisable(false);
+			restore.run();
 			status.setText("No suggestion: " + task.getException());
+		});
+		// closing the dialog stops waiting
+		this.setOnHidden(e -> {
+			if (task.isRunning()) {
+				task.cancel(true);
+				ticker.stop();
+			}
 		});
 		Thread thread = new Thread(task, "order-suggestion");
 		thread.setDaemon(true);

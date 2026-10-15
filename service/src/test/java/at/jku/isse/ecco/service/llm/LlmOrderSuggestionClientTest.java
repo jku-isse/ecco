@@ -34,6 +34,7 @@ public class LlmOrderSuggestionClientTest {
         JsonNode root = MAPPER.readTree(body);
         assertEquals("qwen", root.path("model").asText());
         assertEquals("json_object", root.path("response_format").path("type").asText());
+        assertEquals(LlmOrderSuggestionClient.maxTokens(2), root.path("max_tokens").asInt(), "the answer is capped: a thinking model wrote pages first");
         String user = root.path("messages").get(1).path("content").asText();
         assertEquals("File: src/a.c\n1   int main() {\n2 * init();\n", user);
     }

@@ -234,8 +234,50 @@ public class ReorderChildrenDialogTest {
         }
     }
 
+    /** While the LLM is asked, the button stops it (a slow model seemed to hang the dialog); stopped, nothing changes. */
+    @Test
+    @Timeout(60)
+    public void aSuggestionCanBeStopped(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "BASE, A", Map.of("f.txt", "a\nb\n"));
+            commit(service, tmp.resolve("v2"), "BASE, B", Map.of("f.txt", "a\nc\n"));
+            Node.Op file = orderWarning(service, tmp.resolve("out"), "BASE, A, B");
+            java.util.concurrent.CountDownLatch interrupted = new java.util.concurrent.CountDownLatch(1);
+            ReorderChildrenDialog.OrderSuggester never = (path, rows) -> {
+                try {
+                    Thread.sleep(60_000);
+                } catch (InterruptedException e) {
+                    interrupted.countDown();
+                }
+                return new at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Suggestion(List.of(1, 0, 2), null);
+            };
+
+            Fixture d = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file, never)));
+            onFx(() -> suggestButton(d.dialog).fire());
+            Button stop = onFx(() -> suggestButton(d.dialog));
+            assertEquals("Stop", onFx(stop::getText), "the button stops it while it waits");
+            assertTrue(onFx(() -> status(stop)).startsWith("Asking the LLM"), onFx(() -> status(stop)));
+
+            onFx(stop::fire);
+            assertTrue(interrupted.await(10, java.util.concurrent.TimeUnit.SECONDS), "the request is interrupted");
+            assertEquals("Suggest order", onFx(stop::getText));
+            assertTrue(onFx(() -> status(d.dialog)).startsWith("Stopped"));
+            Thread.sleep(300);
+            assertEquals(List.of("a", "c", "b"), onFx(d::order), "the order is unchanged");
+        }
+    }
+
+    /** The text under the button. */
+    private static String status(Button button) {
+        for (javafx.scene.Node sibling : button.getParent().getChildrenUnmodifiable())
+            if (sibling instanceof Label label)
+                return label.getText() == null ? "" : label.getText();
+        return "";
+    }
+
     private static Button suggestButton(ReorderChildrenDialog dialog) {
-        return (Button) find(dialog.getDialogPane().getContent(), n -> n instanceof Button b && "Suggest order".equals(b.getText()));
+        // by its icon: while it waits, its text is "Stop"
+        return (Button) find(dialog.getDialogPane().getContent(), n -> n instanceof Button b && Fixture.icon(b) == Feather.ZAP);
     }
 
     /** The text under "Suggest order". */
