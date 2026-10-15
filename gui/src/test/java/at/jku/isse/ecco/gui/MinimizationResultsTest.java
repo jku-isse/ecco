@@ -118,6 +118,7 @@ public class MinimizationResultsTest {
         service.failure = new IllegalStateException("no fingerprints today");
         try (EccoService ignored = minedRepository(tmp, service)) {
             MinimizationResults results = new MinimizationResults(service);
+            onFx(MinimizationResultsTest::closeErrorDialogs); // left by other tests in this JVM
             onFx(results::run);
             waitUntil("the run ended", () -> !results.runningProperty().get());
 
@@ -134,6 +135,7 @@ public class MinimizationResultsTest {
         try (EccoService ignored = minedRepository(tmp, service)) {
             MinimizationResults results = new MinimizationResults(service);
             onFx(() -> results.getMinimizedByAssociationId().put("stale", "A"));
+            onFx(MinimizationResultsTest::closeErrorDialogs); // left by other tests in this JVM
             onFx(results::run);
             waitUntil("the run started", () -> service.started.get() == 1);
 
@@ -187,7 +189,10 @@ public class MinimizationResultsTest {
         waitUntil("the run finished", () -> !results.runningProperty().get());
     }
 
-    /** Closes the error dialogs shown (non-modal), returning their messages. */
+    /**
+     * Closes the error dialogs shown (non-modal), returning their messages. Called before a run too:
+     * a GUI test before this one could leave an error dialog open, and it was counted as this run's.
+     */
     private static List<String> closeErrorDialogs() {
         List<String> messages = new java.util.ArrayList<>();
         for (Window window : List.copyOf(Window.getWindows())) {
