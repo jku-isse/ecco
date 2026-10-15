@@ -49,6 +49,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private static final String WRITELOCK_FILENAME = "write";
 	private static final String ASSOCIATIONS_DIRNAME = "associations";
 	private static final String ARTIFACTS_DIRNAME = "artifacts";
+	private static final String PIECES_DIRNAME = "pieces";
 
 	// repository directory
 	private final Path repositoryDir;
@@ -79,6 +80,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	// and the order of the steps of reading and writing
 	private final CommitJournal journal;
 	private final AssociationStore associations;
+	private final PieceStore pieces;
 	private final ArtifactPackStore packs;
 
 
@@ -92,7 +94,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.associationsDir = repositoryDir.resolve(ASSOCIATIONS_DIRNAME);
 		this.artifactsDir = repositoryDir.resolve(ARTIFACTS_DIRNAME);
 		this.journal = new CommitJournal(this.associationsDir, this.artifactsDir);
-		this.associations = new AssociationStore(this.associationsDir);
+		this.pieces = new PieceStore(repositoryDir.resolve(PIECES_DIRNAME));
+		this.associations = new AssociationStore(this.associationsDir, this.pieces);
 		this.packs = new ArtifactPackStore(this.artifactsDir);
 		this.reset();
 	}
@@ -275,6 +278,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 		// then the associations it touched (see AssociationStore#stage)
 		Map<Path, byte[]> staged = this.associations.stage(repo, pendingSuffix);
+		// the pieces of their trees not stored yet - in a pack of their own, before the core that refers to them
+		this.pieces.write(newId);
 
 		// serialize to new db file
 		Path newDbFile = this.repositoryDir.resolve(newId + StorageFiles.DB_FILE_SUFFIX);
@@ -343,8 +348,10 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.journal.recoverPendingFiles(newId, false);
 		this.associations.committed(repo, staged);
 		this.packs.committed(stagedArtifacts);
-		if (oldCoreReleased)
+		if (oldCoreReleased) {
 			this.packs.deleteSupersededArtifactFiles(repo, looseArtifactFiles);
+			this.pieces.deleteUnreferenced(repo.getAssociationIds());
+		}
 		// stored as they are now: unchanged until changed again
 		for (Artifact.Op<?> artifact : repo.getDirtyArtifacts())
 			if (artifact instanceof SerArtifact<?> serArtifact)
@@ -358,6 +365,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private void reset() {
 		this.associations.clear();
 		this.packs.clear();
+		this.pieces.clear();
 		this.id = null;
 		this.dbFile = null;
 		this.database = null;
@@ -482,11 +490,13 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// load each association from its own file (eagerly: every association is loaded on open) and wire up the
 		// resolver every commit needs to turn the IDs it holds back into Association objects. A
 		// no-op for a brand new repository (SerRepository starts with an empty association-id set).
+		this.pieces.load();
 		List<Association.Op> loadedAssociations = new ArrayList<>(repo.getAssociationIds().size());
 		for (String associationId : repo.getAssociationIds()) {
 			loadedAssociations.add(this.associations.read(associationId));
 		}
 		repo.restoreAssociations(loadedAssociations);
+		this.pieces.loaded();
 		// the repository's commits (Commit.getAssociations() needs the resolver after a reload -
 		// CommitAssociationConsistencyTest)
 		for (Commit commit : repo.getCommits()) {

@@ -47,7 +47,7 @@ public final class CompactCounters {
 	}
 
 	/** The stream association files are written with - counters written to it are encoded. */
-	public static final class Stream extends ObjectOutputStream {
+	public static class Stream extends ObjectOutputStream {
 		public Stream(OutputStream out) throws IOException {
 			super(out);
 		}

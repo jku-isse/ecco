@@ -2,6 +2,8 @@ package at.jku.isse.ecco.storage.ser.dao;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.storage.ser.counter.CompactCounters;
+import at.jku.isse.ecco.storage.ser.tree.PieceSink;
+import at.jku.isse.ecco.storage.ser.tree.PieceSource;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -69,13 +71,46 @@ final class StorageFiles {
 		return serialized.toByteArray();
 	}
 
-	/** Like {@link #serialize}, with the association's counters in compact form - see {@link CompactCounters}. */
-	static byte[] serializeAssociation(Object association) throws IOException {
+	/**
+	 * Like {@link #serialize}, with the association's counters in compact form (see
+	 * {@link CompactCounters}) and its files' subtrees given to [pieces] (see TreePieces).
+	 */
+	static byte[] serializeAssociation(Object association, PieceSink pieces) throws IOException {
 		ByteArrayOutputStream serialized = new ByteArrayOutputStream();
-		try (ObjectOutputStream oos = new CompactCounters.Stream(serialized)) {
+		try (ObjectOutputStream oos = new AssociationOutput(serialized, pieces)) {
 			oos.writeObject(association);
 		}
 		return serialized.toByteArray();
+	}
+
+	/** The stream an association is written to: counters compact, files' subtrees as pieces. */
+	private static final class AssociationOutput extends CompactCounters.Stream implements PieceSink {
+		private final PieceSink pieces;
+
+		AssociationOutput(java.io.OutputStream out, PieceSink pieces) throws IOException {
+			super(out);
+			this.pieces = pieces;
+		}
+
+		@Override
+		public String piece(at.jku.isse.ecco.tree.Node.Op pieceRoot) throws IOException {
+			return this.pieces.piece(pieceRoot);
+		}
+	}
+
+	/** The stream an association is read from: the pieces its tree refers to from [pieces]. */
+	static final class AssociationInput extends ObjectInputStream implements PieceSource {
+		private final PieceSource pieces;
+
+		AssociationInput(java.io.InputStream in, PieceSource pieces) throws IOException {
+			super(in);
+			this.pieces = pieces;
+		}
+
+		@Override
+		public java.util.List<at.jku.isse.ecco.tree.Node.Op> piece(String digest) throws IOException, ClassNotFoundException {
+			return this.pieces.piece(digest);
+		}
 	}
 
 	static byte[] digest(byte[] bytes) {

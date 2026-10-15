@@ -17,7 +17,7 @@ public class Database implements Serializable {
 	 * cannot be read by older versions - they then say so instead of failing somewhere in loading
 	 * (versions from before this field ignore it).
 	 */
-	public static final int STORAGE_FORMAT = 1;
+	public static final int STORAGE_FORMAT = 2; // 2: association trees in pieces (gap #48)
 
 	// the format the core was written in: 0 for one written before the format was recorded
 	private int storageFormat;

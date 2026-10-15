@@ -2,6 +2,7 @@ package at.jku.isse.ecco.storage.ser.dao;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.storage.ser.repository.SerRepository;
+import at.jku.isse.ecco.storage.ser.tree.TreePieces;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -34,6 +35,8 @@ final class AssociationStore {
 	static final boolean VERIFY_UNCHANGED_ASSOCIATIONS = Boolean.getBoolean("ecco.verifyUnchangedAssociations");
 
 	private final Path dir;
+	// the pieces of the associations' trees (see TreePieces)
+	private final PieceStore pieces;
 	// SHA-256 of the serialized bytes of every stable artifact/association file as last read or
 	// written by this process - lets endReadWrite() skip entities whose bytes didn't change. Cleared
 	// by reset(); rebuilt by the full reload that follows.
@@ -46,8 +49,9 @@ final class AssociationStore {
 	 */
 	private final Map<String, byte[]> verifiedAssociationDigests = new HashMap<>();
 
-	AssociationStore(Path dir) {
+	AssociationStore(Path dir, PieceStore pieces) {
 		this.dir = dir;
+		this.pieces = pieces;
 	}
 
 	/** The file of the association [id]. */
@@ -58,9 +62,20 @@ final class AssociationStore {
 	/** Reads the association [id], remembering the digest of its file. */
 	Association.Op read(String id) throws IOException, ClassNotFoundException {
 		Path file = this.file(id);
-		StorageFiles.Read read = StorageFiles.readZipped(file);
-		this.persistedDigests.put(file, read.digest());
-		return (Association.Op) read.object();
+		this.pieces.reading(id);
+		try (java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(new java.io.BufferedInputStream(Files.newInputStream(file)))) {
+			java.util.zip.ZipEntry e;
+			while ((e = zis.getNextEntry()) != null) {
+				if (e.getName().equals(StorageFiles.ZIP_ENTRY_NAME)) {
+					byte[] bytes = zis.readAllBytes();
+					this.persistedDigests.put(file, digest(bytes));
+					try (java.io.ObjectInputStream ois = new StorageFiles.AssociationInput(new java.io.ByteArrayInputStream(bytes), digest -> this.pieces.read(id, digest))) {
+						return (Association.Op) ois.readObject();
+					}
+				}
+			}
+		}
+		throw new at.jku.isse.ecco.EccoException("No " + StorageFiles.ZIP_ENTRY_NAME + " entry found in " + file);
 	}
 
 	/** After [repo] was read: with {@link #VERIFY_UNCHANGED_ASSOCIATIONS}, records its associations as they serialize now. */
@@ -88,6 +103,7 @@ final class AssociationStore {
 		if (!repo.getDirtyAssociations().isEmpty())
 			Files.createDirectories(this.dir);
 		Map<Path, byte[]> staged = new HashMap<>();
+		this.pieces.removed(repo.getRemovedAssociationIds());
 		for (Association.Op association : repo.getDirtyAssociations())
 			this.stageIfChanged(association, this.file(association.getId()), pendingSuffix, staged);
 		if (VERIFY_UNCHANGED_ASSOCIATIONS) {
@@ -126,7 +142,8 @@ final class AssociationStore {
 	 * one file per artifact dominated commit time (see UnchangedArtifactRewriteTest).
 	 */
 	private void stageIfChanged(Association association, Path stableFile, String pendingSuffix, Map<Path, byte[]> staged) throws IOException {
-		byte[] bytes = serializeAssociation(association);
+		this.pieces.writing(association.getId());
+		byte[] bytes = serializeAssociation(association, pieceRoot -> this.pieces.stage(association.getId(), pieceRoot));
 		byte[] digest = digest(bytes);
 		if (Arrays.equals(digest, this.persistedDigests.get(stableFile)) && Files.exists(stableFile))
 			return;
@@ -144,7 +161,7 @@ final class AssociationStore {
 			byte[] stored = this.verifiedAssociationDigests.get(association.getId());
 			if (stored == null)
 				throw new IllegalStateException("Association " + association.getId() + " is neither stored nor marked to be written (Repository.Op#addAssociation).");
-			if (!Arrays.equals(stored, digest(serializeAssociation(association))))
+			if (!Arrays.equals(stored, digest(serializeAssociation(association, TreePieces.DIGEST_ONLY))))
 				throw new IllegalStateException("Association " + association.getId() + " changed without being marked to be written (Repository.Op#addAssociation) - the change would not be stored.");
 		}
 	}
@@ -152,6 +169,6 @@ final class AssociationStore {
 	/** See {@link #verifiedAssociationDigests}: records [associations] as they serialize now. */
 	private void recordVerifiedDigests(Collection<? extends Association> associations) throws IOException {
 		for (Association association : associations)
-			this.verifiedAssociationDigests.put(association.getId(), digest(serializeAssociation(association)));
+			this.verifiedAssociationDigests.put(association.getId(), digest(serializeAssociation(association, TreePieces.DIGEST_ONLY)));
 	}
 }

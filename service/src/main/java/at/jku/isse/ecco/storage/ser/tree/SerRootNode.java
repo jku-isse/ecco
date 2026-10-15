@@ -8,6 +8,7 @@ import at.jku.isse.ecco.tree.RootNode;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.StreamCorruptedException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -25,10 +26,21 @@ public class SerRootNode extends SerNode implements RootNode, RootNode.Op {
 		super();
 	}
 
+	/**
+	 * How the tree below is written: 0 (files written before - the field is absent there), the
+	 * nodes breadth first; 1, each node followed by where its children are - null for the nodes
+	 * that follow, or the {@link PieceRef} of the piece they are (see {@link TreePieces}).
+	 */
+	private int treeFormat;
+
 	private void writeObject(ObjectOutputStream out) throws IOException {
 		// (the root's own numberOfChildren is a SerNode field, refreshed by SerNode.writeObject(), which
 		// runs before this - see there)
+		this.treeFormat = 1;
 		out.defaultWriteObject();
+		// a file's subtree as a piece of its own - when the stream stores pieces (association files);
+		// otherwise (remote sync, copies) inline
+		PieceSink pieces = out instanceof PieceSink sink ? sink : null;
 		// breadth first
 		Queue<Node.Op> currentLevel = new LinkedList<>(this.getChildren());
 		Queue<Node.Op> nextLevel = new LinkedList<>();
@@ -36,7 +48,12 @@ public class SerRootNode extends SerNode implements RootNode, RootNode.Op {
 			for(Node.Op node : currentLevel){
 				node.updateNumberOfChildren();
 				out.writeObject(node);
-				nextLevel.addAll(node.getChildren());
+				if (pieces != null && TreePieces.isPieceRoot(node)) {
+					out.writeObject(new PieceRef(pieces.piece(node)));
+				} else {
+					out.writeObject(null);
+					nextLevel.addAll(node.getChildren());
+				}
 			}
 			currentLevel = nextLevel;
 			nextLevel = new LinkedList<>();
@@ -45,6 +62,7 @@ public class SerRootNode extends SerNode implements RootNode, RootNode.Op {
 
 	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
+		boolean tagged = this.treeFormat >= 1;
 		Queue<Node.Op> currentLevel = new LinkedList<>();
 		currentLevel.add(this);
 		Queue<Node.Op> nextLevel = new LinkedList<>();
@@ -55,7 +73,16 @@ public class SerRootNode extends SerNode implements RootNode, RootNode.Op {
 				for(int i = 0; i < node.getNumberOfChildren(); i++){
 					Node.Op child = (Node.Op) in.readObject();
 					node.addChildWithoutNumberUpdate(child);
-					nextLevel.add(child);
+					Object where = tagged ? in.readObject() : null;
+					if (where instanceof PieceRef piece) {
+						if (!(in instanceof PieceSource source))
+							throw new StreamCorruptedException("A tree refers to a piece (" + piece.digest() + "), but is not read from a repository's storage.");
+						child.setChildren(new ArrayList<>());
+						for (Node.Op pieceChild : source.piece(piece.digest()))
+							child.addChildWithoutNumberUpdate(pieceChild);
+					} else {
+						nextLevel.add(child);
+					}
 				}
 			}
 			currentLevel = nextLevel;
