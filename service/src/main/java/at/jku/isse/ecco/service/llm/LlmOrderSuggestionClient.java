@@ -92,21 +92,12 @@ public final class LlmOrderSuggestionClient {
 			return new Suggestion(null, rows.size() + " lines are too many for a suggestion (at most " + MAX_ROWS + ")");
 		URI uri = LlmFeatureSuggestionClient.resolveChatCompletionsUri(this.endpointUrl);
 		try {
-			HttpRequest request = HttpRequest.newBuilder()
-					.uri(uri)
-					.header("Content-Type", "application/json")
-					.timeout(TIMEOUT)
-					.POST(HttpRequest.BodyPublishers.ofString(buildRequestBody(path, rows, this.modelName)))
-					.build();
-			HttpResponse<String> response;
-			try (HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()) {
-				response = client.send(request, HttpResponse.BodyHandlers.ofString());
-			}
-			if (response.statusCode() / 100 != 2)
-				return new Suggestion(null, "The LLM endpoint " + uri + " returned HTTP " + response.statusCode() + ": " + response.body());
-			List<Integer> order = parseOrder(response.body(), rows.size());
+			ChatEndpoint.Reply reply = new ChatEndpoint(this.endpointUrl).send((ObjectNode) MAPPER.readTree(buildRequestBody(path, rows, this.modelName)), TIMEOUT);
+			if (reply.status() / 100 != 2)
+				return new Suggestion(null, "The LLM endpoint " + uri + " returned HTTP " + reply.status() + ": " + reply.body());
+			List<Integer> order = parseOrder(reply.body(), rows.size());
 			if (order == null)
-				return new Suggestion(null, "The LLM's reply is no order of the " + rows.size() + " lines: " + response.body());
+				return new Suggestion(null, "The LLM's reply is no order of the " + rows.size() + " lines: " + reply.body());
 			return new Suggestion(order, null);
 		} catch (java.net.http.HttpTimeoutException e) {
 			return new Suggestion(null, "The LLM at " + uri + " did not answer within " + TIMEOUT.toSeconds() + " s - a large model may take longer; a smaller one, or fewer open lines, may help.");

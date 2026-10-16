@@ -396,31 +396,22 @@ public final class LlmFeatureSuggestionClient {
 		long start = System.currentTimeMillis();
 		try {
 			String requestBody = buildRequestBody(commit, knownFeatures, this.modelName);
-			HttpRequest request = HttpRequest.newBuilder()
-					.uri(chatCompletionsUri)
-					.header("Content-Type", "application/json")
-					// generous on purpose: a local model that's been idle can take a while just to
-					// load into memory before it answers at all, and that cold-start cost lands on
-					// whichever commit happens to be first in the range - a real timeout observed
-					// with the previous, tighter 2-minute budget
-					.timeout(Duration.ofMinutes(5))
-					.POST(HttpRequest.BodyPublishers.ofString(requestBody))
-					.build();
-			HttpResponse<String> response;
-			try (HttpClient httpClient = newHttpClient()) {
-				response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-			}
+			// generous on purpose: a local model that's been idle can take a while just to load into
+			// memory before it answers at all, and that cold-start cost lands on whichever commit
+			// happens to be first in the range - a real timeout observed with the previous, tighter
+			// 2-minute budget
+			ChatEndpoint.Reply reply = new ChatEndpoint(this.endpointUrl).send((ObjectNode) MAPPER.readTree(requestBody), Duration.ofMinutes(5));
 			long millis = System.currentTimeMillis() - start;
-			if (response.statusCode() / 100 != 2) {
-				String reason = "LLM endpoint " + chatCompletionsUri + " returned HTTP " + response.statusCode() + ": " + response.body();
+			if (reply.status() / 100 != 2) {
+				String reason = "LLM endpoint " + chatCompletionsUri + " returned HTTP " + reply.status() + ": " + reply.body();
 				LOGGER.log(Level.WARNING, reason);
 				return new OneResult(null, reason, new Usage(-1, -1, millis));
 			}
-			Usage usage = parseUsage(response.body(), millis);
-			String configuration = parseResponse(response.body());
+			Usage usage = parseUsage(reply.body(), millis);
+			String configuration = parseResponse(reply.body());
 			if (configuration == null) {
 				String reason = "The LLM's response for commit " + commit.commitId() + " could not be parsed as the " +
-						"expected JSON shape. Raw reply: " + response.body();
+						"expected JSON shape. Raw reply: " + reply.body();
 				return new OneResult(null, reason, usage);
 			}
 			return new OneResult(configuration, null, usage);
