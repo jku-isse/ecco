@@ -17,6 +17,7 @@ import at.jku.isse.ecco.service.LlmPreferences;
 import at.jku.isse.ecco.service.git.GitCommitInfo;
 import at.jku.isse.ecco.service.git.GitHistoryReader;
 import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.llm.FeatureSuggestionLog;
 import at.jku.isse.ecco.service.llm.LlmFeatureSuggestionClient;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -57,6 +58,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.function.Function;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -136,6 +138,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 	// among a fast-scrolling log - see finishImport()'s summary alert, mirroring how constraint
 	// violations are already summarized.
 	private List<String> llmSuggestionFailures = new ArrayList<>();
+	// the suggestion for the commit being reviewed or imported, recorded with what became of it
+	// once it is imported or skipped (see FeatureSuggestionLog) - FX thread only
+	private FeatureSuggestionLog.Entry pendingSuggestion;
+	// the suggestion request, off the FX thread - replaced by tests, which have no LLM
+	Function<GitCommitInfo, Suggested> suggester = this::requestSuggestion;
 	private Commit lastCommit;
 	private int importedCount;
 	// set the moment this run ends (Back, Stop, finish, or a real failure) - a background
@@ -422,6 +429,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.runningFeatures = new LinkedHashSet<>();
 		this.allConstraintWarnings = new ArrayList<>();
 		this.llmSuggestionFailures = new ArrayList<>();
+		this.pendingSuggestion = null;
 		this.lastCommit = null;
 		this.importedCount = 0;
 		this.runEnded = false;
@@ -489,10 +497,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 		this.fit();
 
-		Task<LlmFeatureSuggestionClient.SuggestionBatch> suggestTask = new Task<>() {
+		Task<Suggested> suggestTask = new Task<>() {
 			@Override
-			protected LlmFeatureSuggestionClient.SuggestionBatch call() {
-				return ImportGitView.this.requestSuggestion(commit);
+			protected Suggested call() {
+				return ImportGitView.this.suggester.apply(commit);
 			}
 
 			@Override
@@ -501,8 +509,9 @@ public class ImportGitView extends OperationView implements EccoListener {
 				if (ImportGitView.this.runEnded) {
 					return;
 				}
-				LlmFeatureSuggestionClient.SuggestionBatch batch = this.getValue();
+				LlmFeatureSuggestionClient.SuggestionBatch batch = this.getValue().batch();
 				String defaultConfig = defaultConfigurationText(ImportGitView.this.runningFeatures, batch.configurations().get(0));
+				ImportGitView.this.pendingSuggestion = ImportGitView.this.suggestionEntry(commit, this.getValue(), batch.failureReason(), defaultConfig, FeatureSuggestionLog.Outcome.REVIEWED);
 				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, reviewInterval, defaultConfig, batch.failureReason(), null);
 			}
 
@@ -519,6 +528,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				// suggestion, then still let the user fill the configuration in by hand.
 				new ExceptionAlert(this.getException()).show();
 				String defaultConfig = defaultConfigurationText(ImportGitView.this.runningFeatures, "");
+				ImportGitView.this.pendingSuggestion = ImportGitView.this.suggestionEntry(commit, null, String.valueOf(this.getException()), defaultConfig, FeatureSuggestionLog.Outcome.REVIEWED);
 				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, reviewInterval, defaultConfig, String.valueOf(this.getException()), null);
 			}
 		};
@@ -561,10 +571,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 			return;
 		}
 
-		Task<LlmFeatureSuggestionClient.SuggestionBatch> suggestTask = new Task<>() {
+		Task<Suggested> suggestTask = new Task<>() {
 			@Override
-			protected LlmFeatureSuggestionClient.SuggestionBatch call() {
-				return ImportGitView.this.requestSuggestion(commit);
+			protected Suggested call() {
+				return ImportGitView.this.suggester.apply(commit);
 			}
 
 			@Override
@@ -573,11 +583,12 @@ public class ImportGitView extends OperationView implements EccoListener {
 				if (ImportGitView.this.runEnded) {
 					return;
 				}
-				LlmFeatureSuggestionClient.SuggestionBatch batch = this.getValue();
+				LlmFeatureSuggestionClient.SuggestionBatch batch = this.getValue().batch();
 				if (batch.failureReason() != null) {
 					ImportGitView.this.recordAutoImportSuggestionFailure(commit, batch.failureReason());
 				}
 				String config = defaultConfigurationText(ImportGitView.this.runningFeatures, batch.configurations().get(0));
+				ImportGitView.this.pendingSuggestion = ImportGitView.this.suggestionEntry(commit, this.getValue(), batch.failureReason(), config, FeatureSuggestionLog.Outcome.AUTO);
 				ImportGitView.this.importOneCommit(commitsOldestFirst, index, useLlm, reviewInterval, config);
 			}
 
@@ -589,6 +600,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				}
 				ImportGitView.this.recordAutoImportSuggestionFailure(commit, String.valueOf(this.getException()));
 				String config = defaultConfigurationText(ImportGitView.this.runningFeatures, "");
+				ImportGitView.this.pendingSuggestion = ImportGitView.this.suggestionEntry(commit, null, String.valueOf(this.getException()), config, FeatureSuggestionLog.Outcome.AUTO);
 				ImportGitView.this.importOneCommit(commitsOldestFirst, index, useLlm, reviewInterval, config);
 			}
 		};
@@ -611,7 +623,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 * The one-commit LLM suggestion request shared by {@link #suggestOneCommit} and
 	 * {@link #autoImportOneCommit} - must be called off the FX thread (blocks on the HTTP call).
 	 */
-	private LlmFeatureSuggestionClient.SuggestionBatch requestSuggestion(GitCommitInfo commit) {
+	private Suggested requestSuggestion(GitCommitInfo commit) {
 		String diff = this.gitHistoryReader.getDiff(this.repoDir, commit.getId());
 		List<LlmFeatureSuggestionClient.CommitForSuggestion> commitForSuggestion = List.of(
 				new LlmFeatureSuggestionClient.CommitForSuggestion(commit.getShortId(), commit.getMessage(), diff));
@@ -626,8 +638,41 @@ public class ImportGitView extends OperationView implements EccoListener {
 						placement.parent == null ? null : placement.parent.getName()))
 				.collect(Collectors.toList());
 
-		LlmFeatureSuggestionClient client = new LlmFeatureSuggestionClient(LlmPreferences.getEndpointUrl(), LlmPreferences.getModelName());
-		return client.suggestConfigurations(commitForSuggestion, knownFeatures, null);
+		String model = LlmPreferences.getModelName();
+		LlmFeatureSuggestionClient client = new LlmFeatureSuggestionClient(LlmPreferences.getEndpointUrl(), model);
+		return new Suggested(client.suggestConfigurations(commitForSuggestion, knownFeatures, null), model, diffLines(diff));
+	}
+
+	/** A commit's suggestion: the reply, the model asked, and the size of the commit's diff. */
+	record Suggested(LlmFeatureSuggestionClient.SuggestionBatch batch, String model, int diffLines) {
+	}
+
+	/** Lines of a diff before {@link GitHistoryReader#getDiff} truncated it. Pure and package-visible for testing. */
+	static int diffLines(String diff) {
+		String[] lines = diff.split("\n", -1);
+		java.util.regex.Matcher truncated = java.util.regex.Pattern.compile("^\\.\\.\\. \\(diff truncated, (\\d+) more lines\\)$").matcher(lines[lines.length - 1]);
+		return truncated.matches() ? lines.length - 1 + Integer.parseInt(truncated.group(1)) : lines.length;
+	}
+
+	/** The log entry for a commit's suggestion ({@code suggested} null if the request itself failed), before its outcome is known. */
+	private FeatureSuggestionLog.Entry suggestionEntry(GitCommitInfo commit, Suggested suggested, String failure, String proposed, FeatureSuggestionLog.Outcome outcome) {
+		LlmFeatureSuggestionClient.SuggestionBatch batch = suggested == null ? null : suggested.batch();
+		return new FeatureSuggestionLog.Entry(String.valueOf(this.repoDir), commit.getId(), commit.getMessage(),
+				suggested == null ? -1 : suggested.diffLines(), suggested == null ? LlmPreferences.getModelName() : suggested.model(),
+				String.join(", ", this.runningFeatures),
+				batch == null || batch.configurations().isEmpty() ? null : batch.configurations().get(0),
+				proposed, failure,
+				batch == null || batch.usages().isEmpty() ? null : batch.usages().get(0),
+				outcome, null);
+	}
+
+	/** Records the pending suggestion, if it is {@code commit}'s, as committed with {@code configuration} - or skipped if that is null. */
+	private void recordSuggestionOutcome(GitCommitInfo commit, String configuration) {
+		FeatureSuggestionLog.Entry entry = this.pendingSuggestion;
+		if (entry == null || !entry.commitId().equals(commit.getId()))
+			return;
+		this.pendingSuggestion = null;
+		FeatureSuggestionLog.append(configuration == null ? entry.skipped() : entry.committedAs(configuration));
 	}
 
 	/**
@@ -718,7 +763,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 		configField.textProperty().addListener((observable, oldValue, newValue) -> debounce.playFromStart());
 		debounce.playFromStart();
 
-		skipButton.setOnAction(event -> this.processNextCommit(commitsOldestFirst, index + 1, useLlm, reviewInterval));
+		skipButton.setOnAction(event -> {
+			this.recordSuggestionOutcome(commit, null);
+			this.processNextCommit(commitsOldestFirst, index + 1, useLlm, reviewInterval);
+		});
 
 		importButton.setOnAction(event -> {
 			String warning = constraintWarningLabel.getText();
@@ -795,6 +843,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				super.succeeded();
 				ImportGitView.this.lastCommit = this.getValue();
 				ImportGitView.this.importedCount++;
+				ImportGitView.this.recordSuggestionOutcome(commit, configurationText);
 				applyConfigurationToRunning(ImportGitView.this.runningFeatures, configurationText);
 				if (ImportGitView.this.runEnded) {
 					return;

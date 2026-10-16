@@ -88,6 +88,19 @@ public class LlmFeatureSuggestionClientTest {
 	}
 
 	@Test
+	public void parseUsage_readsTheReportedTokenCounts() {
+		String response = "{\"choices\":[],\"usage\":{\"prompt_tokens\":7670,\"completion_tokens\":12,\"total_tokens\":7682}}";
+
+		assertEquals(new LlmFeatureSuggestionClient.Usage(7670, 12, 25), LlmFeatureSuggestionClient.parseUsage(response, 25));
+	}
+
+	@Test
+	public void parseUsage_withoutUsageOrJson_isMinusOne() {
+		assertEquals(new LlmFeatureSuggestionClient.Usage(-1, -1, 3), LlmFeatureSuggestionClient.parseUsage("{\"choices\":[]}", 3));
+		assertEquals(new LlmFeatureSuggestionClient.Usage(-1, -1, 3), LlmFeatureSuggestionClient.parseUsage("not json", 3));
+	}
+
+	@Test
 	public void parseResponse_commaSeparatedConfiguration_returnedAsIs() {
 		String response = chatCompletionsResponse("{\"configuration\": \"setup, notes\"}");
 

@@ -288,7 +288,19 @@ public final class LlmFeatureSuggestionClient {
 	 * to the model legitimately leaving a commit blank - so a caller can tell those two very
 	 * different situations apart instead of guessing from a blank entry alone.
 	 */
-	public record SuggestionBatch(List<String> configurations, String failureReason) {
+	public record SuggestionBatch(List<String> configurations, String failureReason, List<Usage> usages) {
+
+		public SuggestionBatch(List<String> configurations, String failureReason) {
+			this(configurations, failureReason, List.of());
+		}
+	}
+
+	/**
+	 * What one commit's request cost: the prompt and reply sizes the endpoint reported ({@code -1}
+	 * where it reported none) and the time from sending the request to having the reply. Recorded
+	 * with each suggestion (see {@link FeatureSuggestionLog}) to tell where the time goes.
+	 */
+	public record Usage(int promptTokens, int completionTokens, long millis) {
 	}
 
 	/**
@@ -315,6 +327,7 @@ public final class LlmFeatureSuggestionClient {
 	 */
 	public SuggestionBatch suggestConfigurations(List<CommitForSuggestion> commitsOldestFirst, Collection<KnownFeature> knownFeatures, ProgressListener onProgress) {
 		List<String> configurations = new ArrayList<>(commitsOldestFirst.size());
+		List<Usage> usages = new ArrayList<>(commitsOldestFirst.size());
 		List<String> failedCommitIds = new ArrayList<>();
 		String lastFailureReason = null;
 
@@ -326,6 +339,7 @@ public final class LlmFeatureSuggestionClient {
 			}
 			OneResult result = suggestOneConfiguration(commit, knownFeatures);
 			configurations.add(result.configuration() == null ? "" : result.configuration());
+			usages.add(result.usage());
 			if (result.failureReason() != null) {
 				failedCommitIds.add(commit.commitId());
 				lastFailureReason = result.failureReason();
@@ -336,14 +350,15 @@ public final class LlmFeatureSuggestionClient {
 		String overallFailureReason = failedCommitIds.isEmpty() ? null :
 				failedCommitIds.size() + " of " + commitsOldestFirst.size() + " commit(s) could not be classified (" +
 						String.join(", ", failedCommitIds) + "). Last error: " + lastFailureReason;
-		return new SuggestionBatch(configurations, overallFailureReason);
+		return new SuggestionBatch(configurations, overallFailureReason, usages);
 	}
 
-	private record OneResult(String configuration, String failureReason) {
+	private record OneResult(String configuration, String failureReason, Usage usage) {
 	}
 
 	private OneResult suggestOneConfiguration(CommitForSuggestion commit, Collection<KnownFeature> knownFeatures) {
 		URI chatCompletionsUri = resolveChatCompletionsUri(this.endpointUrl);
+		long start = System.currentTimeMillis();
 		try {
 			String requestBody = buildRequestBody(commit, knownFeatures, this.modelName);
 			HttpRequest request = HttpRequest.newBuilder()
@@ -360,25 +375,37 @@ public final class LlmFeatureSuggestionClient {
 			try (HttpClient httpClient = newHttpClient()) {
 				response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 			}
+			long millis = System.currentTimeMillis() - start;
 			if (response.statusCode() / 100 != 2) {
 				String reason = "LLM endpoint " + chatCompletionsUri + " returned HTTP " + response.statusCode() + ": " + response.body();
 				LOGGER.log(Level.WARNING, reason);
-				return new OneResult(null, reason);
+				return new OneResult(null, reason, new Usage(-1, -1, millis));
 			}
+			Usage usage = parseUsage(response.body(), millis);
 			String configuration = parseResponse(response.body());
 			if (configuration == null) {
 				String reason = "The LLM's response for commit " + commit.commitId() + " could not be parsed as the " +
 						"expected JSON shape. Raw reply: " + response.body();
-				return new OneResult(null, reason);
+				return new OneResult(null, reason, usage);
 			}
-			return new OneResult(configuration, null);
+			return new OneResult(configuration, null, usage);
 		} catch (IOException | InterruptedException | RuntimeException e) {
 			if (e instanceof InterruptedException) {
 				Thread.currentThread().interrupt();
 			}
 			String reason = "Error calling LLM endpoint " + chatCompletionsUri + " for commit " + commit.commitId() + ": " + e;
 			LOGGER.log(Level.WARNING, reason, e);
-			return new OneResult(null, reason);
+			return new OneResult(null, reason, new Usage(-1, -1, System.currentTimeMillis() - start));
+		}
+	}
+
+	/** The OpenAI-style {@code usage} of a chat-completions response body, {@code -1} for what it lacks. Package-visible for testing. */
+	static Usage parseUsage(String responseBody, long millis) {
+		try {
+			JsonNode usage = MAPPER.readTree(responseBody).path("usage");
+			return new Usage(usage.path("prompt_tokens").asInt(-1), usage.path("completion_tokens").asInt(-1), millis);
+		} catch (IOException e) {
+			return new Usage(-1, -1, millis);
 		}
 	}
 
