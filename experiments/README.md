@@ -4,6 +4,10 @@ Research harnesses moved out of the integration tests (October 2026). They ran E
 case studies, benchmarks and papers that was never checked in, so they cannot run anywhere else and
 were always skipped. Gradle does not build this directory.
 
+`llm-feature-suggestion/` is different: a Python harness, added later, that runs anywhere. It
+scores the Git import's LLM feature suggestions against a history whose features are known (see its
+README).
+
 Each file keeps the path it had in its module (`experiments/<module>/src/integrationTest/...`). To
 run one, move it back to that path, provide its data, adjust the paths it hard-codes, and remove its
 `@Disabled`. Expect API drift: they have not been compiled since they were moved.

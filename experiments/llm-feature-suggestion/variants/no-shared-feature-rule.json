@@ -1,0 +1,6 @@
+[
+ {
+  "old": "- If the diff shows the change touching shared state, a shared file, or a common data structure that another known feature also depends on, consider that feature affected too and list it as well (comma-separated) - but only based on what the diff actually shows here, never speculation about code not shown to you.\n",
+  "new": ""
+ }
+]

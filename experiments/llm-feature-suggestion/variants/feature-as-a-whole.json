@@ -1,0 +1,10 @@
+[
+ {
+  "old": "- Aim for the MOST SPECIFIC capability the diff actually supports, not the broadest area it happens to live in - prefer \"password-reset\" over \"auth\", \"csv-export\" over \"export\", \"dark-mode\" over \"settings\". A broad, umbrella-sized name is usually a sign you stopped reading the diff too early, not a correct classification. Only use a broader name when the diff is genuinely about that broad thing itself (e.g. a change to the login flow's shared entry point, not to one specific thing login does).\n",
+  "new": "- A feature is a capability a variant of the product would include or leave out as a whole - not a detail of one (one option, one edge case, one bug, one helper). Name the capability the change belongs to, as specific as that capability is: prefer \"password-reset\" over \"auth\" when the diff adds password reset, but a change to how an existing feature handles one case, option or input belongs to that feature, never to a new name for the case.\n"
+ },
+ {
+  "old": "computed from the repository, not guessed.",
+  "new": "computed from the repository, not guessed. When most changed files are a known feature's and the change fixes, adjusts or extends what that feature already does, it is that feature - however narrow the detail the change is about."
+ }
+]
