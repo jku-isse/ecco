@@ -1,14 +1,11 @@
 package at.jku.isse.ecco.gui.view;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.scene.Scene;
-import javafx.scene.control.DialogPane;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.ToolBar;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.junit.jupiter.api.AfterEach;
@@ -17,21 +14,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static at.jku.isse.ecco.gui.FxTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * What the Commits tab decides: which commits it lists (and when it lists them again), that at most
- * two commits can be ticked for a comparison, that "Compare" with two ticked opens the comparison of
- * exactly those two, and what the detail pane shows for the selected row. "Compare" with any other
- * number ticked opens a modal error, so that path is not driven here.
+ * two commits can be ticked for a comparison, that "Compare" is enabled with exactly two ticked and
+ * opens the comparison of exactly those two, and what the detail pane shows for the selected row.
  */
 public class CommitsViewTest {
 
@@ -73,52 +67,6 @@ public class CommitsViewTest {
             commit(service, tmp.resolve("v2"), "B.1", Map.of("b.txt", "b\n"));
             waitUntil("the second commit", () -> view.commitsData.size() == 2);
             assertEquals(ids(service.getCommits()), onFx(() -> view.commitsData.stream().map(i -> i.getCommit().getId()).toList()));
-        }
-    }
-
-    @Test
-    @Timeout(60)
-    public void refreshFetchesTheCommitsAgainAndClearsTheTicks(@TempDir Path tmp) throws Exception {
-        try (EccoService service = repository(tmp.resolve("repo"))) {
-            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
-            commit(service, tmp.resolve("v2"), "B.1", Map.of("b.txt", "b\n"));
-            CommitsView view = loaded(service, 2);
-            onFx(() -> view.commitsData.get(0).setSelected(true));
-
-            onFx(() -> button(view, "Refresh").fire());
-            waitUntil("the refreshed list", () -> !toolBar(view).isDisable() && view.commitsData.size() == 2
-                    && view.commitsData.stream().noneMatch(i -> i.isSelected().get()));
-            assertEquals(ids(service.getCommits()), onFx(() -> view.commitsData.stream().map(i -> i.getCommit().getId()).toList()));
-        }
-    }
-
-    @Test
-    @Timeout(60)
-    public void aRefreshThatFailsLeavesTheListAndReenablesTheToolbar(@TempDir Path tmp) throws Exception {
-        Files.createDirectories(tmp.resolve("repo"));
-        AtomicBoolean failing = new AtomicBoolean(false);
-        try (EccoService service = new EccoService() {
-            @Override
-            public synchronized Collection<Commit> getCommits() {
-                if (failing.get())
-                    throw new EccoException("listing failed");
-                return super.getCommits();
-            }
-        }) {
-            service.setRepositoryDir(tmp.resolve("repo").resolve(".ecco"));
-            service.init();
-            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
-            CommitsView view = loaded(service, 1);
-            int windows = onFx(() -> Window.getWindows().size());
-
-            failing.set(true);
-            onFx(() -> button(view, "Refresh").fire());
-            waitUntil("the toolbar is enabled again", () -> !toolBar(view).isDisable());
-
-            assertEquals(1, onFx(() -> view.commitsData.size()), "the old list stays");
-            assertTrue(onFx(() -> Window.getWindows().stream().anyMatch(w -> w.getScene() != null && w.getScene().getRoot() instanceof DialogPane)),
-                    "the failure is shown (non-modal)");
-            assertEquals(windows + 1, onFx(() -> Window.getWindows().size()));
         }
     }
 
@@ -168,7 +116,24 @@ public class CommitsViewTest {
                     .map(w -> (Stage) w).findFirst().orElse(null));
             assertNotNull(comparison, "a comparison window is open");
             assertTrue(onFx(() -> comparison.getScene().getRoot() instanceof CommitComparisonView));
-            waitUntil("the toolbar is enabled again", () -> !toolBar(view).isDisable());
+        }
+    }
+
+    @Test
+    @Timeout(60)
+    public void compareIsEnabledWithExactlyTwoTicked(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
+            commit(service, tmp.resolve("v2"), "B.1", Map.of("b.txt", "b\n"));
+            CommitsView view = loaded(service, 2);
+
+            assertTrue(onFx(() -> button(view, "Compare").isDisable()), "none ticked");
+            onFx(() -> view.commitsData.get(0).setSelected(true));
+            assertTrue(onFx(() -> button(view, "Compare").isDisable()), "one ticked");
+            onFx(() -> view.commitsData.get(1).setSelected(true));
+            assertFalse(onFx(() -> button(view, "Compare").isDisable()), "two ticked");
+            onFx(() -> view.commitsData.get(1).setSelected(false));
+            assertTrue(onFx(() -> button(view, "Compare").isDisable()), "one ticked again");
         }
     }
 
@@ -218,7 +183,7 @@ public class CommitsViewTest {
         return view;
     }
 
-    /** In an off-screen window, so the "Selected" cells exist (they hold the at-most-two rule). */
+    /** In an off-screen window, as the comparison window is opened on top of it. */
     private CommitsView shown(EccoService service, int commits) throws Exception {
         CommitsView view = loaded(service, commits);
         onFx(() -> {
@@ -235,10 +200,6 @@ public class CommitsViewTest {
 
     private static List<String> ids(Collection<Commit> commits) {
         return commits.stream().map(Commit::getId).toList();
-    }
-
-    private static ToolBar toolBar(CommitsView view) {
-        return (ToolBar) view.getTop();
     }
 
     @SuppressWarnings("unchecked")

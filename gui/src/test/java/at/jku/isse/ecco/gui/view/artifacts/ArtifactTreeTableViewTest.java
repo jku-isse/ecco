@@ -230,7 +230,7 @@ public class ArtifactTreeTableViewTest {
     }
 
     private static TreeTableColumn<ArtifactTreeTableView.NodeWrapper, ?> column(ArtifactTreeTableView view, String text) {
-        return view.getColumns().get(0).getColumns().stream().filter(c -> text.equals(c.getText())).findFirst().orElseThrow();
+        return view.getColumns().stream().filter(c -> text.equals(c.getText())).findFirst().orElseThrow();
     }
 
     private static Object value(ArtifactTreeTableView view, String column, TreeItem<ArtifactTreeTableView.NodeWrapper> item) {

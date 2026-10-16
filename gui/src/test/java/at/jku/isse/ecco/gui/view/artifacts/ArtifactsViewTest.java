@@ -367,7 +367,7 @@ public class ArtifactsViewTest {
             int windows = onFx(() -> Window.getWindows().size());
 
             fail.set(true);
-            onFx(() -> button(view, "Refresh").fire());
+            view.statusChangedEvent(service);
             waitUntil("the error is shown", () -> Window.getWindows().size() == windows + 1);
 
             try {
@@ -424,7 +424,6 @@ public class ArtifactsViewTest {
 
     private static ScriptedArtifactsView scripted(EccoService service, boolean clearAnswer) throws Exception {
         ScriptedArtifactsView view = onFx(() -> new ScriptedArtifactsView(service, clearAnswer));
-        onFx(() -> button(view, "Refresh").fire());
         waitUntil("2 associations", () -> table(view).getItems().size() == 2 && !toolBar(view).isDisable());
         return view;
     }
@@ -435,7 +434,6 @@ public class ArtifactsViewTest {
 
     private static ArtifactsView loaded(EccoService service, int rows, MinimizationResults minimization) throws Exception {
         ArtifactsView view = onFx(() -> new ArtifactsView(service, minimization));
-        onFx(() -> button(view, "Refresh").fire());
         waitUntil(rows + " associations", () -> table(view).getItems().size() == rows && !toolBar(view).isDisable());
         return view;
     }
@@ -464,7 +462,7 @@ public class ArtifactsViewTest {
 
     @SuppressWarnings("unchecked")
     private static TableColumn<AssociationInfoImpl, String> conditionColumn(ArtifactsView view) {
-        return (TableColumn<AssociationInfoImpl, String>) table(view).getColumns().get(0).getColumns().stream()
+        return (TableColumn<AssociationInfoImpl, String>) table(view).getColumns().stream()
                 .filter(c -> "Condition".equals(c.getText())).findFirst().orElseThrow();
     }
 

@@ -37,12 +37,11 @@ public class AssociationDetailViewTest {
             AssociationDetailView view = onFx(() -> new AssociationDetailView(service));
             SplitPane split = onFx(() -> (SplitPane) find(view, n -> n instanceof SplitPane));
             assertNull(split, "nothing shown initially");
-            assertTrue(onFx(() -> view.getTop().isDisable()));
+            assertNull(onFx(() -> view.getTop()), "no toolbar: it held nothing");
 
             onFx(() -> view.showAssociation(a));
 
             assertNotNull(onFx(() -> view.getCenter()));
-            assertFalse(onFx(() -> view.getTop().isDisable()));
             TextField id = onFx(() -> (TextField) find(view, n -> n instanceof TextField));
             TextArea condition = onFx(() -> (TextArea) find(view, n -> n instanceof TextArea));
             TreeView<?> snippets = onFx(() -> (TreeView<?>) find(view, n -> n instanceof TreeView));
@@ -67,7 +66,6 @@ public class AssociationDetailViewTest {
 
             onFx(() -> view.showAssociation(null));
             assertNull(onFx(() -> view.getCenter()));
-            assertTrue(onFx(() -> view.getTop().isDisable()));
             assertEquals("", onFx(() -> id.getText()));
             assertEquals("", onFx(() -> condition.getText()));
             assertNull(onFx(() -> snippets.getRoot()));

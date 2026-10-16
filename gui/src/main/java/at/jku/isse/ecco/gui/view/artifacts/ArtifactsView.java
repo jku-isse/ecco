@@ -95,8 +95,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         minimizeProgressBar.visibleProperty().bind(minimizationResults.runningProperty());
         this.setBottom(minimizeProgressBar);
 
-        Button refreshButton = new Button("Refresh");
-
         // selection
         MenuItem selectAllMenuItem = new MenuItem("Select All");
         MenuItem unselectAllMenuItem = new MenuItem("Unselect All");
@@ -117,7 +115,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         // the tree follows the ticks - there is no Compose button any more; the associations of a
         // configuration are ticked from the Features pane or Selection > Select by Configuration
-        toolBar.getItems().addAll(refreshButton, new Separator(),
+        toolBar.getItems().addAll(
                 featuresButton, selectionMenuButton, checkoutSelectedButton, new Separator(),
                 useSimplifiedLabelsCheckBox, new Separator());
 
@@ -134,7 +132,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         this.setCenter(horizontalSplitPane);
 
 
-        this.wireToolBarActions(refreshButton,
+        this.wireToolBarActions(
                 selectAllMenuItem, unselectAllMenuItem, selectByConfigurationMenuItem, checkoutSelectedButton);
 
         this.composeDelay.setOnFinished(e -> this.composeTicked());
@@ -146,8 +144,12 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         Platform.runLater(() -> {
             // the associations got a fifth of the height - one row at 1200x600
             horizontalSplitPane.setDividerPosition(0, 0.35);
+            // loaded here too, not only after the next change of the repository: there was a
+            // Refresh button for that
             if (!service.isInitialized())
                 this.setDisable(true);
+            else
+                this.refresh();
         });
 
         // ecco service
@@ -174,10 +176,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         TableColumn<AssociationInfoImpl, Color> highlightedAssocationCol = new TableColumn<>("Colour");
 
-        TableColumn<AssociationInfoImpl, String> associationsCol = new TableColumn<>("Associations");
-
-        associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol, highlightedAssocationCol);
-        associationsTable.getColumns().setAll(associationsCol);
+        associationsTable.getColumns().setAll(List.of(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol, highlightedAssocationCol));
 
         idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
         // "then" is a live property (see MinimizationResults/AssociationInfoImpl), not a one-shot
@@ -326,16 +325,13 @@ public class ArtifactsView extends BorderPane implements EccoListener {
     }
 
     /**
-     * Wires the Refresh/Select All/Unselect All/Select by Configuration/Checkout Selected handlers. Split out of the constructor purely for
+     * Wires the Select All/Unselect All/Select by Configuration/Checkout Selected handlers. Split out of the constructor purely for
      * readability -- no behavior change from the previous single-constructor version; called at the
      * same point in construction as before (after {@link #artifactTreeView} and the split panes
      * exist, since several of these handlers reference them).
      */
-    private void wireToolBarActions(Button refreshButton,
-                                     MenuItem selectAllMenuItem, MenuItem unselectAllMenuItem,
+    private void wireToolBarActions(MenuItem selectAllMenuItem, MenuItem unselectAllMenuItem,
                                      MenuItem selectByConfigurationMenuItem, Button checkoutSelectedButton) {
-        refreshButton.setOnAction(e -> refresh());
-
         selectAllMenuItem.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent e) {

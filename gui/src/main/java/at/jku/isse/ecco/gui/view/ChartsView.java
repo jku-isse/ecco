@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.gui.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
@@ -31,114 +32,30 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicLong;
 
-public class ChartsView extends BorderPane implements EccoListener {
+/**
+ * Loads its charts when shown and again after every change of the repository while shown - there
+ * was a Refresh button to press, and the charts were empty until then.
+ */
+public class ChartsView extends BorderPane implements EccoListener, TabVisibilityAware {
 
 	private EccoService service;
+
+	/** See {@link at.jku.isse.ecco.gui.view.graph.ArtifactGraphView#tabVisible}: nothing is computed while hidden. */
+	private volatile boolean tabVisible = true;
+
+	/** A later load supersedes one still running; see {@link #refresh()}. */
+	private final AtomicLong refreshGeneration = new AtomicLong();
 
 	private ObservableList<PieChart.Data> artifactsPerAssociationData;
 	private ObservableList<PieChart.Data> revisionsPerFeature;
 	private XYChart.Series<Number, Number> artifactsPerDepthSeries;
 	private XYChart.Series<String, Number> modulesPerOrderSeries;
 	private XYChart.Series<String, Number> modulesPerOrderAbsorbedSeries;
-	private XYChart.Series artifactsPerDepthAndOrderSeries;
 
 	public ChartsView(EccoService service) {
 		this.service = service;
-
-
-		// toolbar
-		ToolBar toolBar = new ToolBar();
-		this.setTop(toolBar);
-
-		Button refreshButton = new Button("Refresh");
-		refreshButton.setOnAction(e -> {
-			toolBar.setDisable(true);
-
-			Task refreshTask = new Task<Void>() {
-				@Override
-				public Void call() throws EccoException {
-
-					// artifacts per depth
-					LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
-					for (Association association : ChartsView.this.service.getRepository().getAssociations()) {
-						compRootNode.addOrigNode(association.getRootNode());
-					}
-					Map<Integer, Integer> artifactsPerDepth = compRootNode.countArtifactsPerDepth();
-
-					// modules per order: raw (every module-lattice entry an association has ever
-					// accumulated, including redundant restatements - see CONSTRAINT_MINING_DESIGN.md's
-					// "Surplus-module suppression" section) and absorbed (X+XY=X collapsed, i.e. the
-					// minimal set of terms actually needed) side by side, so the chart itself shows how
-					// much of the raw count is accumulation noise rather than real structural complexity
-					Repository repository = ChartsView.this.service.getRepository();
-					final Map<Integer, Integer> modulesPerOrderMap = new TreeMap<>();
-					final Map<Integer, Integer> modulesPerOrderAbsorbedMap = new TreeMap<>();
-					for (Association association : repository.getAssociations()) {
-						Condition condition = association.computeCondition();
-						for (Module module : condition.getModules().keySet()) {
-							//For the specified order -> If no order of this type is seen yet, it must be the first. Otherwise 1 is added to the old value
-							modulesPerOrderMap.compute(module.getOrder(), (key, oldValue) -> oldValue == null ? 1 : oldValue + 1);
-						}
-						List<PresenceConditionMinimizer.Term> absorbedTerms =
-								PresenceConditionMinimizer.absorb(ModuleConditionBridge.toRevisionTerms(condition));
-						for (PresenceConditionMinimizer.Term term : absorbedTerms) {
-							int order = term.positive.size() + term.negative.size() - 1;
-							modulesPerOrderAbsorbedMap.compute(order, (key, oldValue) -> oldValue == null ? 1 : oldValue + 1);
-						}
-					}
-
-					Platform.runLater(() -> {
-						// artifacts per association
-						ChartsView.this.artifactsPerAssociationData.clear();
-						for (Association association : ChartsView.this.service.getRepository().getAssociations()) {
-							int numArtifacts = association.getRootNode().countArtifacts();
-							if (numArtifacts > 0)
-								ChartsView.this.artifactsPerAssociationData.add(new PieChart.Data("A" + association.getId(), numArtifacts));
-						}
-
-						// revisions per feature
-						ChartsView.this.revisionsPerFeature.clear();
-						for (Feature feature : ChartsView.this.service.getRepository().getFeatures()) {
-							int numRevisions = feature.getRevisions().size();
-							if (numRevisions > 0)
-								ChartsView.this.revisionsPerFeature.add(new PieChart.Data(feature.getName(), numRevisions));
-						}
-
-						// artifacts per depth
-						ChartsView.this.artifactsPerDepthSeries.getData().clear();
-						for (Map.Entry<Integer, Integer> entry : artifactsPerDepth.entrySet()) {
-							ChartsView.this.artifactsPerDepthSeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
-						}
-
-						// modules per order
-						{
-							final ObservableList<XYChart.Data<String, Number>> maxOrderData = ChartsView.this.modulesPerOrderSeries.getData();
-							maxOrderData.clear();
-							modulesPerOrderMap.forEach((key, value) -> maxOrderData.add(new XYChart.Data<>(Integer.toString(key), value)));
-
-							final ObservableList<XYChart.Data<String, Number>> maxOrderAbsorbedData = ChartsView.this.modulesPerOrderAbsorbedSeries.getData();
-							maxOrderAbsorbedData.clear();
-							modulesPerOrderAbsorbedMap.forEach((key, value) -> maxOrderAbsorbedData.add(new XYChart.Data<>(Integer.toString(key), value)));
-						}
-
-//						// artifacts per depth and order
-//						ChartsView.this.artifactsPerDepthAndOrderSeries.getData().clear();
-//						ChartsView.this.artifactsPerDepthAndOrderSeries.getData().add(new XYChart.Data(0, 0));
-
-						toolBar.setDisable(false);
-					});
-					return null;
-				}
-			};
-
-			TaskFailures.reportAndReenable(refreshTask, toolBar);
-			new Thread(refreshTask).start();
-		});
-
-		Button exportButton = new Button("Export");
-
-		toolBar.getItems().setAll(refreshButton, new Separator(), exportButton, new Separator());
 
 
 		ScrollPane scrollPane = new ScrollPane();
@@ -163,7 +80,6 @@ public class ChartsView extends BorderPane implements EccoListener {
 
 
 			final PieChart pieChart = new PieChart(this.artifactsPerAssociationData);
-			pieChart.setTitle("Artifacts per Association");
 
 			artifactsPerAssociationPane.setContent(pieChart);
 
@@ -185,7 +101,6 @@ public class ChartsView extends BorderPane implements EccoListener {
 			yAxis.setTickUnit(1.0);
 			yAxis.setMinorTickVisible(false);
 			final LineChart<Number, Number> artifactsPerDepthChart = new LineChart<>(xAxis, yAxis);
-			artifactsPerDepthChart.setTitle("Artifacts per Depth");
 
 			this.artifactsPerDepthSeries = new XYChart.Series<>();
 			this.artifactsPerDepthSeries.setName("Number of Artifacts at Depth");
@@ -209,7 +124,6 @@ public class ChartsView extends BorderPane implements EccoListener {
 			final CategoryAxis xAxis = new CategoryAxis();
 			final NumberAxis yAxis = new NumberAxis();
 			final BarChart<String, Number> bc = new BarChart<>(xAxis, yAxis);
-			bc.setTitle("Modules per Order (raw vs. absorbed)");
 			xAxis.setLabel("Order");
 			yAxis.setLabel("Number of Modules");
 			yAxis.setTickUnit(1.0);
@@ -229,28 +143,6 @@ public class ChartsView extends BorderPane implements EccoListener {
 		}
 
 
-//		{ // artifacts per depth and order
-//			TitledPane titlePane = new TitledPane();
-//			titlePane.setAnimated(false);
-//			titlePane.setText("Artifacts per Depth and Order");
-//			final NumberAxis xAxis = new NumberAxis(1, 53, 4);
-//			final NumberAxis yAxis = new NumberAxis(0, 80, 10);
-//			final BubbleChart<Number, Number> blc = new BubbleChart<Number, Number>(xAxis, yAxis);
-//			xAxis.setLabel("Order");
-//			yAxis.setLabel("Depth");
-//			blc.setTitle("Artifacts per Depth and Order");
-//
-//			this.artifactsPerDepthAndOrderSeries = new XYChart.Series();
-//			this.artifactsPerDepthAndOrderSeries.setName("Artifacts per Depth and Order");
-//
-//			blc.getData().addAll(this.artifactsPerDepthAndOrderSeries);
-//
-//			titlePane.setContent(blc);
-//
-//			centerBox.getChildren().add(titlePane);
-//		}
-
-
 		{ // revisions per feature
 			TitledPane titledPane = new TitledPane();
 			titledPane.setAnimated(false);
@@ -259,7 +151,6 @@ public class ChartsView extends BorderPane implements EccoListener {
 			this.revisionsPerFeature = FXCollections.observableArrayList();
 
 			final PieChart pieChart = new PieChart(revisionsPerFeature);
-			pieChart.setTitle("Revisions per Feature");
 
 			titledPane.setContent(pieChart);
 
@@ -271,16 +162,106 @@ public class ChartsView extends BorderPane implements EccoListener {
 		service.addListener(this);
 	}
 
+	private void refresh() {
+		long generation = this.refreshGeneration.incrementAndGet();
+
+		Task<Void> refreshTask = new Task<>() {
+			@Override
+			public Void call() throws EccoException {
+				Repository repository = ChartsView.this.service.getRepository();
+
+				// artifacts per depth
+				LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
+				for (Association association : repository.getAssociations()) {
+					compRootNode.addOrigNode(association.getRootNode());
+				}
+				Map<Integer, Integer> artifactsPerDepth = compRootNode.countArtifactsPerDepth();
+
+				// modules per order: raw (every module-lattice entry an association has ever
+				// accumulated, including redundant restatements - see CONSTRAINT_MINING_DESIGN.md's
+				// "Surplus-module suppression" section) and absorbed (X+XY=X collapsed, i.e. the
+				// minimal set of terms actually needed) side by side, so the chart itself shows how
+				// much of the raw count is accumulation noise rather than real structural complexity
+				final Map<Integer, Integer> modulesPerOrderMap = new TreeMap<>();
+				final Map<Integer, Integer> modulesPerOrderAbsorbedMap = new TreeMap<>();
+				for (Association association : repository.getAssociations()) {
+					Condition condition = association.computeCondition();
+					for (Module module : condition.getModules().keySet()) {
+						modulesPerOrderMap.merge(module.getOrder(), 1, Integer::sum);
+					}
+					List<PresenceConditionMinimizer.Term> absorbedTerms =
+							PresenceConditionMinimizer.absorb(ModuleConditionBridge.toRevisionTerms(condition));
+					for (PresenceConditionMinimizer.Term term : absorbedTerms) {
+						int order = term.positive.size() + term.negative.size() - 1;
+						modulesPerOrderAbsorbedMap.merge(order, 1, Integer::sum);
+					}
+				}
+
+				Map<String, Integer> artifactsPerAssociation = new java.util.LinkedHashMap<>();
+				for (Association association : repository.getAssociations()) {
+					int numArtifacts = association.getRootNode().countArtifacts();
+					if (numArtifacts > 0)
+						artifactsPerAssociation.put("A" + association.getId(), numArtifacts);
+				}
+				Map<String, Integer> revisionsPerFeature = new java.util.LinkedHashMap<>();
+				for (Feature feature : repository.getFeatures()) {
+					int numRevisions = feature.getRevisions().size();
+					if (numRevisions > 0)
+						revisionsPerFeature.put(feature.getName(), numRevisions);
+				}
+
+				Platform.runLater(() -> {
+					if (ChartsView.this.refreshGeneration.get() != generation)
+						return; // a newer load shows its own
+
+					ChartsView.this.artifactsPerAssociationData.clear();
+					artifactsPerAssociation.forEach((name, value) -> ChartsView.this.artifactsPerAssociationData.add(new PieChart.Data(name, value)));
+
+					ChartsView.this.revisionsPerFeature.clear();
+					revisionsPerFeature.forEach((name, value) -> ChartsView.this.revisionsPerFeature.add(new PieChart.Data(name, value)));
+
+					ChartsView.this.artifactsPerDepthSeries.getData().clear();
+					for (Map.Entry<Integer, Integer> entry : artifactsPerDepth.entrySet()) {
+						ChartsView.this.artifactsPerDepthSeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
+					}
+
+					final ObservableList<XYChart.Data<String, Number>> maxOrderData = ChartsView.this.modulesPerOrderSeries.getData();
+					maxOrderData.clear();
+					modulesPerOrderMap.forEach((key, value) -> maxOrderData.add(new XYChart.Data<>(Integer.toString(key), value)));
+
+					final ObservableList<XYChart.Data<String, Number>> maxOrderAbsorbedData = ChartsView.this.modulesPerOrderAbsorbedSeries.getData();
+					maxOrderAbsorbedData.clear();
+					modulesPerOrderAbsorbedMap.forEach((key, value) -> maxOrderAbsorbedData.add(new XYChart.Data<>(Integer.toString(key), value)));
+				});
+				return null;
+			}
+		};
+
+		TaskFailures.reportAndReenable(refreshTask);
+		Thread thread = new Thread(refreshTask);
+		thread.setDaemon(true);
+		thread.start();
+	}
+
+	/** Called by {@code MainView#switchTo}: shown again, the charts are loaded again. */
+	@Override
+	public void setTabVisible(boolean tabVisible) {
+		boolean becameVisible = tabVisible && !this.tabVisible;
+		this.tabVisible = tabVisible;
+		if (becameVisible && this.service.isInitialized())
+			Platform.runLater(this::refresh);
+	}
+
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
 			Platform.runLater(() -> {
 				this.setDisable(false);
+				if (this.tabVisible)
+					this.refresh();
 			});
 		} else {
-			Platform.runLater(() -> {
-				this.setDisable(true);
-			});
+			Platform.runLater(() -> this.setDisable(true));
 		}
 	}
 

@@ -90,8 +90,6 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 
 
-		TreeTableColumn<NodeWrapper, String> artifactTreeCol = new TreeTableColumn<>("Artifact Tree");
-		artifactTreeCol.getColumns().setAll(labelNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol);
 
 
 		uniqueNodeCol.setCellFactory(new Callback<>() {
@@ -133,7 +131,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		});
 
 
-		this.getColumns().setAll(artifactTreeCol);
+		this.getColumns().setAll(List.of(labelNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol));
 
 		this.setTableMenuButtonVisible(true);
 		this.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
@@ -152,7 +150,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 				setTooltip(none ? null : new Tooltip(item));
 			}
 		});
-		this.setPlaceholder(new Label("Tick associations above and press Compose Selected, or use Live Features, to see their artifacts."));
+		this.setPlaceholder(new Label("Tick associations above, or tick features in the Features pane, to see their artifacts."));
 
 		TableColumns.controlWidth(orderedNodeCol);
 		TableColumns.controlWidth(atomicNodeCol);

@@ -1,7 +1,5 @@
 package at.jku.isse.ecco.gui.view;
 
-import at.jku.isse.ecco.gui.TaskFailures;
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.service.EccoService;
@@ -20,7 +18,6 @@ import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
-import javafx.concurrent.Task;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
@@ -74,28 +71,6 @@ public class AssociationsView extends BorderPane implements EccoListener {
 			}
 		});
 
-		Button refreshButton = new Button("Refresh");
-		toolBar.getItems().add(refreshButton);
-		refreshButton.setOnAction(e -> {
-			toolBar.setDisable(true);
-
-			Task refreshTask = new Task<Void>() {
-				@Override
-				public Void call() throws EccoException {
-					Collection<? extends Association> associations = AssociationsView.this.service.getRepository().getAssociations();
-					Platform.runLater(() -> AssociationsView.this.updateAssociations(associations));
-					Platform.runLater(() -> toolBar.setDisable(false));
-					return null;
-				}
-			};
-
-			TaskFailures.reportAndReenable(refreshTask, toolBar);
-			new Thread(refreshTask).start();
-		});
-
-		toolBar.getItems().add(new Separator());
-
-
 		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
 
 		CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
@@ -116,10 +91,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Simplified Condition");
 		TableColumn<AssociationInfo, Integer> numArtifactsAssociationsCol = new TableColumn<>("Artifacts");
-		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
-
-		associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol);
-		associationsTable.getColumns().setAll(associationsCol);
+		associationsTable.getColumns().setAll(List.of(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol));
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
 		// a live property, not a one-shot computed string: cells update on their own as

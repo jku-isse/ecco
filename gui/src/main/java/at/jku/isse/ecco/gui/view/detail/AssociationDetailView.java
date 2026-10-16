@@ -23,7 +23,6 @@ public class AssociationDetailView extends BorderPane {
 
 	private TextField associationId;
 	private SplitPane splitPane;
-	private ToolBar toolBar;
 	private TextArea associationPC;
 	private TableView<ModuleRow> modulesTable;
 	private Label modulesSummary;
@@ -40,11 +39,6 @@ public class AssociationDetailView extends BorderPane {
 
 	public AssociationDetailView(EccoService service) {
 		this.service = service;
-
-		// toolbar
-		this.toolBar = new ToolBar();
-		this.setTop(toolBar);
-
 
 		// splitpane
 		this.splitPane = new SplitPane();
@@ -72,14 +66,10 @@ public class AssociationDetailView extends BorderPane {
 		this.associationPC.setWrapText(true);
 		this.associationPC.setPrefRowCount(8);
 
-		Button updateButton = new Button("Update");
-
 		int row = 0;
 		associationDetails.add(new Label("Id: "), 1, row, 1, 1);
 		row++;
 		associationDetails.add(this.associationId, 1, row, 1, 1);
-		row++;
-		associationDetails.add(new Label("Name: "), 1, row, 1, 1);
 		row++;
 		associationDetails.add(new Label("Presence Condition: "), 1, row, 1, 1);
 		row++;
@@ -89,53 +79,6 @@ public class AssociationDetailView extends BorderPane {
 		conditionTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 		associationDetails.add(conditionTabs, 1, row, 1, 1);
 		row++;
-		associationDetails.add(updateButton, 1, row, 1, 1);
-		row++;
-
-
-//		updateButton.setOnAction(event -> {
-//			AssociationDetailView.this.toolBar.setDisable(true);
-//
-//			Task updateTask = new Task<Void>() {
-//				@Override
-//				public Void call() throws EccoException {
-//					PresenceCondition pc = AssociationDetailView.this.service.parsePresenceConditionString(AssociationDetailView.this.associationPC.getText());
-//					AssociationDetailView.this.currentAssociation.setPresenceCondition(pc);
-//					AssociationDetailView.this.service.updateAssociation(AssociationDetailView.this.currentAssociation);
-//					return null;
-//				}
-//
-//				public void finished() {
-//					AssociationDetailView.this.showAssociation(AssociationDetailView.this.currentAssociation);
-//					AssociationDetailView.this.toolBar.setDisable(false);
-//				}
-//
-//				@Override
-//				public void succeeded() {
-//					super.succeeded();
-//					this.finished();
-//				}
-//
-//				@Override
-//				public void cancelled() {
-//					super.cancelled();
-//				}
-//
-//				@Override
-//				public void failed() {
-//					super.failed();
-//					this.finished();
-//
-//					ExceptionAlert alert = new ExceptionAlert(this.getException());
-//					alert.setTitle("Checkout Error");
-//					alert.setHeaderText("Checkout Error");
-//
-//					alert.showAndWait();
-//				}
-//			};
-//
-//			new Thread(updateTask).start();
-//		});
 
 
 		splitPane.getItems().add(associationDetails);
@@ -199,7 +142,6 @@ public class AssociationDetailView extends BorderPane {
 
 		if (association != null) {
 			this.setCenter(this.splitPane);
-			this.toolBar.setDisable(false);
 
 			// show details
 			this.associationId.setText(String.valueOf(association.getId()));
@@ -213,7 +155,6 @@ public class AssociationDetailView extends BorderPane {
 			this.artifactTreeView.setRootNode(association.getRootNode());
 		} else {
 			this.setCenter(null);
-			this.toolBar.setDisable(true);
 
 			this.associationId.setText("");
 			this.associationPC.setText("");

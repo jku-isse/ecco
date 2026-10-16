@@ -12,7 +12,7 @@ import javafx.scene.chart.LineChart;
 import javafx.scene.chart.PieChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.DialogPane;
-import javafx.scene.control.ToolBar;
+import javafx.scene.control.TitledPane;
 import javafx.stage.Window;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -33,10 +33,10 @@ import static at.jku.isse.ecco.gui.FxTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * What the Charts tab decides: the charts stay empty until Refresh, which fills each one from the
- * repository (artifacts per association, leaving out empty ones; revisions per feature; artifacts
- * per depth; modules per order raw and after absorption), and a failing refresh gives the toolbar
- * back.
+ * What the Charts tab decides: the charts load when the tab is shown (nothing is computed while it
+ * is hidden) and again after every change of the repository, each one from the repository
+ * (artifacts per association, leaving out empty ones; revisions per feature; artifacts per depth;
+ * modules per order raw and after absorption), and a failing load is shown.
  */
 public class ChartsViewTest {
 
@@ -55,14 +55,22 @@ public class ChartsViewTest {
 
     @Test
     @Timeout(60)
-    public void theChartsStayEmptyUntilRefresh(@TempDir Path tmp) throws Exception {
+    public void theChartsStayEmptyWhileHiddenAndLoadWhenShown(@TempDir Path tmp) throws Exception {
         try (EccoService service = sample(tmp)) {
-            ChartsView view = loaded(service);
+            ChartsView view = onFx(() -> {
+                ChartsView hidden = new ChartsView(service);
+                hidden.setTabVisible(false); // as MainView does for every view it does not show
+                return hidden;
+            });
+            waitUntil("the view is enabled", () -> !view.isDisable());
 
             assertTrue(onFx(() -> pie(view, "Artifacts per Association").getData().isEmpty()));
             assertTrue(onFx(() -> pie(view, "Revisions per Feature").getData().isEmpty()));
             assertTrue(onFx(() -> depthSeries(view).getData().isEmpty()));
             assertTrue(onFx(() -> orderSeries(view, "Raw").getData().isEmpty()));
+
+            onFx(() -> view.setTabVisible(true));
+            waitUntil("the charts", () -> !pie(view, "Revisions per Feature").getData().isEmpty());
         }
     }
 
@@ -129,15 +137,14 @@ public class ChartsViewTest {
 
     @Test
     @Timeout(60)
-    public void aSecondRefreshReplacesTheDataInsteadOfAddingToIt(@TempDir Path tmp) throws Exception {
+    public void aCommitReloadsTheChartsInsteadOfAddingToThem(@TempDir Path tmp) throws Exception {
         try (EccoService service = sample(tmp)) {
             ChartsView view = refreshed(service);
             Map<String, Double> first = onFx(() -> pieValues(pie(view, "Revisions per Feature")));
             int depths = onFx(() -> depthSeries(view).getData().size());
 
             commit(service, tmp.resolve("v4"), "C.1", Map.of("c.txt", "c\n"));
-            onFx(() -> button(view, "Refresh").fire());
-            waitUntil("the second refresh", () -> !toolBar(view).isDisable() && pie(view, "Revisions per Feature").getData().size() == 3);
+            waitUntil("the reload", () -> pie(view, "Revisions per Feature").getData().size() == 3);
 
             Map<String, Double> second = onFx(() -> pieValues(pie(view, "Revisions per Feature")));
             assertEquals(first.get("A"), second.get("A"));
@@ -148,7 +155,7 @@ public class ChartsViewTest {
 
     @Test
     @Timeout(60)
-    public void aRefreshThatFailsReenablesTheToolbar(@TempDir Path tmp) throws Exception {
+    public void aLoadThatFailsIsShown(@TempDir Path tmp) throws Exception {
         Files.createDirectories(tmp.resolve("repo"));
         AtomicBoolean failing = new AtomicBoolean(false);
         try (EccoService service = new EccoService() {
@@ -165,12 +172,13 @@ public class ChartsViewTest {
             ChartsView view = loaded(service);
 
             failing.set(true);
-            onFx(() -> button(view, "Refresh").fire());
+            onFx(() -> {
+                view.setTabVisible(false);
+                view.setTabVisible(true);
+            });
             waitUntil("the failure is shown", () -> Window.getWindows().stream()
                     .anyMatch(w -> w.getScene() != null && w.getScene().getRoot() instanceof DialogPane));
             failing.set(false);
-
-            assertFalse(onFx(() -> toolBar(view).isDisable()));
         }
     }
 
@@ -207,21 +215,19 @@ public class ChartsViewTest {
 
     private static ChartsView refreshed(EccoService service) throws Exception {
         ChartsView view = loaded(service);
-        onFx(() -> button(view, "Refresh").fire());
-        waitUntil("the refresh", () -> !toolBar(view).isDisable() && !pie(view, "Revisions per Feature").getData().isEmpty());
+        waitUntil("the charts", () -> !pie(view, "Revisions per Feature").getData().isEmpty());
         return view;
-    }
-
-    private static ToolBar toolBar(ChartsView view) {
-        return (ToolBar) view.getTop();
     }
 
     private static PieChart pie(ChartsView view, String title) {
         return (PieChart) chart(view, title);
     }
 
+    /** The chart in the pane titled [title] - the charts have no titles of their own any more, they repeated the pane's. */
     private static Chart chart(ChartsView view, String title) {
-        Chart chart = (Chart) find(view, n -> n instanceof Chart c && title.equals(c.getTitle()));
+        TitledPane pane = (TitledPane) find(view, n -> n instanceof TitledPane p && title.equals(p.getText()));
+        assertNotNull(pane, "no pane '" + title + "'");
+        Chart chart = (Chart) pane.getContent();
         assertNotNull(chart, "no chart '" + title + "'");
         return chart;
     }

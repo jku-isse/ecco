@@ -1,10 +1,8 @@
 package at.jku.isse.ecco.gui.view;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
@@ -16,9 +14,6 @@ import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -40,7 +35,8 @@ public class CommitsView extends BorderPane implements EccoListener {
 
 	private EccoService service;
 
-	final ObservableList<CommitInfo> commitsData = FXCollections.observableArrayList();
+	// reports a row's tick too (an "update" change), so Compare follows the ticks
+	final ObservableList<CommitInfo> commitsData = FXCollections.observableArrayList(info -> new javafx.beans.Observable[]{info.isSelected()});
 
 	public CommitsView(EccoService service) {
 		this.service = service;
@@ -48,45 +44,6 @@ public class CommitsView extends BorderPane implements EccoListener {
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
 
-
-		Button refreshButton = new Button("Refresh");
-		toolBar.getItems().add(refreshButton);
-		refreshButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
-
-				// fetch first, clear/repopulate together once the result is ready (not before) -
-				// avoids an unnecessary blank-table flash while a slow fetch is still in flight,
-				// same reasoning as ArtifactsView.refresh()
-				Task<Collection<Commit>> commitsRefreshTask = new Task<>() {
-					@Override
-					public Collection<Commit> call() throws EccoException {
-						return CommitsView.this.service.getCommits();
-					}
-				};
-				commitsRefreshTask.setOnSucceeded(event -> {
-					CommitsView.this.commitsData.clear();
-					for (Commit commit : commitsRefreshTask.getValue()) {
-						CommitsView.this.commitsData.add(new CommitInfo(commit));
-					}
-					toolBar.setDisable(false);
-				});
-				commitsRefreshTask.setOnFailed(event -> {
-					// unlike before, a failure here no longer leaves the toolbar disabled with no
-					// way to recover short of restarting the app - same gap ArtifactsView.refresh()
-					// had (see that fix's commit for why this matters at scale)
-					toolBar.setDisable(false);
-					if (!at.jku.isse.ecco.gui.TaskFailures.repositoryClosed(commitsRefreshTask.getException()))
-						new ExceptionAlert(commitsRefreshTask.getException()).show();
-				});
-
-				new Thread(commitsRefreshTask).start();
-			}
-		});
-
-
-		toolBar.getItems().add(new Separator());
 
 		SplitPane splitPane = new SplitPane();
 		this.setCenter(splitPane);
@@ -101,10 +58,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 		TableColumn<CommitInfo, String> commitMessage = new TableColumn<>("Commit Message");
 		TableColumn<CommitInfo, String> commiter = new TableColumn<>("Committer");
 		TableColumn<CommitInfo, String> date = new TableColumn<>("Date");
-		TableColumn<CommitInfo, String> commitsCol = new TableColumn<>("Commits");		//Table Title
-
-		commitsCol.getColumns().addAll(idCol, selectedCommitCol, commitMessage, commiter, date);		//Add columns
-		commitsTable.getColumns().setAll(commitsCol);
+		commitsTable.getColumns().setAll(List.of(idCol, selectedCommitCol, commitMessage, commiter, date));
 
 		idCol.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getId()));
 		commitMessage.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getCommitMessage()));
@@ -112,20 +66,8 @@ public class CommitsView extends BorderPane implements EccoListener {
 		date.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getDate() == null ? "" : DATE_FORMAT.format(param.getValue().getCommit().getDate().toInstant())));
 
 		selectedCommitCol.setCellFactory(column -> new CheckBoxTableCell<>());
-		selectedCommitCol.setCellValueFactory(cellData -> {
-			CommitInfo cellValue = cellData.getValue();
-			BooleanProperty property = cellValue.isSelected();
-
-			// Add listener to handler change
-			property.addListener((observable, oldValue, newValue) -> {
-						if (commitsData.stream().filter(x -> x.isSelected().getValue()).count() > 2) {
-							cellValue.setSelected(oldValue);
-						} else {
-							cellValue.setSelected(newValue);
-						}
-					});
-			return property;
-		});
+		// at most two ticked: see CommitInfo - the cell used to add a listener every time it was shown
+		selectedCommitCol.setCellValueFactory(cellData -> cellData.getValue().isSelected());
 		commitsTable.setItems(this.commitsData);
 
 		TableColumns.shortIds(idCol, this.commitsData);
@@ -146,37 +88,23 @@ public class CommitsView extends BorderPane implements EccoListener {
 			}
 		});
 
-		Button CompareButton = new Button("Compare");
-		toolBar.getItems().add(CompareButton);
-		CompareButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
-
-				List<Commit> selectedCommits = new LinkedList<>();
-				for (CommitInfo associationInfo : CommitsView.this.commitsData) {
-					if (associationInfo.isSelected().getValue())
-						selectedCommits.add(associationInfo.getCommit());
-				}
-				if(selectedCommits.size() == 2) {
-					CommitComparisonView commitComparisonView =  new CommitComparisonView(service, selectedCommits.get(0), selectedCommits.get(1));
-					Stage stage = new Stage();
-					stage.initStyle(StageStyle.UTILITY);
-					stage.initModality(Modality.WINDOW_MODAL);
-					stage.setScene(new Scene(commitComparisonView));
-					stage.setTitle("Commit Comparison");
-
-					stage.show();
-				} else {
-					ExceptionAlert alert = new ExceptionAlert(new Throwable());
-					alert.setTitle("Commit Compare Error");
-					alert.setHeaderText("Please choose exactly two commits");
-
-					alert.showAndWait();
-				}
-
-				Platform.runLater(() -> toolBar.setDisable(false));
-			}
+		// enabled with exactly two ticked: with any other number it opened an error with a stack trace
+		Button compareButton = new Button("Compare");
+		compareButton.setTooltip(new Tooltip("Tick two commits to compare their associations"));
+		compareButton.disableProperty().bind(javafx.beans.binding.Bindings.createBooleanBinding(
+				() -> this.tickedCommits().size() != 2, this.commitsData));
+		toolBar.getItems().add(compareButton);
+		compareButton.setOnAction(e -> {
+			List<Commit> selectedCommits = this.tickedCommits();
+			if (selectedCommits.size() != 2)
+				return;
+			CommitComparisonView commitComparisonView = new CommitComparisonView(service, selectedCommits.get(0), selectedCommits.get(1));
+			Stage stage = new Stage();
+			stage.initStyle(StageStyle.UTILITY);
+			stage.initModality(Modality.WINDOW_MODAL);
+			stage.setScene(new Scene(commitComparisonView));
+			stage.setTitle("Commit Comparison");
+			stage.show();
 		});
 
 		//Detail view
@@ -201,6 +129,15 @@ public class CommitsView extends BorderPane implements EccoListener {
 		Platform.runLater(() -> statusChangedEvent(service));
 
 		service.addListener(this);
+	}
+
+	private List<Commit> tickedCommits() {
+		List<Commit> ticked = new LinkedList<>();
+		for (CommitInfo info : this.commitsData) {
+			if (info.isSelected().get())
+				ticked.add(info.getCommit());
+		}
+		return ticked;
 	}
 
 	@Override
@@ -229,6 +166,11 @@ public class CommitsView extends BorderPane implements EccoListener {
 		public CommitInfo(Commit c) {
 			this.commit = c;
 			this.selected = new SimpleBooleanProperty(false);
+			// a third tick is taken back
+			this.selected.addListener((observable, wasTicked, ticked) -> {
+				if (ticked && CommitsView.this.commitsData.stream().filter(x -> x.isSelected().get()).count() > 2)
+					this.selected.set(false);
+			});
 		}
 
 		public Commit getCommit() {

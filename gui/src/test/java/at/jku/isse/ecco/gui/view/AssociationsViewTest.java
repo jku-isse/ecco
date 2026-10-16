@@ -1,18 +1,14 @@
 package at.jku.isse.ecco.gui.view;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
-import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.ser.core.SerAssociation;
 import at.jku.isse.ecco.storage.ser.tree.SerRootNode;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.DialogPane;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.ToolBar;
 import javafx.stage.Window;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -20,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -28,7 +23,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static at.jku.isse.ecco.gui.FxTestSupport.*;
@@ -120,59 +114,11 @@ public class AssociationsViewTest {
             onFx(() -> minimization.getMinimizedByAssociationId().remove(first));
             assertEquals("", onFx(() -> condition(view, first)), "a dropped result empties the row");
 
-            // a refresh builds new rows: they start from what the shared results hold
+            // a reload (after any change of the repository) builds new rows: they start from what the shared results hold
             onFx(() -> minimization.getMinimizedByAssociationId().put(second, "B"));
-            onFx(() -> button(view, "Refresh").fire());
-            waitUntil("the refreshed rows", () -> !toolBar(view).isDisable() && "B".equals(condition(view, second)));
+            view.statusChangedEvent(service);
+            waitUntil("the reloaded rows", () -> "B".equals(condition(view, second)));
             assertEquals("", onFx(() -> condition(view, first)));
-        }
-    }
-
-    @Test
-    @Timeout(60)
-    public void refreshListsAssociationsTheViewWasNotToldAbout(@TempDir Path tmp) throws Exception {
-        try (EccoService service = repository(tmp.resolve("repo"))) {
-            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
-            AssociationsView view = loaded(service, new MinimizationResults(service));
-            // stop listening, so only the Refresh button can bring the new association in
-            service.removeListener(view);
-            commit(service, tmp.resolve("v2"), "B.1", Map.of("b.txt", "b\n"));
-            int now = service.getRepository().getAssociations().size();
-            assertTrue(now > 1);
-            assertEquals(1, onFx(() -> table(view).getItems().size()));
-
-            onFx(() -> button(view, "Refresh").fire());
-            waitUntil("the new associations", () -> !toolBar(view).isDisable() && table(view).getItems().size() == now);
-            assertEquals(ids(service.getRepository().getAssociations()), onFx(() -> shownIds(view)));
-        }
-    }
-
-    @Test
-    @Timeout(60)
-    public void aRefreshThatFailsReenablesTheToolbar(@TempDir Path tmp) throws Exception {
-        Files.createDirectories(tmp.resolve("repo"));
-        AtomicBoolean failing = new AtomicBoolean(false);
-        try (EccoService service = new EccoService() {
-            @Override
-            public synchronized Repository getRepository() {
-                if (failing.get())
-                    throw new EccoException("repository unavailable");
-                return super.getRepository();
-            }
-        }) {
-            service.setRepositoryDir(tmp.resolve("repo").resolve(".ecco"));
-            service.init();
-            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
-            AssociationsView view = loaded(service, new MinimizationResults(service));
-
-            failing.set(true);
-            onFx(() -> button(view, "Refresh").fire());
-            waitUntil("the failure is shown", () -> Window.getWindows().stream()
-                    .anyMatch(w -> w.getScene() != null && w.getScene().getRoot() instanceof DialogPane));
-            failing.set(false);
-
-            assertFalse(onFx(() -> toolBar(view).isDisable()), "the toolbar is enabled again");
-            assertEquals(1, onFx(() -> table(view).getItems().size()), "the old list stays");
         }
     }
 
@@ -253,13 +199,10 @@ public class AssociationsViewTest {
         return (CheckBox) find(view, n -> n instanceof CheckBox c && "Show Associations Without Artifacts".equals(c.getText()));
     }
 
-    private static ToolBar toolBar(AssociationsView view) {
-        return (ToolBar) view.getTop();
-    }
-
     @SuppressWarnings("unchecked")
     private static TableView<AssociationsView.AssociationInfo> table(AssociationsView view) {
         return (TableView<AssociationsView.AssociationInfo>) find(view, n -> n instanceof TableView<?> t
-                && !t.getColumns().isEmpty() && "Associations".equals(t.getColumns().get(0).getText()));
+                && t.getItems().stream().allMatch(i -> i instanceof AssociationsView.AssociationInfo)
+                && t.getColumns().stream().anyMatch(c -> "Simplified Condition".equals(c.getText())));
     }
 }
