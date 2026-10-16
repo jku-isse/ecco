@@ -2,6 +2,7 @@ package at.jku.isse.ecco.service.git;
 
 import at.jku.isse.ecco.EccoException;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.ObjectId;
@@ -116,30 +117,53 @@ public final class GitHistoryReader {
 		try (Repository repository = openRepository(repoDir);
 			 RevWalk revWalk = new RevWalk(repository);
 			 ObjectReader reader = repository.newObjectReader()) {
-			RevCommit commit = revWalk.parseCommit(ObjectId.fromString(commitId));
-			revWalk.parseHeaders(commit);
-
-			AbstractTreeIterator oldTreeIter;
-			if (commit.getParentCount() > 0) {
-				RevCommit parent = revWalk.parseCommit(commit.getParent(0).getId());
-				CanonicalTreeParser parser = new CanonicalTreeParser();
-				parser.reset(reader, parent.getTree());
-				oldTreeIter = parser;
-			} else {
-				oldTreeIter = new EmptyTreeIterator();
-			}
-			CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
-			newTreeIter.reset(reader, commit.getTree());
-
+			AbstractTreeIterator[] trees = parentAndCommitTrees(revWalk, reader, commitId);
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
 			try (DiffFormatter formatter = new DiffFormatter(out)) {
 				formatter.setRepository(repository);
-				formatter.format(oldTreeIter, newTreeIter);
+				formatter.format(trees[0], trees[1]);
 			}
 			return truncate(out.toString(StandardCharsets.UTF_8));
 		} catch (IOException e) {
 			throw new EccoException("Error diffing commit " + commitId + " from " + repoDir, e);
 		}
+	}
+
+	/** Every file the commit adds, changes or deletes (relative paths, with '/'), against its first parent - unlike {@link #getDiff}, never truncated. */
+	public List<String> getChangedFiles(Path repoDir, String commitId) {
+		try (Repository repository = openRepository(repoDir);
+			 RevWalk revWalk = new RevWalk(repository);
+			 ObjectReader reader = repository.newObjectReader()) {
+			AbstractTreeIterator[] trees = parentAndCommitTrees(revWalk, reader, commitId);
+			List<String> paths = new ArrayList<>();
+			try (DiffFormatter formatter = new DiffFormatter(OutputStream.nullOutputStream())) {
+				formatter.setRepository(repository);
+				for (DiffEntry entry : formatter.scan(trees[0], trees[1]))
+					paths.add(entry.getChangeType() == DiffEntry.ChangeType.DELETE ? entry.getOldPath() : entry.getNewPath());
+			}
+			return paths;
+		} catch (IOException e) {
+			throw new EccoException("Error diffing commit " + commitId + " from " + repoDir, e);
+		}
+	}
+
+	/** The trees of the commit's first parent (empty for a root commit) and of the commit. */
+	private static AbstractTreeIterator[] parentAndCommitTrees(RevWalk revWalk, ObjectReader reader, String commitId) throws IOException {
+		RevCommit commit = revWalk.parseCommit(ObjectId.fromString(commitId));
+		revWalk.parseHeaders(commit);
+
+		AbstractTreeIterator oldTreeIter;
+		if (commit.getParentCount() > 0) {
+			RevCommit parent = revWalk.parseCommit(commit.getParent(0).getId());
+			CanonicalTreeParser parser = new CanonicalTreeParser();
+			parser.reset(reader, parent.getTree());
+			oldTreeIter = parser;
+		} else {
+			oldTreeIter = new EmptyTreeIterator();
+		}
+		CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
+		newTreeIter.reset(reader, commit.getTree());
+		return new AbstractTreeIterator[]{oldTreeIter, newTreeIter};
 	}
 
 	private static String truncate(String diff) {

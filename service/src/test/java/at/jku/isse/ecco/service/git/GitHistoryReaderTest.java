@@ -126,6 +126,34 @@ public class GitHistoryReaderTest {
 
 	@Test
 	@Timeout(30)
+	public void getChangedFiles_listsAddedChangedAndDeletedFiles_untruncated() throws Exception {
+		Path repoDir = Files.createTempDirectory("git-history-reader-test");
+		String secondCommitId;
+
+		try (Git git = Git.init().setDirectory(repoDir.toFile()).call()) {
+			Files.writeString(repoDir.resolve("a.txt"), "a\n");
+			Files.writeString(repoDir.resolve("gone.txt"), "x\n");
+			git.add().addFilepattern(".").call();
+			git.commit().setMessage("commit 1").setAuthor("Test", "test@example.com").call();
+
+			Files.writeString(repoDir.resolve("a.txt"), "a\nb\n");
+			Files.delete(repoDir.resolve("gone.txt"));
+			Files.createDirectories(repoDir.resolve("sub"));
+			Files.writeString(repoDir.resolve("sub").resolve("big.txt"), "line\n".repeat(1000));
+			git.add().addFilepattern(".").call();
+			git.rm().addFilepattern("gone.txt").call();
+			Files.writeString(repoDir.resolve("z.txt"), "after the big file\n");
+			git.add().addFilepattern(".").call();
+			secondCommitId = git.commit().setMessage("commit 2").setAuthor("Test", "test@example.com").call().getId().name();
+		}
+
+		assertEquals(java.util.List.of("a.txt", "gone.txt", "sub/big.txt", "z.txt"),
+				reader.getChangedFiles(repoDir, secondCommitId).stream().sorted().toList());
+		assertFalse(reader.getDiff(repoDir, secondCommitId).contains("z.txt"), "the diff is truncated before z.txt");
+	}
+
+	@Test
+	@Timeout(30)
 	public void listCommits_rejectsNonGitDirectory() throws IOException {
 		Path notARepo = Files.createTempDirectory("not-a-git-repo");
 		org.junit.jupiter.api.Assertions.assertThrows(at.jku.isse.ecco.EccoException.class,

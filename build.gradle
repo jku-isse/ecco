@@ -125,6 +125,8 @@ subprojects {
 		// SerTransactionStrategy#VERIFY_UNCHANGED_ARTIFACTS
 		systemProperty 'ecco.verifyUnchangedArtifacts', 'true'
 		systemProperty 'ecco.verifyUnchangedAssociations', 'true'
+		// Git imports in tests are logged here, not to the user's ~/.ecco (FeatureSuggestionLog)
+		systemProperty 'ecco.llmSuggestionLog', layout.buildDirectory.file("${name}/llm-suggestions.jsonl").get().asFile.path
 		// the LilyPond adapter's musical tokens (LilyEccoTransformer.MUSICAL_TOKENS), for a test run:
 		// ./gradlew test -Decco.lilypond.musicalTokens=true
 		if (System.getProperty('ecco.lilypond.musicalTokens') != null) {

@@ -4,6 +4,7 @@ import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.git.GitCommitInfo;
 import at.jku.isse.ecco.service.git.GitHistoryReader;
 import at.jku.isse.ecco.service.llm.FeatureSuggestionLog;
+import at.jku.isse.ecco.service.llm.ImportedFeatureFiles;
 import at.jku.isse.ecco.service.llm.LlmFeatureSuggestionClient;
 import javafx.application.Platform;
 import javafx.scene.Node;
@@ -13,6 +14,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -23,6 +25,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -49,9 +53,20 @@ public class ImportGitViewSuggestionLogTest {
         Platform.setImplicitExit(false);
     }
 
+    // the build points the log into the build directory for all tests
+    private String location;
+
+    @BeforeEach
+    public void saveLocation() {
+        this.location = System.getProperty(FeatureSuggestionLog.LOCATION_PROPERTY);
+    }
+
     @AfterEach
-    public void clearLocation() {
-        System.clearProperty(FeatureSuggestionLog.LOCATION_PROPERTY);
+    public void restoreLocation() {
+        if (this.location == null)
+            System.clearProperty(FeatureSuggestionLog.LOCATION_PROPERTY);
+        else
+            System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, this.location);
     }
 
     @Test
@@ -91,6 +106,51 @@ public class ImportGitViewSuggestionLogTest {
         assertEquals("100", field(first, "promptTokens"));
         assertEquals("42", field(first, "millis"));
         assertEquals(clone.toString(), field(first, "gitRepository"));
+        assertEquals(service.getRepositoryDir().toString(), field(first, "eccoRepository"));
+
+        // a later import run knows which files each feature's commits changed: a commit's
+        // labels are the features it added and the suggested ones kept - a skipped one has none
+        assertEquals(Map.of("BASE", Set.of("first.txt"), "SECOND", Set.of("second.txt"), "EXTRA", Set.of("second.txt"), "THIRD", Set.of("third.txt")),
+                ImportedFeatureFiles.fromLog(log, service.getRepositoryDir().toString(), clone, new GitHistoryReader()).files());
+        assertEquals(Map.of(), ImportedFeatureFiles.fromLog(log, "/another/.ecco", clone, new GitHistoryReader()).files(),
+                "only the commits imported into this repository");
+    }
+
+    @Test
+    @Timeout(60)
+    public void commitsImportedWithoutSuggestionsAreRecordedToo(@TempDir Path tmp) throws Exception {
+        Path log = tmp.resolve("suggestions.jsonl");
+        System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
+        Path clone = gitHistory(tmp.resolve("clone"), "first", "second");
+        EccoService service = repository(tmp.resolve("repo"));
+        List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
+        Collections.reverse(oldestFirst);
+        ImportGitView view = onFx(() -> {
+            ImportGitView v = new ImportGitView(service);
+            new Scene(v);
+            v.startImport(clone, oldestFirst, false, 1);
+            return v;
+        });
+        waitFor(view, "Review Commit (1 of 2)");
+        onFx(() -> {
+            findField(view).setText("BASE");
+            return null;
+        });
+        clickButton(view, "Import");
+        waitFor(view, "Review Commit (2 of 2)");
+        onFx(() -> {
+            findField(view).setText("BASE, SECOND");
+            return null;
+        });
+        clickButton(view, "Import");
+        waitFor(view, "");
+        service.close();
+
+        List<String> entries = Files.readAllLines(log);
+        assertEquals(List.of("null", "null"), entries.stream().map(e -> field(e, "model")).toList());
+        assertEquals(List.of("BASE", "BASE, SECOND"), entries.stream().map(e -> field(e, "committed")).toList());
+        assertEquals(Map.of("BASE", Set.of("first.txt"), "SECOND", Set.of("second.txt")),
+                ImportedFeatureFiles.fromLog(log, service.getRepositoryDir().toString(), clone, new GitHistoryReader()).files());
     }
 
     /** a top-level field of one log line: a string's text, or a number or null as written */

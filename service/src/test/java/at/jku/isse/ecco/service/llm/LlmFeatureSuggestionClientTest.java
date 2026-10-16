@@ -57,6 +57,31 @@ public class LlmFeatureSuggestionClientTest {
 	}
 
 	@Test
+	public void buildRequestBody_showsEachFeaturesFilesAndWhichOfThemTheCommitChanges() throws Exception {
+		LlmFeatureSuggestionClient.CommitForSuggestion commit = new LlmFeatureSuggestionClient.CommitForSuggestion(
+				"aaa1111", "fix", "diff --git a/src/login.c b/src/login.c", List.of("src/login.c", "src/new.c"));
+		java.util.Set<String> many = new java.util.TreeSet<>();
+		for (int i = 0; i < 10; i++)
+			many.add("ui/f" + i + ".c");
+		String body = LlmFeatureSuggestionClient.buildRequestBody(commit, List.of(
+				new LlmFeatureSuggestionClient.KnownFeature("login", null, new java.util.TreeSet<>(java.util.Set.of("src/login.c", "src/auth.h"))),
+				new LlmFeatureSuggestionClient.KnownFeature("ui", null, many)), "m");
+
+		String user = MAPPER.readTree(body).path("messages").get(1).path("content").asText();
+		assertTrue(user.contains("- login\n  files: src/auth.h, src/login.c\n"), user);
+		assertTrue(user.contains("files: ui/f0.c, ui/f1.c, ui/f2.c, ui/f3.c, ui/f4.c, ui/f5.c, ui/f6.c, ui/f7.c (+2 more)"), user);
+		assertTrue(user.contains("Known features whose files this commit changes:\n- login: 1 of 2 changed files\n\nCommit:"), user);
+	}
+
+	@Test
+	public void buildRequestBody_withoutFiles_hasNoOverlapSection() throws Exception {
+		String body = LlmFeatureSuggestionClient.buildRequestBody(COMMIT, List.of(new LlmFeatureSuggestionClient.KnownFeature("setup", null)), "m");
+
+		String user = MAPPER.readTree(body).path("messages").get(1).path("content").asText();
+		assertTrue(user.startsWith("Known feature names, each with the more general feature it was built on top of, when known:\n- setup\n\nCommit:"), user);
+	}
+
+	@Test
 	public void buildRequestBody_withNoKnownFeatures_saysSo() {
 		String body = LlmFeatureSuggestionClient.buildRequestBody(COMMIT, List.of(), "llama3.1");
 		assertTrue(body.contains("none yet"));

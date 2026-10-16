@@ -13,7 +13,10 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -145,6 +148,14 @@ public final class LlmFeatureSuggestionClient {
 			JSON fields of your own - your only job is to output a "configuration" guess, nothing \
 			about the commit itself.
 
+			Each known feature may be shown with the files its content is in, as far as the repository \
+			knows them. Use them to decide between an existing feature and a new one: a commit changing \
+			the files of a known feature in the way that feature is about most likely continues it; a \
+			commit whose changed files belong to no known feature, or whose change is about something \
+			none of the known features covers, is most likely a NEW feature - give it its own new name \
+			instead of the nearest broad one that happens to exist. "Known features whose files this \
+			commit changes" lists that overlap, computed from the repository, not guessed.
+
 			Example input:
 			Known feature names, each with the more general feature it was built on top of, when known:
 			(none yet)
@@ -266,7 +277,11 @@ public final class LlmFeatureSuggestionClient {
 	}
 
 	/** One commit's message/diff, as fed into the suggestion prompt. */
-	public record CommitForSuggestion(String commitId, String message, String diff) {
+	public record CommitForSuggestion(String commitId, String message, String diff, List<String> changedFiles) {
+
+		public CommitForSuggestion(String commitId, String message, String diff) {
+			this(commitId, message, diff, List.of());
+		}
 	}
 
 	/**
@@ -277,8 +292,15 @@ public final class LlmFeatureSuggestionClient {
 	 * opinion on how {@code parentName} is computed; the caller supplies it (e.g. from a feature
 	 * hierarchy inferred from commit history).
 	 */
-	public record KnownFeature(String name, String parentName) {
+	public record KnownFeature(String name, String parentName, Set<String> files) {
+
+		public KnownFeature(String name, String parentName) {
+			this(name, parentName, Set.of());
+		}
 	}
+
+	/** At most this many of a known feature's files go into the prompt. */
+	private static final int MAX_FILES_PER_FEATURE = 8;
 
 	/**
 	 * One batch's outcome: {@code configurations} always has one entry per input commit, in the
@@ -451,9 +473,22 @@ public final class LlmFeatureSuggestionClient {
 			sb.append("(none yet)");
 		} else {
 			sb.append(knownFeatures.stream()
-					.map(feature -> feature.parentName() == null || feature.parentName().isBlank()
+					.map(feature -> (feature.parentName() == null || feature.parentName().isBlank()
 							? "- " + feature.name()
-							: "- " + feature.name() + " (built on: " + feature.parentName() + ")")
+							: "- " + feature.name() + " (built on: " + feature.parentName() + ")") + filesLine(feature))
+					.collect(Collectors.joining("\n")));
+		}
+		boolean anyFiles = knownFeatures.stream().anyMatch(feature -> !feature.files().isEmpty());
+		if (anyFiles && !commit.changedFiles().isEmpty()) {
+			Map<String, Set<String>> featureFiles = new LinkedHashMap<>();
+			for (KnownFeature feature : knownFeatures)
+				featureFiles.put(feature.name(), feature.files());
+			Map<String, Integer> overlap = overlap(featureFiles, commit.changedFiles());
+			sb.append("\n\nKnown features whose files this commit changes:\n");
+			sb.append(overlap.isEmpty()
+					? "(none - no changed file belongs to a known feature)"
+					: overlap.entrySet().stream()
+					.map(e -> "- " + e.getKey() + ": " + e.getValue() + " of " + commit.changedFiles().size() + " changed files")
 					.collect(Collectors.joining("\n")));
 		}
 		// deliberately NOT "commitId:"/"message:" as labels - those match output JSON keys closely
@@ -463,6 +498,29 @@ public final class LlmFeatureSuggestionClient {
 				.append("\nsummary: ").append(commit.message())
 				.append("\nchange:\n").append(stripDiffNoise(commit.diff()));
 		return sb.toString();
+	}
+
+	/** How many of {@code changedFiles} each known feature that has any of them has, most first. */
+	private static Map<String, Integer> overlap(Map<String, Set<String>> featureFiles, List<String> changedFiles) {
+		Map<String, Integer> counts = new LinkedHashMap<>();
+		for (Map.Entry<String, Set<String>> entry : featureFiles.entrySet()) {
+			int count = (int) changedFiles.stream().filter(entry.getValue()::contains).count();
+			if (count > 0)
+				counts.put(entry.getKey(), count);
+		}
+		Map<String, Integer> sorted = new LinkedHashMap<>();
+		counts.entrySet().stream()
+				.sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+				.forEach(e -> sorted.put(e.getKey(), e.getValue()));
+		return sorted;
+	}
+
+	private static String filesLine(KnownFeature feature) {
+		if (feature.files().isEmpty())
+			return "";
+		List<String> files = new ArrayList<>(feature.files());
+		String shown = String.join(", ", files.subList(0, Math.min(MAX_FILES_PER_FEATURE, files.size())));
+		return "\n  files: " + shown + (files.size() > MAX_FILES_PER_FEATURE ? " (+" + (files.size() - MAX_FILES_PER_FEATURE) + " more)" : "");
 	}
 
 	/**
