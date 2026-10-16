@@ -19,7 +19,7 @@ public class AssociationInfoImpl implements AssociationInfo {
     private final IntegerProperty numArtifacts;
 
     /**
-     * Empty until a "Minimize Presence Conditions" run (triggered from the Feature Model tab; see
+     * Empty until a "Minimize Presence Conditions" run (started from the toolbar, or by a review; see
      * {@link at.jku.isse.ecco.gui.MinimizationResults}) fills it in -- kept live in sync by a
      * listener on the shared model, not recomputed per row build.
      */

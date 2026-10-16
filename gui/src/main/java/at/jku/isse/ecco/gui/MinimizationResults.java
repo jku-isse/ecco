@@ -28,9 +28,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The "Minimize Presence Conditions" run, shared across every GUI view that cares about it -- one
- * trigger (in the Feature Model tab's {@link at.jku.isse.ecco.gui.view.ConstraintSuggestionsView},
- * where a human naturally is right after reviewing/accepting suggestions), observed everywhere else
- * (Associations, Artifacts) instead of each view owning its own separate button and computation.
+ * computation, started from the Associations and Artifacts tabs, which show its results (see
+ * {@link #newRunButton()}), and again whenever a review in the Feature Model tab changes the
+ * accepted constraints - it had a button there, away from the results.
  *
  * <p>Construct exactly one instance per {@link EccoService} (see {@code MainView}) and pass it to
  * every view that needs to trigger or display results.
@@ -196,4 +196,14 @@ public class MinimizationResults implements EccoListener {
             Platform.runLater(minimizedByAssociationId::clear);
         }
     }
+
+	/** "Minimize Presence Conditions": starts a run, disabled while one runs - for the views that show the results. */
+	public javafx.scene.control.Button newRunButton() {
+		javafx.scene.control.Button button = new javafx.scene.control.Button("Minimize Presence Conditions");
+		button.setTooltip(new javafx.scene.control.Tooltip("Simplifies every association's condition under the accepted constraints. "
+				+ "Runs by itself after a review in the Feature Model tab."));
+		button.setOnAction(e -> this.run());
+		button.disableProperty().bind(this.runningProperty());
+		return button;
+	}
 }

@@ -66,6 +66,25 @@ public class MinimizationResultsTest {
 
     @Test
     @Timeout(60)
+    public void theAssociationsAndArtifactsTabsHaveTheButtonThatStartsARun(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            AtomicInteger runs = new AtomicInteger();
+            MinimizationResults minimization = new MinimizationResults(service) {
+                @Override
+                public void run() {
+                    runs.incrementAndGet();
+                }
+            };
+            for (javafx.scene.Node view : onFx(() -> List.<javafx.scene.Node>of(
+                    new at.jku.isse.ecco.gui.view.AssociationsView(service, minimization),
+                    new at.jku.isse.ecco.gui.view.artifacts.ArtifactsView(service, minimization))))
+                onFx(() -> button(view, "Minimize Presence Conditions").fire());
+            assertEquals(2, runs.get());
+        }
+    }
+
+    @Test
+    @Timeout(60)
     public void aCommitDropsTheResultsItInvalidated(@TempDir Path tmp) throws Exception {
         try (EccoService service = minedRepository(tmp, new EccoService())) {
             MinimizationResults results = new MinimizationResults(service);

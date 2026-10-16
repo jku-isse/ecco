@@ -138,8 +138,8 @@ public class MainView extends BorderPane implements EccoListener {
 			quitAction = new RibbonAction("Quit ECCO", Feather.LOG_OUT, Platform::exit, false);
 		}
 
-		// one shared "Minimize Presence Conditions" run, triggered from the Feature Model view and
-		// observed by every other view that displays a minimized condition
+		// one shared "Minimize Presence Conditions" run, started from the views that display a
+		// minimized condition and after every review in the Feature Model view
 		MinimizationResults minimizationResults = new MinimizationResults(eccoService);
 
 		// every content view, constructed eagerly exactly as before - only how each becomes

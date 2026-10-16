@@ -52,8 +52,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
 
-		// this view only ever displays minimization results -- triggering a run happens in the
-		// Feature Model tab, right after reviewing/accepting suggestions; see MinimizationResults.
+		// the shared minimization run (see MinimizationResults): its button is here, with the results
 		this.minimizeProgressBar.setMaxWidth(Double.MAX_VALUE);
 		this.minimizeProgressBar.progressProperty().bind(minimizationResults.progressProperty());
 		this.minimizeProgressBar.visibleProperty().bind(minimizationResults.runningProperty());
@@ -74,7 +73,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
 
 		CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
-		toolBar.getItems().add(showEmptyAssociationsCheckBox);
+		toolBar.getItems().addAll(showEmptyAssociationsCheckBox, new Separator(), minimizationResults.newRunButton());
 		showEmptyAssociationsCheckBox.selectedProperty().addListener((ov, oldValue, newValue) -> {
 			filteredData.setPredicate(associationInfo -> newValue || (associationInfo.getNumArtifacts() > 0));
 		});
@@ -109,7 +108,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 					getStyleClass().remove("not-minimized");
 				} else if (item == null || item.isEmpty()) {
 					setText("not minimized");
-					setTooltip(new Tooltip("Minimize Presence Conditions (Features) simplifies it; the condition is in the details."));
+					setTooltip(new Tooltip("Minimize Presence Conditions (toolbar) simplifies it; the condition is in the details."));
 					if (!getStyleClass().contains("not-minimized"))
 						getStyleClass().add("not-minimized");
 				} else {
@@ -238,7 +237,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		private IntegerProperty numArtifacts;
 
 		/**
-		 * Empty until a "Minimize Presence Conditions" run (triggered from the Feature Model tab;
+		 * Empty until a "Minimize Presence Conditions" run (started from the toolbar, or by a review;
 		 * see {@link at.jku.isse.ecco.gui.MinimizationResults}) fills it in -- unlike the old
 		 * {@code getSimpleModuleRevisionConditionString()}-backed column, this is a real,
 		 * SAT-verified minimization under the accepted feature model, not a truncation to the

@@ -7,9 +7,6 @@ import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.TableView;
 import javafx.stage.Stage;
@@ -70,8 +67,8 @@ public class ConstraintSuggestionsViewTest {
             ConstraintSuggestionsView view = show(service, minimization);
 
             waitUntil("the default thresholds", () -> pending(view).equals(Set.of(MANDATORY_BASE)));
-            assertEquals(List.of(A_EXCLUDES_C), onFx(() -> List.copyOf(accepted(view).getItems())));
-            assertEquals(List.of(B_EXCLUDES_C), onFx(() -> List.copyOf(rejected(view).getItems())));
+            assertEquals(List.of(A_EXCLUDES_C), onFx(() -> accepted(view)));
+            assertEquals(List.of(B_EXCLUDES_C), onFx(() -> rejected(view)));
 
             onFx(() -> minWitness(view).getValueFactory().setValue(3));
             waitUntil("min witness 3", () -> pending(view).equals(Set.of(MANDATORY_BASE, B_REQUIRES_A)));
@@ -91,6 +88,39 @@ public class ConstraintSuggestionsViewTest {
 
     @Test
     @Timeout(60)
+    public void theTableShowsOneStatusAtATimeWithItsButtonsAndCounts(@TempDir Path tmp) throws Exception {
+        try (EccoService service = minedRepository(tmp)) {
+            service.acceptConstraint(Constraint.Kind.EXCLUDES, "A", "C");
+            service.rejectConstraints(List.of(mined(service, B_EXCLUDES_C)));
+            ConstraintSuggestionsView view = show(service, new CountingMinimizationResults(service));
+            waitUntil("loaded", () -> pending(view).equals(Set.of(MANDATORY_BASE)) && !view.getTop().isDisable());
+
+            assertEquals(List.of("Pending (1)", "Accepted (1)", "Rejected (1)"), onFx(() -> findAll(view, n -> n instanceof javafx.scene.control.ToggleButton t
+                    && t.getToggleGroup() != null).stream().distinct().map(n -> ((javafx.scene.control.ToggleButton) n).getText()).toList()));
+            assertEquals(List.of(MANDATORY_BASE), onFx(() -> table(view).getItems().stream().map(ConstraintSuggestionsView.ReviewRow::signature).toList()));
+            assertTrue(onFx(() -> button(view, "Accept").isVisible() && !button(view, "Move back to pending").isVisible()));
+
+            onFx(() -> view.showStatus(ConstraintSuggestionsView.Status.ACCEPTED));
+            assertEquals(List.of(A_EXCLUDES_C), onFx(() -> table(view).getItems().stream().map(ConstraintSuggestionsView.ReviewRow::signature).toList()));
+            assertTrue(onFx(() -> !button(view, "Accept").isVisible() && button(view, "Move back to pending").isVisible()));
+        }
+    }
+
+    @Test
+    @Timeout(60)
+    public void theEvidenceSaysInHowManyOfItsConfigurationsASuggestionHolds(@TempDir Path tmp) throws Exception {
+        try (EccoService service = minedRepository(tmp)) {
+            // A occurs four times, three of them with B
+            ConstraintMiner.Suggestion nearMiss = mined(service, A_REQUIRES_B);
+            assertEquals(4, nearMiss.witness);
+            assertEquals("3 of 4", ConstraintSuggestionsView.evidence(nearMiss));
+            assertEquals("", ConstraintSuggestionsView.evidence(null));
+            assertEquals("REQUIRES A -> B", ConstraintSuggestionsView.describe(A_REQUIRES_B));
+        }
+    }
+
+    @Test
+    @Timeout(60)
     public void acceptStoresTheSuggestionAndMinimizesAgain(@TempDir Path tmp) throws Exception {
         try (EccoService service = minedRepository(tmp)) {
             CountingMinimizationResults minimization = new CountingMinimizationResults(service);
@@ -102,14 +132,14 @@ public class ConstraintSuggestionsViewTest {
                 selectPending(view, MANDATORY_BASE, B_REQUIRES_A);
                 button(view, "Accept").fire();
             });
-            waitUntil("both accepted", () -> pending(view).isEmpty() && accepted(view).getItems().size() == 2);
+            waitUntil("both accepted", () -> pending(view).isEmpty() && accepted(view).size() == 2);
 
             assertEquals(Set.of(MANDATORY_BASE, B_REQUIRES_A), ids(service.getRepository().getConstraints()));
             assertEquals(1, minimization.runs.get(), "one minimization for the whole selection");
             // only MANDATORY Base clears the production threshold (4 witnesses)
-            waitUntil("trust labels", () -> cellTexts(accepted(view)).equals(Set.of(
-                    "MANDATORY Base [trusted]",
-                    "REQUIRES B -> A [not yet trusted -- needs 4 witnesses, has 3]")));
+            waitUntil("trust labels", () -> trust(view).equals(Map.of(
+                    "MANDATORY Base", "trusted",
+                    "REQUIRES B -> A", "not yet trusted: needs 4 witnesses, has 3")));
         }
     }
 
@@ -121,8 +151,8 @@ public class ConstraintSuggestionsViewTest {
             service.acceptConstraint(Constraint.Kind.EXCLUDES, "A", "B");
             ConstraintSuggestionsView view = show(service, new CountingMinimizationResults(service));
 
-            waitUntil("the label", () -> cellTexts(accepted(view)).equals(Set.of(
-                    "EXCLUDES A / B [not yet trusted -- not currently reproducible]")));
+            waitUntil("the label", () -> trust(view).equals(Map.of(
+                    "EXCLUDES A / B", "not yet trusted: not currently reproducible")));
         }
     }
 
@@ -138,17 +168,18 @@ public class ConstraintSuggestionsViewTest {
                 selectPending(view, MANDATORY_BASE);
                 button(view, "Reject").fire();
             });
-            waitUntil("rejected", () -> pending(view).isEmpty() && rejected(view).getItems().equals(List.of(MANDATORY_BASE)));
+            waitUntil("rejected", () -> pending(view).isEmpty() && rejected(view).equals(List.of(MANDATORY_BASE)));
             assertEquals(Set.of(MANDATORY_BASE), ids(service.getRepository().getRejectedConstraints()));
             assertEquals(Set.of(), ids(service.getRepository().getConstraints()));
             assertEquals(1, minimization.runs.get(), "a rejection withdraws an acceptance, so minimization runs again");
-            waitUntil("shown without a trust label", () -> cellTexts(rejected(view)).equals(Set.of("MANDATORY Base")));
+            assertTrue(onFx(() -> view.rows.stream().filter(r -> r.status() == ConstraintSuggestionsView.Status.REJECTED)
+                    .allMatch(r -> r.trust() == null)), "shown without a trust label");
 
             onFx(() -> {
-                rejected(view).getSelectionModel().select(MANDATORY_BASE);
-                moveBackButtons(view).get(1).fire();
+                select(view, ConstraintSuggestionsView.Status.REJECTED, MANDATORY_BASE);
+                button(view, "Move back to pending").fire();
             });
-            waitUntil("pending again", () -> pending(view).equals(Set.of(MANDATORY_BASE)) && rejected(view).getItems().isEmpty());
+            waitUntil("pending again", () -> pending(view).equals(Set.of(MANDATORY_BASE)) && rejected(view).isEmpty());
             assertEquals(Set.of(), ids(service.getRepository().getRejectedConstraints()));
             assertEquals(1, minimization.runs.get(), "un-rejecting changes no accepted constraint");
         }
@@ -161,21 +192,22 @@ public class ConstraintSuggestionsViewTest {
             service.acceptConstraints(List.of(mined(service, MANDATORY_BASE)));
             CountingMinimizationResults minimization = new CountingMinimizationResults(service);
             ConstraintSuggestionsView view = show(service, minimization);
-            waitUntil("accepted", () -> pending(view).isEmpty() && accepted(view).getItems().equals(List.of(MANDATORY_BASE)));
+            waitUntil("accepted", () -> pending(view).isEmpty() && accepted(view).equals(List.of(MANDATORY_BASE)));
 
             onFx(() -> {
                 // nothing selected: nothing happens
-                moveBackButtons(view).get(0).fire();
+                view.showStatus(ConstraintSuggestionsView.Status.ACCEPTED);
+                button(view, "Move back to pending").fire();
                 button(view, "Accept").fire();
                 button(view, "Reject").fire();
             });
             assertEquals(0, minimization.runs.get());
 
             onFx(() -> {
-                accepted(view).getSelectionModel().select(MANDATORY_BASE);
-                moveBackButtons(view).get(0).fire();
+                select(view, ConstraintSuggestionsView.Status.ACCEPTED, MANDATORY_BASE);
+                button(view, "Move back to pending").fire();
             });
-            waitUntil("pending again", () -> pending(view).equals(Set.of(MANDATORY_BASE)) && accepted(view).getItems().isEmpty());
+            waitUntil("pending again", () -> pending(view).equals(Set.of(MANDATORY_BASE)) && accepted(view).isEmpty());
             assertEquals(Set.of(), ids(service.getRepository().getConstraints()));
             assertEquals(1, minimization.runs.get());
         }
@@ -191,7 +223,7 @@ public class ConstraintSuggestionsViewTest {
                 ConstraintSuggestionPreferences.reject(repositoryDir, MANDATORY_BASE);
                 ConstraintSuggestionsView view = show(service, new CountingMinimizationResults(service));
 
-                waitUntil("the old rejection", () -> rejected(view).getItems().equals(List.of(MANDATORY_BASE)) && pending(view).isEmpty());
+                waitUntil("the old rejection", () -> rejected(view).equals(List.of(MANDATORY_BASE)) && pending(view).isEmpty());
                 assertEquals(Set.of(MANDATORY_BASE), ids(service.getRepository().getRejectedConstraints()));
                 assertTrue(ConstraintSuggestionPreferences.getRejected(repositoryDir).isEmpty(), "moved, not copied");
             } finally {
@@ -214,7 +246,7 @@ public class ConstraintSuggestionsViewTest {
             assertEquals(Set.of(MANDATORY_BASE), onFx(() -> pending(view)));
 
             onFx(() -> view.setTabVisible(true));
-            waitUntil("refreshed when shown", () -> pending(view).isEmpty() && accepted(view).getItems().equals(List.of(MANDATORY_BASE)));
+            waitUntil("refreshed when shown", () -> pending(view).isEmpty() && accepted(view).equals(List.of(MANDATORY_BASE)));
         }
     }
 
@@ -225,10 +257,10 @@ public class ConstraintSuggestionsViewTest {
         try {
             service.acceptConstraint(Constraint.Kind.EXCLUDES, "A", "C");
             ConstraintSuggestionsView view = show(service, new CountingMinimizationResults(service));
-            waitUntil("loaded", () -> !pending(view).isEmpty() && !accepted(view).getItems().isEmpty());
+            waitUntil("loaded", () -> !pending(view).isEmpty() && !accepted(view).isEmpty());
 
             service.close();
-            waitUntil("emptied", () -> view.isDisable() && pending(view).isEmpty() && accepted(view).getItems().isEmpty());
+            waitUntil("emptied", () -> view.isDisable() && pending(view).isEmpty() && accepted(view).isEmpty());
         } finally {
             service.close();
         }
@@ -272,34 +304,43 @@ public class ConstraintSuggestionsViewTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static TableView<ConstraintMiner.Suggestion> pendingTable(ConstraintSuggestionsView view) {
-        return (TableView<ConstraintMiner.Suggestion>) find(view, n -> n instanceof TableView);
+    private static TableView<ConstraintSuggestionsView.ReviewRow> table(ConstraintSuggestionsView view) {
+        return (TableView<ConstraintSuggestionsView.ReviewRow>) find(view, n -> n instanceof TableView);
+    }
+
+    private static List<String> signatures(ConstraintSuggestionsView view, ConstraintSuggestionsView.Status status) {
+        return view.rows.stream().filter(r -> r.status() == status).map(ConstraintSuggestionsView.ReviewRow::signature).toList();
     }
 
     private static Set<String> pending(ConstraintSuggestionsView view) {
-        return pendingTable(view).getItems().stream().map(ConstraintSuggestionPreferences::signatureOf).collect(Collectors.toSet());
+        return Set.copyOf(signatures(view, ConstraintSuggestionsView.Status.PENDING));
+    }
+
+    private static List<String> accepted(ConstraintSuggestionsView view) {
+        return signatures(view, ConstraintSuggestionsView.Status.ACCEPTED);
+    }
+
+    private static List<String> rejected(ConstraintSuggestionsView view) {
+        return signatures(view, ConstraintSuggestionsView.Status.REJECTED);
+    }
+
+    /** The accepted ones, as the Constraint column shows them, with their Trust column. */
+    private static Map<String, String> trust(ConstraintSuggestionsView view) {
+        return view.rows.stream().filter(r -> r.status() == ConstraintSuggestionsView.Status.ACCEPTED)
+                .collect(Collectors.toMap(r -> ConstraintSuggestionsView.describe(r.signature()), ConstraintSuggestionsView.ReviewRow::trust));
+    }
+
+    /** Shows the suggestions of [status] and selects those with these signatures in the table, as a click would. */
+    private static void select(ConstraintSuggestionsView view, ConstraintSuggestionsView.Status status, String... signatures) {
+        view.showStatus(status);
+        TableView<ConstraintSuggestionsView.ReviewRow> table = table(view);
+        for (ConstraintSuggestionsView.ReviewRow row : table.getItems())
+            if (List.of(signatures).contains(row.signature()))
+                table.getSelectionModel().select(row);
     }
 
     private static void selectPending(ConstraintSuggestionsView view, String... signatures) {
-        TableView<ConstraintMiner.Suggestion> table = pendingTable(view);
-        for (ConstraintMiner.Suggestion suggestion : table.getItems())
-            if (List.of(signatures).contains(ConstraintSuggestionPreferences.signatureOf(suggestion)))
-                table.getSelectionModel().select(suggestion);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ListView<String> accepted(ConstraintSuggestionsView view) {
-        return (ListView<String>) findAll(view, n -> n instanceof ListView).get(0);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ListView<String> rejected(ConstraintSuggestionsView view) {
-        return (ListView<String>) findAll(view, n -> n instanceof ListView).get(1);
-    }
-
-    /** [accepted list's, rejected list's] */
-    private static List<Button> moveBackButtons(ConstraintSuggestionsView view) {
-        return findAll(view, n -> n instanceof Button b && "Move back to pending".equals(b.getText())).stream().map(n -> (Button) n).toList();
+        select(view, ConstraintSuggestionsView.Status.PENDING, signatures);
     }
 
     @SuppressWarnings("unchecked")
@@ -310,11 +351,6 @@ public class ConstraintSuggestionsViewTest {
     @SuppressWarnings("unchecked")
     private static Spinner<Double> confidence(ConstraintSuggestionsView view) {
         return (Spinner<Double>) findAll(view, n -> n instanceof Spinner).get(1);
-    }
-
-    private static Set<String> cellTexts(ListView<String> list) {
-        return list.lookupAll(".list-cell").stream().map(n -> ((ListCell<?>) n).getText())
-                .filter(t -> t != null && !t.isEmpty()).collect(Collectors.toSet());
     }
 
     private static Set<String> ids(Collection<? extends Constraint> constraints) {

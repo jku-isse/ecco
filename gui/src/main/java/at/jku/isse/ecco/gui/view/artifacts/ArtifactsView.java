@@ -71,8 +71,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         this.service = service;
         this.minimizationResults = minimizationResults;
 
-        // this view only ever displays minimization results -- triggering a run happens in the
-        // Feature Model tab, right after reviewing/accepting suggestions; see MinimizationResults.
+        // the shared minimization run (see MinimizationResults): its button is here, with the results.
         // Live: as the shared run (or an undo of one) changes an entry, push it into whichever
         // currently-displayed row has that association id, without needing a table refresh.
         minimizationResults.getMinimizedByAssociationId().addListener((MapChangeListener<String, String>) change -> {
@@ -117,7 +116,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         // configuration are ticked from the Features pane or Selection > Select by Configuration
         toolBar.getItems().addAll(
                 featuresButton, selectionMenuButton, checkoutSelectedButton, new Separator(),
-                useSimplifiedLabelsCheckBox, new Separator());
+                useSimplifiedLabelsCheckBox, minimizationResults.newRunButton());
 
         TableView<AssociationInfoImpl> associationsTable = this.buildAssociationsTable(useSimplifiedLabelsCheckBox, this.associationsData);
 
@@ -196,7 +195,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                     ? "…"
                     : param.getValue().getAssociation().computeCondition().toDisplayString();
             // simplified: the minimized condition where there is one - the full one until then; the
-            // column was empty until someone minimized the conditions (Feature Model tab)
+            // column was empty until someone minimized the conditions
             StringProperty minimized = param.getValue().minimizedConditionProperty();
             return Bindings.createStringBinding(() -> useSimplifiedLabelsCheckBox.isSelected() && minimized.get() != null && !minimized.get().isEmpty()
                     ? minimized.get() : rawCondition, useSimplifiedLabelsCheckBox.selectedProperty(), minimized);

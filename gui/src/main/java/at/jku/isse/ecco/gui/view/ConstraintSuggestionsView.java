@@ -15,14 +15,20 @@ import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.concurrent.Task;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -32,6 +38,10 @@ import java.util.stream.Collectors;
  * the repository itself, so they travel with fork/pull/push and a rejected one is not re-proposed to
  * anyone -- see {@code EccoService#acceptConstraints}/{@code #rejectConstraints}.
  *
+ * <p>One table, filtered to the pending, accepted or rejected suggestions - there were a table and
+ * two lists, each with its own buttons. The thresholds are behind the Thresholds toggle; the table
+ * follows them, the repository and the reviews on its own.
+ *
  * <p>Per the mining epistemic contract (CONSTRAINT_MINING_DESIGN.md): "accept" here only records
  * that a human reviewed the suggestion and agrees with it -- accepted suggestions are advisory
  * bookkeeping only, not (and must not silently become) enforced feature-model constraints that
@@ -39,29 +49,52 @@ import java.util.stream.Collectors;
  */
 public class ConstraintSuggestionsView extends BorderPane implements EccoListener {
 
+    enum Status {
+        PENDING("Pending", "Mined from the committed configurations, not reviewed yet. Double-click one to accept it."),
+        ACCEPTED("Accepted", "Reviewed and agreed with - advisory, not an enforced feature-model constraint. Trusted once it is mined at "
+                + EccoService.ACCEPTED_CONSTRAINT_MIN_WITNESS + " witnesses."),
+        REJECTED("Rejected", "Reviewed and rejected - not proposed again.");
+
+        final String title;
+        final String explanation;
+
+        Status(String title, String explanation) {
+            this.title = title;
+            this.explanation = explanation;
+        }
+    }
+
+    /**
+     * A suggestion as reviewed: its signature ({@code KIND|a|b}), its status, what the miner says
+     * about it now (null if it is not mined - pending ones always are) and, for an accepted one,
+     * whether it is trusted.
+     */
+    record ReviewRow(String signature, Status status, ConstraintMiner.Suggestion suggestion, String trust) {
+    }
+
     private final EccoService service;
 
-    private final ToolBar toolBar;
+    private final VBox top;
     private final Spinner<Integer> minWitnessSpinner;
     private final Spinner<Double> confidenceSpinner;
 
-    private final ObservableList<ConstraintMiner.Suggestion> pendingData = FXCollections.observableArrayList();
+    /** Every reviewed and pending suggestion; the table shows those of {@link #status}. Package-visible for testing. */
+    final ObservableList<ReviewRow> rows = FXCollections.observableArrayList();
+    private final FilteredList<ReviewRow> shownRows = new FilteredList<>(rows, row -> row.status() == Status.PENDING);
+    private Status status = Status.PENDING;
+    private final Map<Status, ToggleButton> statusButtons = new java.util.EnumMap<>(Status.class);
+
     /** The relations the code suggests, by "feature\0other" - for the Code column; FX thread. */
-    private java.util.Map<String, at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion> relations = java.util.Map.of();
-    private final ObservableList<String> acceptedData = FXCollections.observableArrayList();
-    private final ObservableList<String> rejectedData = FXCollections.observableArrayList();
+    private Map<String, at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion> relations = Map.of();
 
-    /**
-     * signature -> " [trusted]" / " [not yet trusted -- ...]", read by {@link SignatureCell} for
-     * {@link #acceptedListView} only. Written just before {@code acceptedData.setAll(...)} inside
-     * {@link #refresh()}'s {@code Platform.runLater}, so by the time cells re-render it's current;
-     * plain (not observable) since {@code acceptedData.setAll(...)} already forces the re-render.
-     */
-    private final java.util.Map<String, String> acceptedStatusSuffix = new java.util.HashMap<>();
-
-    private final TableView<ConstraintMiner.Suggestion> pendingTable;
-    private final ListView<String> acceptedListView;
-    private final ListView<String> rejectedListView;
+    private final TableView<ReviewRow> table;
+    private final TableColumn<ReviewRow, String> trustCol;
+    /** Shown only when the code backs a suggestion up - empty, it took the room the others needed. */
+    private final TableColumn<ReviewRow, String> codeCol;
+    private final Button acceptButton = new Button("Accept");
+    private final Button rejectButton = new Button("Reject");
+    private final Button moveBackButton = new Button("Move back to pending");
+    private final Label explanation = new Label();
 
     private volatile boolean tabVisible = true;
 
@@ -86,142 +119,204 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
             } catch (NumberFormatException ignored) {
             }
         });
-        // re-mine whenever either threshold changes, not just on the Refresh button -- otherwise
-        // moving the spinner changes its displayed value but the (stale) table never reflects it
-        // until the user separately clicks Refresh.
+        // re-mine whenever either threshold changes
         this.minWitnessSpinner.valueProperty().addListener((obs, oldV, newV) -> refresh());
         this.confidenceSpinner.valueProperty().addListener((obs, oldV, newV) -> refresh());
+        this.minWitnessSpinner.setPrefWidth(90);
+        this.confidenceSpinner.setPrefWidth(90);
 
-        Button refreshButton = new Button("Refresh");
-        refreshButton.setOnAction(e -> refresh());
+        // the filter: one table instead of a table and two lists
+        ToggleGroup statusGroup = new ToggleGroup();
+        HBox statusBox = new HBox();
+        statusBox.getStyleClass().add("segmented-button-bar");
+        for (Status s : Status.values()) {
+            ToggleButton button = new ToggleButton(s.title);
+            button.setToggleGroup(statusGroup);
+            button.setTooltip(new Tooltip(s.explanation));
+            button.setOnAction(e -> {
+                // a click on the selected one would leave none selected
+                button.setSelected(true);
+                this.showStatus(s);
+            });
+            this.statusButtons.put(s, button);
+            statusBox.getChildren().add(button);
+        }
+        this.statusButtons.get(Status.PENDING).setSelected(true);
 
-        // this is where a human naturally is right after reviewing/accepting suggestions, so this
-        // is where the (shared, single) minimize run is triggered from -- see MinimizationResults;
-        // Associations/Artifacts only ever display its results, they don't trigger their own.
-        Button minimizeButton = new Button("Minimize Presence Conditions");
-        minimizeButton.setOnAction(e -> minimizationResults.run());
-        minimizeButton.disableProperty().bind(minimizationResults.runningProperty());
-        ProgressBar minimizeProgressBar = new ProgressBar(0);
-        minimizeProgressBar.progressProperty().bind(minimizationResults.progressProperty());
-        minimizeProgressBar.visibleProperty().bind(minimizationResults.runningProperty());
+        // the thresholds are for experts: shown on request
+        HBox thresholds = new HBox(6,
+                new Label("Min witness:"), minWitnessSpinner,
+                new Label("Confidence:"), confidenceSpinner);
+        thresholds.setAlignment(Pos.CENTER_LEFT);
+        thresholds.setPadding(new Insets(4, 8, 4, 8));
+        thresholds.setVisible(false);
+        thresholds.setManaged(false);
+        ToggleButton thresholdsButton = new ToggleButton("Thresholds");
+        thresholdsButton.setTooltip(new Tooltip("Min witness: how often a suggestion had the chance to be violated. "
+                + "Confidence: the share of those chances it held in."));
+        thresholds.visibleProperty().bind(thresholdsButton.selectedProperty());
+        thresholds.managedProperty().bind(thresholdsButton.selectedProperty());
 
-        this.toolBar = new ToolBar();
-        toolBar.getItems().setAll(
-                new Label("Min witness: "), minWitnessSpinner,
-                new Separator(),
-                new Label("Confidence: "), confidenceSpinner,
-                new Separator(),
-                refreshButton,
-                new Separator(),
-                minimizeButton, minimizeProgressBar);
-        this.setTop(toolBar);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        ToolBar toolBar = new ToolBar(statusBox, spacer, thresholdsButton);
+        this.top = new VBox(toolBar, thresholds);
+        this.setTop(this.top);
 
-        // pending suggestions table
-        this.pendingTable = new TableView<>();
-        pendingTable.setTableMenuButtonVisible(true);
+        // the table
+        this.table = new TableView<>(this.shownRows);
+        table.setTableMenuButtonVisible(true);
+        table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
-        TableColumn<ConstraintMiner.Suggestion, String> kindCol = new TableColumn<>("Kind");
-        kindCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(p.getValue().kind.toString()));
-        TableColumn<ConstraintMiner.Suggestion, String> aCol = new TableColumn<>("A");
-        aCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(p.getValue().a));
-        TableColumn<ConstraintMiner.Suggestion, String> bCol = new TableColumn<>("B");
-        bCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(p.getValue().b == null ? "" : p.getValue().b));
-        TableColumn<ConstraintMiner.Suggestion, String> hardCol = new TableColumn<>("Hard");
-        hardCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(p.getValue().isHard() ? "yes" : "no (near-miss)"));
-        TableColumn<ConstraintMiner.Suggestion, String> confidenceCol = new TableColumn<>("Confidence");
-        confidenceCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(String.format("%.3f", p.getValue().confidence)));
-        TableColumn<ConstraintMiner.Suggestion, String> witnessCol = new TableColumn<>("Witness");
-        witnessCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(String.valueOf(p.getValue().witness)));
-        TableColumn<ConstraintMiner.Suggestion, String> supportCol = new TableColumn<>("Support");
-        supportCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(String.format("%.3f", p.getValue().support)));
-        TableColumn<ConstraintMiner.Suggestion, String> violationsCol = new TableColumn<>("Violations");
-        violationsCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(String.valueOf(p.getValue().counterExamples.size())));
+        TableColumn<ReviewRow, String> constraintCol = new TableColumn<>("Constraint");
+        constraintCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(describe(p.getValue().signature())));
+        TableColumn<ReviewRow, String> evidenceCol = new TableColumn<>("Holds in");
+        evidenceCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(evidence(p.getValue().suggestion())));
+        evidenceCol.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : item);
+                ReviewRow row = empty || getTableRow() == null ? null : getTableRow().getItem();
+                setTooltip(row == null || row.suggestion() == null ? null : new Tooltip(evidenceDetails(row.suggestion())));
+            }
+        });
         // whether the code backs a REQUIRES up: the feature's imported commits changed mostly code
         // the other feature's commits created (see FeaturesView#relationSuggestions)
-        TableColumn<ConstraintMiner.Suggestion, String> codeCol = new TableColumn<>("Code");
-        codeCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(codeEvidence(this.relations, p.getValue())));
+        this.codeCol = new TableColumn<>("Code");
+        codeCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(p.getValue().suggestion() == null ? "" : codeEvidence(this.relations, p.getValue().suggestion())));
+        this.trustCol = new TableColumn<>("Trust");
+        // "not yet trusted", and why in the tooltip - sized by the short text
+        trustCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(p.getValue().trust() == null ? "" : p.getValue().trust().split(":")[0]));
+        trustCol.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : item);
+                ReviewRow row = empty || getTableRow() == null ? null : getTableRow().getItem();
+                setTooltip(row == null || row.trust() == null || !row.trust().contains(":") ? null : new Tooltip(row.trust()));
+            }
+        });
 
-        pendingTable.getColumns().setAll(List.of(kindCol, aCol, bCol, hardCol, confidenceCol, witnessCol, supportCol, violationsCol, codeCol));
-        pendingTable.setItems(pendingData);
-        pendingTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        // the miner's raw numbers, for whoever wants them (the table menu, top right)
+        TableColumn<ReviewRow, String> confidenceCol = rawColumn("Confidence", s -> String.format("%.3f", s.confidence));
+        TableColumn<ReviewRow, String> witnessCol = rawColumn("Witness", s -> String.valueOf(s.witness));
+        TableColumn<ReviewRow, String> supportCol = rawColumn("Support", s -> String.format("%.3f", s.support));
+        TableColumn<ReviewRow, String> violationsCol = rawColumn("Violations", s -> String.valueOf(s.counterExamples.size()));
 
-        // all 8 columns are short content with no natural long-text column to absorb extra space,
-        // so none of them grow - a small trailing gutter reads better than forcing one to stretch
-        for (TableColumn<ConstraintMiner.Suggestion, String> column : List.of(kindCol, aCol, bCol, hardCol, confidenceCol, witnessCol, supportCol, violationsCol, codeCol)) {
-            TableColumns.fitToContent(column, pendingData);
-        }
+        List<TableColumn<ReviewRow, String>> columns = List.of(constraintCol, evidenceCol, codeCol, trustCol, confidenceCol, witnessCol, supportCol, violationsCol);
+        table.getColumns().setAll(columns);
+        for (TableColumn<ReviewRow, String> column : columns)
+            TableColumns.fitToContent(column, this.rows);
+        TableColumns.growToFill(table, constraintCol);
+        for (TableColumn<ReviewRow, String> raw : List.of(confidenceCol, witnessCol, supportCol, violationsCol))
+            raw.setVisible(false);
 
-        // double-click accepts a suggestion right away, without needing the Accept button
-        pendingTable.setRowFactory(tv -> {
-            TableRow<ConstraintMiner.Suggestion> row = new TableRow<>();
+        // double-click accepts a pending suggestion right away, without needing the Accept button
+        table.setRowFactory(tv -> {
+            TableRow<ReviewRow> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
-                if (event.getClickCount() == 2 && !row.isEmpty()) {
-                    acceptSelected(List.of(row.getItem()));
+                if (event.getClickCount() == 2 && !row.isEmpty() && row.getItem().status() == Status.PENDING) {
+                    acceptSelected(List.of(row.getItem().suggestion()));
                 }
             });
             return row;
         });
+        table.setPlaceholder(new Label("None"));
 
-        Button acceptButton = new Button("Accept");
-        acceptButton.setOnAction(e -> acceptSelected(new ArrayList<>(pendingTable.getSelectionModel().getSelectedItems())));
-        Button rejectButton = new Button("Reject");
-        rejectButton.setOnAction(e -> rejectSelected(new ArrayList<>(pendingTable.getSelectionModel().getSelectedItems())));
+        acceptButton.setOnAction(e -> acceptSelected(selected().stream().map(ReviewRow::suggestion).toList()));
+        rejectButton.setOnAction(e -> rejectSelected(selected().stream().map(ReviewRow::suggestion).toList()));
+        moveBackButton.setOnAction(e -> {
+            List<String> signatures = selected().stream().map(ReviewRow::signature).toList();
+            if (this.status == Status.ACCEPTED)
+                undoAccepted(signatures);
+            else
+                undoRejected(signatures);
+        });
+        explanation.setWrapText(true);
+        for (Button button : List.of(acceptButton, rejectButton, moveBackButton))
+            button.setMinWidth(Region.USE_PREF_SIZE);
+        explanation.setStyle("-fx-font-size: 11px; -fx-text-fill: #6b6a65;");
+        HBox.setHgrow(explanation, Priority.ALWAYS);
 
-        HBox pendingActions = new HBox(8, acceptButton, rejectButton);
-        pendingActions.setPadding(new javafx.geometry.Insets(6));
+        HBox actions = new HBox(8, acceptButton, rejectButton, moveBackButton, explanation);
+        actions.setAlignment(Pos.CENTER_LEFT);
+        actions.setPadding(new Insets(6));
 
-        BorderPane pendingPane = new BorderPane();
-        pendingPane.setCenter(pendingTable);
-        pendingPane.setBottom(pendingActions);
-
-        // reviewed suggestions (accepted / rejected)
-        this.acceptedListView = new ListView<>(acceptedData);
-        this.rejectedListView = new ListView<>(rejectedData);
-        this.acceptedListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        this.rejectedListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        this.acceptedListView.setCellFactory(lv -> new SignatureCell(this.acceptedStatusSuffix));
-        this.rejectedListView.setCellFactory(lv -> new SignatureCell(null));
-
-        Button unacceptButton = new Button("Move back to pending");
-        unacceptButton.setOnAction(e -> undoAccepted(acceptedListView));
-        Button unrejectButton = new Button("Move back to pending");
-        unrejectButton.setOnAction(e -> undoRejected(rejectedListView));
-
-        Label acceptedLabel = new Label("Accepted (reviewed, not yet an enforced feature-model constraint)");
-        acceptedLabel.setWrapText(true);
-        Label rejectedLabel = new Label("Rejected (will not be re-proposed)");
-        rejectedLabel.setWrapText(true);
-
-        VBox reviewedPane = new VBox(6,
-                acceptedLabel, acceptedListView, unacceptButton,
-                new Separator(),
-                rejectedLabel, rejectedListView, unrejectButton);
-        reviewedPane.setPadding(new javafx.geometry.Insets(6));
-
-        SplitPane splitPane = new SplitPane(pendingPane, reviewedPane);
-        splitPane.setDividerPositions(0.65);
-        this.setCenter(splitPane);
+        this.setCenter(table);
+        this.setBottom(actions);
+        this.showStatus(Status.PENDING);
 
         service.addListener(this);
         Platform.runLater(() -> statusChangedEvent(service));
     }
 
+    private static TableColumn<ReviewRow, String> rawColumn(String title, java.util.function.Function<ConstraintMiner.Suggestion, String> value) {
+        TableColumn<ReviewRow, String> column = new TableColumn<>(title);
+        column.setCellValueFactory(p -> new ReadOnlyStringWrapper(p.getValue().suggestion() == null ? "" : value.apply(p.getValue().suggestion())));
+        return column;
+    }
+
+    private List<ReviewRow> selected() {
+        return new ArrayList<>(table.getSelectionModel().getSelectedItems());
+    }
+
+    /** Shows the suggestions of [status], and the buttons that apply to them. Package-visible for testing. */
+    void showStatus(Status status) {
+        this.status = status;
+        this.statusButtons.get(status).setSelected(true);
+        this.table.getSelectionModel().clearSelection();
+        this.shownRows.setPredicate(row -> row.status() == status);
+        boolean pending = status == Status.PENDING;
+        for (Button button : List.of(acceptButton, rejectButton)) {
+            button.setVisible(pending);
+            button.setManaged(pending);
+        }
+        moveBackButton.setVisible(!pending);
+        moveBackButton.setManaged(!pending);
+        trustCol.setVisible(status == Status.ACCEPTED);
+        explanation.setText(status.explanation);
+    }
+
+    /** "REQUIRES B -> A", as constraints read everywhere ({@code Constraint.Kind#describe}). */
+    static String describe(String signature) {
+        ConstraintSuggestionPreferences.AcceptedConstraint parsed = ConstraintSuggestionPreferences.parseSignature(signature);
+        return parsed == null ? signature : parsed.kind.describe(parsed.a, parsed.b);
+    }
+
+    /**
+     * "3 of 4", under "Holds in": of the configurations in which it could have been violated (its
+     * witness), in how many it was not; empty if it is not mined. Package-visible for testing.
+     */
+    static String evidence(ConstraintMiner.Suggestion suggestion) {
+        if (suggestion == null)
+            return "";
+        int held = suggestion.witness - suggestion.counterExamples.size();
+        return held + " of " + suggestion.witness;
+    }
+
+    private static String evidenceDetails(ConstraintMiner.Suggestion suggestion) {
+        int held = suggestion.witness - suggestion.counterExamples.size();
+        return "Holds in " + held + " of the " + suggestion.witness + " configurations that could violate it. "
+                + (suggestion.isHard() ? "No configuration violates it." : suggestion.counterExamples.size() + " configuration(s) violate it (a near miss).")
+                + "\nConfidence " + String.format("%.3f", suggestion.confidence)
+                + ", support " + String.format("%.3f", suggestion.support) + " (the share of all configurations it concerns).";
+    }
+
     /**
      * Accept persists real {@link Constraint}s in the repository, all in ONE transaction -- see
      * {@code EccoService#acceptConstraints}. Deliberately does NOT also call {@link #refresh()} here
-     * (nor do {@link #rejectSelected}/{@link #undoRejected}): accepting already
-     * fires a real {@link at.jku.isse.ecco.service.listener.EccoListener} status-changed event
-     * through {@code EccoService}, which this view's own {@link #statusChangedEvent} already reacts
-     * to by calling {@link #refresh()} (and which {@code FeaturesView} reacts to on its own, since
-     * it's a listener too) -- calling either again here would just be a second, redundant re-scan of
-     * the same accept.
+     * (nor do the other review actions): accepting already fires a real
+     * {@link at.jku.isse.ecco.service.listener.EccoListener} status-changed event through
+     * {@code EccoService}, which this view's own {@link #statusChangedEvent} already reacts to by
+     * calling {@link #refresh()} (and which {@code FeaturesView} reacts to on its own, since it's a
+     * listener too).
      */
     private void acceptSelected(List<ConstraintMiner.Suggestion> suggestions) {
         if (suggestions.isEmpty()) return;
         service.acceptConstraints(suggestions);
         // the accepted-constraint set just changed, which minimization's feature-model reasoning
-        // depends on -- re-run automatically instead of requiring a separate manual click. No-op if
-        // a run is already in progress (see MinimizationResults#run).
+        // depends on -- re-run automatically. No-op if a run is already in progress (see MinimizationResults#run).
         minimizationResults.run();
     }
 
@@ -236,29 +331,28 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
     }
 
     /** Batched, one transaction/event for the whole selection -- see {@link #acceptSelected}. */
-    private void undoAccepted(ListView<String> listView) {
-        List<String> selected = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
-        if (selected.isEmpty()) return;
-        List<ConstraintSuggestionPreferences.AcceptedConstraint> parsed = new ArrayList<>();
-        for (String signature : selected) {
-            ConstraintSuggestionPreferences.AcceptedConstraint constraint = ConstraintSuggestionPreferences.parseSignature(signature);
-            if (constraint != null) parsed.add(constraint);
-        }
+    private void undoAccepted(List<String> signatures) {
+        List<ConstraintSuggestionPreferences.AcceptedConstraint> parsed = parse(signatures);
+        if (parsed.isEmpty()) return;
         service.unacceptConstraints(parsed);
         // see acceptSelected -- same reasoning, un-accepting also changes the accepted-constraint set.
         minimizationResults.run();
     }
 
     /** Batched, one transaction/event for the whole selection -- see {@link #acceptSelected}. */
-    private void undoRejected(ListView<String> listView) {
-        List<String> selected = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
-        if (selected.isEmpty()) return;
+    private void undoRejected(List<String> signatures) {
+        List<ConstraintSuggestionPreferences.AcceptedConstraint> parsed = parse(signatures);
+        if (parsed.isEmpty()) return;
+        service.unrejectConstraints(parsed);
+    }
+
+    private static List<ConstraintSuggestionPreferences.AcceptedConstraint> parse(List<String> signatures) {
         List<ConstraintSuggestionPreferences.AcceptedConstraint> parsed = new ArrayList<>();
-        for (String signature : selected) {
+        for (String signature : signatures) {
             ConstraintSuggestionPreferences.AcceptedConstraint constraint = ConstraintSuggestionPreferences.parseSignature(signature);
             if (constraint != null) parsed.add(constraint);
         }
-        service.unrejectConstraints(parsed);
+        return parsed;
     }
 
     /**
@@ -271,7 +365,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         if (!service.isInitialized()) return;
         int refresh = this.refreshes.incrementAndGet();
 
-        toolBar.setDisable(true);
+        top.setDisable(true);
         int minWitness = minWitnessSpinner.getValue();
         double confidence = confidenceSpinner.getValue();
 
@@ -304,45 +398,52 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                         .stream().map(ConstraintSuggestionPreferences::signatureOf).collect(Collectors.toSet());
                 List<ConstraintMiner.Suggestion> lenientMined = new ConstraintMiner(
                         1, EccoService.ACCEPTED_CONSTRAINT_CONFIDENCE, null).mine(configs);
-                java.util.Map<String, ConstraintMiner.Suggestion> lenientBySignature = new java.util.HashMap<>();
+                Map<String, ConstraintMiner.Suggestion> lenientBySignature = new java.util.HashMap<>();
                 for (ConstraintMiner.Suggestion suggestion : lenientMined) {
                     lenientBySignature.put(ConstraintSuggestionPreferences.signatureOf(suggestion), suggestion);
                 }
-                java.util.Map<String, String> statusSuffix = new java.util.HashMap<>();
-                for (String signature : accepted) {
-                    if (trusted.contains(signature)) {
-                        statusSuffix.put(signature, " [trusted]");
-                    } else {
-                        ConstraintMiner.Suggestion current = lenientBySignature.get(signature);
-                        statusSuffix.put(signature, current == null
-                                ? " [not yet trusted -- not currently reproducible]"
-                                : " [not yet trusted -- needs " + EccoService.ACCEPTED_CONSTRAINT_MIN_WITNESS
-                                        + " witnesses, has " + current.witness + "]");
-                    }
-                }
 
-                java.util.Map<String, at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion> codeRelations = new java.util.HashMap<>();
+                Map<String, at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion> codeRelations = new java.util.HashMap<>();
                 for (at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion relation : FeaturesView.relationSuggestions(ConstraintSuggestionsView.this.service))
                     codeRelations.put(relation.feature() + "\0" + relation.other(), relation);
                 // backed by the code first
                 pending.sort(java.util.Comparator.comparing((ConstraintMiner.Suggestion p) -> codeEvidence(codeRelations, p).isEmpty()));
 
+                List<ReviewRow> all = new ArrayList<>();
+                for (ConstraintMiner.Suggestion suggestion : pending)
+                    all.add(new ReviewRow(ConstraintSuggestionPreferences.signatureOf(suggestion), Status.PENDING, suggestion, null));
+                for (String signature : accepted.stream().sorted().toList()) {
+                    ConstraintMiner.Suggestion current = lenientBySignature.get(signature);
+                    String trust = trusted.contains(signature) ? "trusted"
+                            : current == null ? "not yet trusted: not currently reproducible"
+                            : "not yet trusted: needs " + EccoService.ACCEPTED_CONSTRAINT_MIN_WITNESS + " witnesses, has " + current.witness;
+                    all.add(new ReviewRow(signature, Status.ACCEPTED, current, trust));
+                }
+                for (String signature : rejected.stream().sorted().toList())
+                    all.add(new ReviewRow(signature, Status.REJECTED, lenientBySignature.get(signature), null));
+
                 Platform.runLater(() -> {
                     if (refresh != ConstraintSuggestionsView.this.refreshes.get())
                         return; // a newer refresh shows its own
                     ConstraintSuggestionsView.this.relations = codeRelations;
-                    pendingData.setAll(pending);
-                    acceptedStatusSuffix.clear();
-                    acceptedStatusSuffix.putAll(statusSuffix);
-                    acceptedData.setAll(accepted.stream().sorted().collect(Collectors.toList()));
-                    rejectedData.setAll(rejected.stream().sorted().collect(Collectors.toList()));
-                    toolBar.setDisable(false);
+                    codeCol.setVisible(!codeRelations.isEmpty());
+                    rows.setAll(all);
+                    updateCounts();
+                    top.setDisable(false);
                 });
                 return null;
             }
         };
-        TaskFailures.reportAndReenable(refreshTask, toolBar);
+        TaskFailures.reportAndReenable(refreshTask, top);
         new Thread(refreshTask).start();
+    }
+
+    /** "Pending (3)" - how many there are, on each filter button. */
+    private void updateCounts() {
+        for (Status s : Status.values()) {
+            long count = rows.stream().filter(row -> row.status() == s).count();
+            this.statusButtons.get(s).setText(s.title + " (" + count + ")");
+        }
     }
 
     /**
@@ -350,7 +451,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
      * share of A's changes lie in code B created, and as which relation; empty otherwise.
      * Package-visible for testing.
      */
-    static String codeEvidence(java.util.Map<String, at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion> relations, ConstraintMiner.Suggestion suggestion) {
+    static String codeEvidence(Map<String, at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion> relations, ConstraintMiner.Suggestion suggestion) {
         if (suggestion.kind != at.jku.isse.ecco.core.Constraint.Kind.REQUIRES || suggestion.b == null)
             return "";
         at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion relation = relations.get(suggestion.a + "\0" + suggestion.b);
@@ -383,40 +484,10 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
             });
         } else {
             Platform.runLater(() -> {
-                pendingData.clear();
-                acceptedData.clear();
-                rejectedData.clear();
+                rows.clear();
+                updateCounts();
                 this.setDisable(true);
             });
-        }
-    }
-
-    /**
-     * Renders a raw {@code KIND|a|b} signature as constraints read everywhere ({@code Constraint.Kind#describe}:
-     * "REQUIRES a -> b", "EXCLUDES a / b", "MANDATORY a"). The list's backing data stays the raw signature
-     * -- needed verbatim by {@link ConstraintSuggestionPreferences#clearDecision} -- only the cell's
-     * displayed text is reformatted.
-     */
-    private static final class SignatureCell extends ListCell<String> {
-        /** signature -> trust-status suffix (e.g. " [trusted]"); null for lists with no such concept
-         * (rejected suggestions were never trusted to begin with). */
-        private final java.util.Map<String, String> statusSuffixBySignature;
-
-        SignatureCell(java.util.Map<String, String> statusSuffixBySignature) {
-            this.statusSuffixBySignature = statusSuffixBySignature;
-        }
-
-        @Override
-        protected void updateItem(String signature, boolean empty) {
-            super.updateItem(signature, empty);
-            if (empty || signature == null) {
-                setText(null);
-                return;
-            }
-            ConstraintSuggestionPreferences.AcceptedConstraint parsed = ConstraintSuggestionPreferences.parseSignature(signature);
-            String base = parsed == null ? signature : parsed.kind.describe(parsed.a, parsed.b);
-            String suffix = statusSuffixBySignature == null ? "" : statusSuffixBySignature.getOrDefault(signature, "");
-            setText(base + suffix);
         }
     }
 }

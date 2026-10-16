@@ -23,6 +23,7 @@ import javafx.scene.control.ScrollBar;
 import javafx.scene.control.Separator;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.ToolBar;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
@@ -65,10 +66,9 @@ import java.util.Set;
  * top of. See {@link FeatureModelTree} for the actual algorithm (kept separate from this class so
  * it has no JavaFX/GraphStream dependency and can be tested on its own).
  * <p>
- * Defaults to the same {@link SpringBox} force-directed layout {@code KnowledgeGraphView}/
- * {@code ArtifactGraphView} use; the toolbar's layout selector can also switch to that tree
- * layout instead, for anyone who'd rather see the commit-history structure than
- * co-occurrence-driven clustering - see {@link #layoutMode}.
+ * Defaults to that tree layout, the notation of a feature model; the toolbar's layout selector can
+ * also switch to the {@link SpringBox} force-directed layout {@code KnowledgeGraphView}/
+ * {@code ArtifactGraphView} use, for co-occurrence-driven clustering - see {@link #layoutMode}.
  */
 public class FeaturesView extends BorderPane implements EccoListener, TabVisibilityAware {
 
@@ -95,7 +95,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	private boolean showLabels = true;
 
 	private enum LayoutMode {
-		FORCE_DIRECTED("Force-directed layout"), TREE("Tree layout");
+		TREE("Tree layout"), FORCE_DIRECTED("Force-directed layout");
 
 		private final String displayName;
 
@@ -111,7 +111,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 
 	/** Same {@link SpringBox} class/constructor {@code ArtifactGraphView}/{@code KnowledgeGraphView} use; unused (never attached as a sink) in {@link LayoutMode#TREE}. */
 	private final Layout forceDirectedLayout = new SpringBox(false);
-	private LayoutMode layoutMode = LayoutMode.FORCE_DIRECTED;
+	private LayoutMode layoutMode = LayoutMode.TREE;
 	/** The mode the graph was actually last rendered in, so {@link #applySnapshot} can tell a mode switch from an ordinary refresh. */
 	private LayoutMode lastAppliedLayoutMode = null;
 	/**
@@ -122,8 +122,14 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	 */
 	private int layoutGeneration = 0;
 
-	/** The suggested refinements in words, under the legend - hidden without any. */
-	final Label refinementsLabel = new Label();
+	/**
+	 * The legend's keys for the suggested relations: shown only when there are any, and they name
+	 * them in their tooltips - they were a line of text under the legend.
+	 */
+	private final Label suggestedSubfeatureKey = legendKey(Color.web("#3b6fd4"), "suggested subfeature",
+			"The feature's imported commits changed mostly code its parent's commits created, and it has none of its own.");
+	private final Label suggestedRequiresKey = legendKey(Color.web("#7fd8b5"), "suggested requires",
+			"The feature's imported commits changed mostly code the other feature's commits created, but it has code of its own elsewhere.");
 
 	public FeaturesView(EccoService service, MinimizationResults minimizationResults) {
 		this.service = service;
@@ -183,8 +189,10 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 			FeaturesView.this.refreshGraph();
 		});
 
-		toolBar.getItems().setAll(exportButton, new Separator(), showLabelsCheckbox, new Separator(), layoutLabel, layoutChoice, new Separator());
+		toolBar.getItems().setAll(layoutLabel, layoutChoice, new Separator(), showLabelsCheckbox, new Separator());
 		toolBar.getItems().addAll(GraphCameraControls.build(() -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera));
+		// rarely needed: last
+		toolBar.getItems().addAll(new Separator(), exportButton);
 
 
 		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
@@ -231,23 +239,21 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 			view.getCamera().setViewCenter(center.x, this.contentMinY + this.contentMaxY - newV.doubleValue(), center.z);
 		});
 
-		Label legend = new Label("Legend:  feature node (a filled dot in Tree layout / bold outline in Force-directed layout "
-				+ "marks accepted-MANDATORY)  |  grey arrow = positioning hint only (co-occurrence order), not a dependency "
-				+ "or constraint  |  green arrow = accepted REQUIRES  |  red arrow = accepted EXCLUDES  |  blue arrow = suggested "
-				+ "subfeature: the feature's imported commits changed mostly code its parent's commits created, and it has none of its own  |  "
-				+ "light green arrow = suggested REQUIRES: the same, but the feature has code of its own elsewhere");
-		legend.setWrapText(true);
+		// colour keys, the explanations in their tooltips - it was a paragraph of text
+		Label mandatoryKey = new Label("mandatory", new javafx.scene.shape.Circle(4, Color.BLACK));
+		mandatoryKey.setTooltip(new Tooltip("An accepted MANDATORY: a filled dot on the feature (tree layout) or a bold outline (force-directed layout)."));
+		javafx.scene.layout.FlowPane legend = new javafx.scene.layout.FlowPane(14, 4,
+				legendKey(Color.web("#898781", 0.53), "parent",
+						"Where the feature is placed: the earlier feature it occurs with most often. A positioning hint only, not a dependency or constraint."),
+				legendKey(Color.web("#1baf7a"), "requires", "An accepted REQUIRES."),
+				legendKey(Color.web("#e34948"), "excludes", "An accepted EXCLUDES."),
+				mandatoryKey, this.suggestedSubfeatureKey, this.suggestedRequiresKey);
 		legend.setPadding(new Insets(4, 8, 4, 8));
-		legend.setStyle("-fx-font-size: 11px; -fx-font-style: italic;");
-
-		this.refinementsLabel.setWrapText(true);
-		this.refinementsLabel.setPadding(new Insets(0, 8, 4, 8));
-		this.refinementsLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #3b6fd4;");
-		this.refinementsLabel.setManaged(false);
-		this.refinementsLabel.setVisible(false);
+		legend.setStyle("-fx-font-size: 11px;");
+		this.showRefinements(List.of());
 
 		this.graphContainer = new BorderPane();
-		this.graphContainer.setTop(new javafx.scene.layout.VBox(legend, this.refinementsLabel));
+		this.graphContainer.setTop(legend);
 		this.graphContainer.setBottom(horizontalScrollBar);
 		this.graphContainer.setRight(verticalScrollBar);
 
@@ -628,11 +634,29 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		final List<ImportedFeatureTraces.RelationSuggestion> refinements = new ArrayList<>();
 	}
 
-	/** Shows {@code refinements} in words under the legend, or hides the line without any - on the FX thread. */
+	/** A legend entry: a short line in [color], [text], and what it means in its tooltip. */
+	private static Label legendKey(Color color, String text, String meaning) {
+		javafx.scene.shape.Line line = new javafx.scene.shape.Line(0, 0, 18, 0);
+		line.setStroke(color);
+		line.setStrokeWidth(2.5);
+		Label key = new Label(text, line);
+		key.setTooltip(new Tooltip(meaning));
+		return key;
+	}
+
+	/**
+	 * Shows the legend's keys for the suggested relations there are, naming each in the key's
+	 * tooltip, or hides them without any - on the FX thread.
+	 */
 	private void showRefinements(List<ImportedFeatureTraces.RelationSuggestion> refinements) {
-		this.refinementsLabel.setText(refinementsText(refinements));
-		this.refinementsLabel.setManaged(!refinements.isEmpty());
-		this.refinementsLabel.setVisible(!refinements.isEmpty());
+		for (ImportedFeatureTraces.Relation relation : ImportedFeatureTraces.Relation.values()) {
+			Label key = relation == ImportedFeatureTraces.Relation.SUBFEATURE ? this.suggestedSubfeatureKey : this.suggestedRequiresKey;
+			List<ImportedFeatureTraces.RelationSuggestion> ofRelation = refinements.stream().filter(r -> r.relation() == relation).toList();
+			key.setVisible(!ofRelation.isEmpty());
+			key.setManaged(!ofRelation.isEmpty());
+			if (!ofRelation.isEmpty())
+				key.getTooltip().setText(key.getTooltip().getText().lines().findFirst().orElse("") + "\n\n" + refinementsText(ofRelation));
+		}
 	}
 
 	/**

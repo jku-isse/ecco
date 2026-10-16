@@ -79,6 +79,8 @@ public class FeaturesViewTest {
             service.acceptConstraint(Constraint.Kind.REQUIRES, "B", "Unknown");
             service.acceptConstraint(Constraint.Kind.MANDATORY, "Unknown", null);
             FeaturesView view = loaded(service);
+            onFx(() -> layoutChoice(view).getSelectionModel().select(1));
+            waitUntil("the force-directed graph", () -> !toolBar(view).isDisable() && graphic(view).getNodeCount() == 4);
 
             assertEquals(Set.of("B->A"), onFx(() -> edges(view, "requires")));
             assertEquals(Set.of("A->C"), onFx(() -> edges(view, "excludes")));
@@ -110,7 +112,8 @@ public class FeaturesViewTest {
             service.acceptConstraint(Constraint.Kind.MANDATORY, "Base", null);
             FeaturesView view = loaded(service);
 
-            onFx(() -> layoutChoice(view).getSelectionModel().select(1));
+            // the default layout
+            assertEquals("Tree layout", onFx(() -> String.valueOf(layoutChoice(view).getValue())));
             waitUntil("the mandatory marker", () -> graphic(view).getNode("mandatory:" + id(service, "Base")) != null
                     && !toolBar(view).isDisable());
 
@@ -139,8 +142,8 @@ public class FeaturesViewTest {
                     && scrollBar(view, Orientation.VERTICAL).getMin() == minY
                     && scrollBar(view, Orientation.VERTICAL).getMax() == maxY);
 
-            // and back: the marker goes, the outline comes back
-            onFx(() -> layoutChoice(view).getSelectionModel().select(0));
+            // and to force-directed: the marker goes, the outline comes
+            onFx(() -> layoutChoice(view).getSelectionModel().select(1));
             waitUntil("the force-directed graph", () -> graphic(view).getNode("mandatory:" + base.getId()) == null
                     && style(view, "Base").contains("stroke-width: 3px"));
         }
@@ -151,7 +154,6 @@ public class FeaturesViewTest {
     public void theScrollBarsMoveTheCameraWithTheVerticalOneInverted(@TempDir Path tmp) throws Exception {
         try (EccoService service = sample(tmp)) {
             FeaturesView view = loaded(service);
-            onFx(() -> layoutChoice(view).getSelectionModel().select(1));
             waitUntil("the tree scroll ranges", () -> !toolBar(view).isDisable()
                     && scrollBar(view, Orientation.VERTICAL).getMin() < scrollBar(view, Orientation.VERTICAL).getMax()
                     && scrollBar(view, Orientation.HORIZONTAL).getMin() < scrollBar(view, Orientation.HORIZONTAL).getMax());
