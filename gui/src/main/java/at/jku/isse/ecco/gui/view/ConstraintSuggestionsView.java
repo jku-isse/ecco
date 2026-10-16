@@ -46,6 +46,8 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
     private final Spinner<Double> confidenceSpinner;
 
     private final ObservableList<ConstraintMiner.Suggestion> pendingData = FXCollections.observableArrayList();
+    /** The relations the code suggests, by "feature\0other" - for the Code column; FX thread. */
+    private java.util.Map<String, at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion> relations = java.util.Map.of();
     private final ObservableList<String> acceptedData = FXCollections.observableArrayList();
     private final ObservableList<String> rejectedData = FXCollections.observableArrayList();
 
@@ -134,14 +136,18 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         supportCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(String.format("%.3f", p.getValue().support)));
         TableColumn<ConstraintMiner.Suggestion, String> violationsCol = new TableColumn<>("Violations");
         violationsCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(String.valueOf(p.getValue().counterExamples.size())));
+        // whether the code backs a REQUIRES up: the feature's imported commits changed mostly code
+        // the other feature's commits created (see FeaturesView#relationSuggestions)
+        TableColumn<ConstraintMiner.Suggestion, String> codeCol = new TableColumn<>("Code");
+        codeCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(codeEvidence(this.relations, p.getValue())));
 
-        pendingTable.getColumns().setAll(List.of(kindCol, aCol, bCol, hardCol, confidenceCol, witnessCol, supportCol, violationsCol));
+        pendingTable.getColumns().setAll(List.of(kindCol, aCol, bCol, hardCol, confidenceCol, witnessCol, supportCol, violationsCol, codeCol));
         pendingTable.setItems(pendingData);
         pendingTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
         // all 8 columns are short content with no natural long-text column to absorb extra space,
         // so none of them grow - a small trailing gutter reads better than forcing one to stretch
-        for (TableColumn<ConstraintMiner.Suggestion, String> column : List.of(kindCol, aCol, bCol, hardCol, confidenceCol, witnessCol, supportCol, violationsCol)) {
+        for (TableColumn<ConstraintMiner.Suggestion, String> column : List.of(kindCol, aCol, bCol, hardCol, confidenceCol, witnessCol, supportCol, violationsCol, codeCol)) {
             TableColumns.fitToContent(column, pendingData);
         }
 
@@ -255,8 +261,15 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         service.unrejectConstraints(parsed);
     }
 
+    /**
+     * Counts refreshes: each runs in a task of its own, and one started earlier can finish later -
+     * its result would replace the newer one (seen as a stale list after changing a threshold).
+     */
+    private final java.util.concurrent.atomic.AtomicInteger refreshes = new java.util.concurrent.atomic.AtomicInteger();
+
     private void refresh() {
         if (!service.isInitialized()) return;
+        int refresh = this.refreshes.incrementAndGet();
 
         toolBar.setDisable(true);
         int minWitness = minWitnessSpinner.getValue();
@@ -308,7 +321,16 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                     }
                 }
 
+                java.util.Map<String, at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion> codeRelations = new java.util.HashMap<>();
+                for (at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion relation : FeaturesView.relationSuggestions(ConstraintSuggestionsView.this.service))
+                    codeRelations.put(relation.feature() + "\0" + relation.other(), relation);
+                // backed by the code first
+                pending.sort(java.util.Comparator.comparing((ConstraintMiner.Suggestion p) -> codeEvidence(codeRelations, p).isEmpty()));
+
                 Platform.runLater(() -> {
+                    if (refresh != ConstraintSuggestionsView.this.refreshes.get())
+                        return; // a newer refresh shows its own
+                    ConstraintSuggestionsView.this.relations = codeRelations;
                     pendingData.setAll(pending);
                     acceptedStatusSuffix.clear();
                     acceptedStatusSuffix.putAll(statusSuffix);
@@ -321,6 +343,23 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         };
         TaskFailures.reportAndReenable(refreshTask, toolBar);
         new Thread(refreshTask).start();
+    }
+
+    /**
+     * For a REQUIRES the code backs up: "subfeature (67%)" or "requires (26%, 1 own file)" - what
+     * share of A's changes lie in code B created, and as which relation; empty otherwise.
+     * Package-visible for testing.
+     */
+    static String codeEvidence(java.util.Map<String, at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion> relations, ConstraintMiner.Suggestion suggestion) {
+        if (suggestion.kind != at.jku.isse.ecco.core.Constraint.Kind.REQUIRES || suggestion.b == null)
+            return "";
+        at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion relation = relations.get(suggestion.a + "\0" + suggestion.b);
+        if (relation == null)
+            return "";
+        String share = Math.round(relation.share() * 100) + "%";
+        return relation.relation() == at.jku.isse.ecco.service.llm.ImportedFeatureTraces.Relation.SUBFEATURE
+                ? "subfeature (" + share + ")"
+                : "requires (" + share + ", " + relation.ownSources() + " own file" + (relation.ownSources() == 1 ? "" : "s") + ")";
     }
 
     /** Called by {@link FeaturesView} whenever the containing tab is selected/deselected. */

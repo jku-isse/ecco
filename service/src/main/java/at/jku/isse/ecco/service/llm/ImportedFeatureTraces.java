@@ -40,12 +40,14 @@ import java.util.logging.Logger;
  * changes go to its labels: the features it added, and the suggested ones that were kept. Earlier
  * import runs are read back from the {@link FeatureSuggestionLog}.
  * <p>
- * The traces also suggest where a feature sits in the feature model ({@link #parentSuggestions}):
+ * The traces also suggest where a feature sits in the feature model ({@link #relationSuggestions}):
  * a place - a file, or a class, method or section in it - is owned by the features of the commit
  * that created the file (inside a new file every place is first changed by its creator), and
  * later by those that first changed it; each later change votes for the owners of the nearest
  * place around it. A feature whose changes lie far more often than others' in the places one
- * feature created likely refines that feature (experiments/llm-feature-suggestion/nesting.py).
+ * feature created likely depends on that feature (experiments/llm-feature-suggestion/nesting.py):
+ * as a subfeature if it has no code of its own - no source file it created outside the other
+ * feature's directories - and as a cross-tree REQUIRES if it has.
  */
 public final class ImportedFeatureTraces {
 
@@ -74,6 +76,10 @@ public final class ImportedFeatureTraces {
 	private final Map<String, Map<String, Integer>> votes = new TreeMap<>();
 	/** The features of the first commit that created files: everything nests in them. */
 	private Set<String> base;
+	/** Owners of directories, "source\0directory": the features of the commit that added the first file to it. */
+	private final Map<String, Set<String>> directoryOwners = new HashMap<>();
+	/** Per feature, the source files its commits created, "source\0path". */
+	private final Map<String, Set<String>> createdSources = new HashMap<>();
 
 	/**
 	 * What a commit changed: per file, the positions it changed in it; the files it added; and
@@ -109,8 +115,13 @@ public final class ImportedFeatureTraces {
 		Set<String> labelSet = new LinkedHashSet<>(labels);
 		if (!changes.added().isEmpty() && this.base == null)
 			this.base = labelSet;
-		for (String path : changes.added())
+		for (String path : changes.added()) {
 			this.created.add(source + "\0" + path);
+			this.directoryOwners.putIfAbsent(source + "\0" + directory(path), labelSet);
+			if (ChangeEvidence.kind(path).equals("source"))
+				for (String label : labelSet)
+					this.createdSources.computeIfAbsent(label, l -> new LinkedHashSet<>()).add(source + "\0" + path);
+		}
 		// a renamed file keeps its owners: a restructuring commit does not create what it moves
 		changes.renamed().forEach((to, from) -> {
 			if (this.created.contains(source + "\0" + from)) {
@@ -147,21 +158,30 @@ public final class ImportedFeatureTraces {
 		});
 	}
 
-	/**
-	 * A suggested parent in the feature model: {@code share} of the feature's changes in places
-	 * other features own lie in places {@code parent} owns, {@code lift} times as often as all
-	 * features' changes do.
-	 */
-	public record ParentSuggestion(String feature, String parent, double share, double lift) {
+	/** How a feature relates to another in the feature model. */
+	public enum Relation {
+		/** a child of the other in the tree: its code lies inside the other's */
+		SUBFEATURE,
+		/** a cross-tree REQUIRES: it has code of its own, and changes the other's */
+		REQUIRES
 	}
 
 	/**
-	 * Parents suggested by where features' changes lie (see the class comment), only strong ones:
+	 * A suggested relation in the feature model: {@code share} of the feature's changes in places
+	 * other features own lie in places {@code other} owns, {@code lift} times as often as all
+	 * features' changes do; {@code ownSources} source files the feature created outside the other's
+	 * directories - none makes it a subfeature, any a REQUIRES.
+	 */
+	public record RelationSuggestion(String feature, String other, Relation relation, double share, double lift, int ownSources) {
+	}
+
+	/**
+	 * Relations suggested by where features' changes lie (see the class comment), only strong ones:
 	 * at least {@value #MIN_LIFT} times as often as all features', and {@value #MIN_SHARE} of the
 	 * feature's changes - of those, the one with the largest share. None for the base features,
 	 * which everything nests in.
 	 */
-	public synchronized List<ParentSuggestion> parentSuggestions() {
+	public synchronized List<RelationSuggestion> relationSuggestions() {
 		Map<String, Integer> all = new HashMap<>();
 		int grand = 0;
 		for (Map.Entry<String, Map<String, Integer>> feature : this.votes.entrySet())
@@ -170,7 +190,7 @@ public final class ImportedFeatureTraces {
 					all.merge(owner.getKey(), owner.getValue(), Integer::sum);
 					grand += owner.getValue();
 				}
-		List<ParentSuggestion> suggestions = new ArrayList<>();
+		List<RelationSuggestion> suggestions = new ArrayList<>();
 		for (Map.Entry<String, Map<String, Integer>> feature : this.votes.entrySet()) {
 			if (this.base != null && this.base.contains(feature.getKey()))
 				continue;
@@ -179,14 +199,16 @@ public final class ImportedFeatureTraces {
 				continue;
 			// of the strong candidates, the one with most of the feature's changes: a high lift alone
 			// can come from a few changes in a catch-all feature's code
-			ParentSuggestion best = null;
+			RelationSuggestion best = null;
 			for (Map.Entry<String, Integer> owner : feature.getValue().entrySet()) {
 				if (owner.getKey().equals(feature.getKey()) || owner.getValue() < 3)
 					continue;
 				double share = owner.getValue() / (double) total;
 				double lift = share / (all.get(owner.getKey()) / (double) grand);
-				if (lift >= MIN_LIFT && share >= MIN_SHARE && (best == null || share > best.share()))
-					best = new ParentSuggestion(feature.getKey(), owner.getKey(), share, lift);
+				if (lift >= MIN_LIFT && share >= MIN_SHARE && (best == null || share > best.share())) {
+					int ownSources = this.ownSources(feature.getKey(), owner.getKey());
+					best = new RelationSuggestion(feature.getKey(), owner.getKey(), ownSources == 0 ? Relation.SUBFEATURE : Relation.REQUIRES, share, lift, ownSources);
+				}
 			}
 			if (best != null)
 				suggestions.add(best);
@@ -281,6 +303,35 @@ public final class ImportedFeatureTraces {
 			}
 		}
 		return new Overlap(feature, same, new ArrayList<>(enclosing), files);
+	}
+
+	/** The source files {@code feature}'s commits created outside the directories {@code other}'s commits created. */
+	private int ownSources(String feature, String other) {
+		int own = 0;
+		for (String file : this.createdSources.getOrDefault(feature, Set.of())) {
+			int cut = file.indexOf('\0');
+			Set<String> owner = this.directoryOwners.get(file.substring(0, cut + 1) + directory(file.substring(cut + 1)));
+			if (owner == null || !owner.contains(other))
+				own++;
+		}
+		return own;
+	}
+
+	private static String directory(String path) {
+		int slash = path.lastIndexOf('/');
+		return slash < 0 ? "" : path.substring(0, slash);
+	}
+
+	/**
+	 * The suggestions the configurations agree with: a subfeature and a REQUIRES both mean a
+	 * configuration with the feature also has the other - one without it contradicts them.
+	 */
+	public static List<RelationSuggestion> consistentWith(List<RelationSuggestion> suggestions, Collection<? extends Collection<String>> configurations) {
+		List<RelationSuggestion> consistent = new ArrayList<>();
+		for (RelationSuggestion suggestion : suggestions)
+			if (configurations.stream().noneMatch(c -> c.contains(suggestion.feature()) && !c.contains(suggestion.other())))
+				consistent.add(suggestion);
+		return consistent;
 	}
 
 	/** The position enclosing both {@code a} and {@code b} if they are siblings or one encloses the other ("Zip" for "Zip.add" and "Zip.extract"), or null. */

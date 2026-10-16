@@ -106,11 +106,12 @@ public class ImportedFeatureTracesTest {
 		for (int i = 0; i < 60; i++)
 			traces.record("g", List.of("SPREAD"), changed("Zip.java", List.of("Zip.add"), false));
 
-		List<ImportedFeatureTraces.ParentSuggestion> suggestions = traces.parentSuggestions();
+		List<ImportedFeatureTraces.RelationSuggestion> suggestions = traces.relationSuggestions();
 
 		assertEquals(1, suggestions.size(), suggestions.toString());
 		assertEquals("SLIP", suggestions.get(0).feature());
-		assertEquals("EXTRACT", suggestions.get(0).parent());
+		assertEquals("EXTRACT", suggestions.get(0).other());
+		assertEquals(ImportedFeatureTraces.Relation.SUBFEATURE, suggestions.get(0).relation(), "SLIP has no code of its own");
 		assertEquals(1.0, suggestions.get(0).share());
 		assertEquals(6.0, suggestions.get(0).lift(), 1e-9, "12 of 72 votes go to EXTRACT; all of SLIP's");
 	}
@@ -127,7 +128,7 @@ public class ImportedFeatureTracesTest {
 		for (int i = 0; i < 60; i++)
 			traces.record("g", List.of("SPREAD"), changed("Zip.java", List.of("Zip.add"), false));
 
-		assertEquals(List.of("EXTRACT"), traces.parentSuggestions().stream().filter(p -> p.feature().equals("SLIP")).map(ImportedFeatureTraces.ParentSuggestion::parent).toList());
+		assertEquals(List.of("EXTRACT"), traces.relationSuggestions().stream().filter(p -> p.feature().equals("SLIP")).map(ImportedFeatureTraces.RelationSuggestion::other).toList());
 	}
 
 	/** The view reads only what the log recorded: positions, files added and renamed. */
@@ -143,7 +144,49 @@ public class ImportedFeatureTracesTest {
 		log.append("{\"eccoRepository\":\"/other\",\"gitRepository\":\"/g\",\"commit\":\"o\",\"before\":\"\",\"committed\":\"X\",\"outcome\":\"auto\",\"positions\":{\"x\":[]},\"added\":[\"x\"]}\n");
 		Path file = Files.writeString(tmp.resolve("log.jsonl"), log);
 
-		assertEquals(List.of(new ImportedFeatureTraces.ParentSuggestion("SLIP", "EXTRACT", 1.0, 6.0)),
-				ImportedFeatureTraces.fromLog(file, "/e").parentSuggestions());
+		assertEquals(List.of(new ImportedFeatureTraces.RelationSuggestion("SLIP", "EXTRACT", ImportedFeatureTraces.Relation.SUBFEATURE, 1.0, 6.0, 0)),
+				ImportedFeatureTraces.fromLog(file, "/e").relationSuggestions());
+	}
+
+	/**
+	 * A feature with source code of its own elsewhere that also changes another feature's code
+	 * requires it (cross-tree); one with no code of its own is a subfeature (tree). Source files it
+	 * created in the other's directories are the other's.
+	 */
+	@Test
+	public void ownSourceCodeElsewhereMakesItARequires() {
+		ImportedFeatureTraces traces = new ImportedFeatureTraces();
+		traces.record("g", List.of("BASE"), changed("core/Zip.java", List.of("Zip.add", "Zip.extract"), true));
+		traces.record("g", List.of("STORE"), changed("store/Store.java", List.of("Store.write", "Store.read"), true));
+		// AES has a package of its own and changes STORE's code
+		traces.record("g", List.of("AES"), changed("aes/Aes.java", List.of("Aes.encrypt"), true));
+		// STORED adds a class in STORE's package: still inside STORE
+		traces.record("g", List.of("STORED"), changed("store/Stored.java", List.of("Stored.copy"), true));
+		for (int i = 0; i < 12; i++) {
+			traces.record("g", List.of("AES"), changed("store/Store.java", List.of("Store.write"), false));
+			traces.record("g", List.of("STORED"), changed("store/Store.java", List.of("Store.read"), false));
+		}
+		for (int i = 0; i < 120; i++)
+			traces.record("g", List.of("SPREAD"), changed("core/Zip.java", List.of("Zip.add"), false));
+
+		java.util.Map<String, ImportedFeatureTraces.RelationSuggestion> byFeature = new java.util.HashMap<>();
+		traces.relationSuggestions().forEach(r -> byFeature.put(r.feature(), r));
+
+		assertEquals(ImportedFeatureTraces.Relation.REQUIRES, byFeature.get("AES").relation());
+		assertEquals("STORE", byFeature.get("AES").other());
+		assertEquals(1, byFeature.get("AES").ownSources());
+		assertEquals(ImportedFeatureTraces.Relation.SUBFEATURE, byFeature.get("STORED").relation());
+		assertEquals(0, byFeature.get("STORED").ownSources());
+	}
+
+	/** A configuration with the feature but without the other contradicts both relations. */
+	@Test
+	public void configurationsWithTheFeatureButNotTheOtherRuleItOut() {
+		List<ImportedFeatureTraces.RelationSuggestion> suggestions = List.of(
+				new ImportedFeatureTraces.RelationSuggestion("SLIP", "EXTRACT", ImportedFeatureTraces.Relation.SUBFEATURE, 0.5, 20, 0),
+				new ImportedFeatureTraces.RelationSuggestion("AES", "STORE", ImportedFeatureTraces.Relation.REQUIRES, 0.3, 6, 1));
+
+		assertEquals(List.of(suggestions.get(0)), ImportedFeatureTraces.consistentWith(suggestions,
+				List.of(Set.of("BASE", "EXTRACT", "SLIP"), Set.of("BASE", "AES"), Set.of("BASE", "STORE", "AES"))));
 	}
 }

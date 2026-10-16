@@ -234,7 +234,8 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		Label legend = new Label("Legend:  feature node (a filled dot in Tree layout / bold outline in Force-directed layout "
 				+ "marks accepted-MANDATORY)  |  grey arrow = positioning hint only (co-occurrence order), not a dependency "
 				+ "or constraint  |  green arrow = accepted REQUIRES  |  red arrow = accepted EXCLUDES  |  blue arrow = suggested "
-				+ "refinement: the feature's imported commits changed mostly code its parent's commits created");
+				+ "subfeature: the feature's imported commits changed mostly code its parent's commits created, and it has none of its own  |  "
+				+ "light green arrow = suggested REQUIRES: the same, but the feature has code of its own elsewhere");
 		legend.setWrapText(true);
 		legend.setPadding(new Insets(4, 8, 4, 8));
 		legend.setStyle("-fx-font-size: 11px; -fx-font-style: italic;");
@@ -287,7 +288,8 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 						"edge.requires { fill-color: #1baf7a; } " +
 						"edge.excludes { fill-color: #e34948; } " +
 						// a suggestion, not part of the model - see the legend
-						"edge.suggested { fill-color: #3b6fd4; size: 2px; } " +
+						"edge.suggested_subfeature { fill-color: #3b6fd4; size: 2px; } " +
+						"edge.suggested_requires { fill-color: #7fd8b5; size: 2px; } " +
 						"node { " + textMode + " text-background-mode: plain; " + nodeShape + " stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } ");
 	}
 
@@ -623,23 +625,34 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		final List<FeatureNodeSnapshot> nodes = new ArrayList<>();
 		final List<FeatureEdgeSnapshot> edges = new ArrayList<>();
 		final Set<String> mandatoryNodeIds = new HashSet<>();
-		final List<ImportedFeatureTraces.ParentSuggestion> refinements = new ArrayList<>();
+		final List<ImportedFeatureTraces.RelationSuggestion> refinements = new ArrayList<>();
 	}
 
 	/** Shows {@code refinements} in words under the legend, or hides the line without any - on the FX thread. */
-	private void showRefinements(List<ImportedFeatureTraces.ParentSuggestion> refinements) {
+	private void showRefinements(List<ImportedFeatureTraces.RelationSuggestion> refinements) {
 		this.refinementsLabel.setText(refinementsText(refinements));
 		this.refinementsLabel.setManaged(!refinements.isEmpty());
 		this.refinementsLabel.setVisible(!refinements.isEmpty());
 	}
 
-	/** "Suggested refinements: B probably refines A (26% of its changes in code A created), ...". Package-visible for testing. */
-	static String refinementsText(List<ImportedFeatureTraces.ParentSuggestion> refinements) {
-		if (refinements.isEmpty())
-			return "";
-		return "Suggested refinements: " + refinements.stream()
-				.map(r -> r.feature() + " probably refines " + r.parent() + " (" + Math.round(r.share() * 100) + "% of its changes in code " + r.parent() + " created)")
+	/**
+	 * "Suggested subfeatures: B of A (26% of its changes in code A created). Suggested REQUIRES: C
+	 * requires D (...; 2 source files of its own)". Package-visible for testing.
+	 */
+	static String refinementsText(List<ImportedFeatureTraces.RelationSuggestion> refinements) {
+		List<String> parts = new ArrayList<>();
+		String subfeatures = refinements.stream().filter(r -> r.relation() == ImportedFeatureTraces.Relation.SUBFEATURE)
+				.map(r -> r.feature() + " of " + r.other() + " (" + Math.round(r.share() * 100) + "% of its changes in code " + r.other() + " created)")
 				.collect(java.util.stream.Collectors.joining("; "));
+		if (!subfeatures.isEmpty())
+			parts.add("Suggested subfeatures: " + subfeatures + ".");
+		String requires = refinements.stream().filter(r -> r.relation() == ImportedFeatureTraces.Relation.REQUIRES)
+				.map(r -> r.feature() + " requires " + r.other() + " (" + Math.round(r.share() * 100) + "% of its changes in code " + r.other() + " created; "
+						+ r.ownSources() + " source file" + (r.ownSources() == 1 ? "" : "s") + " of its own)")
+				.collect(java.util.stream.Collectors.joining("; "));
+		if (!requires.isEmpty())
+			parts.add("Suggested REQUIRES: " + requires + ".");
+		return String.join(" ", parts);
 	}
 
 	private static final class FeatureNodeSnapshot {
@@ -658,7 +671,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		}
 	}
 
-	private enum FeatureEdgeKind {TREE, REQUIRES, EXCLUDES, SUGGESTED}
+	private enum FeatureEdgeKind {TREE, REQUIRES, EXCLUDES, SUGGESTED_SUBFEATURE, SUGGESTED_REQUIRES}
 
 	private static final class FeatureEdgeSnapshot {
 		final String id;
@@ -705,18 +718,31 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 			snapshot.edges.add(new FeatureEdgeSnapshot(featureAId, featureBId, kind));
 		}
 
-		// suggested refinements, from where the features' imported commits changed things (Git
-		// import); only from what the log recorded - the clones are not read on a refresh
-		for (ImportedFeatureTraces.ParentSuggestion suggestion : ImportedFeatureTraces.fromLog(
-				FeatureSuggestionLog.location(), String.valueOf(this.service.getRepositoryDir())).parentSuggestions()) {
-			String parentId = nodeIdByFeatureName.get(suggestion.parent());
-			String childId = nodeIdByFeatureName.get(suggestion.feature());
-			if (parentId == null || childId == null)
+		// suggested subfeatures and REQUIRES, from where the features' imported commits changed things
+		// (Git import) - only from what the log recorded, the clones are not read on a refresh - and
+		// only those the committed configurations do not contradict
+		for (ImportedFeatureTraces.RelationSuggestion suggestion : relationSuggestions(this.service)) {
+			String otherId = nodeIdByFeatureName.get(suggestion.other());
+			String featureId = nodeIdByFeatureName.get(suggestion.feature());
+			if (otherId == null || featureId == null)
 				continue;
 			snapshot.refinements.add(suggestion);
-			snapshot.edges.add(new FeatureEdgeSnapshot(parentId, childId, FeatureEdgeKind.SUGGESTED));
+			if (suggestion.relation() == ImportedFeatureTraces.Relation.SUBFEATURE)
+				snapshot.edges.add(new FeatureEdgeSnapshot(otherId, featureId, FeatureEdgeKind.SUGGESTED_SUBFEATURE));
+			else
+				snapshot.edges.add(new FeatureEdgeSnapshot(featureId, otherId, FeatureEdgeKind.SUGGESTED_REQUIRES));
 		}
 		return snapshot;
+	}
+
+	/**
+	 * The subfeatures and REQUIRES the features' imported commits suggest (see
+	 * {@link ImportedFeatureTraces#relationSuggestions}) that the committed configurations agree with.
+	 */
+	static List<ImportedFeatureTraces.RelationSuggestion> relationSuggestions(EccoService service) {
+		return ImportedFeatureTraces.consistentWith(
+				ImportedFeatureTraces.fromLog(FeatureSuggestionLog.location(), String.valueOf(service.getRepositoryDir())).relationSuggestions(),
+				at.jku.isse.ecco.mining.ConfigurationBridge.readConfigurations(service));
 	}
 
 	/**

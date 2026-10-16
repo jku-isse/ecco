@@ -10,12 +10,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class FeaturesViewRefinementsTest {
 
 	@Test
-	public void suggestedRefinementsInWords() {
+	public void suggestedSubfeaturesAndRequiresInWords() {
 		assertEquals("", FeaturesView.refinementsText(List.of()));
-		assertEquals("Suggested refinements: store-compression probably refines add-files-to-zip (26% of its changes in code add-files-to-zip created); "
-						+ "zip-slip-fix probably refines extract-files (47% of its changes in code extract-files created)",
+		assertEquals("Suggested subfeatures: zip-slip-fix of extract-files (47% of its changes in code extract-files created). "
+						+ "Suggested REQUIRES: aes requires store (26% of its changes in code store created; 1 source file of its own).",
 				FeaturesView.refinementsText(List.of(
-						new ImportedFeatureTraces.ParentSuggestion("store-compression", "add-files-to-zip", 0.26, 5.4),
-						new ImportedFeatureTraces.ParentSuggestion("zip-slip-fix", "extract-files", 0.47, 24.1))));
+						new ImportedFeatureTraces.RelationSuggestion("zip-slip-fix", "extract-files", ImportedFeatureTraces.Relation.SUBFEATURE, 0.47, 24.1, 0),
+						new ImportedFeatureTraces.RelationSuggestion("aes", "store", ImportedFeatureTraces.Relation.REQUIRES, 0.26, 5.4, 1))));
 	}
 }
