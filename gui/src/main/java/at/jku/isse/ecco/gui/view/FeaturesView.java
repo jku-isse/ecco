@@ -7,6 +7,8 @@ import at.jku.isse.ecco.gui.GraphCameraControls;
 import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.llm.FeatureSuggestionLog;
+import at.jku.isse.ecco.service.llm.ImportedFeatureTraces;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.event.EventHandler;
@@ -120,6 +122,9 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	 */
 	private int layoutGeneration = 0;
 
+	/** The suggested refinements in words, under the legend - hidden without any. */
+	final Label refinementsLabel = new Label();
+
 	public FeaturesView(EccoService service, MinimizationResults minimizationResults) {
 		this.service = service;
 
@@ -228,13 +233,20 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 
 		Label legend = new Label("Legend:  feature node (a filled dot in Tree layout / bold outline in Force-directed layout "
 				+ "marks accepted-MANDATORY)  |  grey arrow = positioning hint only (co-occurrence order), not a dependency "
-				+ "or constraint  |  green arrow = accepted REQUIRES  |  red arrow = accepted EXCLUDES");
+				+ "or constraint  |  green arrow = accepted REQUIRES  |  red arrow = accepted EXCLUDES  |  blue arrow = suggested "
+				+ "refinement: the feature's imported commits changed mostly code its parent's commits created");
 		legend.setWrapText(true);
 		legend.setPadding(new Insets(4, 8, 4, 8));
 		legend.setStyle("-fx-font-size: 11px; -fx-font-style: italic;");
 
+		this.refinementsLabel.setWrapText(true);
+		this.refinementsLabel.setPadding(new Insets(0, 8, 4, 8));
+		this.refinementsLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #3b6fd4;");
+		this.refinementsLabel.setManaged(false);
+		this.refinementsLabel.setVisible(false);
+
 		this.graphContainer = new BorderPane();
-		this.graphContainer.setTop(legend);
+		this.graphContainer.setTop(new javafx.scene.layout.VBox(legend, this.refinementsLabel));
 		this.graphContainer.setBottom(horizontalScrollBar);
 		this.graphContainer.setRight(verticalScrollBar);
 
@@ -274,6 +286,8 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 						// consistent meaning across both tabs.
 						"edge.requires { fill-color: #1baf7a; } " +
 						"edge.excludes { fill-color: #e34948; } " +
+						// a suggestion, not part of the model - see the legend
+						"edge.suggested { fill-color: #3b6fd4; size: 2px; } " +
 						"node { " + textMode + " text-background-mode: plain; " + nodeShape + " stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } ");
 	}
 
@@ -367,6 +381,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		}
 
 		this.toolBar.setDisable(true);
+		this.showRefinements(snapshot.refinements);
 		SwingUtilities.invokeLater(() -> {
 			if (this.viewer == null || this.view == null) {
 				return;
@@ -608,6 +623,23 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		final List<FeatureNodeSnapshot> nodes = new ArrayList<>();
 		final List<FeatureEdgeSnapshot> edges = new ArrayList<>();
 		final Set<String> mandatoryNodeIds = new HashSet<>();
+		final List<ImportedFeatureTraces.ParentSuggestion> refinements = new ArrayList<>();
+	}
+
+	/** Shows {@code refinements} in words under the legend, or hides the line without any - on the FX thread. */
+	private void showRefinements(List<ImportedFeatureTraces.ParentSuggestion> refinements) {
+		this.refinementsLabel.setText(refinementsText(refinements));
+		this.refinementsLabel.setManaged(!refinements.isEmpty());
+		this.refinementsLabel.setVisible(!refinements.isEmpty());
+	}
+
+	/** "Suggested refinements: B probably refines A (26% of its changes in code A created), ...". Package-visible for testing. */
+	static String refinementsText(List<ImportedFeatureTraces.ParentSuggestion> refinements) {
+		if (refinements.isEmpty())
+			return "";
+		return "Suggested refinements: " + refinements.stream()
+				.map(r -> r.feature() + " probably refines " + r.parent() + " (" + Math.round(r.share() * 100) + "% of its changes in code " + r.parent() + " created)")
+				.collect(java.util.stream.Collectors.joining("; "));
 	}
 
 	private static final class FeatureNodeSnapshot {
@@ -626,7 +658,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		}
 	}
 
-	private enum FeatureEdgeKind {TREE, REQUIRES, EXCLUDES}
+	private enum FeatureEdgeKind {TREE, REQUIRES, EXCLUDES, SUGGESTED}
 
 	private static final class FeatureEdgeSnapshot {
 		final String id;
@@ -671,6 +703,18 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 			if (featureAId == null || featureBId == null) continue;
 			FeatureEdgeKind kind = constraint.getKind() == Constraint.Kind.REQUIRES ? FeatureEdgeKind.REQUIRES : FeatureEdgeKind.EXCLUDES;
 			snapshot.edges.add(new FeatureEdgeSnapshot(featureAId, featureBId, kind));
+		}
+
+		// suggested refinements, from where the features' imported commits changed things (Git
+		// import); only from what the log recorded - the clones are not read on a refresh
+		for (ImportedFeatureTraces.ParentSuggestion suggestion : ImportedFeatureTraces.fromLog(
+				FeatureSuggestionLog.location(), String.valueOf(this.service.getRepositoryDir())).parentSuggestions()) {
+			String parentId = nodeIdByFeatureName.get(suggestion.parent());
+			String childId = nodeIdByFeatureName.get(suggestion.feature());
+			if (parentId == null || childId == null)
+				continue;
+			snapshot.refinements.add(suggestion);
+			snapshot.edges.add(new FeatureEdgeSnapshot(parentId, childId, FeatureEdgeKind.SUGGESTED));
 		}
 		return snapshot;
 	}

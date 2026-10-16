@@ -12,6 +12,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -37,6 +39,13 @@ import java.util.logging.Logger;
  * later under an unchanged configuration owned nothing of theirs. Instead, an imported commit's
  * changes go to its labels: the features it added, and the suggested ones that were kept. Earlier
  * import runs are read back from the {@link FeatureSuggestionLog}.
+ * <p>
+ * The traces also suggest where a feature sits in the feature model ({@link #parentSuggestions}):
+ * a place - a file, or a class, method or section in it - is owned by the features of the commit
+ * that created the file (inside a new file every place is first changed by its creator), and
+ * later by those that first changed it; each later change votes for the owners of the nearest
+ * place around it. A feature whose changes lie far more often than others' in the places one
+ * feature created likely refines that feature (experiments/llm-feature-suggestion/nesting.py).
  */
 public final class ImportedFeatureTraces {
 
@@ -49,6 +58,141 @@ public final class ImportedFeatureTraces {
 
 	/** Per feature, per file, the positions changed (empty: the file without known positions). */
 	private final Map<String, Map<String, Set<String>>> traces = new TreeMap<>();
+
+	/** A suggested parent is shown only if the feature's changes lie this many times more often in its places than all features' do... */
+	static final double MIN_LIFT = 5;
+	/** ...and at least this share of them. */
+	static final double MIN_SHARE = 0.2;
+	/** Fewer changes in others' places than this say nothing. */
+	static final int MIN_VOTES = 10;
+
+	/** Owners of places, key "source\0path\0position" (position "" for the file itself), in the order they were first changed. */
+	private final Map<String, Set<String>> owners = new HashMap<>();
+	/** Files created within the recorded history, "source\0path". */
+	private final Set<String> created = new HashSet<>();
+	/** Per feature, per owner, how many of its changes lie in that owner's places. */
+	private final Map<String, Map<String, Integer>> votes = new TreeMap<>();
+	/** The features of the first commit that created files: everything nests in them. */
+	private Set<String> base;
+
+	/**
+	 * What a commit changed: per file, the positions it changed in it; the files it added; and
+	 * {@code renamed}, new path to old path.
+	 */
+	public record Changes(Map<String, ? extends Collection<String>> positions, Set<String> added, Map<String, String> renamed) {
+
+		/** From {@link GitHistoryReader#getChangedPositions}. */
+		public static Changes of(Map<String, GitHistoryReader.ChangedFile> files) {
+			Map<String, Set<String>> positions = new LinkedHashMap<>();
+			Set<String> added = new LinkedHashSet<>();
+			Map<String, String> renamed = new LinkedHashMap<>();
+			for (GitHistoryReader.ChangedFile file : files.values()) {
+				positions.put(file.path(), file.positions());
+				if (file.kind() == GitHistoryReader.ChangeKind.ADDED)
+					added.add(file.path());
+				if (file.kind() == GitHistoryReader.ChangeKind.RENAMED && file.oldPath() != null)
+					renamed.put(file.path(), file.oldPath());
+			}
+			return new Changes(positions, added, renamed);
+		}
+	}
+
+	/**
+	 * Records an imported commit of {@code source} (a Git clone): its changes go to the traces of
+	 * its labels, and to the ownership and votes {@link #parentSuggestions} is computed from.
+	 * Commits must come in their order.
+	 */
+	public synchronized void record(String source, Collection<String> labels, Changes changes) {
+		if (labels.isEmpty())
+			return;
+		this.add(labels, changes.positions());
+		Set<String> labelSet = new LinkedHashSet<>(labels);
+		if (!changes.added().isEmpty() && this.base == null)
+			this.base = labelSet;
+		for (String path : changes.added())
+			this.created.add(source + "\0" + path);
+		// a renamed file keeps its owners: a restructuring commit does not create what it moves
+		changes.renamed().forEach((to, from) -> {
+			if (this.created.contains(source + "\0" + from)) {
+				this.created.add(source + "\0" + to);
+				String prefix = source + "\0" + from + "\0";
+				for (Map.Entry<String, Set<String>> owner : new ArrayList<>(this.owners.entrySet()))
+					if (owner.getKey().startsWith(prefix))
+						this.owners.putIfAbsent(source + "\0" + to + "\0" + owner.getKey().substring(prefix.length()), owner.getValue());
+			}
+		});
+		changes.positions().forEach((path, positions) -> {
+			String file = source + "\0" + path + "\0";
+			if (!this.created.contains(source + "\0" + path))
+				return;
+			// this commit's changes vote for the owners of the places around them, as they were before it
+			if (!changes.added().contains(path)) {
+				for (String position : positions) {
+					Set<String> owner = null;
+					for (String area = parent(position); area != null && owner == null; area = parent(area))
+						owner = this.owners.get(file + area);
+					if (owner == null)
+						owner = this.owners.get(file);
+					if (owner != null)
+						for (String label : labelSet)
+							for (String o : owner)
+								this.votes.computeIfAbsent(label, l -> new TreeMap<>()).merge(o, 1, Integer::sum);
+				}
+			}
+			// then it owns what it changed first
+			this.owners.putIfAbsent(file, labelSet);
+			for (String position : positions)
+				for (String area = position; area != null; area = parent(area))
+					this.owners.putIfAbsent(file + area, labelSet);
+		});
+	}
+
+	/**
+	 * A suggested parent in the feature model: {@code share} of the feature's changes in places
+	 * other features own lie in places {@code parent} owns, {@code lift} times as often as all
+	 * features' changes do.
+	 */
+	public record ParentSuggestion(String feature, String parent, double share, double lift) {
+	}
+
+	/**
+	 * Parents suggested by where features' changes lie (see the class comment), only strong ones:
+	 * at least {@value #MIN_LIFT} times as often as all features', and {@value #MIN_SHARE} of the
+	 * feature's changes - of those, the one with the largest share. None for the base features,
+	 * which everything nests in.
+	 */
+	public synchronized List<ParentSuggestion> parentSuggestions() {
+		Map<String, Integer> all = new HashMap<>();
+		int grand = 0;
+		for (Map.Entry<String, Map<String, Integer>> feature : this.votes.entrySet())
+			for (Map.Entry<String, Integer> owner : feature.getValue().entrySet())
+				if (!owner.getKey().equals(feature.getKey())) {
+					all.merge(owner.getKey(), owner.getValue(), Integer::sum);
+					grand += owner.getValue();
+				}
+		List<ParentSuggestion> suggestions = new ArrayList<>();
+		for (Map.Entry<String, Map<String, Integer>> feature : this.votes.entrySet()) {
+			if (this.base != null && this.base.contains(feature.getKey()))
+				continue;
+			int total = feature.getValue().entrySet().stream().filter(e -> !e.getKey().equals(feature.getKey())).mapToInt(Map.Entry::getValue).sum();
+			if (total < MIN_VOTES)
+				continue;
+			// of the strong candidates, the one with most of the feature's changes: a high lift alone
+			// can come from a few changes in a catch-all feature's code
+			ParentSuggestion best = null;
+			for (Map.Entry<String, Integer> owner : feature.getValue().entrySet()) {
+				if (owner.getKey().equals(feature.getKey()) || owner.getValue() < 3)
+					continue;
+				double share = owner.getValue() / (double) total;
+				double lift = share / (all.get(owner.getKey()) / (double) grand);
+				if (lift >= MIN_LIFT && share >= MIN_SHARE && (best == null || share > best.share()))
+					best = new ParentSuggestion(feature.getKey(), owner.getKey(), share, lift);
+			}
+			if (best != null)
+				suggestions.add(best);
+		}
+		return suggestions;
+	}
 
 	/**
 	 * What an imported commit was about: the features {@code committed} has that {@code before}
@@ -182,7 +326,7 @@ public final class ImportedFeatureTraces {
 					continue;
 				Set<String> labels = labels(entry.path("before").asText(null), entry.path("suggestion").asText(null), entry.path("committed").asText(null));
 				if (!labels.isEmpty())
-					imported.add(labels, changed(entry, gitRepository, reader, dispatchReader));
+					imported.record(gitRepository.toString(), labels, changes(entry, gitRepository, reader, dispatchReader));
 			} catch (IOException | RuntimeException e) {
 				LOGGER.log(Level.FINE, "Passed over a suggestion log line: " + line, e);
 			}
@@ -190,27 +334,63 @@ public final class ImportedFeatureTraces {
 		return imported;
 	}
 
-	private static Map<String, ? extends Collection<String>> changed(JsonNode entry, Path gitRepository, GitHistoryReader reader, DispatchReader dispatchReader) {
-		JsonNode logged = entry.path("positions");
-		if (logged.isObject()) {
-			Map<String, List<String>> changed = new LinkedHashMap<>();
-			for (Iterator<Map.Entry<String, JsonNode>> files = logged.fields(); files.hasNext(); ) {
-				Map.Entry<String, JsonNode> file = files.next();
-				List<String> positions = new ArrayList<>();
-				file.getValue().forEach(position -> positions.add(position.asText()));
-				changed.put(file.getKey(), positions);
+	/**
+	 * The commits imported into {@code eccoRepository} from any Git clone, from what the log
+	 * recorded alone - without the clones: entries without recorded changes are passed over. Cheap
+	 * enough for a view to call on every refresh.
+	 */
+	public static ImportedFeatureTraces fromLog(Path log, String eccoRepository) {
+		ImportedFeatureTraces imported = new ImportedFeatureTraces();
+		if (!Files.isRegularFile(log))
+			return imported;
+		try {
+			for (String line : Files.readAllLines(log, StandardCharsets.UTF_8)) {
+				try {
+					JsonNode entry = MAPPER.readTree(line);
+					if (!eccoRepository.equals(entry.path("eccoRepository").asText(null)) || "skipped".equals(entry.path("outcome").asText())
+							|| !entry.path("positions").isObject())
+						continue;
+					Set<String> labels = labels(entry.path("before").asText(null), entry.path("suggestion").asText(null), entry.path("committed").asText(null));
+					if (!labels.isEmpty())
+						imported.record(entry.path("gitRepository").asText(""), labels, logged(entry));
+				} catch (IOException | RuntimeException e) {
+					LOGGER.log(Level.FINE, "Passed over a suggestion log line: " + line, e);
+				}
 			}
-			return changed;
+		} catch (IOException e) {
+			LOGGER.log(Level.WARNING, "Could not read " + log, e);
 		}
+		return imported;
+	}
+
+	private static Changes changes(JsonNode entry, Path gitRepository, GitHistoryReader reader, DispatchReader dispatchReader) {
+		if (entry.path("positions").isObject())
+			return logged(entry);
 		String commit = entry.path("commit").asText();
-		if (dispatchReader != null) {
-			Map<String, List<String>> changed = new LinkedHashMap<>();
-			reader.getChangedPositions(gitRepository, commit, dispatchReader).forEach((path, file) -> changed.put(path, new ArrayList<>(file.positions())));
-			return changed;
-		}
+		if (dispatchReader != null)
+			return Changes.of(reader.getChangedPositions(gitRepository, commit, dispatchReader));
 		Map<String, List<String>> changed = new LinkedHashMap<>();
 		for (String path : reader.getChangedFiles(gitRepository, commit))
 			changed.put(path, List.of());
-		return changed;
+		return new Changes(changed, Set.of(), Map.of());
+	}
+
+	/** The changes an entry recorded: positions, and - in entries written since they are recorded - the files added and renamed. */
+	private static Changes logged(JsonNode entry) {
+		Map<String, List<String>> positions = new LinkedHashMap<>();
+		for (Iterator<Map.Entry<String, JsonNode>> files = entry.path("positions").fields(); files.hasNext(); ) {
+			Map.Entry<String, JsonNode> file = files.next();
+			List<String> names = new ArrayList<>();
+			file.getValue().forEach(position -> names.add(position.asText()));
+			positions.put(file.getKey(), names);
+		}
+		Set<String> added = new LinkedHashSet<>();
+		entry.path("added").forEach(path -> added.add(path.asText()));
+		Map<String, String> renamed = new LinkedHashMap<>();
+		for (Iterator<Map.Entry<String, JsonNode>> files = entry.path("renamed").fields(); files.hasNext(); ) {
+			Map.Entry<String, JsonNode> file = files.next();
+			renamed.put(file.getKey(), file.getValue().asText());
+		}
+		return new Changes(positions, added, renamed);
 	}
 }

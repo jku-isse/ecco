@@ -167,6 +167,9 @@ public final class GitHistoryReader {
 	 * adapter that reads the file in the repository {@code reader} belongs to; a file whose adapter
 	 * names none, or a binary or very large one, has no positions - it is located by file only.
 	 *
+	 * Renames are detected: a renamed file is one change, under its new path. The commit a shallow
+	 * clone was cut at has its files as modified, not added - it only looks as if it added them.
+	 *
 	 * @return each changed file (its new path, the old one if deleted) with its lines added and removed and its positions
 	 */
 	public Map<String, ChangedFile> getChangedPositions(Path repoDir, String commitId, DispatchReader dispatchReader) {
@@ -177,10 +180,19 @@ public final class GitHistoryReader {
 			 ObjectReader reader = repository.newObjectReader()) {
 			tmp = Files.createTempDirectory("ecco-positions");
 			AbstractTreeIterator[] trees = parentAndCommitTrees(revWalk, reader, commitId);
+			boolean shallowBoundary = repository.getObjectDatabase().getShallowCommits().contains(ObjectId.fromString(commitId));
 			try (DiffFormatter formatter = new DiffFormatter(OutputStream.nullOutputStream())) {
 				formatter.setRepository(repository);
+				formatter.setDetectRenames(true);
 				for (DiffEntry entry : formatter.scan(trees[0], trees[1])) {
 					boolean deleted = entry.getChangeType() == DiffEntry.ChangeType.DELETE;
+					ChangeKind kind = switch (entry.getChangeType()) {
+						case ADD -> shallowBoundary ? ChangeKind.MODIFIED : ChangeKind.ADDED;
+						case DELETE -> ChangeKind.DELETED;
+						case RENAME -> ChangeKind.RENAMED;
+						default -> ChangeKind.MODIFIED;
+					};
+					String oldPath = entry.getChangeType() == DiffEntry.ChangeType.RENAME ? entry.getOldPath() : null;
 					Set<String> names = new LinkedHashSet<>();
 					String path = deleted ? entry.getOldPath() : entry.getNewPath();
 					EditList edits = formatter.toFileHeader(entry).toEditList();
@@ -189,7 +201,7 @@ public final class GitHistoryReader {
 						added += edit.getLengthB();
 						removed += edit.getLengthA();
 					}
-					positions.put(path, new ChangedFile(path, added, removed, names));
+					positions.put(path, new ChangedFile(path, added, removed, names, kind, oldPath));
 					if (edits.isEmpty())
 						continue;
 					Located oldVersion = entry.getChangeType() == DiffEntry.ChangeType.ADD ? Located.NONE
@@ -213,8 +225,18 @@ public final class GitHistoryReader {
 		}
 	}
 
-	/** A file a commit changed: its lines added and removed, and the positions it changed (see {@link #getChangedPositions}). */
-	public record ChangedFile(String path, int added, int removed, Set<String> positions) {
+	/** How a commit changed a file. */
+	public enum ChangeKind {ADDED, MODIFIED, DELETED, RENAMED}
+
+	/**
+	 * A file a commit changed: its lines added and removed, the positions it changed (see
+	 * {@link #getChangedPositions}), how, and for a rename, its old path (else null).
+	 */
+	public record ChangedFile(String path, int added, int removed, Set<String> positions, ChangeKind kind, String oldPath) {
+
+		public ChangedFile(String path, int added, int removed, Set<String> positions) {
+			this(path, added, removed, positions, ChangeKind.MODIFIED, null);
+		}
 	}
 
 	/** One version of a file: its positions and its lines. */

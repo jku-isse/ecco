@@ -42,13 +42,13 @@ public class PositionsCommandTest {
             System.setOut(original);
         }
 
-        assertEquals("{\"commit\":\"" + first + "\",\"files\":{\"README.md\":{\"added\":5,\"removed\":0,\"positions\":[\"Doc\",\"Doc > Usage\"]}}}\n"
-                + "{\"commit\":\"" + second + "\",\"files\":{\"README.md\":{\"added\":1,\"removed\":1,\"positions\":[\"Doc > Usage\"]}}}\n", captured.toString().replace("\r\n", "\n"));
+        assertEquals("{\"commit\":\"" + first + "\",\"files\":{\"README.md\":{\"kind\":\"added\",\"added\":5,\"removed\":0,\"positions\":[\"Doc\",\"Doc > Usage\"]}}}\n"
+                + "{\"commit\":\"" + second + "\",\"files\":{\"README.md\":{\"kind\":\"modified\",\"added\":1,\"removed\":1,\"positions\":[\"Doc > Usage\"]}}}\n", captured.toString().replace("\r\n", "\n"));
     }
 
     @Test
     public void jsonEscapesQuotes() {
-        assertEquals("{\"commit\":\"c\",\"files\":{\"a \\\"b\\\".md\":{\"added\":1,\"removed\":2,\"positions\":[\"x\\\\y\"]}}}",
+        assertEquals("{\"commit\":\"c\",\"files\":{\"a \\\"b\\\".md\":{\"kind\":\"modified\",\"added\":1,\"removed\":2,\"positions\":[\"x\\\\y\"]}}}",
                 PositionsCommand.json("c", Map.of("a \"b\".md", new at.jku.isse.ecco.service.git.GitHistoryReader.ChangedFile("a \"b\".md", 1, 2, Set.of("x\\y")))));
     }
 }

@@ -17,7 +17,8 @@ import java.util.stream.Collectors;
  * Prints the positions (classes, methods, sections, ...) each changed file of Git commits has
  * changes in, as this repository's adapters name them - what the Git import's feature suggestion
  * locates a commit's changes by (GitHistoryReader#getChangedPositions). One JSON object per commit:
- * {"commit": "...", "files": {"path": {"added": n, "removed": n, "positions": ["position", ...]}, ...}}. For replaying the suggestions
+ * {"commit": "...", "files": {"path": {"kind": "added|modified|deleted|renamed", "oldPath": "..." (renamed only),
+ * "added": n, "removed": n, "positions": ["position", ...]}, ...}}. For replaying the suggestions
  * outside the GUI (experiments/llm-feature-suggestion).
  */
 public class PositionsCommand implements Command {
@@ -51,7 +52,8 @@ public class PositionsCommand implements Command {
 
     static String json(String commit, Map<String, GitHistoryReader.ChangedFile> files) {
         return "{\"commit\":" + quote(commit) + ",\"files\":{" + files.values().stream()
-                .map(f -> quote(f.path()) + ":{\"added\":" + f.added() + ",\"removed\":" + f.removed() + ",\"positions\":["
+                .map(f -> quote(f.path()) + ":{\"kind\":" + quote(f.kind().name().toLowerCase()) + (f.oldPath() == null ? "" : ",\"oldPath\":" + quote(f.oldPath()))
+                        + ",\"added\":" + f.added() + ",\"removed\":" + f.removed() + ",\"positions\":["
                         + f.positions().stream().map(PositionsCommand::quote).collect(Collectors.joining(",")) + "]}")
                 .collect(Collectors.joining(",")) + "}}";
     }

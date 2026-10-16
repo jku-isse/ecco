@@ -86,4 +86,64 @@ public class ImportedFeatureTracesTest {
 
 		assertEquals(Map.of("A", Set.of("a.c#add")), traces.positions());
 	}
+
+	private static ImportedFeatureTraces.Changes changed(String path, List<String> positions, boolean added) {
+		return new ImportedFeatureTraces.Changes(Map.of(path, positions), added ? Set.of(path) : Set.of(), Map.of());
+	}
+
+	/**
+	 * A feature that keeps changing a class another feature created is suggested to refine it; one
+	 * whose changes lie where everybody's do is not; the base, which created the code everything
+	 * else changes, gets no parent.
+	 */
+	@Test
+	public void aFeatureChangingMostlyCodeAnotherCreatedRefinesIt() {
+		ImportedFeatureTraces traces = new ImportedFeatureTraces();
+		traces.record("g", List.of("BASE"), changed("Zip.java", List.of("Zip.add", "Zip.extract"), true));
+		traces.record("g", List.of("EXTRACT"), changed("Extract.java", List.of("Extract.run", "Extract.check"), true));
+		for (int i = 0; i < 12; i++)
+			traces.record("g", List.of("SLIP"), changed("Extract.java", List.of("Extract.check"), false));
+		for (int i = 0; i < 60; i++)
+			traces.record("g", List.of("SPREAD"), changed("Zip.java", List.of("Zip.add"), false));
+
+		List<ImportedFeatureTraces.ParentSuggestion> suggestions = traces.parentSuggestions();
+
+		assertEquals(1, suggestions.size(), suggestions.toString());
+		assertEquals("SLIP", suggestions.get(0).feature());
+		assertEquals("EXTRACT", suggestions.get(0).parent());
+		assertEquals(1.0, suggestions.get(0).share());
+		assertEquals(6.0, suggestions.get(0).lift(), 1e-9, "12 of 72 votes go to EXTRACT; all of SLIP's");
+	}
+
+	/** A restructuring commit that moves a file creates nothing: the file keeps its owner. */
+	@Test
+	public void aRenamedFileKeepsItsOwner() {
+		ImportedFeatureTraces traces = new ImportedFeatureTraces();
+		traces.record("g", List.of("BASE"), changed("Zip.java", List.of("Zip.add"), true));
+		traces.record("g", List.of("EXTRACT"), changed("Extract.java", List.of("Extract.run"), true));
+		traces.record("g", List.of("MOVE"), new ImportedFeatureTraces.Changes(Map.of("tasks/Extract.java", List.of("Extract.run")), Set.of(), Map.of("tasks/Extract.java", "Extract.java")));
+		for (int i = 0; i < 12; i++)
+			traces.record("g", List.of("SLIP"), changed("tasks/Extract.java", List.of("Extract.run"), false));
+		for (int i = 0; i < 60; i++)
+			traces.record("g", List.of("SPREAD"), changed("Zip.java", List.of("Zip.add"), false));
+
+		assertEquals(List.of("EXTRACT"), traces.parentSuggestions().stream().filter(p -> p.feature().equals("SLIP")).map(ImportedFeatureTraces.ParentSuggestion::parent).toList());
+	}
+
+	/** The view reads only what the log recorded: positions, files added and renamed. */
+	@Test
+	public void fromLogOfAnEccoRepositoryReadsTheRecordedChanges(@TempDir Path tmp) throws Exception {
+		StringBuilder log = new StringBuilder();
+		log.append("{\"eccoRepository\":\"/e\",\"gitRepository\":\"/g\",\"commit\":\"c0\",\"before\":\"\",\"committed\":\"BASE\",\"outcome\":\"auto\",\"positions\":{\"Zip.java\":[\"Zip.add\"]},\"added\":[\"Zip.java\"],\"renamed\":{}}\n");
+		log.append("{\"eccoRepository\":\"/e\",\"gitRepository\":\"/g\",\"commit\":\"c1\",\"before\":\"BASE\",\"committed\":\"BASE, EXTRACT\",\"outcome\":\"auto\",\"positions\":{\"Extract.java\":[\"Extract.run\"]},\"added\":[\"Extract.java\"],\"renamed\":{}}\n");
+		for (int i = 0; i < 12; i++)
+			log.append("{\"eccoRepository\":\"/e\",\"gitRepository\":\"/g\",\"commit\":\"s").append(i).append("\",\"before\":\"BASE, EXTRACT\",\"suggestion\":\"SLIP\",\"committed\":\"BASE, EXTRACT, SLIP\",\"outcome\":\"reviewed\",\"positions\":{\"Extract.java\":[\"Extract.check\"]}}\n");
+		for (int i = 0; i < 60; i++)
+			log.append("{\"eccoRepository\":\"/e\",\"gitRepository\":\"/g\",\"commit\":\"z").append(i).append("\",\"before\":\"BASE, EXTRACT, SLIP\",\"suggestion\":\"SPREAD\",\"committed\":\"BASE, EXTRACT, SLIP, SPREAD\",\"outcome\":\"reviewed\",\"positions\":{\"Zip.java\":[\"Zip.add\"]}}\n");
+		log.append("{\"eccoRepository\":\"/other\",\"gitRepository\":\"/g\",\"commit\":\"o\",\"before\":\"\",\"committed\":\"X\",\"outcome\":\"auto\",\"positions\":{\"x\":[]},\"added\":[\"x\"]}\n");
+		Path file = Files.writeString(tmp.resolve("log.jsonl"), log);
+
+		assertEquals(List.of(new ImportedFeatureTraces.ParentSuggestion("SLIP", "EXTRACT", 1.0, 6.0)),
+				ImportedFeatureTraces.fromLog(file, "/e").parentSuggestions());
+	}
 }

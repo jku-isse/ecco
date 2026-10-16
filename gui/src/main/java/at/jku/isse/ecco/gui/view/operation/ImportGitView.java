@@ -715,14 +715,14 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 	/**
 	 * Records the pending suggestion, if it is {@code commit}'s, as committed with {@code configuration}
-	 * and the positions it changed - or skipped if the configuration is null.
+	 * and what it changed - or skipped if the configuration is null.
 	 */
-	private void recordSuggestionOutcome(GitCommitInfo commit, String configuration, java.util.Map<String, java.util.Set<String>> positions) {
+	private void recordSuggestionOutcome(GitCommitInfo commit, String configuration, ImportedFeatureTraces.Changes changes) {
 		FeatureSuggestionLog.Entry entry = this.pendingSuggestion;
 		if (entry == null || !entry.commitId().equals(commit.getId()))
 			return;
 		this.pendingSuggestion = null;
-		FeatureSuggestionLog.append(configuration == null ? entry.skipped() : entry.committedAs(configuration).withPositions(positions));
+		FeatureSuggestionLog.append(configuration == null ? entry.skipped() : entry.committedAs(configuration).withChanges(changes));
 	}
 
 	/**
@@ -858,8 +858,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 		this.fit();
 
-		// the positions the commit changed, for the log and the traces - null if they could not be found
-		java.util.concurrent.atomic.AtomicReference<java.util.Map<String, java.util.Set<String>>> changedPositions = new java.util.concurrent.atomic.AtomicReference<>();
+		// what the commit changed (positions, files added and renamed), for the log and the traces - null if it could not be found
+		java.util.concurrent.atomic.AtomicReference<ImportedFeatureTraces.Changes> commitChanges = new java.util.concurrent.atomic.AtomicReference<>();
 		Task<Commit> importTask = new Task<Commit>() {
 			@Override
 			public Commit call() throws IOException {
@@ -878,14 +878,13 @@ public class ImportGitView extends OperationView implements EccoListener {
 							: ImportGitView.this.service.commit(commit.getMessage());
 					double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
 					try {
-						java.util.Map<String, java.util.Set<String>> positions = new java.util.LinkedHashMap<>();
-						ImportGitView.this.gitHistoryReader.getChangedPositions(ImportGitView.this.repoDir, commit.getId(), ImportGitView.this.service.getReader())
-								.forEach((path, file) -> positions.put(path, file.positions()));
-						changedPositions.set(positions);
+						ImportedFeatureTraces.Changes changes = ImportedFeatureTraces.Changes.of(
+								ImportGitView.this.gitHistoryReader.getChangedPositions(ImportGitView.this.repoDir, commit.getId(), ImportGitView.this.service.getReader()));
+						commitChanges.set(changes);
 						// if they are not read yet, this commit is logged before they are, and read from there
 						ImportedFeatureTraces traces = ImportGitView.this.importedTraces;
-						if (traces != null && !labels.isEmpty())
-							traces.add(labels, positions);
+						if (traces != null)
+							traces.record(String.valueOf(ImportGitView.this.repoDir), labels, changes);
 					} catch (RuntimeException e) {
 						// the commit is in; only its trace is lost
 						LOGGER.log(java.util.logging.Level.WARNING, "Could not locate the changes of " + commit.getShortId(), e);
@@ -912,7 +911,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				super.succeeded();
 				ImportGitView.this.lastCommit = this.getValue();
 				ImportGitView.this.importedCount++;
-				ImportGitView.this.recordSuggestionOutcome(commit, configurationText, changedPositions.get());
+				ImportGitView.this.recordSuggestionOutcome(commit, configurationText, commitChanges.get());
 				applyConfigurationToRunning(ImportGitView.this.runningFeatures, configurationText);
 				if (ImportGitView.this.runEnded) {
 					return;

@@ -42,4 +42,33 @@ public class GitChangedPositionsTest {
 					new GitHistoryReader().getChangedPositions(clone, second, service.getReader()));
 		}
 	}
+
+	/** Added and renamed files are told apart from changed ones: what file ownership is built on. */
+	@Test
+	@Timeout(60)
+	public void addedAndRenamedFilesAreReportedAsSuch(@TempDir Path tmp) throws Exception {
+		Path clone = Files.createDirectories(tmp.resolve("clone"));
+		String second;
+		try (Git git = Git.init().setDirectory(clone.toFile()).call()) {
+			Files.writeString(clone.resolve("old.md"), "# Old\n\none\ntwo\nthree\nfour\nfive\n");
+			git.add().addFilepattern(".").call();
+			git.commit().setMessage("first").setAuthor("t", "t@example.com").setCommitter("t", "t@example.com").call();
+			Files.move(clone.resolve("old.md"), clone.resolve("moved.md"));
+			Files.writeString(clone.resolve("new.md"), "# New\n\ntext\n");
+			git.add().addFilepattern(".").call();
+			git.rm().addFilepattern("old.md").call();
+			second = git.commit().setMessage("second").setAuthor("t", "t@example.com").setCommitter("t", "t@example.com").call().getId().name();
+		}
+		try (EccoService service = new EccoService()) {
+			service.setRepositoryDir(Files.createDirectories(tmp.resolve("repo")).resolve(".ecco"));
+			service.init();
+
+			Map<String, GitHistoryReader.ChangedFile> changes = new GitHistoryReader().getChangedPositions(clone, second, service.getReader());
+
+			assertEquals(Set.of("moved.md", "new.md"), changes.keySet());
+			assertEquals(GitHistoryReader.ChangeKind.RENAMED, changes.get("moved.md").kind());
+			assertEquals("old.md", changes.get("moved.md").oldPath());
+			assertEquals(GitHistoryReader.ChangeKind.ADDED, changes.get("new.md").kind());
+		}
+	}
 }

@@ -45,7 +45,8 @@ public class FeatureSuggestionLogTest {
 		System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
 
 		FeatureSuggestionLog.append(ENTRY.committedAs("login, password-reset, email")
-				.withPositions(java.util.Map.of("src/Login.java", java.util.List.of("Login.reset"))));
+				.withChanges(new ImportedFeatureTraces.Changes(java.util.Map.of("src/Login.java", java.util.List.of("Login.reset")),
+						java.util.Set.of("src/Login.java"), java.util.Map.of("src/Auth.java", "src/OldAuth.java"))));
 		FeatureSuggestionLog.append(ENTRY.skipped());
 
 		List<String> lines = Files.readAllLines(log);
@@ -63,6 +64,8 @@ public class FeatureSuggestionLogTest {
 		assertEquals(6100, first.path("millis").asLong());
 		assertTrue(first.path("failure").isNull());
 		assertEquals("Login.reset", first.path("positions").path("src/Login.java").get(0).asText());
+		assertEquals("src/Login.java", first.path("added").get(0).asText());
+		assertEquals("src/OldAuth.java", first.path("renamed").path("src/Auth.java").asText());
 		JsonNode second = MAPPER.readTree(lines.get(1));
 		assertEquals("skipped", second.path("outcome").asText());
 		assertTrue(second.path("committed").isNull());
