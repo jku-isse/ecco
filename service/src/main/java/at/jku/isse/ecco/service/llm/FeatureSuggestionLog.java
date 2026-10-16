@@ -46,30 +46,31 @@ public final class FeatureSuggestionLog {
 	 * commit, {@code suggestion} the LLM's raw reply (features added, "-name" for removed ones),
 	 * {@code proposed} the configuration the reply made of {@code before}, {@code committed} the one
 	 * actually committed ({@code null} when skipped). {@code failure} is why there was no
-	 * suggestion, if there was none. {@code changes} are the files the commit changed with the
+	 * suggestion, if there was none. {@code confidence} is how far the suggestion agreed with where
+	 * the commit changed things (null if not known). {@code changes} are the files the commit changed with the
 	 * positions in them, the files it added and those it renamed (see
 	 * {@link at.jku.isse.ecco.service.git.GitHistoryReader#getChangedPositions}), null if not known.
 	 */
 	public record Entry(String eccoRepository, String gitRepository, String commitId, String message, int diffLines, String model,
 						String before, String suggestion, String proposed, String failure,
-						LlmFeatureSuggestionClient.Usage usage, Outcome outcome, String committed, ImportedFeatureTraces.Changes changes) {
+						LlmFeatureSuggestionClient.Usage usage, SuggestionConfidence confidence, Outcome outcome, String committed, ImportedFeatureTraces.Changes changes) {
 
 		/** This entry with {@code committed} as the configuration it was committed with. */
 		public Entry committedAs(String committed) {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, this.outcome, committed, this.changes);
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, committed, this.changes);
 		}
 
 		/** This entry with what its commit changed. */
 		public Entry withChanges(ImportedFeatureTraces.Changes changes) {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, this.outcome, this.committed, changes);
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, this.committed, changes);
 		}
 
 		/** This entry for a skipped commit. */
 		public Entry skipped() {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, Outcome.SKIPPED, null, this.changes);
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, Outcome.SKIPPED, null, this.changes);
 		}
 	}
 
@@ -113,6 +114,10 @@ public final class FeatureSuggestionLog {
 			line.put("promptTokens", entry.usage().promptTokens());
 			line.put("completionTokens", entry.usage().completionTokens());
 			line.put("millis", entry.usage().millis());
+		}
+		if (entry.confidence() != null) {
+			line.put("confidence", entry.confidence().value());
+			line.put("confidenceReason", entry.confidence().reason());
 		}
 		line.put("outcome", entry.outcome().name().toLowerCase());
 		line.put("committed", entry.committed());

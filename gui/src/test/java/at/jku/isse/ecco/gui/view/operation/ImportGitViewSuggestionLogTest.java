@@ -6,6 +6,7 @@ import at.jku.isse.ecco.service.git.GitHistoryReader;
 import at.jku.isse.ecco.service.llm.FeatureSuggestionLog;
 import at.jku.isse.ecco.service.llm.ImportedFeatureTraces;
 import at.jku.isse.ecco.service.llm.LlmFeatureSuggestionClient;
+import at.jku.isse.ecco.service.llm.SuggestionConfidence;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -114,6 +115,46 @@ public class ImportGitViewSuggestionLogTest {
                 ImportedFeatureTraces.fromLog(log, service.getRepositoryDir().toString(), clone, new GitHistoryReader(), null).files());
         assertEquals(Map.of(), ImportedFeatureTraces.fromLog(log, "/another/.ecco", clone, new GitHistoryReader(), null).files(),
                 "only the commits imported into this repository");
+    }
+
+    /** An unattended commit whose suggestion is uncertain stops for review, and says why; without the option it is imported. */
+    @Test
+    @Timeout(60)
+    public void anUncertainSuggestionStopsForReview(@TempDir Path tmp) throws Exception {
+        for (boolean reviewUncertain : new boolean[]{true, false}) {
+            Path dir = Files.createDirectories(tmp.resolve("run-" + reviewUncertain));
+            Path log = dir.resolve("suggestions.jsonl");
+            System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
+            Path clone = gitHistory(dir.resolve("clone"), "first", "second", "third");
+            EccoService service = repository(dir.resolve("repo"));
+            List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
+            Collections.reverse(oldestFirst);
+            ImportGitView view = onFx(() -> {
+                ImportGitView v = new ImportGitView(service);
+                new Scene(v);
+                v.reviewUncertain = reviewUncertain;
+                v.suggester = commit -> new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
+                        List.of(commit.getMessage().equals("first") ? "BASE" : commit.getMessage().toUpperCase()), null, List.of()), "stub", 1,
+                        commit.getMessage().equals("third") ? new SuggestionConfidence(0.15, "BASE changed exactly these positions before") : null);
+                // reviews every 2nd commit: first and third are imported unattended
+                v.startImport(clone, oldestFirst, true, 2);
+                return v;
+            });
+            waitFor(view, "Review Commit (2 of 3)");
+            clickButton(view, "Import");
+            if (reviewUncertain) {
+                waitFor(view, "Review Commit (3 of 3)");
+                assertEquals("Stopped for review - the suggestion is uncertain: BASE changed exactly these positions before.",
+                        onFx(() -> ((javafx.scene.control.Label) find(view, n -> ImportGitView.CONFIDENCE_LABEL_ID.equals(n.getId()))).getText()));
+                clickButton(view, "Import");
+            }
+            waitFor(view, "");
+            service.close();
+
+            String third = Files.readAllLines(log).get(2);
+            assertEquals(reviewUncertain ? "reviewed" : "auto", field(third, "outcome"));
+            assertEquals("0.15", field(third, "confidence"), "logged either way");
+        }
     }
 
     /**

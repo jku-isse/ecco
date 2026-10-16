@@ -19,6 +19,7 @@ import at.jku.isse.ecco.service.git.GitHistoryReader;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.service.llm.FeatureSuggestionLog;
 import at.jku.isse.ecco.service.llm.ImportedFeatureTraces;
+import at.jku.isse.ecco.service.llm.SuggestionConfidence;
 import at.jku.isse.ecco.service.llm.LlmFeatureSuggestionClient;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -122,6 +123,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 	// lets tests find the failure shown on a commit's review screen
 	static final String IMPORT_FAILURE_LABEL_ID = "importFailure";
+	// lets tests find the confidence shown on a commit's review screen
+	static final String CONFIDENCE_LABEL_ID = "suggestionConfidence";
 
 	private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(ImportGitView.class.getName());
 
@@ -147,6 +150,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 	// where each feature's imported commits changed things, for the suggestions: read from the log
 	// at the first suggestion request, then kept up to date by each import
 	private volatile ImportedFeatureTraces importedTraces;
+	// whether an unattended commit whose suggestion is uncertain (see SuggestionConfidence) stops for review
+	boolean reviewUncertain = true;
 	// the suggestion request, off the FX thread - replaced by tests, which have no LLM
 	Function<GitCommitInfo, Suggested> suggester = this::requestSuggestion;
 	private Commit lastCommit;
@@ -286,6 +291,12 @@ public class ImportGitView extends OperationView implements EccoListener {
 		gridPane.add(reviewIntervalBox, 0, row, 3, 1);
 		row++;
 
+		CheckBox reviewUncertainCheckBox = new CheckBox("Also stop for review when a suggestion is uncertain (it disagrees with where the commit changed things)");
+		reviewUncertainCheckBox.setSelected(true);
+		reviewUncertainCheckBox.disableProperty().bind(suggestFeaturesCheckBox.selectedProperty().not());
+		gridPane.add(reviewUncertainCheckBox, 0, row, 3, 1);
+		row++;
+
 		chooseRepoButton.setOnAction(event -> {
 			DirectoryChooser directoryChooser = new DirectoryChooser();
 			directoryChooser.setTitle("Select a Local Git Repository");
@@ -377,6 +388,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				alert.showAndWait();
 				useLlm = false;
 			}
+			this.reviewUncertain = reviewUncertainCheckBox.isSelected();
 			this.startImport(oldestFirst, useLlm, reviewIntervalSpinner.getValue());
 		});
 
@@ -598,6 +610,13 @@ public class ImportGitView extends OperationView implements EccoListener {
 					ImportGitView.this.recordAutoImportSuggestionFailure(commit, batch.failureReason());
 				}
 				String config = defaultConfigurationText(ImportGitView.this.runningFeatures, batch.configurations().get(0));
+				SuggestionConfidence confidence = this.getValue().confidence();
+				if (ImportGitView.this.reviewUncertain && confidence != null && confidence.uncertain()) {
+					// not trusted: a person decides, as on a review commit
+					ImportGitView.this.pendingSuggestion = ImportGitView.this.suggestionEntry(commit, this.getValue(), null, config, FeatureSuggestionLog.Outcome.REVIEWED);
+					ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, reviewInterval, config, null, null);
+					return;
+				}
 				ImportGitView.this.pendingSuggestion = ImportGitView.this.suggestionEntry(commit, this.getValue(), batch.failureReason(), config, FeatureSuggestionLog.Outcome.AUTO);
 				ImportGitView.this.importOneCommit(commitsOldestFirst, index, useLlm, reviewInterval, config);
 			}
@@ -637,7 +656,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 		SuggestionInput input = this.suggestionInput(commit);
 		String model = LlmPreferences.getModelName();
 		LlmFeatureSuggestionClient client = new LlmFeatureSuggestionClient(LlmPreferences.getEndpointUrl(), model);
-		return new Suggested(client.suggestConfigurations(List.of(input.commit()), input.knownFeatures(), null), model, diffLines(input.commit().diff()));
+		LlmFeatureSuggestionClient.SuggestionBatch batch = client.suggestConfigurations(List.of(input.commit()), input.knownFeatures(), null);
+		SuggestionConfidence confidence = batch.failureReason() != null ? null : SuggestionConfidence.of(batch.configurations().get(0),
+				input.knownFeatures().stream().map(LlmFeatureSuggestionClient.KnownFeature::name).toList(), input.commit().overlap());
+		return new Suggested(batch, model, diffLines(input.commit().diff()), confidence);
 	}
 
 	/** What a suggestion request for a commit sends: the commit with its evidence, and the known features with their traces. */
@@ -675,7 +697,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 	}
 
 	/** A commit's suggestion: the reply, the model asked, and the size of the commit's diff. */
-	record Suggested(LlmFeatureSuggestionClient.SuggestionBatch batch, String model, int diffLines) {
+	record Suggested(LlmFeatureSuggestionClient.SuggestionBatch batch, String model, int diffLines, SuggestionConfidence confidence) {
+
+		Suggested(LlmFeatureSuggestionClient.SuggestionBatch batch, String model, int diffLines) {
+			this(batch, model, diffLines, null);
+		}
 	}
 
 	/** Lines of a diff before {@link GitHistoryReader#getDiff} truncated it. Pure and package-visible for testing. */
@@ -710,7 +736,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				batch == null || batch.configurations().isEmpty() ? null : batch.configurations().get(0),
 				proposed, failure,
 				batch == null || batch.usages().isEmpty() ? null : batch.usages().get(0),
-				outcome, null, null);
+				suggested == null ? null : suggested.confidence(), outcome, null, null);
 	}
 
 	/**
@@ -773,6 +799,19 @@ public class ImportGitView extends OperationView implements EccoListener {
 			warningLabel.setWrapText(true);
 			warningLabel.setStyle("-fx-text-fill: #cc6600;");
 			gridPane.add(warningLabel, 0, row, 1, 1);
+			row++;
+		}
+
+		FeatureSuggestionLog.Entry pending = this.pendingSuggestion;
+		if (pending != null && pending.commitId().equals(commit.getId()) && pending.confidence() != null) {
+			SuggestionConfidence confidence = pending.confidence();
+			boolean stopped = !isReviewCommit(index, reviewInterval) && importFailure == null;
+			Label confidenceLabel = new Label((stopped ? "Stopped for review - the suggestion is uncertain" : "Suggestion confidence " + Math.round(confidence.value() * 100) + "%")
+					+ ": " + confidence.reason() + ".");
+			confidenceLabel.setId(CONFIDENCE_LABEL_ID);
+			confidenceLabel.setWrapText(true);
+			confidenceLabel.setStyle(confidence.uncertain() ? "-fx-text-fill: #cc6600;" : "-fx-text-fill: #666666;");
+			gridPane.add(confidenceLabel, 0, row, 1, 1);
 			row++;
 		}
 

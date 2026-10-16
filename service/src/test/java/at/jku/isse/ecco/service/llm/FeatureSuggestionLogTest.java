@@ -21,7 +21,8 @@ public class FeatureSuggestionLogTest {
 	private static final FeatureSuggestionLog.Entry ENTRY = new FeatureSuggestionLog.Entry(
 			"/ecco/repo/.ecco", "/git/repo", "abc123", "Add reset link", 812, "qwen2.5-coder:32b",
 			"login", "password-reset", "login, password-reset", null,
-			new LlmFeatureSuggestionClient.Usage(7670, 12, 6100), FeatureSuggestionLog.Outcome.REVIEWED, null, null);
+			new LlmFeatureSuggestionClient.Usage(7670, 12, 6100), new SuggestionConfidence(0.9, "login changed these positions before"),
+			FeatureSuggestionLog.Outcome.REVIEWED, null, null);
 
 	// the build points the log into the build directory for all tests
 	private String location;
@@ -62,6 +63,8 @@ public class FeatureSuggestionLogTest {
 		assertEquals("reviewed", first.path("outcome").asText());
 		assertEquals(7670, first.path("promptTokens").asInt());
 		assertEquals(6100, first.path("millis").asLong());
+		assertEquals(0.9, first.path("confidence").asDouble());
+		assertEquals("login changed these positions before", first.path("confidenceReason").asText());
 		assertTrue(first.path("failure").isNull());
 		assertEquals("Login.reset", first.path("positions").path("src/Login.java").get(0).asText());
 		assertEquals("src/Login.java", first.path("added").get(0).asText());

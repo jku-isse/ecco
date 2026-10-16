@@ -95,3 +95,27 @@ features are named as often as before. The local 14B is the most exact on known 
 - Some "wrong" answers are noise in Vite's own labels: `optimizer` and `optimize-deps` are the same
   thing.
 - The gap that remains is spotting new features: 13 of 28, with every prompt tried.
+
+## Confidence and review
+
+`confidence.py` gives each replayed suggestion a confidence from how it agrees with where the commit
+changed things. `SuggestionConfidence` has the same rules. It then checks whether the least
+confident suggestions are the wrong ones:
+
+```sh
+python3 confidence.py results/vite120-qwen2.5-coder-32b-evidence.jsonl positions.json
+```
+
+`positions.json` holds the commits with their labels and `ecco positions` output (see `nesting.py`).
+The rules were written before the first run, not fitted to it. On the 120 Vite commits:
+
+| Run | Reviewing the least confident | Wrong suggestions seen | Missed new features seen |
+| --- | --- | --- | --- |
+| 32B, evidence prompt | 20% | 37% | 40% |
+| | 30% | 54% | 60% |
+| 14B, evidence prompt | 20% | 41% | 59% |
+| | 30% | 57% | 71% |
+
+Reviewing every Nth commit sees about as many as it reviews. Below 0.5, only 4 of 42 of the 32B's
+suggestions were right; at 0.9, 24 of 26. The import stops an unattended commit for review below 0.5.
+
