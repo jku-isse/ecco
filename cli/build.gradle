@@ -30,6 +30,7 @@ dependencies {
 	implementation libs.logicng.core
 
 	implementation project(':ecco-service')
+	testImplementation libs.jgit
 
 	// the same adapters as the GUI: a repository's .adapters maps files to adapters by id, and a
 	// commit fails if a mapped adapter is missing - with fewer adapters the CLI could not commit to

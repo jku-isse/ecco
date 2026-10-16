@@ -1,8 +1,13 @@
 package at.jku.isse.ecco.service.git;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.SourcePosition;
+import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.diff.Edit;
+import org.eclipse.jgit.diff.EditList;
+import org.eclipse.jgit.diff.RawText;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.ObjectId;
@@ -28,7 +33,11 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Reads commit history and content from a LOCAL git clone (no fetch/clone of its own - the
@@ -144,6 +153,115 @@ public final class GitHistoryReader {
 			return paths;
 		} catch (IOException e) {
 			throw new EccoException("Error diffing commit " + commitId + " from " + repoDir, e);
+		}
+	}
+
+	/** Files larger than this are located by file only: reading them for positions costs more than it tells. */
+	private static final long MAX_POSITIONS_FILE_SIZE = 1 << 20;
+
+	/**
+	 * The positions (see {@link SourcePosition}) each changed file of the commit has changes in,
+	 * against its first parent: the innermost position around every changed line, of the old version
+	 * for lines removed or replaced and of the new one for lines added. Blank lines are passed over:
+	 * they locate nothing (one between two sections is the enclosing section's). Positions are named by the
+	 * adapter that reads the file in the repository {@code reader} belongs to; a file whose adapter
+	 * names none, or a binary or very large one, has no positions - it is located by file only.
+	 *
+	 * @return each changed file (its new path, the old one if deleted) with its lines added and removed and its positions
+	 */
+	public Map<String, ChangedFile> getChangedPositions(Path repoDir, String commitId, DispatchReader dispatchReader) {
+		Map<String, ChangedFile> positions = new LinkedHashMap<>();
+		Path tmp = null;
+		try (Repository repository = openRepository(repoDir);
+			 RevWalk revWalk = new RevWalk(repository);
+			 ObjectReader reader = repository.newObjectReader()) {
+			tmp = Files.createTempDirectory("ecco-positions");
+			AbstractTreeIterator[] trees = parentAndCommitTrees(revWalk, reader, commitId);
+			try (DiffFormatter formatter = new DiffFormatter(OutputStream.nullOutputStream())) {
+				formatter.setRepository(repository);
+				for (DiffEntry entry : formatter.scan(trees[0], trees[1])) {
+					boolean deleted = entry.getChangeType() == DiffEntry.ChangeType.DELETE;
+					Set<String> names = new LinkedHashSet<>();
+					String path = deleted ? entry.getOldPath() : entry.getNewPath();
+					EditList edits = formatter.toFileHeader(entry).toEditList();
+					int added = 0, removed = 0;
+					for (Edit edit : edits) {
+						added += edit.getLengthB();
+						removed += edit.getLengthA();
+					}
+					positions.put(path, new ChangedFile(path, added, removed, names));
+					if (edits.isEmpty())
+						continue;
+					Located oldVersion = entry.getChangeType() == DiffEntry.ChangeType.ADD ? Located.NONE
+							: positionsOf(reader, entry.getOldId().toObjectId(), entry.getOldPath(), tmp.resolve("old"), dispatchReader);
+					Located newVersion = deleted ? Located.NONE
+							: positionsOf(reader, entry.getNewId().toObjectId(), entry.getNewPath(), tmp.resolve("new"), dispatchReader);
+					for (Edit edit : edits) {
+						for (int line = edit.getBeginA() + 1; line <= edit.getEndA(); line++)
+							oldVersion.addInnermost(line, names);
+						for (int line = edit.getBeginB() + 1; line <= edit.getEndB(); line++)
+							newVersion.addInnermost(line, names);
+					}
+				}
+			}
+			return positions;
+		} catch (IOException e) {
+			throw new EccoException("Error locating the changes of commit " + commitId + " from " + repoDir, e);
+		} finally {
+			if (tmp != null)
+				deleteQuietly(tmp);
+		}
+	}
+
+	/** A file a commit changed: its lines added and removed, and the positions it changed (see {@link #getChangedPositions}). */
+	public record ChangedFile(String path, int added, int removed, Set<String> positions) {
+	}
+
+	/** One version of a file: its positions and its lines. */
+	private record Located(List<SourcePosition> positions, RawText text) {
+
+		static final Located NONE = new Located(List.of(), null);
+
+		/** Adds the name of the innermost position around (1-based) {@code line}, unless it is blank. */
+		void addInnermost(int line, Set<String> names) {
+			if (this.positions.isEmpty() || this.text == null || line > this.text.size() || this.text.getString(line - 1).isBlank())
+				return;
+			SourcePosition innermost = SourcePosition.innermost(this.positions, line);
+			if (innermost != null)
+				names.add(innermost.name());
+		}
+	}
+
+	/** One version of a file, written under {@code base} at its own path (so the repository's adapter mapping applies), and read for its positions. */
+	private static Located positionsOf(ObjectReader reader, ObjectId blob, String path, Path base, DispatchReader dispatchReader) throws IOException {
+		if (blob == null || ObjectId.zeroId().equals(blob) || reader.getObjectSize(blob, ObjectReader.OBJ_ANY) > MAX_POSITIONS_FILE_SIZE)
+			return Located.NONE;
+		byte[] content = reader.open(blob).getBytes();
+		if (RawText.isBinary(content))
+			return Located.NONE;
+		Path file = base.resolve(path).normalize();
+		if (!file.startsWith(base))
+			return Located.NONE;
+		Files.createDirectories(file.getParent());
+		Files.write(file, content);
+		try {
+			return new Located(dispatchReader.positions(base, Path.of(path)), new RawText(content));
+		} finally {
+			Files.deleteIfExists(file);
+		}
+	}
+
+	private static void deleteQuietly(Path dir) {
+		try (java.util.stream.Stream<Path> paths = Files.walk(dir)) {
+			paths.sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
+				try {
+					Files.deleteIfExists(p);
+				} catch (IOException ignored) {
+					// a temporary directory
+				}
+			});
+		} catch (IOException ignored) {
+			// a temporary directory
 		}
 	}
 

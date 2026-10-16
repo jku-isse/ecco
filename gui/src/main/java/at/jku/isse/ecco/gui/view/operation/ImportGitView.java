@@ -18,7 +18,7 @@ import at.jku.isse.ecco.service.git.GitCommitInfo;
 import at.jku.isse.ecco.service.git.GitHistoryReader;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.service.llm.FeatureSuggestionLog;
-import at.jku.isse.ecco.service.llm.ImportedFeatureFiles;
+import at.jku.isse.ecco.service.llm.ImportedFeatureTraces;
 import at.jku.isse.ecco.service.llm.LlmFeatureSuggestionClient;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -123,6 +123,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 	// lets tests find the failure shown on a commit's review screen
 	static final String IMPORT_FAILURE_LABEL_ID = "importFailure";
 
+	private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(ImportGitView.class.getName());
+
 	private final EccoService service;
 	private final GitHistoryReader gitHistoryReader = new GitHistoryReader();
 
@@ -142,9 +144,9 @@ public class ImportGitView extends OperationView implements EccoListener {
 	// the commit being reviewed or imported, with its suggestion if one was asked for, recorded with
 	// what became of it once it is imported or skipped (see FeatureSuggestionLog) - FX thread only
 	private FeatureSuggestionLog.Entry pendingSuggestion;
-	// the files each feature's imported commits changed, for the suggestions: read from the log at
-	// the first suggestion request, then kept up to date by each import
-	private volatile ImportedFeatureFiles importedFiles;
+	// where each feature's imported commits changed things, for the suggestions: read from the log
+	// at the first suggestion request, then kept up to date by each import
+	private volatile ImportedFeatureTraces importedTraces;
 	// the suggestion request, off the FX thread - replaced by tests, which have no LLM
 	Function<GitCommitInfo, Suggested> suggester = this::requestSuggestion;
 	private Commit lastCommit;
@@ -434,7 +436,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.allConstraintWarnings = new ArrayList<>();
 		this.llmSuggestionFailures = new ArrayList<>();
 		this.pendingSuggestion = null;
-		this.importedFiles = null;
+		this.importedTraces = null;
 		this.lastCommit = null;
 		this.importedCount = 0;
 		this.runEnded = false;
@@ -632,28 +634,44 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 * {@link #autoImportOneCommit} - must be called off the FX thread (blocks on the HTTP call).
 	 */
 	private Suggested requestSuggestion(GitCommitInfo commit) {
+		SuggestionInput input = this.suggestionInput(commit);
+		String model = LlmPreferences.getModelName();
+		LlmFeatureSuggestionClient client = new LlmFeatureSuggestionClient(LlmPreferences.getEndpointUrl(), model);
+		return new Suggested(client.suggestConfigurations(List.of(input.commit()), input.knownFeatures(), null), model, diffLines(input.commit().diff()));
+	}
+
+	/** What a suggestion request for a commit sends: the commit with its evidence, and the known features with their traces. */
+	record SuggestionInput(LlmFeatureSuggestionClient.CommitForSuggestion commit, List<LlmFeatureSuggestionClient.KnownFeature> knownFeatures) {
+	}
+
+	/** The input of {@link #requestSuggestion} - off the FX thread. Package-visible for testing. */
+	SuggestionInput suggestionInput(GitCommitInfo commit) {
 		String diff = this.gitHistoryReader.getDiff(this.repoDir, commit.getId());
-		List<String> changedFiles = this.gitHistoryReader.getChangedFiles(this.repoDir, commit.getId());
-		List<LlmFeatureSuggestionClient.CommitForSuggestion> commitForSuggestion = List.of(
-				new LlmFeatureSuggestionClient.CommitForSuggestion(commit.getShortId(), commit.getMessage(), diff, changedFiles));
+		// where the commit changed things, and where the known features' earlier commits did
+		ImportedFeatureTraces traces = this.importedTraces();
+		java.util.Map<String, GitHistoryReader.ChangedFile> changes = this.gitHistoryReader.getChangedPositions(this.repoDir, commit.getId(), this.service.getReader());
+		java.util.Map<String, java.util.Set<String>> changedPositions = new java.util.LinkedHashMap<>();
+		changes.forEach((path, file) -> changedPositions.put(path, file.positions()));
+		LlmFeatureSuggestionClient.CommitForSuggestion commitForSuggestion =
+				new LlmFeatureSuggestionClient.CommitForSuggestion(commit.getShortId(), commit.getMessage(), diff, changes, traces.overlap(changedPositions));
 
 		// the feature hierarchy inferred so far from the commits actually imported in this run
 		// (see FeatureModelTree, also what drives the Feature Model tab's tree) - not just a flat
 		// list of names, so the model can tell a genuinely new, narrower capability built on an
-		// existing feature from a change to that feature itself
-		// and the files each one's imported commits changed, to tell a commit continuing a feature
-		// from one starting a new one
-		java.util.Map<String, java.util.Set<String>> featureFiles = this.importedFiles().files();
+		// existing feature from a change to that feature itself - with the files and positions each
+		// one's imported commits changed
+		java.util.Map<String, java.util.Set<String>> featureFiles = traces.files();
+		java.util.Map<String, java.util.Set<String>> featurePositions = traces.positions();
 		List<LlmFeatureSuggestionClient.KnownFeature> knownFeatures = FeatureModelTree.compute(this.service.getRepository()).stream()
 				.map(placement -> new LlmFeatureSuggestionClient.KnownFeature(
 						placement.feature.getName(),
 						placement.parent == null ? null : placement.parent.getName(),
-						featureFiles.getOrDefault(placement.feature.getName(), java.util.Set.of())))
+						featureFiles.getOrDefault(placement.feature.getName(), java.util.Set.of()),
+						featurePositions.getOrDefault(placement.feature.getName(), java.util.Set.<String>of()).stream()
+								.map(position -> position.substring(position.indexOf('#') + 1))
+								.collect(Collectors.toCollection(java.util.LinkedHashSet::new))))
 				.collect(Collectors.toList());
-
-		String model = LlmPreferences.getModelName();
-		LlmFeatureSuggestionClient client = new LlmFeatureSuggestionClient(LlmPreferences.getEndpointUrl(), model);
-		return new Suggested(client.suggestConfigurations(commitForSuggestion, knownFeatures, null), model, diffLines(diff));
+		return new SuggestionInput(commitForSuggestion, knownFeatures);
 	}
 
 	/** A commit's suggestion: the reply, the model asked, and the size of the commit's diff. */
@@ -667,14 +685,15 @@ public class ImportGitView extends OperationView implements EccoListener {
 		return truncated.matches() ? lines.length - 1 + Integer.parseInt(truncated.group(1)) : lines.length;
 	}
 
-	/** The files of each feature's imported commits, read from the log the first time - off the FX thread. */
-	private ImportedFeatureFiles importedFiles() {
-		ImportedFeatureFiles files = this.importedFiles;
-		if (files == null) {
-			files = ImportedFeatureFiles.fromLog(FeatureSuggestionLog.location(), String.valueOf(this.service.getRepositoryDir()), this.repoDir, this.gitHistoryReader);
-			this.importedFiles = files;
+	/** Where each feature's imported commits changed things, read from the log the first time - off the FX thread. */
+	private ImportedFeatureTraces importedTraces() {
+		ImportedFeatureTraces traces = this.importedTraces;
+		if (traces == null) {
+			traces = ImportedFeatureTraces.fromLog(FeatureSuggestionLog.location(), String.valueOf(this.service.getRepositoryDir()), this.repoDir,
+					this.gitHistoryReader, this.service.getReader());
+			this.importedTraces = traces;
 		}
-		return files;
+		return traces;
 	}
 
 	/**
@@ -691,16 +710,19 @@ public class ImportGitView extends OperationView implements EccoListener {
 				batch == null || batch.configurations().isEmpty() ? null : batch.configurations().get(0),
 				proposed, failure,
 				batch == null || batch.usages().isEmpty() ? null : batch.usages().get(0),
-				outcome, null);
+				outcome, null, null);
 	}
 
-	/** Records the pending suggestion, if it is {@code commit}'s, as committed with {@code configuration} - or skipped if that is null. */
-	private void recordSuggestionOutcome(GitCommitInfo commit, String configuration) {
+	/**
+	 * Records the pending suggestion, if it is {@code commit}'s, as committed with {@code configuration}
+	 * and the positions it changed - or skipped if the configuration is null.
+	 */
+	private void recordSuggestionOutcome(GitCommitInfo commit, String configuration, java.util.Map<String, java.util.Set<String>> positions) {
 		FeatureSuggestionLog.Entry entry = this.pendingSuggestion;
 		if (entry == null || !entry.commitId().equals(commit.getId()))
 			return;
 		this.pendingSuggestion = null;
-		FeatureSuggestionLog.append(configuration == null ? entry.skipped() : entry.committedAs(configuration));
+		FeatureSuggestionLog.append(configuration == null ? entry.skipped() : entry.committedAs(configuration).withPositions(positions));
 	}
 
 	/**
@@ -792,7 +814,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		debounce.playFromStart();
 
 		skipButton.setOnAction(event -> {
-			this.recordSuggestionOutcome(commit, null);
+			this.recordSuggestionOutcome(commit, null, null);
 			this.processNextCommit(commitsOldestFirst, index + 1, useLlm, reviewInterval);
 		});
 
@@ -819,7 +841,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		GitCommitInfo commit = commitsOldestFirst.get(index);
 		String before = String.join(", ", this.runningFeatures);
 		FeatureSuggestionLog.Entry suggestion = this.pendingSuggestion;
-		java.util.Set<String> labels = ImportedFeatureFiles.labels(before,
+		java.util.Set<String> labels = ImportedFeatureTraces.labels(before,
 				suggestion != null && suggestion.commitId().equals(commit.getId()) ? suggestion.suggestion() : null, configurationText);
 
 		this.leftButtons.getChildren().clear();
@@ -836,6 +858,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 		this.fit();
 
+		// the positions the commit changed, for the log and the traces - null if they could not be found
+		java.util.concurrent.atomic.AtomicReference<java.util.Map<String, java.util.Set<String>>> changedPositions = new java.util.concurrent.atomic.AtomicReference<>();
 		Task<Commit> importTask = new Task<Commit>() {
 			@Override
 			public Commit call() throws IOException {
@@ -853,10 +877,19 @@ public class ImportGitView extends OperationView implements EccoListener {
 							? ImportGitView.this.service.commit(commit.getMessage(), configurationText)
 							: ImportGitView.this.service.commit(commit.getMessage());
 					double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
-					// if they are not read yet, this commit is logged before they are, and read from there
-					ImportedFeatureFiles files = ImportGitView.this.importedFiles;
-					if (files != null && !labels.isEmpty())
-						files.add(labels, ImportGitView.this.gitHistoryReader.getChangedFiles(ImportGitView.this.repoDir, commit.getId()));
+					try {
+						java.util.Map<String, java.util.Set<String>> positions = new java.util.LinkedHashMap<>();
+						ImportGitView.this.gitHistoryReader.getChangedPositions(ImportGitView.this.repoDir, commit.getId(), ImportGitView.this.service.getReader())
+								.forEach((path, file) -> positions.put(path, file.positions()));
+						changedPositions.set(positions);
+						// if they are not read yet, this commit is logged before they are, and read from there
+						ImportedFeatureTraces traces = ImportGitView.this.importedTraces;
+						if (traces != null && !labels.isEmpty())
+							traces.add(labels, positions);
+					} catch (RuntimeException e) {
+						// the commit is in; only its trace is lost
+						LOGGER.log(java.util.logging.Level.WARNING, "Could not locate the changes of " + commit.getShortId(), e);
+					}
 					String configLabel = (configurationText == null || configurationText.isEmpty()) ? "(no configuration)" : configurationText;
 					Platform.runLater(() -> ImportGitView.this.logArea.appendText(
 							String.format("Imported %s (%s) -> [%s] in %.2f seconds.%n", commit.getShortId(), commit.getMessage(), configLabel, durationSeconds)));
@@ -879,7 +912,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				super.succeeded();
 				ImportGitView.this.lastCommit = this.getValue();
 				ImportGitView.this.importedCount++;
-				ImportGitView.this.recordSuggestionOutcome(commit, configurationText);
+				ImportGitView.this.recordSuggestionOutcome(commit, configurationText, changedPositions.get());
 				applyConfigurationToRunning(ImportGitView.this.runningFeatures, configurationText);
 				if (ImportGitView.this.runEnded) {
 					return;

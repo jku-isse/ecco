@@ -1,5 +1,10 @@
 package at.jku.isse.ecco.adapter.c;
 
+import java.util.ArrayList;
+import java.util.List;
+import at.jku.isse.ecco.adapter.c.data.FunctionArtifactData;
+import at.jku.isse.ecco.adapter.c.data.LineArtifactData;
+import at.jku.isse.ecco.adapter.SourcePosition;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.c.translator.CEccoVisitor;
@@ -151,4 +156,32 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
     public void removeListener(ReadListener listener) {
         this.listeners.remove(listener);
     }
+
+	private static final java.util.regex.Pattern FUNCTION_NAME = java.util.regex.Pattern.compile("([A-Za-z_]\\w*)\\s*\\(");
+
+	/**
+	 * Functions, named by the identifier before their parameters - in their source lines: the stored
+	 * signature has its whitespace removed ("staticintadd(inta,intb)").
+	 */
+	@Override
+	public List<SourcePosition> positions(Node fileNode) {
+		List<SourcePosition> positions = new ArrayList<>();
+		for (Node child : fileNode.getChildren())
+			if (child.getArtifact() != null && child.getArtifact().getData() instanceof FunctionArtifactData) {
+				int[] lines = SourcePosition.locatedLines(child);
+				String name = null;
+				for (Node line : child.getChildren()) {
+					java.util.regex.Matcher m = line.getArtifact() != null && line.getArtifact().getData() instanceof LineArtifactData data
+							? FUNCTION_NAME.matcher(data.getLine()) : null;
+					if (m != null && m.find()) {
+						name = m.group(1);
+						break;
+					}
+				}
+				if (lines != null && name != null)
+					positions.add(new SourcePosition("function", name, lines[0], lines[1]));
+			}
+		return positions;
+	}
+
 }

@@ -1,5 +1,6 @@
 package at.jku.cdl.ecco.adapter.java;
 
+import at.jku.isse.ecco.adapter.SourcePosition;
 import java.util.Comparator;
 import com.github.javaparser.ast.comments.Comment;
 import java.io.IOException;
@@ -908,6 +909,59 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	@Override
 	public void removeListener(ReadListener listener) {
 		listeners.remove(listener);
+	}
+
+
+	/** Classes, interfaces, enums, records, constructors, methods and fields, named "Outer.Inner.member". */
+	@Override
+	public List<SourcePosition> positions(Node fileNode) {
+		List<SourcePosition> positions = new ArrayList<>();
+		addPositions(fileNode, "", positions);
+		return positions;
+	}
+
+	private static final java.util.regex.Pattern TYPE_NAME = java.util.regex.Pattern.compile("\\b(?:class|interface|enum|record)\\s+(\\w+)");
+	private static final java.util.regex.Pattern MEMBER_NAME = java.util.regex.Pattern.compile("(\\w+)\\s*\\(");
+	private static final java.util.regex.Pattern FIELD_NAME = java.util.regex.Pattern.compile("(\\w+)\\s*(?:=|;|,)");
+
+	private static void addPositions(Node node, String owner, List<SourcePosition> positions) {
+		String inner = owner;
+		if (node.getArtifact() != null && node.getArtifact().getData() instanceof JavaASTData data) {
+			String kind = null, name = null;
+			String text = data instanceof JavaASTSimpleStringData simple ? simple.getData().replaceAll("@\\w+(\\([^)]*\\))?\\s*", "") : "";
+			switch (data.getType()) {
+				case TYPE_DECLARATION, ENUM_DECLARATION -> {
+					java.util.regex.Matcher m = TYPE_NAME.matcher(text);
+					kind = data.getType() == ASTNodeType.ENUM_DECLARATION ? "enum" : "class";
+					name = m.find() ? m.group(1) : null;
+				}
+				case CONSTRUCTOR_DECLARATION -> {
+					kind = "constructor";
+					name = ((JavaASTConstructorData) data).getName();
+				}
+				case METHOD_DECLARATION -> {
+					java.util.regex.Matcher m = MEMBER_NAME.matcher(text);
+					kind = "method";
+					name = m.find() ? m.group(1) : null;
+				}
+				case FIELD_DECLARATION -> {
+					java.util.regex.Matcher m = FIELD_NAME.matcher(text);
+					kind = "field";
+					name = m.find() ? m.group(1) : null;
+				}
+				default -> {
+				}
+			}
+			java.util.Optional<Integer> start = node.getProperty(PROPERTY_LINE_START), end = node.getProperty(PROPERTY_LINE_END);
+			if (kind != null && name != null && start.isPresent() && end.isPresent() && start.get() > 0) {
+				String qualified = owner.isEmpty() ? name : owner + "." + name;
+				positions.add(new SourcePosition(kind, qualified, start.get(), end.get()));
+				if (kind.equals("class") || kind.equals("enum"))
+					inner = qualified;
+			}
+		}
+		for (Node child : node.getChildren())
+			addPositions(child, inner, positions);
 	}
 
 }

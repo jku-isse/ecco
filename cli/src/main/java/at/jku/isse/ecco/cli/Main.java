@@ -13,6 +13,7 @@ import at.jku.isse.ecco.cli.command.init.InitCommand;
 import at.jku.isse.ecco.cli.command.minimize.MinimizeCommand;
 import at.jku.isse.ecco.cli.command.minimizepreview.MinimizePreviewCommand;
 import at.jku.isse.ecco.cli.command.order.OrderCommand;
+import at.jku.isse.ecco.cli.command.positions.PositionsCommand;
 import at.jku.isse.ecco.cli.command.property.GetCommand;
 import at.jku.isse.ecco.cli.command.property.SetCommand;
 import at.jku.isse.ecco.cli.command.pull.PullCommand;
@@ -146,6 +147,16 @@ public class Main {
         registerMinimizePreviewCommand(commandParser);
         registerMinimizeCommand(commandParser);
         registerOrderCommand(commandParser);
+        registerPositionsCommand(commandParser);
+    }
+
+    private static void registerPositionsCommand(Subparsers commandParser) {
+        Subparser positionsCommandParser = commandParser.addParser(PositionsCommand.POSITIONS)
+                .help("print the positions (classes, methods, sections) Git commits changed, as this repository's adapters name them, one JSON line per commit");
+        positionsCommandParser.setDefault(ProgramConstants.COMMAND, PositionsCommand.POSITIONS);
+        positionsCommandParser.addArgument(PositionsCommand.CLONE_KEY).help("a local Git clone");
+        positionsCommandParser.addArgument(PositionsCommand.COMMITS_KEY).nargs("+").help("commit ids");
+        commandRegister.register(PositionsCommand.POSITIONS, new PositionsCommand(eccoService));
     }
 
     private static void registerOrderCommand(Subparsers commandParser) {

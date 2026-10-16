@@ -21,7 +21,7 @@ public class FeatureSuggestionLogTest {
 	private static final FeatureSuggestionLog.Entry ENTRY = new FeatureSuggestionLog.Entry(
 			"/ecco/repo/.ecco", "/git/repo", "abc123", "Add reset link", 812, "qwen2.5-coder:32b",
 			"login", "password-reset", "login, password-reset", null,
-			new LlmFeatureSuggestionClient.Usage(7670, 12, 6100), FeatureSuggestionLog.Outcome.REVIEWED, null);
+			new LlmFeatureSuggestionClient.Usage(7670, 12, 6100), FeatureSuggestionLog.Outcome.REVIEWED, null, null);
 
 	// the build points the log into the build directory for all tests
 	private String location;
@@ -44,7 +44,8 @@ public class FeatureSuggestionLogTest {
 		Path log = tmp.resolve("sub").resolve("suggestions.jsonl");
 		System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
 
-		FeatureSuggestionLog.append(ENTRY.committedAs("login, password-reset, email"));
+		FeatureSuggestionLog.append(ENTRY.committedAs("login, password-reset, email")
+				.withPositions(java.util.Map.of("src/Login.java", java.util.List.of("Login.reset"))));
 		FeatureSuggestionLog.append(ENTRY.skipped());
 
 		List<String> lines = Files.readAllLines(log);
@@ -61,9 +62,11 @@ public class FeatureSuggestionLogTest {
 		assertEquals(7670, first.path("promptTokens").asInt());
 		assertEquals(6100, first.path("millis").asLong());
 		assertTrue(first.path("failure").isNull());
+		assertEquals("Login.reset", first.path("positions").path("src/Login.java").get(0).asText());
 		JsonNode second = MAPPER.readTree(lines.get(1));
 		assertEquals("skipped", second.path("outcome").asText());
 		assertTrue(second.path("committed").isNull());
+		assertTrue(second.path("positions").isMissingNode(), "no positions known");
 	}
 
 	@Test

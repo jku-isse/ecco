@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.adapter.typescript;
 
 import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.SourcePosition;
+import at.jku.isse.ecco.adapter.view.RenderedSource;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.typescript.data.*;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -289,5 +291,79 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
     public void removeListener(ReadListener listener) {
         this.listeners.remove(listener);
     }
+
+
+	private static final java.util.regex.Pattern CALLABLE_NAME = java.util.regex.Pattern.compile("([A-Za-z_$][\\w$]*)\\s*(?:<[^>]*>)?\\s*(?:=\\s*(?:async\\s*)?(?:function\\s*)?)?\\(");
+	private static final java.util.regex.Pattern DECLARED_NAME = java.util.regex.Pattern.compile("\\b(?:class|enum|interface)\\s+([A-Za-z_$][\\w$]*)");
+	private static final java.util.regex.Pattern ASSIGNED_NAME = java.util.regex.Pattern.compile("([A-Za-z_$][\\w$]*)\\s*(?::[^=]*)?=");
+
+	/**
+	 * Classes, enums, functions, methods and arrow functions, nested ones named "Class.method". Lines
+	 * from the rendered source, which is the file as read (TypeScriptWriter#render).
+	 */
+	@Override
+	public List<SourcePosition> positions(Node fileNode) {
+		RenderedSource rendered = TypeScriptWriter.render(fileNode);
+		String text = rendered.getText();
+		List<Integer> lineStarts = new ArrayList<>(List.of(0));
+		for (int i = 0; i < text.length(); i++)
+			if (text.charAt(i) == '\n')
+				lineStarts.add(i + 1);
+		// named first, qualified after: the spans come children first
+		record Found(Node node, String kind, String name, int start, int end) {
+		}
+		Map<Node, Found> found = new IdentityHashMap<>();
+		for (RenderedSource.Span span : rendered.getSpans()) {
+			Node node = span.node();
+			if (node.getArtifact() == null || span.end() <= span.start())
+				continue;
+			Object data = node.getArtifact().getData();
+			String kind = null, name = null;
+			if (data instanceof ClassArtifactData c) {
+				kind = "class";
+				name = firstGroup(DECLARED_NAME, c.getClassDecl());
+			} else if (data instanceof EnumArtifactData e) {
+				kind = "enum";
+				name = firstGroup(DECLARED_NAME, e.toString());
+				if (name == null)
+					name = firstGroup(java.util.regex.Pattern.compile("([A-Za-z_$][\\w$]*)"), e.toString());
+			} else if (data instanceof FunctionArtifactData f) {
+				kind = "function";
+				name = firstGroup(CALLABLE_NAME, f.getSignature().replaceAll("\\b(?:export|default|async|static|public|private|protected|function|get|set)\\b", " "));
+			} else if (data instanceof ArrowFunctionArtifactData a) {
+				kind = "function";
+				name = firstGroup(ASSIGNED_NAME, a.toString());
+				if (name == null)
+					name = firstGroup(CALLABLE_NAME, a.toString());
+			}
+			if (kind == null || name == null)
+				continue;
+			// a span starts with the separator before it: the line break ending the line before
+			int start = span.start();
+			while (start < span.end() && Character.isWhitespace(text.charAt(start)))
+				start++;
+			found.put(node, new Found(node, kind, name, lineOf(lineStarts, start), lineOf(lineStarts, Math.max(start, span.end() - 1))));
+		}
+		List<SourcePosition> positions = new ArrayList<>();
+		for (Found f : found.values()) {
+			StringBuilder qualified = new StringBuilder(f.name());
+			for (Node parent = f.node().getParent(); parent != null; parent = parent.getParent())
+				if (found.containsKey(parent))
+					qualified.insert(0, found.get(parent).name() + ".");
+			positions.add(new SourcePosition(f.kind(), qualified.toString(), f.start(), f.end()));
+		}
+		return positions;
+	}
+
+	private static String firstGroup(java.util.regex.Pattern pattern, String text) {
+		java.util.regex.Matcher m = pattern.matcher(text == null ? "" : text);
+		return m.find() ? m.group(1) : null;
+	}
+
+	/** The 1-based line of a character offset. */
+	private static int lineOf(List<Integer> lineStarts, int offset) {
+		int index = Collections.binarySearch(lineStarts, offset);
+		return (index >= 0 ? index : -index - 2) + 1;
+	}
 
 }

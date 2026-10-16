@@ -1,7 +1,9 @@
 package at.jku.isse.ecco.adapter;
 
 import at.jku.isse.ecco.service.listener.ReadListener;
+import at.jku.isse.ecco.tree.Node;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,6 +42,18 @@ public interface ArtifactReader<I, O> {
 	 */
 	public default String readContext(I base) {
 		return null;
+	}
+
+	/**
+	 * The positions - classes, methods, functions, sections - of a file this reader read, with their
+	 * lines: {@code fileNode} is the file's node as {@link #read} returned it. Empty if the reader
+	 * knows none, which leaves changes to its files located by file only.
+	 *
+	 * @param fileNode The node of a file this reader read
+	 * @return The file's positions, nested ones included, in any order
+	 */
+	public default List<SourcePosition> positions(Node fileNode) {
+		return List.of();
 	}
 
 }

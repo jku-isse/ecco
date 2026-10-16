@@ -57,24 +57,56 @@ public class LlmFeatureSuggestionClientTest {
 	}
 
 	@Test
-	public void buildRequestBody_showsEachFeaturesFilesAndWhichOfThemTheCommitChanges() throws Exception {
+	public void buildRequestBody_showsTheKnownFeaturesTracesAndTheCommitsEvidence() throws Exception {
+		java.util.Map<String, at.jku.isse.ecco.service.git.GitHistoryReader.ChangedFile> changes = new java.util.LinkedHashMap<>();
+		changes.put("src/Login.java", new at.jku.isse.ecco.service.git.GitHistoryReader.ChangedFile("src/Login.java", 3, 1, java.util.Set.of("Login.reset")));
+		changes.put("README.md", new at.jku.isse.ecco.service.git.GitHistoryReader.ChangedFile("README.md", 2, 0, java.util.Set.of()));
 		LlmFeatureSuggestionClient.CommitForSuggestion commit = new LlmFeatureSuggestionClient.CommitForSuggestion(
-				"aaa1111", "fix", "diff --git a/src/login.c b/src/login.c", List.of("src/login.c", "src/new.c"));
+				"aaa1111", "fix reset (#12)", "diff --git a/src/Login.java b/src/Login.java", changes,
+				List.of(new ImportedFeatureTraces.Overlap("login", List.of("Login.reset"), List.of("Login"), 1)));
 		java.util.Set<String> many = new java.util.TreeSet<>();
 		for (int i = 0; i < 10; i++)
 			many.add("ui/f" + i + ".c");
 		String body = LlmFeatureSuggestionClient.buildRequestBody(commit, List.of(
-				new LlmFeatureSuggestionClient.KnownFeature("login", null, new java.util.TreeSet<>(java.util.Set.of("src/login.c", "src/auth.h"))),
-				new LlmFeatureSuggestionClient.KnownFeature("ui", null, many)), "m");
+				new LlmFeatureSuggestionClient.KnownFeature("login", null, new java.util.TreeSet<>(java.util.Set.of("src/Login.java", "src/auth.h")),
+						new java.util.LinkedHashSet<>(List.of("Login.reset", "Login.check"))),
+				new LlmFeatureSuggestionClient.KnownFeature("ui", null, many, java.util.Set.of())), "m");
 
 		String user = MAPPER.readTree(body).path("messages").get(1).path("content").asText();
-		assertTrue(user.contains("- login\n  files: src/auth.h, src/login.c\n"), user);
-		assertTrue(user.contains("files: ui/f0.c, ui/f1.c, ui/f2.c, ui/f3.c, ui/f4.c, ui/f5.c, ui/f6.c, ui/f7.c (+2 more)"), user);
-		assertTrue(user.contains("Known features whose files this commit changes:\n- login: 1 of 2 changed files\n\nCommit:"), user);
+		assertTrue(user.contains("- login\n  files: src/Login.java, src/auth.h\n  positions: Login.reset, Login.check\n"), user);
+		assertTrue(user.contains("files: ui/f0.c, ui/f1.c, ui/f2.c, ui/f3.c, ui/f4.c, ui/f5.c, ui/f6.c, ui/f7.c (+2 more)\n"), user);
+		assertTrue(user.contains("""
+				Changed files (kind, lines added/removed, where in the file):
+				- src/Login.java (source, +3 -1) in: Login.reset
+				- README.md (documentation, +2 -0)
+				Kinds: 1 source, 1 documentation
+
+				Known features whose earlier commits changed the same places:
+				- login: same positions Login.reset; in the same Login; 1 of 2 changed files
+
+				Commit message hints: issue reference
+
+				Commit:"""), user);
 	}
 
 	@Test
-	public void buildRequestBody_withoutFiles_hasNoOverlapSection() throws Exception {
+	public void buildRequestBody_withAnOverlapWithNoFeature_saysSo() throws Exception {
+		LlmFeatureSuggestionClient.CommitForSuggestion commit = new LlmFeatureSuggestionClient.CommitForSuggestion("aaa1111", "add", "d",
+				java.util.Map.of("new.c", new at.jku.isse.ecco.service.git.GitHistoryReader.ChangedFile("new.c", 5, 0, java.util.Set.of("add"))), List.of());
+
+		String user = MAPPER.readTree(LlmFeatureSuggestionClient.buildRequestBody(commit, List.of(), "m")).path("messages").get(1).path("content").asText();
+		assertTrue(user.contains("Known features whose earlier commits changed the same places:\n(none - this commit changes no place a known feature changed before)\n\nCommit:"), user);
+	}
+
+	@Test
+	public void systemPromptSaysFeaturesAreCrossCutting() throws Exception {
+		String system = MAPPER.readTree(LlmFeatureSuggestionClient.buildRequestBody(COMMIT, List.of(), "m")).path("messages").get(0).path("content").asText();
+		assertTrue(system.contains("Features are cross-cutting"), system);
+		assertTrue(system.contains("same positions as a known feature's earlier changes are strong evidence"), system);
+	}
+
+	@Test
+	public void buildRequestBody_withoutChanges_hasNoEvidenceSection() throws Exception {
 		String body = LlmFeatureSuggestionClient.buildRequestBody(COMMIT, List.of(new LlmFeatureSuggestionClient.KnownFeature("setup", null)), "m");
 
 		String user = MAPPER.readTree(body).path("messages").get(1).path("content").asText();

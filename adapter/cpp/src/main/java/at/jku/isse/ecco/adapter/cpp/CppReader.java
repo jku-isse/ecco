@@ -1,5 +1,10 @@
 package at.jku.isse.ecco.adapter.cpp;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.List;
+import at.jku.isse.ecco.adapter.SourcePosition;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.cpp.data.ScopeArtifactData;
@@ -263,4 +268,37 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
     public void removeListener(ReadListener listener) {
         this.listeners.remove(listener);
     }
+
+	/** Namespaces, classes, enums and functions, nested ones named "ns::Class::method". */
+	@Override
+	public List<SourcePosition> positions(Node fileNode) {
+		List<SourcePosition> positions = new ArrayList<>();
+		addPositions(fileNode, "", positions);
+		return positions;
+	}
+
+	private static final Pattern SCOPE_NAME = Pattern.compile("([A-Za-z_~][\\w:~]*)\\s*(?:\\(|$|\\{|:)");
+
+	private static void addPositions(Node node, String owner, List<SourcePosition> positions) {
+		String inner = owner;
+		if (node.getArtifact() != null && node.getArtifact().getData() instanceof ScopeArtifactData scope && scope.getKind() != ScopeArtifactData.Kind.LINKAGE) {
+			String signature = scope.getSignature().replaceFirst("^(class|struct|union|enum( class| struct)?|namespace)\\s+", "");
+			if (scope.getKind() == ScopeArtifactData.Kind.FUNCTION)
+				signature = signature.substring(0, Math.max(0, signature.indexOf('(') + 1));
+			Matcher m = SCOPE_NAME.matcher(signature.strip());
+			String name = null;
+			while (m.find())
+				name = m.group(1); // the last identifier before "(": past the return type
+			int[] lines = SourcePosition.locatedLines(node);
+			if (name != null && lines != null) {
+				String qualified = owner.isEmpty() || name.startsWith(owner + "::") ? name : owner + "::" + name;
+				positions.add(new SourcePosition(scope.getKind().name().toLowerCase(), qualified, lines[0], lines[1]));
+				if (scope.getKind() != ScopeArtifactData.Kind.FUNCTION)
+					inner = qualified;
+			}
+		}
+		for (Node child : node.getChildren())
+			addPositions(child, inner, positions);
+	}
+
 }

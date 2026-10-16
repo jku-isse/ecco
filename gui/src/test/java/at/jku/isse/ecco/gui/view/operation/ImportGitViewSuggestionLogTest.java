@@ -4,7 +4,7 @@ import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.git.GitCommitInfo;
 import at.jku.isse.ecco.service.git.GitHistoryReader;
 import at.jku.isse.ecco.service.llm.FeatureSuggestionLog;
-import at.jku.isse.ecco.service.llm.ImportedFeatureFiles;
+import at.jku.isse.ecco.service.llm.ImportedFeatureTraces;
 import at.jku.isse.ecco.service.llm.LlmFeatureSuggestionClient;
 import javafx.application.Platform;
 import javafx.scene.Node;
@@ -111,9 +111,51 @@ public class ImportGitViewSuggestionLogTest {
         // a later import run knows which files each feature's commits changed: a commit's
         // labels are the features it added and the suggested ones kept - a skipped one has none
         assertEquals(Map.of("BASE", Set.of("first.txt"), "SECOND", Set.of("second.txt"), "EXTRA", Set.of("second.txt"), "THIRD", Set.of("third.txt")),
-                ImportedFeatureFiles.fromLog(log, service.getRepositoryDir().toString(), clone, new GitHistoryReader()).files());
-        assertEquals(Map.of(), ImportedFeatureFiles.fromLog(log, "/another/.ecco", clone, new GitHistoryReader()).files(),
+                ImportedFeatureTraces.fromLog(log, service.getRepositoryDir().toString(), clone, new GitHistoryReader(), null).files());
+        assertEquals(Map.of(), ImportedFeatureTraces.fromLog(log, "/another/.ecco", clone, new GitHistoryReader(), null).files(),
                 "only the commits imported into this repository");
+    }
+
+    /**
+     * A suggestion request carries the commit's changes with their positions, and how they overlap
+     * the known features' earlier changes - also those of commits imported in an earlier run, from the log.
+     */
+    @Test
+    @Timeout(60)
+    public void aSuggestionRequestCarriesTheChangedPositionsAndTheirOverlap(@TempDir Path tmp) throws Exception {
+        Path log = tmp.resolve("suggestions.jsonl");
+        System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
+        Path clone = Files.createDirectories(tmp.resolve("clone"));
+        try (Git git = Git.init().setDirectory(clone.toFile()).call()) {
+            String[][] versions = {
+                    {"first", "# Doc\n\n## Install\n\nrun it\n\n## Usage\n\nuse it\n"},
+                    {"usage", "# Doc\n\n## Install\n\nrun it\n\n## Usage\n\nuse it well\n"},
+                    {"again", "# Doc\n\n## Install\n\nrun it\n\n## Usage\n\nuse it very well\n"}};
+            for (String[] version : versions) {
+                Files.writeString(clone.resolve("README.md"), version[1]);
+                git.add().addFilepattern(".").call();
+                git.commit().setMessage(version[0]).setAuthor("t", "t@example.com").setCommitter("t", "t@example.com").call();
+            }
+        }
+        EccoService service = repository(tmp.resolve("repo"));
+        ImportGitView view = startImport(service, clone, 1);
+        waitFor(view, "Review Commit (1 of 3)");
+        clickButton(view, "Import");
+        waitFor(view, "Review Commit (2 of 3)");
+        clickButton(view, "Import");
+        waitFor(view, "Review Commit (3 of 3)");
+
+        List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
+        Collections.reverse(oldestFirst);
+        ImportGitView.SuggestionInput input = view.suggestionInput(oldestFirst.get(2));
+        service.close();
+
+        assertEquals(Set.of("Doc > Usage"), input.commit().changes().get("README.md").positions());
+        ImportedFeatureTraces.Overlap usage = input.commit().overlap().stream().filter(o -> o.feature().equals("USAGE")).findFirst().orElseThrow();
+        assertEquals(List.of("Doc > Usage"), usage.samePositions());
+        LlmFeatureSuggestionClient.KnownFeature known = input.knownFeatures().stream().filter(k -> k.name().equals("USAGE")).findFirst().orElseThrow();
+        assertEquals(Set.of("README.md"), known.files());
+        assertEquals(Set.of("Doc > Usage"), known.positions());
     }
 
     @Test
@@ -150,7 +192,7 @@ public class ImportGitViewSuggestionLogTest {
         assertEquals(List.of("null", "null"), entries.stream().map(e -> field(e, "model")).toList());
         assertEquals(List.of("BASE", "BASE, SECOND"), entries.stream().map(e -> field(e, "committed")).toList());
         assertEquals(Map.of("BASE", Set.of("first.txt"), "SECOND", Set.of("second.txt")),
-                ImportedFeatureFiles.fromLog(log, service.getRepositoryDir().toString(), clone, new GitHistoryReader()).files());
+                ImportedFeatureTraces.fromLog(log, service.getRepositoryDir().toString(), clone, new GitHistoryReader(), null).files());
     }
 
     /** a top-level field of one log line: a string's text, or a number or null as written */

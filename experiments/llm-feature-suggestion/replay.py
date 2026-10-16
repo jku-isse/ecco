@@ -3,7 +3,7 @@
 Ground truth is the scope of a conventional commit message ("fix(css): ..." -> css). The scope is
 stripped from the message, so the model judges from the diff. The known features are the true
 scopes of the earlier commits, each with the files those commits changed: what a reviewer who
-always kept the right feature would have built up (see ImportedFeatureFiles).
+always kept the right feature would have built up (see ImportedFeatureTraces).
 
 The system prompt is read from LlmFeatureSuggestionClient.java, so a replay always tests the
 prompt as it is in the code; --edit applies changes to it for trying a variant first.
@@ -18,6 +18,8 @@ import time
 import urllib.request
 from pathlib import Path
 
+import evidence as ev
+
 CLIENT = Path(__file__).resolve().parents[2] / 'service/src/main/java/at/jku/isse/ecco/service/llm/LlmFeatureSuggestionClient.java'
 FILES_RULE_START = 'Each known feature may be shown with the files'
 MAX_DIFF_LINES = 400  # GitHistoryReader.MAX_DIFF_LINES
@@ -25,8 +27,11 @@ MAX_FILES_PER_FEATURE = 8  # LlmFeatureSuggestionClient.MAX_FILES_PER_FEATURE
 SCOPED = re.compile(r'^(feat|fix|perf|refactor)\(([^)]+)\)!?:\s*(.*)$')
 
 
-def system_prompt():
-    block = CLIENT.read_text().split('SYSTEM_PROMPT = """\n', 1)[1].split('""";', 1)[0]
+def system_prompt(ref=None):
+    """The system prompt as LlmFeatureSuggestionClient.java has it - in the working tree, or at git `ref`."""
+    source = CLIENT.read_text() if ref is None else subprocess.run(
+        ['git', '-C', str(CLIENT.parent), 'show', f'{ref}:./{CLIENT.name}'], capture_output=True, text=True, check=True).stdout
+    block = source.split('SYSTEM_PROMPT = """\n', 1)[1].split('""";', 1)[0]
     return re.sub(r'\\\n', '', textwrap.dedent(block))  # text-block line continuations
 
 
@@ -38,7 +43,7 @@ def without_files_rule(prompt):
 
 
 def git(repo, *args):
-    return subprocess.run(['git', '-C', repo, *args], capture_output=True, text=True, check=True).stdout
+    return subprocess.run(['git', '-C', repo, *args], capture_output=True, text=True, errors='replace', check=True).stdout
 
 
 def scoped_commits(repo, count, ignore_scopes, aliases):
@@ -68,8 +73,13 @@ def changed_files(repo, sha):
     return [l for l in git(repo, 'show', '--format=', '--name-only', sha).splitlines() if l]
 
 
-def user_content(sha, message, diff_text, known, feature_files, changed, with_files):
-    """As LlmFeatureSuggestionClient.buildUserContent makes it."""
+def user_content(sha, message, diff_text, known, feature_files, changed, with_files, evidence_text=None):
+    """As LlmFeatureSuggestionClient.buildUserContent makes it - or, with `evidence_text`, with that
+    in place of the file overlap (evidence.describe)."""
+    if evidence_text is not None:  # feature_files are evidence.Traces then
+        text = 'Known feature names, each with the more general feature it was built on top of, when known:\n'
+        text += '\n'.join(ev.known_lines(known, feature_files)) or '(none yet)'
+        return text + '\n\n' + evidence_text + f'\n\nCommit:\nid: {sha[:7]}\nsummary: {message}\nchange:\n{diff_text}'
     lines = []
     for name in known:
         lines.append('- ' + name)
@@ -113,11 +123,17 @@ def main():
     p.add_argument('--out', required=True)
     p.add_argument('--names-only', action='store_true', help='known features without their files, and the prompt without the files rule')
     p.add_argument('--edit', action='append', default=[], help='a JSON file of [{"old": ..., "new": ...}] changes to the system prompt')
+    p.add_argument('--evidence', action='store_true', help='the evidence section (evidence.py) in place of the file overlap')
+    p.add_argument('--no-positions', action='store_true', help='with --evidence: files only, no positions in them')
+    p.add_argument('--ecco', help="with --evidence: the ecco command (cli/build/install/ecco/bin/ecco); positions from ECCO's adapters, as the import gets them, instead of git's diff drivers")
+    p.add_argument('--baseline-out', help='also ask the prompt as it is in the code, without --edit and --evidence, right after each question; results here')
+    p.add_argument('--baseline-ref', help='with --baseline-out: the prompt as it is in this git commit of the code (e.g. HEAD), not the working tree')
     p.add_argument('--ignore-scope', action='append', default=['deps'])
     p.add_argument('--alias', action='append', default=[], help='OLD=NEW: a scope spelled two ways (Vite: bundledDev=bundled-dev)')
     args = p.parse_args()
 
     system = system_prompt()
+    baseline = system_prompt(args.baseline_ref) if args.baseline_ref else system
     if args.names_only:
         system = without_files_rule(system)
     for edit_file in args.edit:
@@ -126,14 +142,26 @@ def main():
                 raise SystemExit(f'{edit_file}: not in the prompt: {edit["old"][:60]}...')
             system = system.replace(edit['old'], edit['new'])
 
-    known, feature_files = [], {}
-    with open(args.out, 'w') as out:
-        for sha, truth, message in scoped_commits(args.repo, args.commits, set(args.ignore_scope), dict(a.split('=', 1) for a in args.alias)):
-            diff_text, diff_lines = diff(args.repo, sha)
-            changed = changed_files(args.repo, sha)
-            user = user_content(sha, message, diff_text, known, feature_files, changed, not args.names_only)
+    commits = scoped_commits(args.repo, args.commits, set(args.ignore_scope), dict(a.split('=', 1) for a in args.alias))
+    adapter_positions = ev.ecco_positions(args.ecco, args.repo, [c[0] for c in commits]) if args.ecco else None
+    known, feature_files, traces = [], {}, ev.Traces()
+    runs = [('variant', system, open(args.out, 'w'))]
+    if args.baseline_out:
+        runs.append(('baseline', baseline, open(args.baseline_out, 'w')))
+    for sha, truth, message in commits:
+        diff_text, diff_lines = diff(args.repo, sha)
+        changed = changed_files(args.repo, sha)
+        evidence = ev.commit_evidence(args.repo, [sha + '^', sha])
+        if adapter_positions is not None:
+            evidence = ev.with_positions(evidence, adapter_positions.get(sha, {}))
+        for name, prompt, out in runs:
+            if name == 'variant':
+                evidence_text = ev.describe(known, traces, evidence, message, positions=not args.no_positions) if args.evidence else None
+                user = user_content(sha, message, diff_text, known, traces if args.evidence else feature_files, changed, not args.names_only, evidence_text)
+            else:
+                user = user_content(sha, message, diff_text, known, feature_files, changed, True)
             try:
-                prediction, usage, seconds = ask(args.endpoint, args.model, system, user)
+                prediction, usage, seconds = ask(args.endpoint, args.model, prompt, user)
             except Exception as e:  # noqa: BLE001 - recorded, the replay goes on
                 prediction, usage, seconds = f'<error> {e}', {}, 0
             record = dict(commit=sha[:7], message=message, truth=truth, seen=[t for t in truth if t in known],
@@ -141,11 +169,14 @@ def main():
                           promptTokens=usage.get('prompt_tokens'), seconds=round(seconds, 1))
             out.write(json.dumps(record) + '\n')
             out.flush()
-            print(f"{sha[:7]} {','.join(truth):15} {'seen' if record['seen'] else 'NEW '} -> {prediction}  ({seconds:.1f} s)", flush=True)
-            for t in truth:
-                if t not in known:
-                    known.append(t)
-                feature_files.setdefault(t, set()).update(changed)
+            print(f"{name:8} {sha[:7]} {','.join(truth):15} {'seen' if record['seen'] else 'NEW '} -> {prediction}  ({seconds:.1f} s)", flush=True)
+        for t in truth:
+            if t not in known:
+                known.append(t)
+            feature_files.setdefault(t, set()).update(changed)
+        traces.add(truth, evidence)
+    for _, _, out in runs:
+        out.close()
 
 
 if __name__ == '__main__':

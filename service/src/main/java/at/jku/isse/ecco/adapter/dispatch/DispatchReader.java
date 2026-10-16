@@ -4,6 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.AdapterUnavailableException;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.SourcePosition;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.CommitCancelledException;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -276,6 +278,25 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 //		return currentReader;
 	}
 
+
+	/**
+	 * The positions of {@code file} (relative to {@code base}) as the adapter that reads it in this
+	 * repository names them (see {@link ArtifactReader#positions}): empty if that adapter knows none,
+	 * or cannot read the file. Fires no read event - nothing is committed.
+	 */
+	public List<SourcePosition> positions(Path base, Path file) {
+		ArtifactReader<Path, Set<Node.Op>> reader = this.getReaderForFile(base, file);
+		if (reader == null)
+			return List.of();
+		try {
+			for (Node.Op node : reader.read(base, new Path[]{file}))
+				if (node.getArtifact() != null && node.getArtifact().getData() instanceof PluginArtifactData)
+					return reader.positions(node);
+		} catch (RuntimeException e) {
+			LOGGER.log(Level.FINE, "No positions for " + file + ": " + reader.getPluginId() + " could not read it", e);
+		}
+		return List.of();
+	}
 
 	public Set<Node.Op> readSpecificFiles(Path[] input) {
 		return this.readSpecificFiles(Paths.get("."), input);

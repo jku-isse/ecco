@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service.llm;
 
+import at.jku.isse.ecco.service.git.GitHistoryReader;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -127,15 +128,13 @@ public final class LlmFeatureSuggestionClient {
 			even to a small or seemingly trivial commit (a version bump, a typo fix, a comment \
 			tweak, ...) - never refuse to classify it.
 
-			"documentation" and "misc" are two DIFFERENT fallbacks - do not blur them together: \
-			- Use "documentation" ONLY when the changed file itself is a docs file: a README, a \
-			markdown/text file, or a code comment. If the diff's file is source code (.c, .py, \
-			.java, ...), it is NOT "documentation" just because the change is small or \
-			administrative - e.g. bumping a "#define VERSION ..." line, removing a duplicate \
-			#include, or a one-line build-config tweak are all source-code changes with no \
-			documentation content, so they get "misc" (or a real feature name if the surrounding \
-			code shows one), never "documentation".
-			- Reserve "misc" for a source-code change with no other fit at all.
+			Features are cross-cutting: one feature's changes can be source code, tests, documentation \
+			and build files alike. A change to documentation, tests or build files belongs to the feature \
+			it documents, tests or builds - the kind of a file is never a feature by itself. Use \
+			"documentation" or "misc" only for a change that serves no feature at all: "documentation" when \
+			it only changes documentation (a README, docs files, code comments) about the product as a \
+			whole, "misc" for anything else (build or CI setup, version bumps and releases, dependency \
+			updates, license files).
 
 			Respond with ONLY a JSON object shaped exactly like the example below - always exactly \
 			the one key "configuration" (a single string, never an object or array) - and nothing \
@@ -148,13 +147,16 @@ public final class LlmFeatureSuggestionClient {
 			JSON fields of your own - your only job is to output a "configuration" guess, nothing \
 			about the commit itself.
 
-			Each known feature may be shown with the files its content is in, as far as the repository \
-			knows them. Use them to decide between an existing feature and a new one: a commit changing \
-			the files of a known feature in the way that feature is about most likely continues it; a \
-			commit whose changed files belong to no known feature, or whose change is about something \
-			none of the known features covers, is most likely a NEW feature - give it its own new name \
-			instead of the nearest broad one that happens to exist. "Known features whose files this \
-			commit changes" lists that overlap, computed from the repository, not guessed.
+			Each known feature may be shown with the files and positions (classes, methods, sections, \
+			...) its earlier commits changed, and the commit with evidence computed from the repository, \
+			not guessed: each changed file's kind (source, test, documentation, build, ci, resource), how \
+			much changed, and where in the file; which known features' earlier commits changed the same \
+			places; and hints from the commit message. Weigh it with the diff and the message. The same \
+			positions as a known feature's earlier changes are strong evidence for that feature; other \
+			positions in the same enclosing one (another method of the same class, another subsection of \
+			the same section) are medium; the same files only are weak. A commit changing places no known \
+			feature changed, about something none of them covers, is most likely a NEW feature - give it \
+			its own name instead of the nearest broad one.
 
 			Example input:
 			Known feature names, each with the more general feature it was built on top of, when known:
@@ -277,10 +279,17 @@ public final class LlmFeatureSuggestionClient {
 	}
 
 	/** One commit's message/diff, as fed into the suggestion prompt. */
-	public record CommitForSuggestion(String commitId, String message, String diff, List<String> changedFiles) {
+	/**
+	 * One commit, with the files it changed ({@code changes}: lines added and removed, positions -
+	 * see {@link GitHistoryReader#getChangedPositions}) and how they overlap the known features'
+	 * earlier changes ({@code overlap}, strongest first - see {@link ImportedFeatureTraces#overlap});
+	 * without changes, the prompt has no evidence section.
+	 */
+	public record CommitForSuggestion(String commitId, String message, String diff, Map<String, GitHistoryReader.ChangedFile> changes,
+									  List<ImportedFeatureTraces.Overlap> overlap) {
 
 		public CommitForSuggestion(String commitId, String message, String diff) {
-			this(commitId, message, diff, List.of());
+			this(commitId, message, diff, Map.of(), List.of());
 		}
 	}
 
@@ -292,15 +301,19 @@ public final class LlmFeatureSuggestionClient {
 	 * opinion on how {@code parentName} is computed; the caller supplies it (e.g. from a feature
 	 * hierarchy inferred from commit history).
 	 */
-	public record KnownFeature(String name, String parentName, Set<String> files) {
+	public record KnownFeature(String name, String parentName, Set<String> files, Set<String> positions) {
 
 		public KnownFeature(String name, String parentName) {
-			this(name, parentName, Set.of());
+			this(name, parentName, Set.of(), Set.of());
 		}
 	}
 
 	/** At most this many of a known feature's files go into the prompt. */
 	private static final int MAX_FILES_PER_FEATURE = 8;
+	/** At most this many of a known feature's positions, or of a changed file's, go into the prompt. */
+	private static final int MAX_POSITIONS = 4;
+	/** At most this many changed files are listed. */
+	private static final int MAX_CHANGED_FILES = 30;
 
 	/**
 	 * One batch's outcome: {@code configurations} always has one entry per input commit, in the
@@ -478,19 +491,8 @@ public final class LlmFeatureSuggestionClient {
 							: "- " + feature.name() + " (built on: " + feature.parentName() + ")") + filesLine(feature))
 					.collect(Collectors.joining("\n")));
 		}
-		boolean anyFiles = knownFeatures.stream().anyMatch(feature -> !feature.files().isEmpty());
-		if (anyFiles && !commit.changedFiles().isEmpty()) {
-			Map<String, Set<String>> featureFiles = new LinkedHashMap<>();
-			for (KnownFeature feature : knownFeatures)
-				featureFiles.put(feature.name(), feature.files());
-			Map<String, Integer> overlap = overlap(featureFiles, commit.changedFiles());
-			sb.append("\n\nKnown features whose files this commit changes:\n");
-			sb.append(overlap.isEmpty()
-					? "(none - no changed file belongs to a known feature)"
-					: overlap.entrySet().stream()
-					.map(e -> "- " + e.getKey() + ": " + e.getValue() + " of " + commit.changedFiles().size() + " changed files")
-					.collect(Collectors.joining("\n")));
-		}
+		if (!commit.changes().isEmpty())
+			sb.append("\n\n").append(evidence(commit));
 		// deliberately NOT "commitId:"/"message:" as labels - those match output JSON keys closely
 		// enough that a local model has been observed just reformatting this input record verbatim
 		// into JSON instead of classifying it (see SYSTEM_PROMPT)
@@ -500,19 +502,45 @@ public final class LlmFeatureSuggestionClient {
 		return sb.toString();
 	}
 
-	/** How many of {@code changedFiles} each known feature that has any of them has, most first. */
-	private static Map<String, Integer> overlap(Map<String, Set<String>> featureFiles, List<String> changedFiles) {
-		Map<String, Integer> counts = new LinkedHashMap<>();
-		for (Map.Entry<String, Set<String>> entry : featureFiles.entrySet()) {
-			int count = (int) changedFiles.stream().filter(entry.getValue()::contains).count();
-			if (count > 0)
-				counts.put(entry.getKey(), count);
+	/** The evidence section: the changed files, their overlap with the known features' earlier changes, the message's hints. */
+	static String evidence(CommitForSuggestion commit) {
+		StringBuilder sb = new StringBuilder("Changed files (kind, lines added/removed, where in the file):");
+		Map<String, Integer> kinds = new LinkedHashMap<>();
+		int listed = 0;
+		for (GitHistoryReader.ChangedFile file : commit.changes().values()) {
+			String kind = ChangeEvidence.kind(file.path());
+			kinds.merge(kind, 1, Integer::sum);
+			if (listed++ >= MAX_CHANGED_FILES)
+				continue;
+			sb.append("\n- ").append(file.path()).append(" (").append(kind).append(", +").append(file.added()).append(" -").append(file.removed()).append(")");
+			if (!file.positions().isEmpty())
+				sb.append(" in: ").append(limited(file.positions(), MAX_POSITIONS));
 		}
-		Map<String, Integer> sorted = new LinkedHashMap<>();
-		counts.entrySet().stream()
-				.sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-				.forEach(e -> sorted.put(e.getKey(), e.getValue()));
-		return sorted;
+		if (commit.changes().size() > MAX_CHANGED_FILES)
+			sb.append("\n- ... ").append(commit.changes().size() - MAX_CHANGED_FILES).append(" more files");
+		sb.append("\nKinds: ").append(kinds.entrySet().stream().sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+				.map(e -> e.getValue() + " " + e.getKey()).collect(Collectors.joining(", ")));
+		sb.append("\n\nKnown features whose earlier commits changed the same places:");
+		if (commit.overlap().isEmpty())
+			sb.append("\n(none - this commit changes no place a known feature changed before)");
+		for (ImportedFeatureTraces.Overlap overlap : commit.overlap()) {
+			List<String> parts = new ArrayList<>();
+			if (!overlap.samePositions().isEmpty())
+				parts.add("same positions " + limited(overlap.samePositions(), MAX_POSITIONS));
+			if (!overlap.sameEnclosing().isEmpty())
+				parts.add("in the same " + limited(overlap.sameEnclosing(), MAX_POSITIONS));
+			parts.add(overlap.sameFiles() + " of " + commit.changes().size() + " changed files");
+			sb.append("\n- ").append(overlap.feature()).append(": ").append(String.join("; ", parts));
+		}
+		List<String> hints = ChangeEvidence.messageHints(commit.message());
+		if (!hints.isEmpty())
+			sb.append("\n\nCommit message hints: ").append(String.join(", ", hints));
+		return sb.toString();
+	}
+
+	private static String limited(java.util.Collection<String> items, int max) {
+		List<String> list = new ArrayList<>(items);
+		return String.join(", ", list.subList(0, Math.min(max, list.size()))) + (list.size() > max ? " (+" + (list.size() - max) + " more)" : "");
 	}
 
 	private static String filesLine(KnownFeature feature) {
@@ -520,7 +548,10 @@ public final class LlmFeatureSuggestionClient {
 			return "";
 		List<String> files = new ArrayList<>(feature.files());
 		String shown = String.join(", ", files.subList(0, Math.min(MAX_FILES_PER_FEATURE, files.size())));
-		return "\n  files: " + shown + (files.size() > MAX_FILES_PER_FEATURE ? " (+" + (files.size() - MAX_FILES_PER_FEATURE) + " more)" : "");
+		String line = "\n  files: " + shown + (files.size() > MAX_FILES_PER_FEATURE ? " (+" + (files.size() - MAX_FILES_PER_FEATURE) + " more)" : "");
+		if (!feature.positions().isEmpty())
+			line += "\n  positions: " + limited(feature.positions(), MAX_POSITIONS);
+		return line;
 	}
 
 	/**

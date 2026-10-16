@@ -10,13 +10,15 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.logging.Level;
+import java.util.Collection;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
  * Records each commit of a Git import with its LLM feature suggestion, if one was asked for, and
  * what became of it: the configuration actually committed (as reviewed, or unattended), or that
- * the commit was skipped. The commits imported this way are also where {@link ImportedFeatureFiles}
- * finds which files each feature's commits changed.
+ * the commit was skipped, and the positions it changed. The commits imported this way are also
+ * where {@link ImportedFeatureTraces} finds where each feature's commits changed things.
  * One JSON object per line, appended to {@code ~/.ecco/llm-suggestions.jsonl} (system property
  * {@value #LOCATION_PROPERTY} to put it elsewhere). Suggestion and outcome side by side are what
  * any change to the prompt or the model can be scored against; the usage says where the time
@@ -46,22 +48,30 @@ public final class FeatureSuggestionLog {
 	 * commit, {@code suggestion} the LLM's raw reply (features added, "-name" for removed ones),
 	 * {@code proposed} the configuration the reply made of {@code before}, {@code committed} the one
 	 * actually committed ({@code null} when skipped). {@code failure} is why there was no
-	 * suggestion, if there was none.
+	 * suggestion, if there was none. {@code positions} are the files the commit changed with the
+	 * positions in them (see {@link at.jku.isse.ecco.service.git.GitHistoryReader#getChangedPositions}),
+	 * null if not known.
 	 */
 	public record Entry(String eccoRepository, String gitRepository, String commitId, String message, int diffLines, String model,
 						String before, String suggestion, String proposed, String failure,
-						LlmFeatureSuggestionClient.Usage usage, Outcome outcome, String committed) {
+						LlmFeatureSuggestionClient.Usage usage, Outcome outcome, String committed, Map<String, ? extends Collection<String>> positions) {
 
 		/** This entry with {@code committed} as the configuration it was committed with. */
 		public Entry committedAs(String committed) {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, this.outcome, committed);
+					this.suggestion, this.proposed, this.failure, this.usage, this.outcome, committed, this.positions);
+		}
+
+		/** This entry with the positions its commit changed. */
+		public Entry withPositions(Map<String, ? extends Collection<String>> positions) {
+			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
+					this.suggestion, this.proposed, this.failure, this.usage, this.outcome, this.committed, positions);
 		}
 
 		/** This entry for a skipped commit. */
 		public Entry skipped() {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, Outcome.SKIPPED, null);
+					this.suggestion, this.proposed, this.failure, this.usage, Outcome.SKIPPED, null, this.positions);
 		}
 	}
 
@@ -108,6 +118,13 @@ public final class FeatureSuggestionLog {
 		}
 		line.put("outcome", entry.outcome().name().toLowerCase());
 		line.put("committed", entry.committed());
+		if (entry.positions() != null) {
+			ObjectNode positions = line.putObject("positions");
+			entry.positions().forEach((path, names) -> {
+				com.fasterxml.jackson.databind.node.ArrayNode array = positions.putArray(path);
+				names.forEach(array::add);
+			});
+		}
 		return line.toString();
 	}
 }

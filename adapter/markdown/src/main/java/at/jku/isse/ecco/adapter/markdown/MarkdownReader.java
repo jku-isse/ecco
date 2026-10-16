@@ -1,5 +1,8 @@
 package at.jku.isse.ecco.adapter.markdown;
 
+import at.jku.isse.ecco.adapter.markdown.data.SectionArtifactData;
+import at.jku.isse.ecco.adapter.markdown.data.LineArtifactData;
+import at.jku.isse.ecco.adapter.SourcePosition;
 import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
@@ -123,6 +126,33 @@ public class MarkdownReader implements ArtifactReader<Path, Set<Node.Op>> {
 	@Override
 	public void removeListener(ReadListener listener) {
 		this.listeners.remove(listener);
+	}
+
+
+	/** Sections, named by their headings: "Installation > Docker". Line i is the i-th line leaf of the tree. */
+	@Override
+	public List<SourcePosition> positions(Node fileNode) {
+		List<SourcePosition> positions = new ArrayList<>();
+		addPositions(fileNode, "", new int[]{0}, positions);
+		return positions;
+	}
+
+	/** Adds the sections in and below {@code node}; {@code line} counts the line leaves passed so far. */
+	private static void addPositions(Node node, String owner, int[] line, List<SourcePosition> positions) {
+		if (node.getArtifact() != null && node.getArtifact().getData() instanceof LineArtifactData) {
+			line[0]++;
+			return;
+		}
+		String name = owner;
+		if (node.getArtifact() != null && node.getArtifact().getData() instanceof SectionArtifactData section) {
+			String heading = section.getHeadingLine().strip().replaceAll("^#+\\s*|\\s*#+$", "");
+			name = owner.isEmpty() ? heading : owner + " > " + heading;
+		}
+		int first = line[0] + 1;
+		for (Node child : node.getChildren())
+			addPositions(child, name, line, positions);
+		if (!name.equals(owner) && line[0] >= first)
+			positions.add(new SourcePosition("section", name, first, line[0]));
 	}
 
 }
