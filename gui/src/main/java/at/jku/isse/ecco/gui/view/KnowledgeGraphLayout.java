@@ -123,6 +123,17 @@ public final class KnowledgeGraphLayout {
 	 */
 	public static Snapshot compute(Repository repository, Set<EntityKind> enabledKinds, int commitLimit,
 									boolean includeConstraints, boolean includeComputedVariantAssociationEdges) {
+		return compute(repository, enabledKinds, commitLimit, includeConstraints, includeComputedVariantAssociationEdges, false);
+	}
+
+	/**
+	 * As above; with [addedOnly] a commit is linked only to the associations it added - those not in
+	 * the commit before it (by date, also when that one is not shown; all of the first commit's). A
+	 * commit holds every association of its variant, so linking all of them made the graph unusable
+	 * for a large repository: 37,000 lines for 50 commits of tinycc, about 740 each.
+	 */
+	public static Snapshot compute(Repository repository, Set<EntityKind> enabledKinds, int commitLimit,
+									boolean includeConstraints, boolean includeComputedVariantAssociationEdges, boolean addedOnly) {
 		List<Commit> allCommits = new ArrayList<>(repository.getCommits());
 		allCommits.sort(Comparator.comparing(Commit::getDate));
 		int from = commitLimit <= 0 ? 0 : Math.max(0, allCommits.size() - commitLimit);
@@ -226,7 +237,12 @@ public final class KnowledgeGraphLayout {
 			nodes.add(new Placement(EntityKind.COMMIT, id, commitLabel(commit), i * X_SPACING, commitY, artifactCount, false));
 			commitNodeIdById.put(commit.getId(), id);
 
+			Set<Association> before = Collections.newSetFromMap(new IdentityHashMap<>());
+			if (addedOnly && from + i > 0)
+				before.addAll(allCommits.get(from + i - 1).getAssociations());
 			for (Association association : commit.getAssociations()) {
+				if (before.contains(association))
+					continue;
 				String associationId = associationNodeIdById.get(association.getId());
 				if (associationId != null) {
 					edges.add(new Edge(id, associationId, EdgeKind.TOUCHES));

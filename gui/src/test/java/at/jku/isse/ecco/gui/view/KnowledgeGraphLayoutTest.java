@@ -86,6 +86,47 @@ public class KnowledgeGraphLayoutTest {
 		}
 	}
 
+	/**
+	 * With "added only" a commit is linked to the associations not in the commit before it (by date,
+	 * also when that one is outside the window; all of the first one's) - linked to all it holds,
+	 * tinycc's 50 commits made 37,000 lines.
+	 */
+	@Test
+	@Timeout(30)
+	public void addedOnly_linksACommitToTheAssociationsTheCommitBeforeDidNotHave() throws IOException {
+		Path workDir = Files.createTempDirectory("kg-layout-added-only");
+		try (EccoService service = buildFourCommitRepo(workDir)) {
+			List<at.jku.isse.ecco.core.Commit> commits = new java.util.ArrayList<>(service.getRepository().getCommits());
+			commits.sort(java.util.Comparator.comparing(at.jku.isse.ecco.core.Commit::getDate));
+			for (int window : List.of(10, 1)) {
+				KnowledgeGraphLayout.Snapshot all = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, window, true, false, false);
+				KnowledgeGraphLayout.Snapshot added = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, window, true, false, true);
+				for (int i = Math.max(0, commits.size() - window); i < commits.size(); i++) {
+					at.jku.isse.ecco.core.Commit commit = commits.get(i);
+					Set<String> expectedAll = commit.getAssociations().stream().map(a -> "A:" + a.getId()).collect(Collectors.toSet());
+					Set<String> expectedAdded = new java.util.HashSet<>(expectedAll);
+					if (i > 0)
+						for (at.jku.isse.ecco.core.Association before : commits.get(i - 1).getAssociations())
+							expectedAdded.remove("A:" + before.getId());
+					assertEquals(expectedAll, touched(all, "C:" + commit.getId()), "all, commit " + (i + 1));
+					assertEquals(expectedAdded, touched(added, "C:" + commit.getId()), "added only, commit " + (i + 1) + ", window " + window);
+				}
+				assertEquals(all.nodes.size(), added.nodes.size(), "the same nodes, fewer lines");
+			}
+			KnowledgeGraphLayout.Snapshot all = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false, false);
+			KnowledgeGraphLayout.Snapshot added = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false, true);
+			assertTrue(touched(added, null).size() < touched(all, null).size(), "commit 3 has commit 2's a.txt");
+		}
+	}
+
+	/** The associations [commitNodeId] - or any commit, for null - is linked to, as edge targets (or edges). */
+	private static Set<String> touched(KnowledgeGraphLayout.Snapshot snapshot, String commitNodeId) {
+		return snapshot.edges.stream()
+				.filter(e -> e.kind == KnowledgeGraphLayout.EdgeKind.TOUCHES && (commitNodeId == null || e.sourceId.equals(commitNodeId)))
+				.map(e -> commitNodeId == null ? e.sourceId + ">" + e.targetId : e.targetId)
+				.collect(Collectors.toSet());
+	}
+
 	@Test
 	@Timeout(30)
 	public void lanes_eachEntityKindSharesOneYAndLanesAreOrdered() throws IOException {

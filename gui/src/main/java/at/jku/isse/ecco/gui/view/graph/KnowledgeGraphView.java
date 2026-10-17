@@ -32,6 +32,7 @@ import javafx.scene.control.ScrollBar;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.ToolBar;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
@@ -141,6 +142,8 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	private int commitLimit = DEFAULT_COMMIT_LIMIT;
 	private boolean includeConstraints = true;
 	private boolean includeComputedVariantAssociationEdges = false;
+	/** Whether a commit is linked only to the associations it added - see {@link KnowledgeGraphLayout#compute}. */
+	private boolean commitLinksAddedOnly = true;
 	private boolean sizeAssociationsByArtifactCount = false;
 	private boolean sizeCommitsByArtifactCount = false;
 
@@ -223,7 +226,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		});
 
 		Label legend = new Label("Nodes: Feature | Commit | Association | Variant (a bold outline marks an accepted-MANDATORY feature).  "
-				+ "Edges: touches (commit->association) | selects (commit/variant->feature) | involves (association->feature) | "
+				+ "Edges: touches (commit->association: the ones it added, or all - Commit links) | selects (commit/variant->feature) | involves (association->feature) | "
 				+ "requires/excludes (feature->feature, only shown when Show constraints is enabled) | produces (commit->variant) | "
 				+ "touches, computed (variant->association, only shown when enabled above).");
 		legend.setWrapText(true);
@@ -281,6 +284,19 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 			KnowledgeGraphView.this.refreshGraph();
 		});
 		this.filterToolBar.getItems().addAll(commitLimitLabel, commitLimitSpinner, new Separator());
+
+		// each commit holds all associations of its variant: linked to all, tinycc's 50 commits made 37,000 lines
+		Label commitLinksLabel = new Label("Commit links: ");
+		ChoiceBox<String> commitLinksChoice = new ChoiceBox<>();
+		commitLinksChoice.getItems().setAll(COMMIT_LINKS_ADDED, COMMIT_LINKS_ALL);
+		commitLinksChoice.setValue(this.commitLinksAddedOnly ? COMMIT_LINKS_ADDED : COMMIT_LINKS_ALL);
+		commitLinksChoice.setTooltip(new Tooltip("Added only: a commit is linked to the associations that were not in the commit before it.\n"
+				+ "All: to every association it holds."));
+		commitLinksChoice.valueProperty().addListener((obs, oldValue, newValue) -> {
+			KnowledgeGraphView.this.commitLinksAddedOnly = COMMIT_LINKS_ADDED.equals(newValue);
+			KnowledgeGraphView.this.refreshGraph();
+		});
+		this.filterToolBar.getItems().addAll(commitLinksLabel, commitLinksChoice, new Separator());
 
 		CheckBox constraintsCheckbox = new CheckBox("Show Constraints");
 		constraintsCheckbox.setSelected(this.includeConstraints);
@@ -967,7 +983,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	 */
 	private KnowledgeGraphLayout.Snapshot buildSnapshot() {
 		return KnowledgeGraphLayout.compute(this.service.getRepository(), Set.copyOf(this.enabledKinds),
-				this.commitLimit, this.includeConstraints, this.includeComputedVariantAssociationEdges);
+				this.commitLimit, this.includeConstraints, this.includeComputedVariantAssociationEdges, this.commitLinksAddedOnly);
 	}
 
 	/**
@@ -1217,6 +1233,8 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	private static final double SIZED_NODE_MAX_FORCE_DIRECTED = 60;
 	private static final boolean DEFAULT_SHOW_LABELS = true;
 	private static final int DEFAULT_COMMIT_LIMIT = 50;
+	static final String COMMIT_LINKS_ADDED = "Added only";
+	static final String COMMIT_LINKS_ALL = "All";
 	private static final int COMMIT_LIMIT_MAX = 1000;
 	private static final long FORCE_DIRECTED_SETTLE_DELAY_MS = 900;
 	/** See {@link #scheduleForceDirectedFreeze} - generous on purpose, since it only ever matters for a pathologically dense graph that would otherwise never stop computing. */
