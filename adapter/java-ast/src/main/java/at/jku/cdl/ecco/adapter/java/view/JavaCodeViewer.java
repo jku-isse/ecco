@@ -112,7 +112,8 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 	/** Renders [fileNode]'s lines and keeps them for colour changes; [indexByNode] gets each node's first line. */
 	private ObservableList<JavaCodeLine> render(Node fileNode, Map<Node, Integer> indexByNode) {
 		List<JavaCodeLine> built = new ArrayList<>();
-		for (Node child : fileNode.getChildren()) {
+		// as a checkout writes them: package, imports, types - the file's parts are unordered
+		for (Node child : inWrittenOrder(fileNode.getChildren())) {
 			renderNode(child, 0, built, indexByNode);
 		}
 		ObservableList<JavaCodeLine> lines = FXCollections.observableArrayList(built);
