@@ -104,6 +104,61 @@ public class ArtifactDetailViewTest {
         }
     }
 
+    /**
+     * The order graph is drawn only while its tab is selected, and its layout stops when another tab
+     * is: drawn for every node shown, the graph of a large file - one node per line - was laid out
+     * and redrawn without end into a canvas that was not rendered, until the heap ran out.
+     */
+    @Test
+    @Timeout(60)
+    public void theOrderGraphIsDrawnOnlyWhileItsTabIsSelected(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFiles(tmp)) {
+            Node file = association(service, "a.txt").getRootNode().getChildren().get(0).getChildren().get(0);
+            ArtifactDetailView view = onFx(() -> new ArtifactDetailView(service));
+            onFx(() -> view.showTree(file));
+            assertEquals("Code", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()));
+            Thread.sleep(500); // it was drawn in the background
+            assertEquals(0, drawnNodes(view), "not drawn while the code is shown");
+
+            onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Order graph")));
+            waitUntil("drawn when selected", () -> drawnNodes(view) > 0);
+            waitUntil("laid out", () -> layoutRunning(view));
+
+            onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Code")));
+            waitUntil("the layout stopped when left", () -> !layoutRunning(view));
+
+            // shown again with the graph's tab selected: drawn right away
+            onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Order graph")));
+            onFx(() -> view.showTree(file));
+            waitUntil("drawn", () -> drawnNodes(view) > 0);
+        }
+    }
+
+    private static Object orderGraphView(ArtifactDetailView view) throws Exception {
+        java.lang.reflect.Field field = ArtifactDetailView.class.getDeclaredField("partialOrderGraphView");
+        field.setAccessible(true);
+        return field.get(view);
+    }
+
+    private static int drawnNodes(ArtifactDetailView view) throws Exception {
+        Object graphView = orderGraphView(view);
+        java.lang.reflect.Method drawn = graphView.getClass().getDeclaredMethod("drawnGraph");
+        drawn.setAccessible(true);
+        return ((org.graphstream.graph.Graph) drawn.invoke(graphView)).getNodeCount();
+    }
+
+    private static boolean layoutRunning(ArtifactDetailView view) throws Exception {
+        Object graphView = orderGraphView(view);
+        java.lang.reflect.Field viewerField = graphView.getClass().getDeclaredField("viewer");
+        viewerField.setAccessible(true);
+        Object viewer = viewerField.get(graphView);
+        if (viewer == null)
+            return false;
+        java.lang.reflect.Field layout = org.graphstream.ui.view.Viewer.class.getDeclaredField("optLayout");
+        layout.setAccessible(true);
+        return layout.get(viewer) != null;
+    }
+
     /** Without an open repository there are no viewers; closing the repository clears the tabs. */
     @Test
     @Timeout(60)

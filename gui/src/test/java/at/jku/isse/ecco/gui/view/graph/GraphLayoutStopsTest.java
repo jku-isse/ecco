@@ -55,6 +55,36 @@ public class GraphLayoutStopsTest {
         }
     }
 
+    /** The order graph of a node (in the artifact details) stops its layout after a while too. */
+    @Test
+    @Timeout(60)
+    public void theOrderGraphsLayoutStopsAfterAWhile(@TempDir Path tmp) throws Exception {
+        long before = LayoutFreeze.timeoutMs;
+        LayoutFreeze.timeoutMs = 500;
+        try (EccoService service = sample(tmp)) {
+            at.jku.isse.ecco.tree.Node file = service.getRepository().getAssociations().stream()
+                    .flatMap(a -> a.getRootNode().getChildren().stream()).flatMap(d -> d.getChildren().stream())
+                    .filter(f -> f.getArtifact().getPartialOrderGraph() != null).findFirst().orElseThrow();
+            PartialOrderGraphView view = onFx(() -> new PartialOrderGraphView());
+            onFx(() -> view.showGraph(file.getArtifact().getPartialOrderGraph(), service));
+            waitUntil("the layout runs", () -> orderLayoutRunning(view));
+            waitUntil("the layout stopped by itself", () -> !orderLayoutRunning(view));
+        } finally {
+            LayoutFreeze.timeoutMs = before;
+        }
+    }
+
+    private static boolean orderLayoutRunning(PartialOrderGraphView view) throws Exception {
+        Field viewerField = PartialOrderGraphView.class.getDeclaredField("viewer");
+        viewerField.setAccessible(true);
+        Object viewer = viewerField.get(view);
+        if (viewer == null)
+            return false;
+        Field layout = org.graphstream.ui.view.Viewer.class.getDeclaredField("optLayout");
+        layout.setAccessible(true);
+        return layout.get(viewer) != null;
+    }
+
     /**
      * However large the repository, the Artifact Graph draws about {@link ArtifactGraphView#maxNodes}
      * nodes, the rest folded into "not shown" ones: the child-count and depth limits alone made 11,500

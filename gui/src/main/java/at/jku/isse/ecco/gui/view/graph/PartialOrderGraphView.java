@@ -145,6 +145,8 @@ public class PartialOrderGraphView extends BorderPane {
 				this.graph.addEdge("E" + edge[0] + "-" + edge[1], gsNodes.get(edge[0]), gsNodes.get(edge[1]), true);
 
 			viewer.enableAutoLayout(this.layout);
+			// a large file's graph - a node per line - was laid out and redrawn without end
+			LayoutFreeze.schedule(viewer);
 
 			view.getCamera().resetView();
 
@@ -158,6 +160,16 @@ public class PartialOrderGraphView extends BorderPane {
 		view = (FxViewPanel)  viewer.addDefaultView(false, new FxGraphRenderer());
 
 		setCenter(view);
+	}
+
+	/**
+	 * Stops the layout - when the graph is no longer shown: its viewer redraws on every layout step,
+	 * into a canvas that is not rendered while hidden, whose drawing commands then pile up.
+	 */
+	public void stopLayout() {
+		FxViewer viewer = this.viewer;
+		if (viewer != null)
+			viewer.disableAutoLayout();
 	}
 
 	public void closeGraph() {

@@ -32,6 +32,8 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	private Collection<AssociationInfo> associationInfos = null;
 	private PartialOrderGraphView partialOrderGraphView;
 	private final AtomicLong pogGeneration = new AtomicLong();
+	/** The node whose order graph its tab shows once selected - drawn only then, see {@link #updatePartialOrderGraphTab}. */
+	private Node pogNode;
 
 	@Inject
 	private Set<ArtifactViewer> artifactViewers;
@@ -49,6 +51,17 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		placeholder.setWrapText(true);
 		placeholder.visibleProperty().bind(javafx.beans.binding.Bindings.isEmpty(detailsTabPane.getTabs()));
 		setCenter(new javafx.scene.layout.StackPane(placeholder, detailsTabPane));
+
+		// the order graph only while its tab is selected
+		detailsTabPane.getSelectionModel().selectedItemProperty().addListener((o, was, tab) -> {
+			Tab pogTab = openDetailsTabs.get("pog");
+			if (pogTab == null)
+				return;
+			if (tab == pogTab)
+				drawPartialOrderGraph();
+			else if (was == pogTab && partialOrderGraphView != null)
+				partialOrderGraphView.stopLayout();
+		});
 	}
 
 	/**
@@ -72,6 +85,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	}
 
 	public void reset() {
+		pogNode = null;
 		if (null != partialOrderGraphView) {
 			partialOrderGraphView.closeGraph();
 			partialOrderGraphView = null;
@@ -114,6 +128,9 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			detailsTabPane.getSelectionModel().select(selected);
 		else
 			detailsTabPane.getSelectionModel().selectFirst();
+		// its tab stayed selected: no selection change draws the new node's graph
+		if (openDetailsTabs.containsKey("pog") && detailsTabPane.getSelectionModel().getSelectedItem() == openDetailsTabs.get("pog"))
+			drawPartialOrderGraph();
 	}
 
 	/**
@@ -193,16 +210,10 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		// if node is an ordered node display its sequence graph
 		if (node.getArtifact() != null && node.getArtifact().getPartialOrderGraph() != null) {
 			if (null == partialOrderGraphView) { partialOrderGraphView = new PartialOrderGraphView(); }
-
-			long generation = pogGeneration.incrementAndGet();
-			Thread th = new Thread(() -> {
-				PartialOrderGraph pog = node.getArtifact().getPartialOrderGraph();
-				Platform.runLater(() -> {
-					if (pogGeneration.get() != generation) { return; }
-					partialOrderGraphView.showGraph(pog, this.service);
-				});
-			});
-			th.start();
+			// drawn when its tab is selected: drawn for every node shown, the graph of a large file -
+			// a node per line - was laid out and redrawn without end in the hidden tab, until the heap ran out
+			pogNode = node;
+			pogGeneration.incrementAndGet();
 
 			if (!openDetailsTabs.containsKey("pog")) {
 				Tab t = new Tab("Order graph");
@@ -214,9 +225,31 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			}
 
 		} else if (openDetailsTabs.containsKey("pog")) {
+			pogNode = null;
+			if (partialOrderGraphView != null)
+				partialOrderGraphView.stopLayout();
 			detailsTabPane.getTabs().remove(openDetailsTabs.get("pog"));
 			openDetailsTabs.remove("pog");
 		}
+	}
+
+	/** Draws the order graph of {@link #pogNode}, if not drawn yet - only while its tab is selected. */
+	private void drawPartialOrderGraph() {
+		Node node = pogNode;
+		if (node == null || partialOrderGraphView == null)
+			return;
+		pogNode = null; // drawn: selecting the tab again keeps it
+		long generation = pogGeneration.incrementAndGet();
+		PartialOrderGraphView graphView = partialOrderGraphView;
+		Thread th = new Thread(() -> {
+			PartialOrderGraph pog = node.getArtifact().getPartialOrderGraph();
+			Platform.runLater(() -> {
+				if (pogGeneration.get() != generation || graphView != partialOrderGraphView) { return; }
+				graphView.showGraph(pog, this.service);
+			});
+		});
+		th.setDaemon(true);
+		th.start();
 	}
 
 	private void updateArtifactViewerTabs(Node node) {
