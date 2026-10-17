@@ -285,7 +285,12 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 				// already assumes.
 				? "shape: box; size: " + NODE_WIDTH + "gu, " + NODE_HEIGHT + "gu;"
 				: "shape: circle; size: " + FORCE_DIRECTED_NODE_SIZE + "px;";
-		this.graph.setAttribute("ui.stylesheet",
+		// the camera's fit (resetView) frames the node centres; in the tree layout half a box (and
+		// the mandatory dot) sticks out beyond them, so pad the fit by that in graph units.
+		String graphPadding = this.layoutMode == LayoutMode.TREE
+				? "graph { padding: " + (NODE_WIDTH / 2 + 10) + "gu, " + (NODE_HEIGHT / 2 + MANDATORY_MARKER_SIZE) + "gu; } "
+				: "";
+		this.graph.setAttribute("ui.stylesheet", graphPadding +
 				"edge { " + textMode + " size: 1px; shape: line; arrow-size: 6px, 4px; } " +
 						// grey: positioning hint only, not a real constraint - see the legend.
 						"edge.tree { fill-color: #89878188; } " +

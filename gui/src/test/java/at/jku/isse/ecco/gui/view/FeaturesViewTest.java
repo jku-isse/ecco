@@ -220,6 +220,38 @@ public class FeaturesViewTest {
 
     // --- helpers -------------------------------------------------------------------------------------
 
+    /** The first view of the tree frames whole boxes, not just their centres: none is cut off at the edges. */
+    @Test
+    @Timeout(60)
+    public void theFirstTreeViewShowsEveryBoxWhole(@TempDir Path tmp) throws Exception {
+        try (EccoService service = sample(tmp)) {
+            FeaturesView view = loaded(service);
+            javafx.stage.Stage stage = onFx(() -> {
+                javafx.stage.Stage s = new javafx.stage.Stage();
+                s.setScene(new javafx.scene.Scene(view, 800, 500));
+                s.show();
+                return s;
+            });
+            try {
+                waitUntil("a rendered frame", () -> camera(view).getMetrics().viewport[2] > 0);
+                double width = onFx(() -> camera(view).getMetrics().viewport[2]);
+                double height = onFx(() -> camera(view).getMetrics().viewport[3]);
+                for (FeatureModelTree.Placement p : FeatureModelTree.compute(service.getRepository())) {
+                    for (double dx : new double[]{-NODE_WIDTH / 2, NODE_WIDTH / 2}) {
+                        for (double dy : new double[]{-NODE_HEIGHT / 2, NODE_HEIGHT / 2}) {
+                            org.graphstream.ui.geom.Point3 px = onFx(() -> camera(view).transformGuToPx(p.x * X_SPACING + dx, -p.depth * Y_SPACING + dy, 0));
+                            String where = p.feature.getName() + " corner at " + px;
+                            assertTrue(px.x >= 0 && px.x <= width, where);
+                            assertTrue(px.y >= 0 && px.y <= height, where);
+                        }
+                    }
+                }
+            } finally {
+                onFx(stage::close);
+            }
+        }
+    }
+
     private static EccoService sample(Path tmp) throws Exception {
         EccoService service = repository(tmp.resolve("repo"));
         commit(service, tmp.resolve("v0"), "Base", Map.of("base.txt", "base\n"));
