@@ -388,13 +388,14 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                         toolBar.setDisable(false);
                         return;
                     }
-                    service.setBaseDir(target);
+                    // the working directory stays: it was set to the folder chosen, also when cancelled,
+                    // and the refresh that set off cleared the ticks of the associations
 
                     // Cancel stops the checkout, as in the Checkout dialog - it used to be ignored,
                     // so the checkout was written over the directory's contents anyway
                     try {
-                        if (!Directory.isEmpty(service.getBaseDir())
-                                && !confirmClearDirectory(service.getBaseDir())) {
+                        if (!Directory.isEmpty(target)
+                                && !confirmClearDirectory(target)) {
                             toolBar.setDisable(false);
                             return;
                         }
@@ -408,7 +409,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                         return;
                     }
 
-                    Task<Void> checkoutTask = new CheckoutTask(service, rootNode);
+                    Task<Void> checkoutTask = new CheckoutTask(service, rootNode, target);
                     new Thread(checkoutTask).start();
                 }
 

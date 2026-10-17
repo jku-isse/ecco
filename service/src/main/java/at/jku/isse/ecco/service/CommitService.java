@@ -53,6 +53,11 @@ class CommitService {
      * Commits the files in the base directory as the given configuration and returns the resulting commit object.
      */
     Commit commit(String commitMessage, Configuration configuration, String committer) {
+        return this.commit(commitMessage, configuration, committer, owner.baseDir);
+    }
+
+    /** As above, the files in [directory] - the base directory is left as it is. */
+    Commit commit(String commitMessage, Configuration configuration, String committer, Path directory) {
         owner.checkInitialized();
         checkNotNull(configuration);
         // presence conditions are built from the features of the commits an artifact occurs in: what
@@ -71,7 +76,7 @@ class CommitService {
             Repository.Op repository = owner.repositoryDao.load();
             repository.addFeatureRevisions(configuration.getFeatureRevisions());
             owner.adoptRepositorySettings(repository);
-            Set<Node.Op> nodes = this.readFiles();
+            Set<Node.Op> nodes = this.readFiles(directory);
             this.checkCancelled();
             ArrayList<Variant> variants = repository.getVariants();
 
@@ -176,7 +181,7 @@ class CommitService {
         }
     }
 
-    Set<Node.Op> readFiles() {
-        return owner.reader.read(owner.baseDir, new Path[]{Paths.get("")});
+    Set<Node.Op> readFiles(Path directory) {
+        return owner.reader.read(directory, new Path[]{Paths.get("")});
     }
 }

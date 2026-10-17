@@ -346,8 +346,10 @@ public class ImportGitViewSuggestionLogTest {
     @Timeout(60)
     public void aFeatureNamedAgainGetsANewRevisionAndItsCodeIsTraced(@TempDir Path tmp) throws Exception {
         System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, tmp.resolve("suggestions.jsonl").toString());
-        Path clone = gitHistory(tmp.resolve("clone"), "first", "second", "third");
+        Path clone = gitHistory(tmp.resolve("clone"), "first", "second", "third", "fourth");
         EccoService service = repository(tmp.resolve("repo"));
+        Path work = Files.createDirectories(tmp.resolve("work"));
+        service.setBaseDir(work);
         List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
         Collections.reverse(oldestFirst);
         ImportGitView view = onFx(() -> {
@@ -361,11 +363,41 @@ public class ImportGitViewSuggestionLogTest {
         waitFor(view, "");
 
         at.jku.isse.ecco.feature.Feature x = service.getRepository().getFeatures().stream().filter(f -> f.getName().equals("X")).findFirst().orElseThrow();
-        assertEquals(2, x.getRevisions().size(), "the third commit changed X");
+        assertEquals(3, x.getRevisions().size(), "the third and the fourth commit changed X: a revision each");
+        // the import commits a directory of its own: the working directory is as it was (it was left
+        // set to the import's temporary directory, deleted)
+        assertEquals(work, service.getBaseDir());
         for (at.jku.isse.ecco.core.Association association : service.getRepository().getAssociations())
             assertFalse(((at.jku.isse.ecco.core.Association.Op) association).computeCondition().getModules().isEmpty(),
                     "traced: " + association.getId() + " " + association.getRootNode().countArtifacts() + " artifacts");
         service.close();
+    }
+
+    /**
+     * The repository closed during an import - also to open another one - stops it, and says so: it
+     * went on, committing the remaining commits into whatever repository was open by then.
+     */
+    @Test
+    @Timeout(60)
+    public void closingTheRepositoryStopsTheImport(@TempDir Path tmp) throws Exception {
+        System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, tmp.resolve("suggestions.jsonl").toString());
+        Path clone = gitHistory(tmp.resolve("clone"), "first", "second");
+        EccoService service = repository(tmp.resolve("repo"));
+        List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
+        Collections.reverse(oldestFirst);
+        ImportGitView view = onFx(() -> {
+            ImportGitView v = new ImportGitView(service);
+            new Scene(v);
+            v.suggester = commit -> new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
+                    List.of("BASE"), null, List.of()), "stub", 1, null);
+            v.startImport(clone, oldestFirst, true, true); // each reviewed: it waits
+            return v;
+        });
+        waitFor(view, "Review Commit (1 of 2)");
+        service.close();
+        waitFor(view, "");
+        assertTrue(onFx(() -> find(view, n -> n instanceof javafx.scene.control.TextArea t && t.getText().contains("The repository was closed")) != null),
+                "it says why it stopped");
     }
 
     private static String failureText(ImportGitView view) {

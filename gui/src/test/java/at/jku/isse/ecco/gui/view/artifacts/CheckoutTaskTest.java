@@ -41,14 +41,18 @@ public class CheckoutTaskTest {
             for (Association a : service.getRepository().getAssociations())
                 root.addOrigNode(a.getRootNode());
             Path out = Files.createDirectories(tmp.resolve("out"));
-            service.setBaseDir(out);
+            Path work = Files.createDirectories(tmp.resolve("work"));
+            service.setBaseDir(work);
 
-            CheckoutTask task = new CheckoutTask(service, root);
+            CheckoutTask task = new CheckoutTask(service, root, out);
             task.run();
             waitUntil("the task succeeded", () -> task.getState() == Worker.State.SUCCEEDED);
 
             assertEquals("a1\na2\n", Files.readString(out.resolve("a.txt")));
             assertEquals("b1\n", Files.readString(out.resolve("b.txt")));
+            // into the folder chosen: the working directory stays (it was set to the folder chosen)
+            assertEquals(work, service.getBaseDir());
+            assertEquals(Set.of(), files(work));
         }
     }
 
@@ -60,9 +64,10 @@ public class CheckoutTaskTest {
             LazyCompositionRootNode root = new LazyCompositionRootNode();
             root.addOrigNode(association(service, "a.txt").getRootNode());
             Path out = Files.createDirectories(tmp.resolve("out"));
-            service.setBaseDir(out);
+            Path work = Files.createDirectories(tmp.resolve("work"));
+            service.setBaseDir(work);
 
-            CheckoutTask task = new CheckoutTask(service, root);
+            CheckoutTask task = new CheckoutTask(service, root, out);
             task.run();
             waitUntil("the task succeeded", () -> task.getState() == Worker.State.SUCCEEDED);
 
@@ -79,9 +84,10 @@ public class CheckoutTaskTest {
             LazyCompositionRootNode root = new LazyCompositionRootNode();
             root.addOrigNode(association(service, "a.txt").getRootNode());
             Path out = Files.createDirectories(tmp.resolve("out"));
-            service.setBaseDir(out);
+            Path work = Files.createDirectories(tmp.resolve("work"));
+            service.setBaseDir(work);
 
-            CheckoutTask task = new CheckoutTask(service, root);
+            CheckoutTask task = new CheckoutTask(service, root, out);
             assertTrue(onFx(() -> task.cancel()));
             task.run();
             waitUntil("the task is cancelled", () -> task.getState() == Worker.State.CANCELLED);

@@ -10,15 +10,18 @@ import javafx.concurrent.Task;
 public class CheckoutTask extends Task<Void> {
     private final EccoService service;
     private final LazyCompositionRootNode rootNode;
+    private final java.nio.file.Path directory;
 
-    protected CheckoutTask(EccoService service, LazyCompositionRootNode rootNode) {
+    /** Writes [rootNode]'s artifacts into [directory]; the service's base directory is left as it is. */
+    protected CheckoutTask(EccoService service, LazyCompositionRootNode rootNode, java.nio.file.Path directory) {
         this.service = service;
         this.rootNode = rootNode;
+        this.directory = directory;
     }
 
     @Override
     public Void call() throws EccoException {
-        service.checkout(rootNode);
+        service.checkout(rootNode, directory);
         return null;
     }
 

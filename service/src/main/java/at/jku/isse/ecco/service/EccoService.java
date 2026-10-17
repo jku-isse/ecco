@@ -544,6 +544,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         if (!this.initialized)
             return;
 
+        // its sync server goes with it: it went on serving - after another repository was opened
+        // in the same window, that one, without asking whether to accept connections
+        if (this.serverRunning())
+            this.stopServer();
         this.initialized = false;
         this.reader.removeListener(this);
         this.writer.removeListener(this);
@@ -1351,6 +1355,17 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
+     * Commits the files in [directory] as [configurationString] - or, if it is blank, as the
+     * directory's .config says - leaving the base directory as it is: the Git import set it to a
+     * temporary directory for each commit and never set it back.
+     */
+    public synchronized Commit commitDirectory(Path directory, String commitMessage, String configurationString) {
+        String configuration = configurationString == null || configurationString.isBlank() ? this.getConfigStringFromFile(directory) : configurationString;
+        String username = System.getProperty(KEY_USER_NAME, DEFAULT_USER_NAME);
+        return this.commitService.commit(commitMessage, this.parseConfigurationString(configuration), username, directory);
+    }
+
+    /**
      * Asks the commit running on another thread to stop. It stops before anything is stored - at the
      * next file read, or before extracting or storing - is rolled back, and throws
      * {@link CommitCancelledException}; a commit that is already storing completes. Not synchronized,
@@ -1435,7 +1450,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 
     public synchronized Set<Node.Op> readFiles() {
-        return this.commitService.readFiles();
+        return this.commitService.readFiles(this.baseDir);
     }
 
 
@@ -1838,6 +1853,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     public synchronized Checkout checkout(Node node) {
         return this.checkoutService.checkout(node);
+    }
+
+    /**
+     * Writes the artifacts of [node] into [directory], leaving the base directory as it is -
+     * "Checkout Selected" set the base directory to the folder chosen, also when it was cancelled.
+     */
+    public synchronized Checkout checkout(Node node, Path directory) {
+        return this.checkoutService.checkout(node, directory);
     }
 
     /**

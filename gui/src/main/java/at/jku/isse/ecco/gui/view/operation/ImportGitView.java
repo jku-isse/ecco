@@ -144,6 +144,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 	// every run (a "Back" from the first commit's screen returns to step1(), which can start a
 	// fresh run)
 	private LinkedHashSet<String> runningFeatures = new LinkedHashSet<>();
+	/** The repository the run imports into - closed, or another one opened, the run stops. */
+	private Path runRepositoryDir;
 	/** The names of the features the repository has, for this run - named again, one gets a new revision. */
 	private java.util.Set<String> knownFeatures = new java.util.HashSet<>();
 	private List<String> allConstraintWarnings = new ArrayList<>();
@@ -493,6 +495,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 	private void startImport(List<GitCommitInfo> commitsOldestFirst, boolean useLlm, boolean reviewEach) {
 		this.runningFeatures = new LinkedHashSet<>();
+		this.runRepositoryDir = this.service.getRepositoryDir();
 		this.knownFeatures = new java.util.HashSet<>();
 		if (this.service.isInitialized())
 			for (at.jku.isse.ecco.feature.Feature feature : this.service.getRepository().getFeatures())
@@ -1026,16 +1029,14 @@ public class ImportGitView extends OperationView implements EccoListener {
 				Path tempDir = Files.createTempDirectory("ecco-git-import");
 				try {
 					ImportGitView.this.gitHistoryReader.extractCommitTree(ImportGitView.this.repoDir, commit.getId(), tempDir);
-					ImportGitView.this.service.setBaseDir(tempDir);
 					// checked before committing: only exception-free rules count, and the committed
 					// configuration is the exception to every rule it violates - afterwards it violates none
 					List<String> violations = ImportGitView.this.constraintViolations(
 							(configurationText != null && !configurationText.isEmpty())
 									? configurationText : ImportGitView.this.service.getConfigStringFromFile(tempDir));
 					long startMillis = System.currentTimeMillis();
-					Commit result = (configurationText != null && !configurationText.isEmpty())
-							? ImportGitView.this.service.commit(commit.getMessage(), configurationText)
-							: ImportGitView.this.service.commit(commit.getMessage());
+					// the temporary directory, not the working one: that was set to it, and never back
+					Commit result = ImportGitView.this.service.commitDirectory(tempDir, commit.getMessage(), configurationText);
 					double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
 					try {
 						ImportedFeatureTraces.Changes changes = ImportedFeatureTraces.Changes.of(
@@ -1240,6 +1241,25 @@ public class ImportGitView extends OperationView implements EccoListener {
 				messages.add(message);
 		}
 		return String.join(" - caused by: ", messages);
+	}
+
+	/**
+	 * The repository closed - also to open another one - stops the run: it went on, committing the
+	 * remaining commits into whatever repository was open by then.
+	 */
+	@Override
+	public void statusChangedEvent(EccoService service) {
+		if (this.runEnded || this.runRepositoryDir == null)
+			return;
+		if (!service.isInitialized() || !this.runRepositoryDir.equals(service.getRepositoryDir()))
+			Platform.runLater(() -> {
+				if (this.runEnded)
+					return;
+				String message = "The repository was closed during the import: it stopped after " + this.importedCount
+						+ (this.importedCount == 1 ? " commit." : " commits.");
+				this.logArea.appendText("*** " + message + System.lineSeparator());
+				this.reportImportFailure(new at.jku.isse.ecco.EccoException(message));
+			});
 	}
 
 	/** Ends the per-commit loop on a real failure (as opposed to {@link #finishImport}'s success/stop). */

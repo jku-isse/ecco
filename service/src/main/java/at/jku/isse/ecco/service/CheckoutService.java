@@ -190,13 +190,18 @@ class CheckoutService {
         return new HashSet<>(checkout.getNode().getChildren());
     }
     Checkout checkout(Node node) {
+        return this.checkout(node, owner.baseDir);
+    }
+
+    /** Writes the artifacts of [node] into [directory] - the base directory is left as it is. */
+    Checkout checkout(Node node, Path directory) {
         owner.checkInitialized();
 
         Checkout checkout = new Checkout();
         checkout.setNode(node);
 
         Set<Node> nodes = new HashSet<>(node.getChildren());
-        owner.writer.write(owner.baseDir, nodes);
+        owner.writer.write(directory, nodes);
 
         return checkout;
     }
