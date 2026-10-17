@@ -27,11 +27,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  *     every incrementally-built repository into a star (everything attaching straight to the very
  *     first feature), since later features co-occur with all their transitive prerequisites, not
  *     just their immediate one. Picking the <em>nearest</em> (most recently introduced) co-occurring
- *     predecessor instead recovers the real chain - {@link #cumulativeHistory_producesAFlatChainOfImmediatePredecessors()}.</li>
- *     <li>Even with that fixed, depth still tracked chain length one-to-one, so a long purely
- *     sequential rollout still rendered as a deep staircase despite having no actual branching.
- *     Depth now only steps down at a real branch point (a feature with more than one feature built
- *     directly on it) - {@link #divergingFeatures_bothBuiltDirectlyOnSameBase_stepDownOneLevelTogether()}.</li>
+ *     predecessor instead recovers the real chain - {@link #cumulativeHistory_producesAChainOfImmediatePredecessors()}.</li>
+ *     <li>Every child is one level below its parent, a single child straight below it - depth
+ *     stepped down only at a branch point for a while, which drew a feature beside its only child,
+ *     like a sibling - {@link #divergingFeatures_bothBuiltDirectlyOnSameBase_stepDownOneLevelTogether()}.</li>
  * </ol>
  */
 public class FeatureModelTreeTest {
@@ -57,7 +56,7 @@ public class FeatureModelTreeTest {
 
 	@Test
 	@Timeout(30)
-	public void cumulativeHistory_producesAFlatChainOfImmediatePredecessors() throws IOException {
+	public void cumulativeHistory_producesAChainOfImmediatePredecessors() throws IOException {
 		Path repoDir = Files.createTempDirectory("feature-model-tree-test").resolve(".ecco");
 
 		try (EccoService service = new EccoService()) {
@@ -81,20 +80,14 @@ public class FeatureModelTreeTest {
 			assertEquals(0, root.depth);
 
 			// each feature should attach to its immediate predecessor in the chain, not to "setup"
-			// directly - but since every link in this chain has exactly one child (no branching),
-			// depth should stay flat at 0 throughout rather than increasing at every link
+			// directly - one level below it, straight below as its only child
 			for (int i = 1; i < FEATURE_CHAIN.size(); i++) {
 				FeatureModelTree.Placement placement = byName.get(FEATURE_CHAIN.get(i));
 				Feature expectedParent = byName.get(FEATURE_CHAIN.get(i - 1)).feature;
 				assertEquals(expectedParent, placement.parent, FEATURE_CHAIN.get(i) + " should attach to its immediate predecessor " + FEATURE_CHAIN.get(i - 1));
-				assertEquals(0, placement.depth, FEATURE_CHAIN.get(i) + " is a single-child continuation, not a branch, so should stay at depth 0");
+				assertEquals(i, placement.depth, FEATURE_CHAIN.get(i) + " is one level below its parent");
+				assertEquals(root.x, placement.x, FEATURE_CHAIN.get(i) + " is straight below its parent, its only child");
 			}
-
-			// regression check: every node in the chain sits at depth 0, so without its own distinct
-			// x it would render at the exact same coordinates as its neighbors and be hidden behind
-			// them - only one of the six nodes would actually be visible
-			long distinctXCount = placements.stream().map(p -> p.x).distinct().count();
-			assertEquals(placements.size(), distinctXCount, "every node in a flat chain must still get its own distinct x position");
 		}
 	}
 

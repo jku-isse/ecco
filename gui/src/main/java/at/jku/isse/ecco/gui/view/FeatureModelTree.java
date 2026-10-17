@@ -47,12 +47,9 @@ import java.util.Map;
  * "requires" implication between features (that would need a SAT-style check across the whole
  * configuration space) - it only uses observed co-occurrence as a proxy for it.
  * <p>
- * Parent selection alone would still make the diagram's <em>depth</em> track commit count one-to-one
- * even where that isn't meaningful - a long, purely incremental rollout (B built only on A, C built
- * only on B, ...) is a straight-line dependency, not a deepening hierarchy. {@link #assignPositions}
- * therefore only steps depth down at an actual branch point: a feature with exactly one child passes
- * its own depth straight through to it, and depth only increases where a feature has more than one
- * feature built directly on top of it.
+ * Every child is drawn one level below its parent ({@link #assignPositions}), a single child
+ * straight below it. Depth used to step down only where a feature branched, so a chain was drawn
+ * as one row - a feature beside its only child read as a sibling, not a subfeature.
  */
 public final class FeatureModelTree {
 
@@ -185,30 +182,12 @@ public final class FeatureModelTree {
 	}
 
 	/**
-	 * Recursively assigns each feature an integer depth (root = 0) and an x "slot". A leaf, or a
-	 * single-child "chain" continuation (see below), claims the next free slot for itself; a real
-	 * branch (more than one child) is instead centered at the <em>midpoint of its leftmost and
-	 * rightmost child's slot</em> - not the arithmetic mean of all children's slots. Mean pulls a
-	 * parent's position toward whichever child subtree happens to have the most descendants (a
-	 * child that is itself a single leaf counts the same as one with fifty descendants when
-	 * averaging, but the fifty-descendant subtree's own center is usually far from that leaf), which
-	 * looks visibly off-center once subtrees are uneven in size; min/max is the standard tree-drawing
-	 * centering rule and stays correct regardless of how lopsided the children's subtrees are.
-	 * Returns the assigned x so a branching parent call can center over it.
-	 * <p>
-	 * Depth only increases at an actual branch point - a feature with a single child passes its own
-	 * depth straight through to that child, rather than every single link in a chain claiming its own
-	 * tier. A long, purely incremental rollout (A introduced, then B depending only on A, then C
-	 * depending only on B, ...) has no real structural depth and renders as one flat row connected by
-	 * edges; depth only grows where the model genuinely diverges (a feature with more than one child,
-	 * i.e. more than one feature was built directly on top of it).
-	 * <p>
-	 * That flat row still needs distinct x positions, though: a naive "average of children" x for a
-	 * single-child node would just inherit that one child's x verbatim, which - stacked with every
-	 * other link in the chain doing the same thing, at the same unchanging depth - would render every
-	 * node in the chain at the exact same coordinates, hiding all but the last one drawn. So a
-	 * single-child node is treated the same as a leaf for x-slot purposes (claims its own slot) and
-	 * only then recurses into that child, which claims the next slot in turn.
+	 * Recursively assigns each feature an integer depth (root = 0, a child one below its parent) and
+	 * an x "slot". A leaf claims the next free slot; a parent is centered at the <em>midpoint of its
+	 * leftmost and rightmost child's x</em> - straight above an only child - not the arithmetic mean
+	 * of all children's x. Mean pulls a parent toward whichever child subtree has the most
+	 * descendants, which looks visibly off-center once subtrees are uneven in size; min/max is the
+	 * standard tree-drawing centering rule. Returns the assigned x so a parent can center over it.
 	 */
 	private static double assignPositions(Feature feature, int depth, int rootIndex,
 										   Map<Feature, List<Feature>> childrenOf, Map<Feature, Integer> introOrder,
@@ -220,15 +199,12 @@ public final class FeatureModelTree {
 		List<Feature> children = new ArrayList<>(childrenOf.getOrDefault(feature, List.of()));
 		children.sort(Comparator.comparingInt(introOrder::get));
 
-		int childDepth = depth + (children.size() > 1 ? 1 : 0);
+		int childDepth = depth + 1;
 
 		double x;
-		if (children.size() <= 1) {
+		if (children.isEmpty()) {
 			x = nextLeafSlot[0];
 			nextLeafSlot[0] += 1.0;
-			if (children.size() == 1) {
-				assignPositions(children.get(0), childDepth, rootIndex, childrenOf, introOrder, xPos, depthOf, rootIndexOf, nextLeafSlot);
-			}
 		} else {
 			double minX = Double.POSITIVE_INFINITY;
 			double maxX = Double.NEGATIVE_INFINITY;
