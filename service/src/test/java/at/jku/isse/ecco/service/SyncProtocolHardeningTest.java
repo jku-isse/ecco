@@ -143,6 +143,89 @@ public class SyncProtocolHardeningTest {
 		}
 	}
 
+	/**
+	 * A server that answered the settings question is no older ECCO: closing the connection without
+	 * answering the push - killed, out of memory while merging - is no success, as it was taken for.
+	 */
+	@Test
+	@Timeout(120)
+	public void aPushTheServerDoesNotAnswerIsNoSuccess() throws Exception {
+		try (java.net.ServerSocket fake = new java.net.ServerSocket(0, 50, InetAddress.getLoopbackAddress());
+			 EccoService client = newRepository("sync-hardening-client")) {
+			Thread serving = new Thread(() -> {
+				while (!fake.isClosed()) {
+					try (Socket socket = fake.accept()) {
+						java.io.ObjectInputStream in = new java.io.ObjectInputStream(socket.getInputStream());
+						String request = (String) in.readObject();
+						if (request.equals("MERGE_SETTINGS")) {
+							in.readObject();
+							in.readObject();
+							in.readObject();
+							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+							out.writeObject("OK");
+							out.flush();
+						} else {
+							socket.getInputStream().readAllBytes(); // the push, never answered
+						}
+					} catch (Exception ignored) {
+					}
+				}
+			}, "fake-ecco-server");
+			serving.setDaemon(true);
+			serving.start();
+			commitText(client);
+			client.addRemote("origin", "localhost:" + fake.getLocalPort(), Remote.Type.REMOTE);
+
+			EccoException thrown = assertThrows(EccoException.class, () -> client.push("origin"));
+			assertTrue(messages(thrown).contains("not known whether it merged"), messages(thrown));
+		}
+	}
+
+	/**
+	 * The settings question before a push changes nothing on the server: it wrote the pusher's
+	 * settings at once - a push that then failed, or was cancelled, left them.
+	 */
+	@Test
+	@Timeout(120)
+	public void askingAboutTheSettingsChangesNothing() throws Exception {
+		EccoService serverRepository = newRepository("sync-hardening-server");
+		// the server has none of LilyPond's settings (a repository from before them): a push would take them over
+		Path serverSettings = serverRepository.getRepositoryDir().resolve(EccoService.SETTINGS_FILE_NAME);
+		Properties properties = new Properties();
+		try (Reader in = Files.newBufferedReader(serverSettings)) {
+			properties.load(in);
+		}
+		properties.keySet().removeIf(key -> String.valueOf(key).startsWith("lilypond."));
+		try (Writer out = Files.newBufferedWriter(serverSettings)) {
+			properties.store(out, null);
+		}
+		try (Server server = new Server(serverRepository); EccoService client = newRepository("sync-hardening-client")) {
+			setting(client.getRepositoryDir(), LilypondPlugin.MUSICAL_TOKENS_SETTING, "false");
+			client.addRemote("origin", "localhost:" + server.port, Remote.Type.REMOTE);
+			Map<String, String> before = server.service.repositorySettings();
+			assertFalse(before.containsKey(LilypondPlugin.MUSICAL_TOKENS_SETTING));
+
+			assertTrue(new RemoteSyncService(client).mergeSettingsIntoRemote(client.getRemote("origin"), java.util.Set.of(LilypondPlugin.class.getName())),
+					"answered");
+			assertEquals(before, server.service.repositorySettings(), "nothing taken over before a push arrives");
+		}
+	}
+
+	/**
+	 * Closing a repository stops its sync server: it went on serving - after another repository was
+	 * opened in the same window, that one, without asking whether to accept connections.
+	 */
+	@Test
+	@Timeout(60)
+	public void closingTheRepositoryStopsItsServer() throws Exception {
+		Server server = new Server(newRepository("sync-hardening-server"));
+		assertTrue(server.service.serverRunning());
+		server.service.close();
+		server.thread.join(10_000);
+		assertFalse(server.service.serverRunning());
+		assertFalse(server.thread.isAlive(), "the accept loop ended");
+	}
+
 	/** A request too deeply nested to read fails alone; the server answers the next one. */
 	@Test
 	@Timeout(120)

@@ -297,8 +297,10 @@ public class RemoteSyncService {
                             String reply;
                             synchronized (owner) {
                                 try {
-                                    owner.takeOverSettings(owner.settingsToTakeOver(plugins, settings, owner.repositorySettings(),
-                                            owner.pluginsWithFiles(), "push to '" + remoteName + "'"));
+                                    // compared only: the push takes them over in its own transaction - written
+                                    // here, a push that failed or was cancelled afterwards left them
+                                    owner.settingsToTakeOver(plugins, settings, owner.repositorySettings(),
+                                            owner.pluginsWithFiles(), "push to '" + remoteName + "'");
                                     reply = "OK";
                                 } catch (EccoException e) {
                                     reply = e.getMessage();
@@ -317,9 +319,13 @@ public class RemoteSyncService {
                             Collection<Feature> copiedFeatures;
                             synchronized (owner) {
                                 owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-                                Repository.Op repository = owner.repositoryDao.load();
-                                copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), owner.entityFactory);
-                                owner.transactionStrategy.end();
+                                // ended also when it fails: left open, a commit of the GUI's next could not write
+                                try {
+                                    Repository.Op repository = owner.repositoryDao.load();
+                                    copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), owner.entityFactory);
+                                } finally {
+                                    owner.transactionStrategy.end();
+                                }
                             }
 
                             // send features, size-prefixed for the client's progress bar. The size is
@@ -363,9 +369,12 @@ public class RemoteSyncService {
                             synchronized (owner) {
                                 Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
                                 owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-                                Repository.Op repository = owner.repositoryDao.load();
-                                subsetRepository = repository.subset(deselected, repository.getMaxOrder(), owner.entityFactory);
-                                owner.transactionStrategy.end();
+                                try {
+                                    Repository.Op repository = owner.repositoryDao.load();
+                                    subsetRepository = repository.subset(deselected, repository.getMaxOrder(), owner.entityFactory);
+                                } finally {
+                                    owner.transactionStrategy.end();
+                                }
                             }
 
                             // send subset repository, size-prefixed -- see the FETCH case above for why
@@ -649,7 +658,7 @@ public class RemoteSyncService {
      * before a push - it takes over this repository's settings where it has none and none of the
      * files. A server too old to answer is pushed to as before.
      */
-    private void mergeSettingsIntoRemote(Remote remote, Set<String> plugins) throws IOException, ClassNotFoundException {
+    boolean mergeSettingsIntoRemote(Remote remote, Set<String> plugins) throws IOException, ClassNotFoundException {
         String reply;
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
@@ -665,10 +674,11 @@ public class RemoteSyncService {
             reply = (String) SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream()).readObject();
         } catch (EOFException e) {
             LOGGER.warning("Remote '" + remote.getName() + "' does not compare settings (an older ECCO): not checked whether it reads files the same way.");
-            return;
+            return false;
         }
         if (!"OK".equals(reply))
             throw new EccoException(reply);
+        return true;
     }
 
     /**
@@ -676,6 +686,15 @@ public class RemoteSyncService {
      * itself, and answers whether it merged it.
      */
     void sendPush(Remote remote, Repository.Op subsetRepository, Map<String, String> settings) throws IOException, ClassNotFoundException {
+        this.sendPush(remote, subsetRepository, settings, true);
+    }
+
+    /**
+     * As above; [answers] whether the remote answered the settings question, and so answers a push:
+     * without an answer then, it is not known whether it merged it - it was taken for an older
+     * ECCO's silence, a success, also when the server was killed or ran out of memory merging.
+     */
+    void sendPush(Remote remote, Repository.Op subsetRepository, Map<String, String> settings, boolean answers) throws IOException, ClassNotFoundException {
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
             if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
@@ -728,7 +747,13 @@ public class RemoteSyncService {
             Object reply;
             try {
                 reply = SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream()).readObject();
+            } catch (java.net.SocketTimeoutException e) {
+                throw new EccoException("Remote '" + remote.getName() + "' did not answer the push within " + READ_TIMEOUT_MILLIS / 1000
+                        + " seconds: not known whether it merged it - fetch from it to see, before pushing again.", e);
             } catch (EOFException | SocketException e) {
+                if (answers)
+                    throw new EccoException("Remote '" + remote.getName() + "' closed the connection without answering the push: "
+                            + "not known whether it merged it - fetch from it to see, before pushing again.", e);
                 LOGGER.warning("Remote '" + remote.getName() + "' does not answer a push (an older ECCO): not known whether it merged it.");
                 return;
             }
@@ -909,10 +934,10 @@ public class RemoteSyncService {
                 // the last chance: the server merges what it gets
                 OperationCancelledException.check(cancelled);
                 // the remote merges only files it reads the same way - asked before sending anything
-                this.mergeSettingsIntoRemote(remote, EccoService.pluginsWithFiles(subsetRepository));
+                boolean answers = this.mergeSettingsIntoRemote(remote, EccoService.pluginsWithFiles(subsetRepository));
 
                 try {
-                    this.sendPush(remote, subsetRepository, owner.repositorySettings());
+                    this.sendPush(remote, subsetRepository, owner.repositorySettings(), answers);
                 } catch (EccoException e) {
                     throw e;
                 } catch (Exception e) {
