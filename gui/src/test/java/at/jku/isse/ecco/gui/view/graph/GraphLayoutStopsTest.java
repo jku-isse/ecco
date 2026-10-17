@@ -72,7 +72,8 @@ public class GraphLayoutStopsTest {
             commit(service, tmp.resolve("v1"), "A.1", files);
             ArtifactGraphView view = onFx(() -> new ArtifactGraphView(service));
             onFx(() -> view.setTabVisible(true));
-            waitUntil("drawn", () -> graph(view).getNodeCount() > 0);
+            // the toolbar is disabled while the graph is filled, on another thread
+            waitUntil("drawn", () -> graph(view).getNodeCount() > 0 && !toolBar(view).isDisable());
 
             org.graphstream.graph.Graph graph = graph(view);
             // the budget, plus one folded node for each subtree reached after it ran out
@@ -82,6 +83,12 @@ public class GraphLayoutStopsTest {
         } finally {
             ArtifactGraphView.maxNodes = before;
         }
+    }
+
+    private static javafx.scene.control.ToolBar toolBar(ArtifactGraphView view) throws Exception {
+        Field toolBarField = ArtifactGraphView.class.getDeclaredField("toolBar");
+        toolBarField.setAccessible(true);
+        return (javafx.scene.control.ToolBar) toolBarField.get(view);
     }
 
     private static org.graphstream.graph.Graph graph(ArtifactGraphView view) throws Exception {
