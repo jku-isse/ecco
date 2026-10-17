@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.gui.view.operation;
 
-import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.RecentRepositories;
 import javafx.scene.Node;
@@ -169,11 +168,14 @@ public class InitViewTest {
             try {
                 AnsweredInitView view = shown.view();
                 init(shown, file.resolve(".ecco"));
-                waitUntil("the error", () -> view.toolBar.getStyleClass().contains("error"));
+                waitUntil("the error", () -> view.inputError() != null);
 
                 assertFalse(service.isInitialized());
-                assertEquals("Error initializing repository.", onFx(() -> errorLabel(view)));
-                assertNotNull(onFx(() -> find(view, n -> n instanceof ExceptionTextArea)), "the exception is shown");
+                // above the form, which stays - it was replaced by an error screen, and a typo meant starting over
+                assertTrue(onFx(view::inputError).startsWith("Error initializing repository: "), onFx(view::inputError));
+                assertFalse(onFx(() -> view.toolBar.getStyleClass().contains("error")));
+                assertEquals(file.resolve(".ecco").toString(), onFx(() -> field(view).getText()), "what was typed is kept");
+                assertFalse(onFx(() -> button(view, "Create").isDisable()), "to try again");
                 assertTrue(shown.stage().isShowing());
             } finally {
                 shown.close();
@@ -194,12 +196,13 @@ public class InitViewTest {
                 AnsweredInitView view = shown.view();
                 view.answer = true;
                 init(shown, project);
-                waitUntil("the error", () -> view.toolBar.getStyleClass().contains("error") || !shown.stage().isShowing());
+                waitUntil("the error", () -> view.inputError() != null || !shown.stage().isShowing());
 
                 assertEquals(List.of(), view.asked);
                 assertTrue(Files.exists(project.resolve("main.c")), "the directory is kept");
                 assertFalse(service.isInitialized());
-                assertTrue(onFx(() -> errorLabel(view)).contains(project.toString()), onFx(() -> errorLabel(view)));
+                assertTrue(onFx(view::inputError).contains(project.toString()), onFx(view::inputError));
+                assertNotNull(onFx(() -> button(view, "Create")), "the form stays");
             } finally {
                 shown.close();
             }
@@ -218,11 +221,12 @@ public class InitViewTest {
                     AnsweredInitView view = shown.view();
                     view.answer = false;
                     init(shown, text);
-                    waitUntil("the error", () -> view.toolBar.getStyleClass().contains("error") || !view.asked.isEmpty());
+                    waitUntil("the error", () -> view.inputError() != null || !view.asked.isEmpty());
 
                     assertEquals(List.of(), view.asked, "'" + text + "'");
                     assertFalse(service.isInitialized());
-                    assertTrue(onFx(() -> errorLabel(view)).startsWith("Not a valid repository directory"), onFx(() -> errorLabel(view)));
+                    assertTrue(onFx(view::inputError).startsWith("Not a valid repository directory"), onFx(view::inputError));
+                    assertEquals(text, onFx(() -> field(view).getText()), "what was typed is kept");
                 } finally {
                     shown.close();
                 }

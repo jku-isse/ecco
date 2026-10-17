@@ -42,7 +42,7 @@ public class ExceptionAlert extends Alert {
 	 * what failed ("Error when retrieving repository."), and why was hidden in the details; a
 	 * message already contained in an earlier one is left out.
 	 */
-	static String describe(Throwable ex) {
+	public static String describe(Throwable ex) {
 		java.util.List<String> messages = new java.util.ArrayList<>();
 		for (Throwable t = ex; t != null; t = t.getCause()) {
 			String message = t.getMessage() == null ? null : t.getMessage().strip();

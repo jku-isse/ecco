@@ -2,7 +2,6 @@ package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -303,13 +302,16 @@ public class PullViewTest {
 
     /** The error step's message and exception text, null while no error is shown. */
     static String errorText(OperationView view) {
-        ExceptionTextArea exception = (ExceptionTextArea) find(view.getCenter(), n -> n instanceof ExceptionTextArea);
-        if (exception == null)
+        at.jku.isse.ecco.gui.ErrorDetails details = (at.jku.isse.ecco.gui.ErrorDetails) find(view.getCenter(), n -> n instanceof at.jku.isse.ecco.gui.ErrorDetails);
+        if (details == null)
             return null;
+        // the cause in words first; the stack trace is folded away under Details
+        assertFalse(details.isExpanded(), "the stack trace is folded away");
         List<String> parts = new ArrayList<>();
         Label label = (Label) find(view.getCenter(), n -> n instanceof Label);
         parts.add(label.getText());
-        parts.add(exception.getText());
+        parts.add(details.summary());
+        parts.add(details.stackTrace());
         assertTrue(view.rightButtons.getChildren().stream().anyMatch(n -> n instanceof Button b && b.getText().equals("Done")));
         return String.join("\n", parts);
     }

@@ -126,6 +126,7 @@ public class ForkView extends OperationView {
 		forkButton.setOnAction(event -> {
 			String remote = remoteTextField.getText() == null ? "" : remoteTextField.getText().trim();
 			String exclude = excludeTextField.getText() == null ? "" : excludeTextField.getText().trim();
+			this.clearInputError();
 
 			// host:port first: "127.0.0.1:3770" is also a syntactically valid path
 			Optional<InetSocketAddress> hostPort = RemoteAddress.parseHostPort(remote);
@@ -164,7 +165,7 @@ public class ForkView extends OperationView {
 				try {
 					Files.createDirectories(baseDir);
 				} catch (IOException e) {
-					stepError("Error creating directory.", e);
+					this.showInputError("Error creating directory.", e);
 					return;
 				}
 			}
@@ -185,7 +186,8 @@ public class ForkView extends OperationView {
 			};
 			task.setOnFailed(e -> {
 				pb.setVisible(false);
-				stepError("Error forking repository.", task.getException());
+				forkButton.setDisable(false);
+				this.showInputError("Error forking repository.", task.getException());
 			});
 			task.setOnSucceeded(e -> {
 				RecentRepositories.addRecentRepository(service.getRepositoryDir());
@@ -195,6 +197,7 @@ public class ForkView extends OperationView {
 			forkButton.setDisable(true);
 			pb.setProgress(-1.0f);
 			pb.setVisible(true);
+			this.track(task, "The fork");
 			Thread th = new Thread(task);
 			th.setDaemon(true);
 			th.start();
@@ -204,10 +207,9 @@ public class ForkView extends OperationView {
 		this.fit();
 	}
 
+	/** Said above the form, which stays - it was a message box, "Cannot Fork". */
 	private void invalidInput(String text) {
-		Alert alert = new Alert(Alert.AlertType.WARNING, text, ButtonType.OK);
-		alert.setHeaderText("Cannot Fork");
-		alert.showAndWait();
+		this.showInputError(text);
 	}
 
 	private File chooseDirectory(String current) {

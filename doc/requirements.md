@@ -664,20 +664,20 @@ Postcondition: The previously stored minimized conditions stay as they were.
 1. The product-line engineer selects a local Git clone.
 2. The system VALIDATES THAT the folder holds a `.git`.
 3. The system shows the history along first parents, oldest first.
-4. The product-line engineer selects a range of commits, the review interval N and the use of LLM suggestions.
+4. The product-line engineer selects one continuous range of commits, whether to review each commit, and the use of LLM suggestions.
 5. DO
 6. The system extracts the tree of the next Git commit into an empty directory.
-7. The system VALIDATES THAT the commit is due for review.
+7. The system VALIDATES THAT each commit is reviewed.
 8. The system sends the diff, the message and the features imported so far to the LLM service.
 9. The system VALIDATES THAT the LLM service returns a suggestion.
-10. The system shows the commit with a configuration made of the running feature set and the suggestion.
+10. The system shows the commit, the files it changed, and a configuration made of the running feature set and the suggestion.
 11. The product-line engineer edits the configuration.
 12. The product-line engineer chooses Import.
 13. The system VALIDATES THAT the configuration satisfies the accepted constraints.
 14. INCLUDE USE CASE Commit variant for the extracted tree.
 15. The system makes the committed configuration the running feature set.
 16. UNTIL the last selected commit is processed.
-17. The system shows the log, the last commit and a summary of the warnings.
+17. The system shows a summary - commits imported and skipped, accepted constraints violated, suggestions that failed - the log and the last commit.
 
 Postcondition: The repository holds one commit per imported Git commit. The working tree and the index of the Git clone are unchanged.
 
@@ -733,6 +733,29 @@ Postcondition: Nothing is committed yet.
 3. RESUME STEP 11.
 
 Postcondition: Nothing of the failed commit is in the repository; the product-line engineer corrects the configuration and imports again, or skips the commit.
+
+**Specific alternative flow SA8** (RFS 4)
+
+1. The system reports "Select one continuous range of commits (Shift-click its last one): the commits between would be imported too.".
+2. RESUME STEP 4.
+
+Postcondition: Nothing is imported.
+
+**Specific alternative flow SA9** (RFS 8)
+
+1. The repository has no commit yet: the system takes BASE - the code base as first imported, the root of the feature model - as the configuration, without the LLM service.
+2. RESUME STEP 10 if the commit is reviewed, else STEP 14.
+
+Postcondition: BASE owns the whole first snapshot.
+
+**Global alternative flow GA1**
+
+1. The product-line engineer closes the window.
+2. IF a commit is being suggested or imported THEN the system asks whether to stop the import; IF the product-line engineer declines THEN RESUME at the interrupted step ENDIF ENDIF.
+3. The system imports no further commit; a commit already being written finishes.
+4. ABORT.
+
+Postcondition: The commits imported so far stay in the repository.
 
 ### UC-11 Fork repository
 
@@ -1196,7 +1219,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | --- | --- | --- |
 | IF-G1 | The GUI shall group its functions in a ribbon: Repositories (new, open, fork, close, status, base directory), Versions, Collaborate, Explore (the views, and the graphs); repository actions are disabled until a repository is open, and new, open and fork while one is; every button has a tooltip, and Help lists them with the shortcuts; About tells the version. | Code `MainView`, `RibbonBar` |
 | IF-G2 | Users shall be able to commit one variant folder or several at once, check out configurations, and manage named variants (add, remove, edit feature revisions, check out several into a base directory). | Code `CommitBaseDirView`, `CommitView`, `VariantsView` |
-| IF-G3 | Users shall be able to import a Git history commit by commit, oldest first, with Import, Skip and Stop per reviewed commit, auto-importing the commits between every N-th review (N 1-1000, default 1). | Code `ImportGitView` |
+| IF-G3 | Users shall be able to import one continuous range of a Git history commit by commit, oldest first, either reviewing each commit (Import, Skip, Stop; with the files it changed) or importing them unattended, stopping only for a failure or an uncertain suggestion; closing the window while a commit is suggested or imported asks whether to stop; a summary ends the import. | Code `ImportGitView` |
 | IF-G4 | Git import should suggest a configuration per commit from an LLM at any OpenAI-compatible endpoint, configured under Preferences (URL, model). | Code `PreferencesView`; Doc |
 | IF-G5 | The feature model view shall show the feature model derived from the commits and let users accept, reject or return mined constraints; every review minimizes the presence conditions with them again, as the Artifacts view does on request. | Code `FeaturesView`, `ConstraintSuggestionsView`, `MinimizationResults` |
 | IF-G6 | Users shall be able to list and compare commits, list associations with their full and simplified conditions and the details of each, and browse the artifact tree of any selection of associations - composed as soon as it changes, and selected by hand or by a configuration, which selects the associations a checkout of it takes - then check out exactly that selection into a folder they choose. | Code `CommitsView`, `CommitComparisonView`, `ArtifactsView`, `AssociationDetailView`, `FeatureTogglePanel`; Test `ArtifactsViewTest` |

@@ -81,6 +81,7 @@ public class PullView extends OperationView {
 			};
 			PullView.this.progressBar.progressProperty().bind(pullTask.progressProperty());
 			this.stepProgress();
+			this.track(pullTask, "The pull");
 			new Thread(pullTask).start();
 		});
 

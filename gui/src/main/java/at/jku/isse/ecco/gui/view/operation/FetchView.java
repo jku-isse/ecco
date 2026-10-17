@@ -105,6 +105,7 @@ public class FetchView extends OperationView {
 					FetchView.this.setDisable(false);
 				}
 			};
+			this.track(fetchTask, "The fetch");
 			new Thread(fetchTask).start();
 		});
 

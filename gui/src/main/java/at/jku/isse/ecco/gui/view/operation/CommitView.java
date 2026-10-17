@@ -405,13 +405,14 @@ public class CommitView extends OperationView implements EccoListener {
 								committed.get(), foldersToCommit.size()));
 					} else {
 						// show exception textarea instead of commit detail view
-						CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new ExceptionTextArea(this.getException()));
+						CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new at.jku.isse.ecco.gui.ErrorDetails(this.getException()));
 						CommitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 						CommitView.this.showErrorHeader();
 					}
 					CommitView.this.growToFit();
 				}
 			};
+			this.track(commitTask, "The commits");
 			new Thread(commitTask).start();
 		});
 	}

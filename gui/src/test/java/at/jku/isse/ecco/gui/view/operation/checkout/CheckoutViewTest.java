@@ -2,7 +2,6 @@ package at.jku.isse.ecco.gui.view.operation.checkout;
 
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Variant;
-import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryVisitor;
 import at.jku.isse.ecco.gui.view.detail.CheckoutDetailView;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
@@ -204,7 +203,7 @@ public class CheckoutViewTest {
             checkout(view, file, "BASE, A");
             waitUntil("checkout failed", () -> view.button("Done") != null);
             assertTrue(onFx(() -> view.toolBarStyles().contains("error")));
-            assertTrue(onFx(() -> view.result() instanceof ExceptionTextArea));
+            assertTrue(onFx(() -> view.result() instanceof at.jku.isse.ecco.gui.ErrorDetails));
             assertEquals("x\n", Files.readString(file));
 
             // the checkout itself fails: a configuration that cannot be parsed
@@ -212,7 +211,7 @@ public class CheckoutViewTest {
             checkout(second, tmp.resolve("out"), "BASE, A, (");
             waitUntil("checkout failed", () -> second.button("Done") != null);
             assertTrue(onFx(() -> second.toolBarStyles().contains("error")));
-            assertTrue(onFx(() -> second.result() instanceof ExceptionTextArea));
+            assertTrue(onFx(() -> second.result() instanceof at.jku.isse.ecco.gui.ErrorDetails));
         }
     }
 

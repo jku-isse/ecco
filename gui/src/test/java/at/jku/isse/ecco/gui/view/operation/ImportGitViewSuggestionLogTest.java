@@ -33,6 +33,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static at.jku.isse.ecco.gui.FxTestSupport.waitUntil;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -77,24 +78,33 @@ public class ImportGitViewSuggestionLogTest {
         System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
         Path clone = gitHistory(tmp.resolve("clone"), "first", "second", "third", "fourth");
         EccoService service = repository(tmp.resolve("repo"));
-        // reviews every 2nd commit: first and third are imported unattended
-        ImportGitView view = startImport(service, clone, 2);
+        // each commit is reviewed
+        ImportGitView view = startImport(service, clone, true);
 
+        waitFor(view, "Review Commit (1 of 4)");
+        assertEquals("BASE", onFx(() -> findField(view).getText()));
+        clickButton(view, "Import");
         waitFor(view, "Review Commit (2 of 4)");
         assertEquals("BASE, SECOND", onFx(() -> findField(view).getText()));
+        // what the commit changed, to judge the configuration by - the screen had only its message
+        waitUntil("the changed files", () -> view.changedFilesShown().equals(List.of("second.txt")));
         onFx(() -> {
             findField(view).setText("BASE, SECOND, EXTRA");
             return null;
         });
         clickButton(view, "Import");
+        waitFor(view, "Review Commit (3 of 4)");
+        clickButton(view, "Import");
         waitFor(view, "Review Commit (4 of 4)");
         clickButton(view, "Skip");
         waitFor(view, "");
+        // one summary in the window - there were up to two message boxes
+        assertEquals("Imported 3 of 4 commits, skipped 1.", onFx(() -> view.summaryText().lines().findFirst().orElse("")));
         service.close();
 
         List<String> entries = Files.readAllLines(log);
         assertEquals(List.of("first", "second", "third", "fourth"), entries.stream().map(e -> field(e, "message")).toList());
-        assertEquals(List.of("auto", "reviewed", "auto", "skipped"), entries.stream().map(e -> field(e, "outcome")).toList());
+        assertEquals(List.of("reviewed", "reviewed", "reviewed", "skipped"), entries.stream().map(e -> field(e, "outcome")).toList());
         assertEquals(List.of("", "BASE", "BASE, SECOND, EXTRA", "BASE, SECOND, EXTRA, THIRD"), entries.stream().map(e -> field(e, "before")).toList());
         // the first commit into an empty repository is BASE, the LLM is not asked
         assertEquals(List.of("null", "SECOND", "THIRD", "FOURTH"), entries.stream().map(e -> field(e, "suggestion")).toList());
@@ -143,24 +153,109 @@ public class ImportGitViewSuggestionLogTest {
                 return new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(List.of(feature), null, List.of(),
                         List.of(Map.of(feature, "BASE"))), "stub", 1);
             };
-            // reviews every 4th commit: the first three are imported unattended
-            v.startImport(clone, oldestFirst, true, 4);
+            // not reviewed: imported unattended
+            v.startImport(clone, oldestFirst, true, false);
             return v;
         });
 
-        waitFor(view, "Review Commit (4 of 4)");
+        waitFor(view, FINISHED);
         assertEquals(List.of("second", "third", "fourth"), asked, "not asked for the first commit");
         List<String> entries = Files.readAllLines(log);
-        assertEquals(List.of("BASE", "BASE, SECOND", "BASE, SECOND, THIRD"), entries.stream().map(e -> field(e, "committed")).toList());
+        assertEquals(List.of("BASE", "BASE, SECOND", "BASE, SECOND, THIRD", "BASE, SECOND, THIRD, FOURTH"), entries.stream().map(e -> field(e, "committed")).toList());
+        assertEquals(List.of("auto", "auto", "auto", "auto"), entries.stream().map(e -> field(e, "outcome")).toList());
         assertTrue(entries.get(1).contains("\"parents\":{\"SECOND\":\"BASE\"}"), entries.get(1));
 
         Map<String, String> told = new java.util.TreeMap<>();
         for (LlmFeatureSuggestionClient.KnownFeature known : view.suggestionInput(oldestFirst.get(3)).knownFeatures())
             told.put(known.name(), String.valueOf(known.parentName()));
-        assertEquals(Map.of("BASE", "null", "SECOND", "BASE", "THIRD", "BASE"), told, "THIRD is not under SECOND");
-        clickButton(view, "Skip");
-        waitFor(view, FINISHED);
+        assertEquals(Map.of("BASE", "null", "SECOND", "BASE", "THIRD", "BASE", "FOURTH", "BASE"), told, "THIRD is not under SECOND");
         service.close();
+    }
+
+    /**
+     * Closing the window while a commit is being suggested or imported asks, and stopping imports
+     * nothing more - the import went on with no window; closing at a review screen ends the run.
+     */
+    @Test
+    @Timeout(60)
+    public void closingTheWindowStopsTheImport(@TempDir Path tmp) throws Exception {
+        Path log = tmp.resolve("suggestions.jsonl");
+        System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
+        Path clone = gitHistory(tmp.resolve("clone"), "first", "second", "third");
+        EccoService service = repository(tmp.resolve("repo"));
+        List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
+        Collections.reverse(oldestFirst);
+        java.util.concurrent.CountDownLatch asked = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch answer = new java.util.concurrent.CountDownLatch(1);
+        List<String> questions = java.util.Collections.synchronizedList(new ArrayList<>());
+        javafx.stage.Stage stage = onFx(() -> {
+            ImportGitView v = new ImportGitView(service) {
+                @Override
+                boolean askToClose(String question, String closeLabel) {
+                    questions.add(question);
+                    return true;
+                }
+            };
+            v.suggester = commit -> {
+                asked.countDown();
+                try {
+                    answer.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(List.of(commit.getMessage().toUpperCase()), null), "stub", 1);
+            };
+            javafx.stage.Stage s = new javafx.stage.Stage();
+            s.setScene(new Scene(v));
+            s.setX(-10_000);
+            s.show();
+            v.startImport(clone, oldestFirst, true, false);
+            return s;
+        });
+        assertTrue(asked.await(30, java.util.concurrent.TimeUnit.SECONDS), "the second commit is being suggested");
+        javafx.stage.WindowEvent request = new javafx.stage.WindowEvent(stage, javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST);
+        onFx(() -> { stage.getOnCloseRequest().handle(request); return null; });
+        assertFalse(request.isConsumed(), "closed");
+        assertEquals(List.of("Stop the import? 2 commits are left; one already being written still finishes."), questions);
+        onFx(() -> { stage.close(); return null; });
+        answer.countDown();
+
+        Thread.sleep(1_000);
+        assertEquals(1, service.getCommits().size(), "only BASE, imported before closing");
+        service.close();
+    }
+
+    @Test
+    @Timeout(60)
+    public void closingAtAReviewEndsTheRun(@TempDir Path tmp) throws Exception {
+        Path log = tmp.resolve("suggestions.jsonl");
+        System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
+        Path clone = gitHistory(tmp.resolve("clone"), "first", "second");
+        EccoService service = repository(tmp.resolve("repo"));
+        ImportGitView view = startImport(service, clone, true);
+        waitFor(view, "Review Commit (1 of 2)");
+        javafx.stage.Stage stage = onFx(() -> {
+            javafx.stage.Stage s = new javafx.stage.Stage();
+            s.setScene(view.getScene() == null ? new Scene(view) : view.getScene());
+            s.setX(-10_000);
+            s.show();
+            return s;
+        });
+        javafx.stage.WindowEvent request = new javafx.stage.WindowEvent(stage, javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST);
+        onFx(() -> { stage.getOnCloseRequest().handle(request); return null; });
+        assertFalse(request.isConsumed(), "nothing running: closed without asking");
+        onFx(() -> { stage.close(); return null; });
+        assertTrue(onFx(() -> view.runEnded), "the run ended with the window");
+        service.close();
+    }
+
+    /** One continuous range of commits is imported - a gap in the selection was imported silently. */
+    @Test
+    public void aSelectionWithGapsIsRefused() {
+        assertNull(ImportGitView.rangeProblem(List.of(3, 1, 2)));
+        assertNull(ImportGitView.rangeProblem(List.of(5)));
+        assertEquals("Select one continuous range of commits (Shift-click its last one): the commits between would be imported too.",
+                ImportGitView.rangeProblem(List.of(1, 3)));
     }
 
     /** An unattended commit whose suggestion is uncertain stops for review, and says why; without the option it is imported. */
@@ -182,12 +277,10 @@ public class ImportGitViewSuggestionLogTest {
                 v.suggester = commit -> new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
                         List.of(commit.getMessage().equals("first") ? "BASE" : commit.getMessage().toUpperCase()), null, List.of()), "stub", 1,
                         commit.getMessage().equals("third") ? new SuggestionConfidence(0.15, "BASE changed exactly these positions before") : null);
-                // reviews every 2nd commit: first and third are imported unattended
-                v.startImport(clone, oldestFirst, true, 2);
+                // not reviewed: imported unattended unless a suggestion is uncertain
+                v.startImport(clone, oldestFirst, true, false);
                 return v;
             });
-            waitFor(view, "Review Commit (2 of 3)");
-            clickButton(view, "Import");
             if (reviewUncertain) {
                 waitFor(view, "Review Commit (3 of 3)");
                 assertEquals("Stopped for review - the suggestion is uncertain: BASE changed exactly these positions before.",
@@ -225,7 +318,7 @@ public class ImportGitViewSuggestionLogTest {
             }
         }
         EccoService service = repository(tmp.resolve("repo"));
-        ImportGitView view = startImport(service, clone, 1);
+        ImportGitView view = startImport(service, clone, true);
         waitFor(view, "Review Commit (1 of 3)");
         clickButton(view, "Import");
         waitFor(view, "Review Commit (2 of 3)");
@@ -257,7 +350,7 @@ public class ImportGitViewSuggestionLogTest {
         ImportGitView view = onFx(() -> {
             ImportGitView v = new ImportGitView(service);
             new Scene(v);
-            v.startImport(clone, oldestFirst, false, 1);
+            v.startImport(clone, oldestFirst, false, true);
             return v;
         });
         waitFor(view, "Review Commit (1 of 2)");
@@ -316,7 +409,7 @@ public class ImportGitViewSuggestionLogTest {
     }
 
     /** with the LLM replaced: commit "first" gets BASE, every other one a feature named after it */
-    private static ImportGitView startImport(EccoService service, Path clone, int reviewInterval) throws Exception {
+    private static ImportGitView startImport(EccoService service, Path clone, boolean reviewEach) throws Exception {
         List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
         Collections.reverse(oldestFirst);
         return onFx(() -> {
@@ -325,7 +418,7 @@ public class ImportGitViewSuggestionLogTest {
             view.suggester = commit -> new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
                     List.of(commit.getMessage().equals("first") ? "BASE" : commit.getMessage().toUpperCase()), null,
                     List.of(new LlmFeatureSuggestionClient.Usage(100, 5, 42))), "stub", 7);
-            view.startImport(clone, oldestFirst, true, reviewInterval);
+            view.startImport(clone, oldestFirst, true, reviewEach);
             return view;
         });
     }

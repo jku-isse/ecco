@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link ImportGitView#defaultConfigurationText}, {@link ImportGitView#applyConfigurationToRunning},
- * {@link ImportGitView#parseFeatureTokens} and {@link ImportGitView#isReviewCommit} are pure,
+ * {@link ImportGitView#parseFeatureTokens} is pure,
  * JavaFX-free functions specifically so they can be exercised like this - they drive the per-commit
  * interactive import loop's "what should this commit's configuration default to" and "should this
  * commit pause for review or auto-import" logic.
@@ -124,22 +124,4 @@ public class ImportGitViewAccumulateConfigurationsTest {
 		assertEquals("-", ImportGitView.defaultConfigurationText(running, "-"));
 	}
 
-	@Test
-	public void isReviewCommit_intervalOne_reviewsEveryCommit() {
-		for (int index = 0; index < 5; index++) {
-			assertTrue(ImportGitView.isReviewCommit(index, 1), "index " + index + " with interval 1");
-		}
-	}
-
-	@Test
-	public void isReviewCommit_intervalFive_reviewsEveryFifthCommitOnly() {
-		// 0-based index -> 1-based commit position: reviews the 5th, 10th, 15th... commit
-		assertFalse(ImportGitView.isReviewCommit(0, 5), "1st commit");
-		assertFalse(ImportGitView.isReviewCommit(1, 5), "2nd commit");
-		assertFalse(ImportGitView.isReviewCommit(2, 5), "3rd commit");
-		assertFalse(ImportGitView.isReviewCommit(3, 5), "4th commit");
-		assertTrue(ImportGitView.isReviewCommit(4, 5), "5th commit");
-		assertFalse(ImportGitView.isReviewCommit(5, 5), "6th commit");
-		assertTrue(ImportGitView.isReviewCommit(9, 5), "10th commit");
-	}
 }

@@ -67,11 +67,17 @@ public abstract class OperationView extends BorderPane {
 	public OperationView() {
 		super();
 		//Scene scene = this.getScene();
+		// Esc, and the window's close control, ask first while an operation runs (see mayClose)
 		this.setOnKeyPressed(event -> {
 			if (event.getCode() == KeyCode.ESCAPE) {
-				((Stage) this.getScene().getWindow()).close();
-				//this.popStep();
+				event.consume();
+				if (this.mayClose())
+					this.getScene().getWindow().hide();
 			}
+		});
+		this.sceneProperty().addListener((o, oldScene, scene) -> {
+			if (scene != null)
+				scene.windowProperty().addListener((o2, oldWindow, window) -> this.watch(window));
 		});
 
 		this.setMinWidth(600);
@@ -105,7 +111,13 @@ public abstract class OperationView extends BorderPane {
 		rightButtons.minWidthProperty().bind(leftButtons.widthProperty());
 		toolBar.getItems().setAll(leftButtons, spacerLeft, headerLabel, spacerRight, rightButtons);
 
-		this.setTop(toolBar);
+		// a mistake in the form, said above it - the form stays (see showInputError)
+		this.inputErrorLabel.setWrapText(true);
+		this.inputErrorLabel.setStyle("-fx-text-fill: firebrick; -fx-padding: 6 10 0 10;");
+		this.inputErrorLabel.setVisible(false);
+		this.inputErrorLabel.setManaged(false);
+		this.inputErrorLabel.setMaxWidth(Double.MAX_VALUE);
+		this.setTop(new VBox(toolBar, this.inputErrorLabel));
 
 
 //		// toolbar bottom
@@ -113,6 +125,118 @@ public abstract class OperationView extends BorderPane {
 //		this.setBottom(toolBarBottom);
 	}
 
+
+	private final Label inputErrorLabel = new Label();
+
+	/**
+	 * Says [text] above the form, which stays as it is - a mistake in it replaced it by an error
+	 * screen, and the dialog had to be opened again. Cleared by {@link #clearInputError}.
+	 */
+	protected void showInputError(String text) {
+		this.inputErrorLabel.setText(text);
+		this.inputErrorLabel.setVisible(true);
+		this.inputErrorLabel.setManaged(true);
+		this.notRunning();
+		if (this.getScene() != null && this.getScene().getWindow() != null)
+			this.growToFit();
+	}
+
+	protected void clearInputError() {
+		this.inputErrorLabel.setVisible(false);
+		this.inputErrorLabel.setManaged(false);
+	}
+
+	/** "Error opening repository: Not an ECCO repository: ..." - [what] and the causes of [exception]. */
+	protected void showInputError(String what, Throwable exception) {
+		this.showInputError(what.replaceAll("\\.$", "") + ": " + at.jku.isse.ecco.gui.ExceptionAlert.describe(exception));
+	}
+
+	/** The error said above the form, null if there is none. Package-visible for testing. */
+	String inputError() {
+		return this.inputErrorLabel.isVisible() ? this.inputErrorLabel.getText() : null;
+	}
+
+	// ---- an operation running: closing the window asks first ------------------------------------
+
+	/** What runs, "The commit" - null if nothing does. */
+	private String runningWhat;
+	/** What closing the window then adds to the question. */
+	private String runningDetail;
+	/** Stops it; null if it cannot be stopped - closing then lets it finish in the background. */
+	private Runnable stopper;
+
+	/** [what] runs from now; [stopper] stops it, or null if it cannot be stopped. */
+	protected void running(String what, Runnable stopper) {
+		this.running(what, null, stopper);
+	}
+
+	protected void running(String what, String detail, Runnable stopper) {
+		this.runningWhat = what;
+		this.runningDetail = detail;
+		this.stopper = stopper;
+	}
+
+	/** Nothing runs any more: the window closes without asking. */
+	protected void notRunning() {
+		this.runningWhat = null;
+		this.runningDetail = null;
+		this.stopper = null;
+	}
+
+	/** [what] runs until [task] ends; it cannot be stopped. */
+	protected void track(javafx.concurrent.Task<?> task, String what) {
+		this.running(what, null);
+		task.stateProperty().addListener((o, old, state) -> {
+			if (state == javafx.concurrent.Worker.State.SUCCEEDED || state == javafx.concurrent.Worker.State.FAILED
+					|| state == javafx.concurrent.Worker.State.CANCELLED)
+				this.notRunning();
+		});
+	}
+
+	/**
+	 * Whether the window may close now: nothing runs, or the user said so - stopping what can be
+	 * stopped. Closing went through at once, and the operation went on unseen.
+	 */
+	boolean mayClose() {
+		if (this.runningWhat == null)
+			return true;
+		if (this.stopper != null) {
+			if (!this.askToClose("Stop " + this.runningWhat + "?" + (this.runningDetail == null ? "" : " " + this.runningDetail), "Stop"))
+				return false;
+			Runnable stop = this.stopper;
+			this.notRunning();
+			stop.run();
+			return true;
+		}
+		return this.askToClose(this.runningWhat + " is still running - it finishes even if you close this window. Close anyway?", "Close");
+	}
+
+	/** Asks [question]; true if the answer is [closeLabel], false to keep the window open. Package-visible for testing. */
+	boolean askToClose(String question, String closeLabel) {
+		javafx.scene.control.ButtonType close = new javafx.scene.control.ButtonType(closeLabel, javafx.scene.control.ButtonBar.ButtonData.OTHER);
+		javafx.scene.control.ButtonType keep = new javafx.scene.control.ButtonType("Keep Open", javafx.scene.control.ButtonBar.ButtonData.CANCEL_CLOSE);
+		javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.CONFIRMATION, question, close, keep);
+		alert.setHeaderText(null);
+		if (this.getScene() != null && this.getScene().getWindow() != null)
+			alert.initOwner(this.getScene().getWindow());
+		((Button) alert.getDialogPane().lookupButton(keep)).setDefaultButton(true);
+		((Button) alert.getDialogPane().lookupButton(close)).setDefaultButton(false);
+		return alert.showAndWait().orElse(keep) == close;
+	}
+
+	/** Called once the window is closed - whatever still runs is the view's to end. */
+	protected void closed() {
+	}
+
+	private void watch(javafx.stage.Window window) {
+		if (window instanceof Stage stage) {
+			stage.setOnCloseRequest(event -> {
+				if (!this.mayClose())
+					event.consume();
+			});
+			stage.addEventHandler(javafx.stage.WindowEvent.WINDOW_HIDDEN, event -> this.closed());
+		}
+	}
 
 	/** The prompt of a configuration field to check out or save - nothing said how to write one. */
 	public static final String CONFIGURATION_HINT = "Features, comma-separated: A (its latest revision), A.3f2a9c1 (that revision)";
@@ -261,6 +385,8 @@ public abstract class OperationView extends BorderPane {
 	}
 
 	protected void stepError(String text, Throwable ex) {
+		this.notRunning();
+		this.clearInputError();
 //		this.clearSteps();
 
 //		// toolbar top
@@ -310,7 +436,7 @@ public abstract class OperationView extends BorderPane {
 //			GridPane.setHgrow(textArea, Priority.ALWAYS);
 //
 //			gridPane.add(textArea, 0, 1);
-			gridPane.add(new ExceptionTextArea(ex), 0, 1);
+			gridPane.add(new at.jku.isse.ecco.gui.ErrorDetails(ex), 0, 1);
 		}
 
 		this.setCenter(gridPane);

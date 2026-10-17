@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.gui.view.operation;
 
-import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.RecentRepositories;
 import javafx.scene.Node;
@@ -143,9 +142,10 @@ public class OpenViewTest {
             try {
                 OpenView view = shown.view();
                 open(view, "");
-                waitUntil("the error", () -> view.toolBar.getStyleClass().contains("error"));
+                waitUntil("the error", () -> view.inputError() != null);
 
-                assertTrue(onFx(() -> errorLabel(view)).startsWith("Not a valid repository directory"), onFx(() -> errorLabel(view)));
+                assertTrue(onFx(view::inputError).startsWith("Not a valid repository directory"), onFx(view::inputError));
+                assertNotNull(onFx(() -> button(view, "Open")), "the form stays");
                 assertFalse(service.isInitialized());
                 assertEquals(before, service.getRepositoryDir(), "the service is left as it was");
             } finally {
@@ -163,13 +163,16 @@ public class OpenViewTest {
             try {
                 OpenView view = shown.view();
                 open(view, text);
-                waitUntil("the error", () -> view.toolBar.getStyleClass().contains("error"));
+                waitUntil("the error", () -> view.inputError() != null);
 
                 assertFalse(service.isInitialized());
-                assertEquals(message, onFx(() -> errorLabel(view)));
+                // above the form, which stays: the folder can be corrected and opened again
+                String error = onFx(view::inputError);
+                assertTrue(error.startsWith(message.replaceAll("\\.$", "") + ": "), error);
+                assertNotNull(onFx(() -> button(view, "Open")), "the form stays");
                 assertTrue(shown.stage().isShowing());
                 assertFalse(RecentRepositories.getRecentRepositories().contains(Path.of(text)), "not a recent repository");
-                return onFx(() -> ((ExceptionTextArea) find(view, n -> n instanceof ExceptionTextArea)).getText());
+                return error;
             } finally {
                 shown.close();
             }

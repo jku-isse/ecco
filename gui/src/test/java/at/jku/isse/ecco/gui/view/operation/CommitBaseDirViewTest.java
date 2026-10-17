@@ -2,7 +2,6 @@ package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
@@ -139,8 +138,8 @@ public class CommitBaseDirViewTest {
 
                 assertTrue(onFx(() -> view.toolBar.getStyleClass().contains("error")));
                 assertEquals(0, service.getCommits().size());
-                String error = onFx(() -> splitItems(view).stream().filter(n -> n instanceof ExceptionTextArea)
-                        .map(n -> ((ExceptionTextArea) n).getText()).findFirst().orElse(null));
+                String error = onFx(() -> splitItems(view).stream().filter(n -> n instanceof at.jku.isse.ecco.gui.ErrorDetails)
+                        .map(n -> ((at.jku.isse.ecco.gui.ErrorDetails) n).summary() + "\n" + ((at.jku.isse.ecco.gui.ErrorDetails) n).stackTrace()).findFirst().orElse(null));
                 assertNotNull(error, "the failure is shown");
                 assertTrue(error.contains("at least one feature"), error);
             } finally {

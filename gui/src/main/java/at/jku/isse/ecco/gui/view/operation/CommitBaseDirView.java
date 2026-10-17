@@ -201,11 +201,12 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 						CommitBaseDirView.this.splitPane.getItems().setAll(CommitBaseDirView.this.logArea);
 						CommitBaseDirView.this.showCancelledHeader("Cancelled: nothing was committed.");
 					} else {
-						CommitBaseDirView.this.splitPane.getItems().setAll(CommitBaseDirView.this.logArea, new ExceptionTextArea(this.getException()));
+						CommitBaseDirView.this.splitPane.getItems().setAll(CommitBaseDirView.this.logArea, new at.jku.isse.ecco.gui.ErrorDetails(this.getException()));
 						CommitBaseDirView.this.showErrorHeader();
 					}
 				}
 			};
+			this.track(commitTask, "The commit");
 			new Thread(commitTask).start();
 		});
 	}

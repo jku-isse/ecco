@@ -295,6 +295,7 @@ public class CheckoutView extends OperationView implements EccoListener {
             this.service.addListener(this);
 
             Task<Checkout> checkoutTask = new CheckoutTask(this, service, configurationString);
+            this.track(checkoutTask, "The checkout");
             new Thread(checkoutTask).start();
         });
 
@@ -349,7 +350,7 @@ public class CheckoutView extends OperationView implements EccoListener {
     }
 
     protected void checkoutFailed(Throwable exception) {
-        this.handleCheckoutResult(null, new ExceptionTextArea(exception));
+        this.handleCheckoutResult(null, new at.jku.isse.ecco.gui.ErrorDetails(exception));
         this.showErrorHeader();
     }
 

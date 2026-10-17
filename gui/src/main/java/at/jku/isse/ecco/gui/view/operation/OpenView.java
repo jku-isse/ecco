@@ -119,30 +119,38 @@ public class OpenView extends OperationView {
 			}
 		});
 
-		Task<Void> task = new Task<Void>() {
-			@Override
-			protected Void call() throws Exception {
-				service.open();
-				return null;
-			}
-		};
-		task.setOnFailed(event -> stepError("Error opening repository.", task.getException()));
-		task.setOnSucceeded(event -> {
-			RecentRepositories.addRecentRepository(service.getRepositoryDir());
-			stepSuccess("Repository was successfully opened.");
-		});
 		openButton.setOnAction(event -> {
+			this.clearInputError();
 			Path repositoryDir = Paths.get(repositoryDirTextField.getText());
 			// a relative path resolves against wherever the GUI happens to run, and one without a parent
 			// (e.g. an empty field) failed on its missing working directory without anything shown
 			if (!repositoryDir.isAbsolute() || repositoryDir.getParent() == null) {
-				stepError("Not a valid repository directory (an absolute path is needed): " + repositoryDirTextField.getText(), null);
+				this.showInputError("Not a valid repository directory (an absolute path is needed): " + repositoryDirTextField.getText());
 				return;
 			}
+			// one per attempt: a mistake is said above the form, which stays for another try
+			Task<Void> task = new Task<Void>() {
+				@Override
+				protected Void call() throws Exception {
+					service.open();
+					return null;
+				}
+			};
+			task.setOnFailed(e -> {
+				pb.setVisible(false);
+				openButton.setDisable(false);
+				this.showInputError("Error opening repository.", task.getException());
+			});
+			task.setOnSucceeded(e -> {
+				RecentRepositories.addRecentRepository(service.getRepositoryDir());
+				stepSuccess("Repository was successfully opened.");
+			});
 			this.service.setRepositoryDir(repositoryDir);
 			this.service.setBaseDir(repositoryDir.getParent());
+			openButton.setDisable(true);
 			pb.setProgress(-1.0f);
 			pb.setVisible(true);
+			this.track(task, "Opening the repository");
 			Thread th = new Thread(task);
 			th.setDaemon(true);
 			th.start();

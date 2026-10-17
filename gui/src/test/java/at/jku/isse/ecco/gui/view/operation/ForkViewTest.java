@@ -137,6 +137,34 @@ public class ForkViewTest {
         }
     }
 
+    /** A mistake in the form is said above it, the form stays - it was a message box, "Cannot Fork". */
+    @Test
+    @Timeout(60)
+    public void aMistakeIsSaidAboveTheFormInsteadOfInAMessageBox() throws Exception {
+        try (EccoService service = new EccoService()) {
+            AtomicReference<ForkView> view = new AtomicReference<>();
+            AtomicReference<Stage> stage = new AtomicReference<>();
+            AtomicReference<Integer> windowsBefore = new AtomicReference<>();
+            onFxThread(() -> {
+                ForkView v = new ForkView(service);
+                Stage s = new Stage();
+                s.setScene(new Scene(v));
+                s.setX(-10_000);
+                s.show();
+                view.set(v);
+                stage.set(s);
+                windowsBefore.set(javafx.stage.Window.getWindows().size());
+                // no repository to fork from
+                ((Button) v.rightButtons.getChildren().stream().filter(n -> n instanceof Button b && b.getText().equals("Fork")).findFirst().orElseThrow()).fire();
+            });
+            String error = at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> view.get().inputError());
+            assertEquals("Enter the directory of an existing repository, or host:port of an ECCO server.", error);
+            assertEquals((int) windowsBefore.get(), (int) at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> javafx.stage.Window.getWindows().size()), "no message box");
+            assertTrue(at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> view.get().getCenter() instanceof GridPane), "the form stays");
+            onFxThread(() -> stage.get().close());
+        }
+    }
+
     private static void onFxThread(Runnable runnable) throws Exception {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<Throwable> failure = new AtomicReference<>();

@@ -53,7 +53,7 @@ public class ImportGitViewRetryTest {
     public void failedReviewedCommitCanBeCorrectedAndImportedAgain(@TempDir Path tmp) throws Exception {
         Path clone = gitHistory(tmp.resolve("clone"));
         EccoService service = repository(tmp.resolve("repo"));
-        ImportGitView view = startImport(service, clone, 1);
+        ImportGitView view = startImport(service, clone, true);
 
         waitFor(view, "Review Commit (1 of 2)");
         assertEquals("BASE", onFx(() -> findField(view).getText()), "the first commit into an empty repository is BASE");
@@ -92,14 +92,14 @@ public class ImportGitViewRetryTest {
         Files.writeString(earlier.resolve("z.txt"), "z\n");
         service.setBaseDir(earlier);
         service.commit("earlier", "BASE");
-        // reviews every 2nd commit: the first one is imported unattended
-        ImportGitView view = startImport(service, clone, 2);
+        // not reviewed: each commit is imported unattended - and each fails without a configuration
+        ImportGitView view = startImport(service, clone, false);
 
         waitFor(view, "Review Commit (1 of 2)", true);
         assertEquals(1, service.getCommits().size());
 
         clickButton(view, "Skip");
-        waitFor(view, "Review Commit (2 of 2)");
+        waitFor(view, "Review Commit (2 of 2)", true);
         onFx(() -> {
             findField(view).setText("BASE");
             return null;
@@ -139,13 +139,13 @@ public class ImportGitViewRetryTest {
         return service;
     }
 
-    private static ImportGitView startImport(EccoService service, Path clone, int reviewInterval) throws Exception {
+    private static ImportGitView startImport(EccoService service, Path clone, boolean reviewEach) throws Exception {
         List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
         Collections.reverse(oldestFirst);
         return onFx(() -> {
             ImportGitView view = new ImportGitView(service);
             new Scene(view);
-            view.startImport(clone, oldestFirst, false, reviewInterval);
+            view.startImport(clone, oldestFirst, false, reviewEach);
             return view;
         });
     }

@@ -80,6 +80,7 @@ public class PushView extends OperationView {
 			};
 			PushView.this.progressBar.progressProperty().bind(pushTask.progressProperty());
 			this.stepProgress();
+			this.track(pushTask, "The push");
 			new Thread(pushTask).start();
 		});
 

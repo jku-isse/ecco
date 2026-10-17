@@ -120,6 +120,7 @@ public class VariantView extends OperationView implements EccoListener {
 
                 };
 
+                VariantView.this.track(variantsUpdateTask, "Adding the variant");
                 new Thread(variantsUpdateTask).start();
             }
         });

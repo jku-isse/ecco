@@ -101,26 +101,15 @@ public class InitView extends OperationView {
 				repositoryDirTextField.setText(selectedDirectory.toPath().resolve(EccoService.REPOSITORY_DIR_NAME).toString());
 			}
 		});
-		Task<Void> task = new Task<Void>() {
-			@Override
-			protected Void call() throws Exception {
-				service.init();
-				return null;
-			}
-		};
-		task.setOnFailed(event -> stepError("Error initializing repository.", task.getException()));
-		task.setOnSucceeded(event -> {
-			RecentRepositories.addRecentRepository(service.getRepositoryDir());
-			stepSuccess("Repository was successfully initialized.");
-		});
 		initButton.setOnAction(event -> {
+			this.clearInputError();
 			Path repositoryDir = Paths.get(repositoryDirTextField.getText());
 			Path baseDir = repositoryDir.getParent();
 
 			// a relative path resolves against wherever the GUI happens to run - an empty field is that
 			// directory itself, which was then offered for deletion below as an existing repository
 			if (!repositoryDir.isAbsolute() || baseDir == null) {
-				stepError("Not a valid repository directory (an absolute path is needed): " + repositoryDirTextField.getText(), null);
+				this.showInputError("Not a valid repository directory (an absolute path is needed): " + repositoryDirTextField.getText());
 				return;
 			}
 
@@ -135,7 +124,7 @@ public class InitView extends OperationView {
 				try {
 					Files.createDirectories(baseDir);
 				} catch (IOException e) {
-					stepError("Error creating directory.", e);
+					this.showInputError("Error creating directory.", e);
 					return;
 				}
 			}
@@ -144,7 +133,7 @@ public class InitView extends OperationView {
 				// only a repository directory is deleted and started fresh - any other existing directory
 				// (e.g. a working directory typed in instead of its .ecco) would go with everything in it
 				if (!repositoryDir.getFileName().equals(EccoService.REPOSITORY_DIR_NAME)) {
-					stepError("Not a repository directory (" + EccoService.REPOSITORY_DIR_NAME + "), not replacing it: " + repositoryDir, null);
+					this.showInputError("Not a repository directory (" + EccoService.REPOSITORY_DIR_NAME + "), not replacing it: " + repositoryDir);
 					return;
 				}
 				if (!this.confirm("Delete Existing Repository", "A repository already exists at\n" + repositoryDir + "\nDelete it and start fresh?")) {
@@ -153,15 +142,34 @@ public class InitView extends OperationView {
 				try {
 					deleteRecursively(repositoryDir);
 				} catch (IOException e) {
-					stepError("Error deleting existing repository.", e);
+					this.showInputError("Error deleting existing repository.", e);
 					return;
 				}
 			}
 
+			// one per attempt: a mistake is said above the form, which stays for another try
+			Task<Void> task = new Task<Void>() {
+				@Override
+				protected Void call() throws Exception {
+					service.init();
+					return null;
+				}
+			};
+			task.setOnFailed(e -> {
+				pb.setVisible(false);
+				initButton.setDisable(false);
+				this.showInputError("Error initializing repository.", task.getException());
+			});
+			task.setOnSucceeded(e -> {
+				RecentRepositories.addRecentRepository(service.getRepositoryDir());
+				stepSuccess("Repository was successfully initialized.");
+			});
 			this.service.setRepositoryDir(repositoryDir);
 			this.service.setBaseDir(baseDir);
+			initButton.setDisable(true);
 			pb.setProgress(-1.0f);
 			pb.setVisible(true);
+			this.track(task, "Creating the repository");
 			Thread th = new Thread(task);
 			th.setDaemon(true);
 			th.start();

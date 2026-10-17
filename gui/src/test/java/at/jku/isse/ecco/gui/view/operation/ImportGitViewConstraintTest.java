@@ -47,26 +47,21 @@ public class ImportGitViewConstraintTest {
             List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
             Collections.reverse(oldestFirst);
 
-            List<List<String>> summaries = new CopyOnWriteArrayList<>();
             ImportGitView view = onFx(() -> {
-                ImportGitView v = new ImportGitView(service) {
-                    @Override
-                    void reportConstraintViolations(List<String> violations) {
-                        summaries.add(List.copyOf(violations));
-                    }
-                };
+                ImportGitView v = new ImportGitView(service);
                 new Scene(v);
-                // no review within the range: both commits are imported unattended, with their .config
-                v.startImport(clone, oldestFirst, false, 100);
+                // not reviewed: both commits are imported unattended, with their .config
+                v.startImport(clone, oldestFirst, false, false);
                 return v;
             });
+            int windows = onFx(() -> javafx.stage.Window.getWindows().size());
             waitUntil("the import", () -> service.getCommits().size() == 6 && view.headerLabel.getText().isEmpty());
-            waitUntil("the summary", () -> !summaries.isEmpty());
 
-            // the first import is the counterexample after which A is no longer mandatory
-            assertEquals(1, summaries.size());
-            assertEquals(1, summaries.get(0).size(), String.valueOf(summaries.get(0)));
-            assertTrue(summaries.get(0).get(0).startsWith("MANDATORY A violated"), summaries.get(0).get(0));
+            // in the summary, not a message box: the first import is the counterexample after which A is no longer mandatory
+            String summary = onFx(view::summaryText);
+            assertTrue(summary.startsWith("Imported 2 of 2 commits."), summary);
+            assertTrue(summary.contains("Accepted constraints violated (1):\n" + oldestFirst.get(0).getShortId() + ": MANDATORY A violated"), summary);
+            assertEquals(windows, (int) onFx(() -> javafx.stage.Window.getWindows().size()), "no message box");
             String log = onFx(() -> view.logArea.getText());
             assertTrue(log.contains("CONSTRAINT: " + oldestFirst.get(0).getShortId() + ": MANDATORY A violated"), log);
         }
