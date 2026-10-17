@@ -209,7 +209,10 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	private void updatePartialOrderGraphTab(Node node) {
 		// if node is an ordered node display its sequence graph
 		if (node.getArtifact() != null && node.getArtifact().getPartialOrderGraph() != null) {
-			if (null == partialOrderGraphView) { partialOrderGraphView = new PartialOrderGraphView(); }
+			if (null == partialOrderGraphView) {
+				partialOrderGraphView = new PartialOrderGraphView();
+				partialOrderGraphView.setOnBlockChosen(this::showInCode);
+			}
 			// drawn when its tab is selected: drawn for every node shown, the graph of a large file -
 			// a node per line - was laid out and redrawn without end in the hidden tab, until the heap ran out
 			pogNode = node;
@@ -230,6 +233,20 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 				partialOrderGraphView.stopLayout();
 			detailsTabPane.getTabs().remove(openDetailsTabs.get("pog"));
 			openDetailsTabs.remove("pog");
+		}
+	}
+
+	/**
+	 * Shows [child] - a block chosen in the order graph - in the first code tab: at its line, the tab
+	 * selected. The tree's selection stays: the order graph's tab with it, for the next block.
+	 */
+	private void showInCode(Node child) {
+		for (Tab tab : detailsTabPane.getTabs()) {
+			if (tab.getContent() instanceof ArtifactViewer viewer && openDetailsTabs.entrySet().stream().anyMatch(e -> e.getValue() == tab && e.getKey().startsWith("AV_"))) {
+				viewer.showTree(child);
+				detailsTabPane.getSelectionModel().select(tab);
+				return;
+			}
 		}
 	}
 

@@ -44,11 +44,20 @@ public class PartialOrderGraphView extends BorderPane {
 	/** What a block holds, by its graph node's id - shown below the graph while the mouse is on it. */
 	private volatile Map<String, String> detailsById = Map.of();
 	private final Label details = new Label(HOVER_HINT);
+	/** The first element of each drawn block in what is shown (none for other variants), by its graph node's id. */
+	private volatile Map<String, at.jku.isse.ecco.tree.Node> firstById = Map.of();
+	/** The ids of the drawn blocks where variants differ, top to bottom - see {@link #nextBranch}. */
+	private volatile List<String> branchIds = List.of();
+	private volatile Map<String, double[]> placeById = Map.of();
+	private volatile double layers = 1;
+	private int branch = -1;
+	/** Told the element a chosen block begins with - the detail view shows it in the code. */
+	private java.util.function.Consumer<at.jku.isse.ecco.tree.Node> onBlockChosen = node -> { };
 
 	static final String HOVER_HINT = "Point at a block to see what it holds.";
 	static final String LEGEND = "Top to bottom, in order. Green: start, red: end, orange: where alternatives part or meet, "
 			+ "grey: only in other variants. Numbers: lines (or places) in what is shown, (n): how many a block holds. "
-			+ "Scroll to zoom, drag to move, double-click to see all.";
+			+ "Click a block to see it in the code. Scroll to zoom, drag to move, double-click to see all.";
 	/** Layers on the screen at most for the labels to show: a graph of thousands of blocks shows them zoomed in. */
 	static final int LABELLED_LAYERS = 60;
 
@@ -59,7 +68,19 @@ public class PartialOrderGraphView extends BorderPane {
 		legend.setWrapText(true);
 		legend.setPadding(new Insets(4, 8, 4, 8));
 		legend.setStyle("-fx-font-size: 11px; -fx-font-style: italic;");
-		this.setTop(legend);
+		// to the places where variants differ, one after another - in thousands of lines they were to be searched for
+		javafx.scene.control.Button next = new javafx.scene.control.Button("Next branch");
+		next.setTooltip(new javafx.scene.control.Tooltip("Go to the next place where variants order things differently"));
+		next.setOnAction(e -> this.nextBranch());
+		javafx.scene.control.Button fit = new javafx.scene.control.Button("Fit");
+		fit.setTooltip(new javafx.scene.control.Tooltip("Show the whole graph"));
+		fit.setOnAction(e -> {
+			if (view != null)
+				view.getCamera().resetView();
+		});
+		javafx.scene.layout.HBox bar = new javafx.scene.layout.HBox(8, next, fit);
+		bar.setPadding(new Insets(0, 8, 4, 8));
+		this.setTop(new javafx.scene.layout.VBox(legend, bar));
 		this.details.setWrapText(true);
 		this.details.setPadding(new Insets(4, 8, 4, 8));
 		this.details.setStyle("-fx-font-size: 11px;");
@@ -138,7 +159,8 @@ public class PartialOrderGraphView extends BorderPane {
 	 * The blocks of an order graph - their labels, styles, places and what they hold - and the edges
 	 * between them, as indices into them.
 	 */
-	record Snapshot(List<String> labels, List<String> classes, List<double[]> places, List<String> details, List<int[]> edges) {
+	record Snapshot(List<String> labels, List<String> classes, List<double[]> places, List<String> details, List<int[]> edges,
+					List<at.jku.isse.ecco.tree.Node> firsts) {
 	}
 
 	/** {@code pog} folded into blocks ({@link OrderRegions#collapse}), described by the children of {@code shownNode} (may be null). */
@@ -160,7 +182,9 @@ public class PartialOrderGraphView extends BorderPane {
 		OrderRegions.Collapsed collapsed = OrderRegions.collapse(pog, shown);
 		List<String> labels = new ArrayList<>(), classes = new ArrayList<>(), details = new ArrayList<>();
 		List<double[]> places = new ArrayList<>();
+		List<at.jku.isse.ecco.tree.Node> firsts = new ArrayList<>();
 		for (OrderRegions.Block block : collapsed.blocks()) {
+			firsts.add(block.kind() == OrderRegions.Kind.NODES ? childOf.get(block.first()) : null);
 			labels.add(label(block, childOf, placeOf, shownNode != null));
 			classes.add(switch (block.kind()) {
 				case START -> "start";
@@ -173,7 +197,7 @@ public class PartialOrderGraphView extends BorderPane {
 		List<int[]> edges = new ArrayList<>();
 		for (OrderRegions.Edge edge : collapsed.edges())
 			edges.add(new int[]{edge.from(), edge.to()});
-		return new Snapshot(labels, classes, places, details, edges);
+		return new Snapshot(labels, classes, places, details, edges, firsts);
 	}
 
 	/** "12-340 (329)  first ... last", "other (3)  first ... last", "Start", "End". */
@@ -283,6 +307,9 @@ public class PartialOrderGraphView extends BorderPane {
 							+ labelVisibility(snapshot));
 
 			Map<String, String> newDetails = new HashMap<>();
+			Map<String, at.jku.isse.ecco.tree.Node> newFirsts = new HashMap<>();
+			Map<String, double[]> newPlaces = new HashMap<>();
+			List<Integer> branches = new ArrayList<>();
 			List<org.graphstream.graph.Node> gsNodes = new ArrayList<>();
 			for (int i = 0; i < snapshot.labels().size(); i++) {
 				org.graphstream.graph.Node gsNode = this.graph.addNode("N" + i);
@@ -292,9 +319,24 @@ public class PartialOrderGraphView extends BorderPane {
 				if (snapshot.classes().get(i) != null)
 					gsNode.setAttribute("ui.class", snapshot.classes().get(i));
 				newDetails.put(gsNode.getId(), snapshot.details().get(i));
+				if (snapshot.firsts().get(i) != null)
+					newFirsts.put(gsNode.getId(), snapshot.firsts().get(i));
+				newPlaces.put(gsNode.getId(), place);
+				// where alternatives part or meet, and the alternatives themselves - side by side in a layer
+				if ("branch".equals(snapshot.classes().get(i)) || "other".equals(snapshot.classes().get(i)) || besideOthers(snapshot, i))
+					branches.add(i);
 				gsNodes.add(gsNode);
 			}
+			// top to bottom, left to right
+			branches.sort(Comparator.<Integer>comparingDouble(i -> -snapshot.places().get(i)[1]).thenComparingDouble(i -> snapshot.places().get(i)[0]));
 			this.detailsById = newDetails;
+			this.firstById = newFirsts;
+			this.placeById = newPlaces;
+			this.branchIds = branches.stream().map(i -> "N" + i).toList();
+			double maxLayers = 1;
+			for (double[] place : snapshot.places())
+				maxLayers = Math.max(maxLayers, -place[1] / LAYER_GAP + 1);
+			this.layers = maxLayers;
 			for (int[] edge : snapshot.edges())
 				this.graph.addEdge("E" + edge[0] + "-" + edge[1], gsNodes.get(edge[0]), gsNodes.get(edge[1]), true);
 
@@ -306,8 +348,18 @@ public class PartialOrderGraphView extends BorderPane {
 			Platform.runLater(() -> {
 				setCursor(Cursor.DEFAULT);
 				this.details.setText(HOVER_HINT);
+				this.branch = -1;
 			});
 		}
+	}
+
+	/** Whether another block shares the layer of block [i]: they are alternatives. */
+	private static boolean besideOthers(Snapshot snapshot, int i) {
+		double y = snapshot.places().get(i)[1];
+		for (int j = 0; j < snapshot.places().size(); j++)
+			if (j != i && snapshot.places().get(j)[1] == y)
+				return true;
+		return false;
 	}
 
 	/** For a graph of more layers than {@link #LABELLED_LAYERS}: the labels only once zoomed in that far. */
@@ -324,6 +376,19 @@ public class PartialOrderGraphView extends BorderPane {
 		viewer = new FxViewer(graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
 		view = (FxViewPanel)  viewer.addDefaultView(false, new FxGraphRenderer());
 		view.setMouseManager(new DetailsMouseManager());
+		// a click - not the end of a drag - on a block chooses it
+		double[] pressed = new double[2];
+		view.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
+			pressed[0] = e.getX();
+			pressed[1] = e.getY();
+		});
+		view.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_CLICKED, e -> {
+			if (e.getClickCount() != 1 || Math.abs(e.getX() - pressed[0]) + Math.abs(e.getY() - pressed[1]) > 4)
+				return;
+			GraphicElement element = view.findGraphicElementAt(EnumSet.of(InteractiveElement.NODE), e.getX(), e.getY());
+			if (element != null)
+				this.choose(element.getId());
+		});
 
 		setCenter(view);
 	}
@@ -340,6 +405,47 @@ public class PartialOrderGraphView extends BorderPane {
 			String text = PartialOrderGraphView.this.detailsById.get(element.getId());
 			Platform.runLater(() -> PartialOrderGraphView.this.details.setText(text != null ? text : HOVER_HINT));
 		}
+	}
+
+	/** Called with the element a chosen block begins with, in what is shown. */
+	public void setOnBlockChosen(java.util.function.Consumer<at.jku.isse.ecco.tree.Node> onBlockChosen) {
+		this.onBlockChosen = onBlockChosen;
+	}
+
+	/**
+	 * Chooses the drawn block [id]: hands its first element on, or - for one only other variants
+	 * have, or the start or end - says why there is none. Package-visible for testing.
+	 */
+	void choose(String id) {
+		at.jku.isse.ecco.tree.Node first = this.firstById.get(id);
+		String text = this.detailsById.get(id);
+		if (first != null) {
+			this.details.setText(text);
+			this.onBlockChosen.accept(first);
+		} else if (text != null) {
+			this.details.setText(text + (text.contains("only in other variants") ? "\nNot in the code shown: only other variants have it." : ""));
+		}
+	}
+
+	/**
+	 * Goes to the next place where variants differ - top to bottom, and round - and shows what it
+	 * holds; returns its id, or null if there is none. Package-visible for testing.
+	 */
+	String nextBranch() {
+		List<String> ids = this.branchIds;
+		if (ids.isEmpty())
+			return null;
+		this.branch = (this.branch + 1) % ids.size();
+		String id = ids.get(this.branch);
+		this.details.setText(this.detailsById.get(id));
+		double[] place = this.placeById.get(id);
+		FxViewPanel view = this.view;
+		if (view != null && place != null) {
+			// some 30 layers around it
+			view.getCamera().setViewPercent(Math.min(1.0, 30 / this.layers));
+			view.getCamera().setViewCenter(place[0], place[1], 0);
+		}
+		return id;
 	}
 
 	/** The details line below the graph. Package-visible for testing. */

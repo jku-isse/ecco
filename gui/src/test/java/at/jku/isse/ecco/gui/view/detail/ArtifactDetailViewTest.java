@@ -134,6 +134,53 @@ public class ArtifactDetailViewTest {
         }
     }
 
+    /**
+     * A block chosen in the order graph is shown in the code: its tab selected, at that line - the
+     * order graph's tab stays, for the next block.
+     */
+    @Test
+    @Timeout(60)
+    public void aBlockChosenInTheOrderGraphIsShownInTheCode(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFiles(tmp)) {
+            Node file = association(service, "a.txt").getRootNode().getChildren().get(0).getChildren().get(0);
+            ArtifactDetailView view = onFx(() -> {
+                ArtifactDetailView v = new ArtifactDetailView(service);
+                new javafx.scene.Scene(v, 800, 600); // laid out: the code's cells exist
+                return v;
+            });
+            onFx(() -> view.showTree(file));
+            onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Order graph")));
+            waitUntil("drawn", () -> drawnNodes(view) > 0);
+
+            Object graphView = orderGraphView(view);
+            java.lang.reflect.Method choose = graphView.getClass().getDeclaredMethod("choose", String.class);
+            choose.setAccessible(true);
+            java.lang.reflect.Method drawn = graphView.getClass().getDeclaredMethod("drawnGraph");
+            drawn.setAccessible(true);
+            org.graphstream.graph.Graph graph = (org.graphstream.graph.Graph) drawn.invoke(graphView);
+            String lines = graph.nodes().filter(n -> String.valueOf(n.getAttribute("label")).contains("a1")).findFirst().orElseThrow(() -> new AssertionError(graph.nodes().map(n -> String.valueOf(n.getAttribute("label"))).toList().toString())).getId();
+            onFx(() -> choose.invoke(graphView, lines));
+
+            assertEquals("Code", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()), "shown in the code");
+            assertEquals(List.of("Code", "Order graph", "Info"), onFx(() -> tabNames(view)), "the order graph stays");
+            // the text viewer marks the line it was shown: a1
+            assertEquals("a1", onFx(() -> highlightedLine(view)));
+        }
+    }
+
+    /** The text of the line the code tab's viewer highlights. */
+    private static String highlightedLine(ArtifactDetailView view) {
+        javafx.scene.Parent code = (javafx.scene.Parent) tab(view, "Code").getContent();
+        view.applyCss();
+        view.layout();
+        for (javafx.scene.Node n : findAll(code, n -> n instanceof javafx.scene.control.ListCell)) {
+            javafx.scene.control.ListCell<?> cell = (javafx.scene.control.ListCell<?>) n;
+            if (cell.getBackground() != null && javafx.scene.paint.Color.YELLOW.equals(cell.getBackground().getFills().get(0).getFill()))
+                return cell.getText();
+        }
+        return null;
+    }
+
     private static Object orderGraphView(ArtifactDetailView view) throws Exception {
         java.lang.reflect.Field field = ArtifactDetailView.class.getDeclaredField("partialOrderGraphView");
         field.setAccessible(true);

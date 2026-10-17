@@ -121,6 +121,71 @@ public class PartialOrderGraphViewTest {
         assertTrue(snapshot.details().get(other).contains("only in other variants"));
     }
 
+    /**
+     * Choosing a block hands its first element in what is shown on (the detail view shows it in the
+     * code); a block only other variants have says so instead. "Next branch" goes through the places
+     * where variants differ, top to bottom and round, showing what each holds.
+     */
+    @Test
+    @Timeout(60)
+    public void aChosenBlockGoesToItsCodeAndNextBranchGoesThroughTheAlternatives() throws Exception {
+        at.jku.isse.ecco.gui.FxTestSupport.startToolkit();
+        at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> java.awt.Toolkit.getDefaultToolkit());
+        List<Artifact.Op<?>> shared = artifacts(List.of("a1", "a2"));
+        List<Artifact.Op<?>> x = artifacts(List.of("x"));
+        List<Artifact.Op<?>> y = artifacts(List.of("y1", "y2"));
+        List<Artifact.Op<?>> end = artifacts(List.of("z"));
+        PartialOrderGraph.Op pog = new SerPartialOrderGraph();
+        List<Artifact.Op<?>> variantX = new ArrayList<>(shared);
+        variantX.addAll(x);
+        variantX.addAll(end);
+        List<Artifact.Op<?>> variantY = new ArrayList<>(shared);
+        variantY.addAll(y);
+        variantY.addAll(end);
+        pog.merge(variantX);
+        pog.merge(variantY);
+        at.jku.isse.ecco.storage.ser.tree.SerNode file = new at.jku.isse.ecco.storage.ser.tree.SerNode(new SerArtifact<>(new Line("file")));
+        for (Artifact.Op<?> artifact : variantY)
+            file.addChild(new at.jku.isse.ecco.storage.ser.tree.SerNode(artifact));
+
+        PartialOrderGraphView view = at.jku.isse.ecco.gui.FxTestSupport.onFx(PartialOrderGraphView::new);
+        List<at.jku.isse.ecco.tree.Node> chosen = new java.util.concurrent.CopyOnWriteArrayList<>();
+        at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> {
+            view.setOnBlockChosen(chosen::add);
+            view.showGraph(pog, file, new Object());
+        });
+        at.jku.isse.ecco.gui.FxTestSupport.waitUntil("drawn", () -> view.drawnGraph().getNodeCount() == 6);
+
+        String yBlock = idOf(view, "3-4 (2)");
+        at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> view.choose(yBlock));
+        assertEquals(List.of(file.getChildren().get(2)), chosen, "y1, the block's first element");
+
+        String xBlock = idOf(view, "other");
+        at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> view.choose(xBlock));
+        assertEquals(1, chosen.size(), "not in what is shown");
+        assertTrue(at.jku.isse.ecco.gui.FxTestSupport.onFx(view::detailsText).contains("only in other variants"));
+
+        // the branches: a1 a2 (they part after it), then x and y side by side (y shown first), then z (they meet)
+        List<String> visited = new ArrayList<>();
+        for (int i = 0; i < 5; i++)
+            visited.add(at.jku.isse.ecco.gui.FxTestSupport.onFx(view::nextBranch));
+        assertEquals(List.of(idOf(view, "1-2 (2)"), yBlock, xBlock, idOf(view, "5  "), idOf(view, "1-2 (2)")), visited, "top to bottom, and round");
+        assertEquals(view.drawnDetails().get(visited.get(4)), at.jku.isse.ecco.gui.FxTestSupport.onFx(view::detailsText), "what it holds is shown");
+        assertTrue(at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> button(view, "Next branch") != null && button(view, "Fit") != null));
+    }
+
+    /** The id of the drawn block whose label starts with [prefix]. */
+    private static String idOf(PartialOrderGraphView view, String prefix) {
+        for (org.graphstream.graph.Node node : (Iterable<org.graphstream.graph.Node>) view.drawnGraph().nodes()::iterator)
+            if (String.valueOf(node.getAttribute("label")).startsWith(prefix))
+                return node.getId();
+        throw new AssertionError("no block " + prefix);
+    }
+
+    private static javafx.scene.control.Button button(PartialOrderGraphView view, String text) {
+        return (javafx.scene.control.Button) at.jku.isse.ecco.gui.FxTestSupport.find(view, n -> n instanceof javafx.scene.control.Button b && text.equals(b.getText()));
+    }
+
     private static PartialOrderGraph graph(String... lines) {
         PartialOrderGraph.Op pog = new SerPartialOrderGraph();
         pog.merge(artifacts(List.of(lines)));
