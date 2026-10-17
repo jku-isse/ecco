@@ -95,14 +95,19 @@ public final class ConfigurationText {
 
 	/**
 	 * The entries of a text as written, trimmed, blanks dropped, in first-seen order - leniently,
-	 * for texts that are not configurations yet (an LLM's suggestion with "-name" removals).
+	 * for texts that are not configurations yet (an LLM's suggestion with "-name" removals) - each
+	 * without a new revision's mark: "A'" is A (a Git import writes it for a feature a commit changes).
 	 */
 	public static LinkedHashSet<String> tokens(String text) {
 		LinkedHashSet<String> tokens = new LinkedHashSet<>();
 		if (text != null)
-			for (String token : text.split(","))
-				if (!token.isBlank())
-					tokens.add(token.trim());
+			for (String token : text.split(",")) {
+				String entry = token.trim();
+				if (entry.endsWith("'"))
+					entry = entry.substring(0, entry.length() - 1).trim();
+				if (!entry.isEmpty())
+					tokens.add(entry);
+			}
 		return tokens;
 	}
 }

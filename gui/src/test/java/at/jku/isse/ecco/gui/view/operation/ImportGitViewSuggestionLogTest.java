@@ -297,6 +297,83 @@ public class ImportGitViewSuggestionLogTest {
     }
 
     /**
+     * An unattended commit whose suggestion failed stops for review and says why - it was imported
+     * with the configuration of the commit before: tinycc's import had the LLM unreachable for 1,122
+     * of its 1,139 commits, and all of them got the same features, which made its code untraceable.
+     */
+    @Test
+    @Timeout(60)
+    public void aFailedSuggestionStopsForReview(@TempDir Path tmp) throws Exception {
+        Path log = tmp.resolve("suggestions.jsonl");
+        System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
+        Path clone = gitHistory(tmp.resolve("clone"), "first", "second", "third");
+        EccoService service = repository(tmp.resolve("repo"));
+        List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
+        Collections.reverse(oldestFirst);
+        ImportGitView view = onFx(() -> {
+            ImportGitView v = new ImportGitView(service);
+            new Scene(v);
+            v.suggester = commit -> {
+                if (commit.getMessage().equals("third"))
+                    throw new IllegalStateException("java.net.ConnectException: Connection refused");
+                return new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
+                        List.of(commit.getMessage().equals("first") ? "BASE" : ""),
+                        commit.getMessage().equals("second") ? "Connection refused" : null, List.of()), "stub", 1, null);
+            };
+            v.startImport(clone, oldestFirst, true, false);
+            return v;
+        });
+        waitFor(view, "Review Commit (2 of 3)");
+        assertTrue(onFx(() -> failureText(view)).contains("Connection refused"), onFx(() -> failureText(view)));
+        clickButton(view, "Import");
+        waitFor(view, "Review Commit (3 of 3)");
+        assertTrue(onFx(() -> failureText(view)).contains("Connection refused"));
+        clickButton(view, "Import");
+        waitFor(view, "");
+        service.close();
+
+        List<String> lines = Files.readAllLines(log);
+        assertEquals(List.of("auto", "reviewed", "reviewed"), lines.stream().map(l -> field(l, "outcome")).toList(),
+                "not imported unattended with the configuration before");
+    }
+
+    /**
+     * Named again, a feature gets a new revision, and what a later commit adds can be traced: three
+     * commits each add a file, the second and the third with feature X - third.txt was in no
+     * configuration of its own (the same as the second's) and could be traced to no feature.
+     */
+    @Test
+    @Timeout(60)
+    public void aFeatureNamedAgainGetsANewRevisionAndItsCodeIsTraced(@TempDir Path tmp) throws Exception {
+        System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, tmp.resolve("suggestions.jsonl").toString());
+        Path clone = gitHistory(tmp.resolve("clone"), "first", "second", "third");
+        EccoService service = repository(tmp.resolve("repo"));
+        List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
+        Collections.reverse(oldestFirst);
+        ImportGitView view = onFx(() -> {
+            ImportGitView v = new ImportGitView(service);
+            new Scene(v);
+            v.suggester = commit -> new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
+                    List.of(commit.getMessage().equals("first") ? "BASE" : "X"), null, List.of()), "stub", 1, null);
+            v.startImport(clone, oldestFirst, true, false);
+            return v;
+        });
+        waitFor(view, "");
+
+        at.jku.isse.ecco.feature.Feature x = service.getRepository().getFeatures().stream().filter(f -> f.getName().equals("X")).findFirst().orElseThrow();
+        assertEquals(2, x.getRevisions().size(), "the third commit changed X");
+        for (at.jku.isse.ecco.core.Association association : service.getRepository().getAssociations())
+            assertFalse(((at.jku.isse.ecco.core.Association.Op) association).computeCondition().getModules().isEmpty(),
+                    "traced: " + association.getId() + " " + association.getRootNode().countArtifacts() + " artifacts");
+        service.close();
+    }
+
+    private static String failureText(ImportGitView view) {
+        javafx.scene.Node label = find(view, n -> ImportGitView.SUGGESTION_FAILURE_LABEL_ID.equals(n.getId()));
+        return label == null ? "" : ((javafx.scene.control.Label) label).getText();
+    }
+
+    /**
      * A suggestion request carries the commit's changes with their positions, and how they overlap
      * the known features' earlier changes - also those of commits imported in an earlier run, from the log.
      */

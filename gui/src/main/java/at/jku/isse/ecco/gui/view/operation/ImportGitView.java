@@ -127,6 +127,9 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 	// lets tests find the failure shown on a commit's review screen
 	static final String IMPORT_FAILURE_LABEL_ID = "importFailure";
+	static final String SUGGESTION_FAILURE_LABEL_ID = "suggestionFailure";
+	/** What the "'" of a suggested feature means, in the review's configuration field. */
+	static final String NEW_REVISION_HINT = "\nA feature with ' (A') gets a new revision: this commit changes it, so its code can be told from earlier versions.";
 	// lets tests find the confidence shown on a commit's review screen
 	static final String CONFIDENCE_LABEL_ID = "suggestionConfidence";
 
@@ -141,6 +144,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 	// every run (a "Back" from the first commit's screen returns to step1(), which can start a
 	// fresh run)
 	private LinkedHashSet<String> runningFeatures = new LinkedHashSet<>();
+	/** The names of the features the repository has, for this run - named again, one gets a new revision. */
+	private java.util.Set<String> knownFeatures = new java.util.HashSet<>();
 	private List<String> allConstraintWarnings = new ArrayList<>();
 	// populated only by autoImportOneCommit (never suggestOneCommit - a review screen already shows
 	// its own suggestion failure prominently, with a human right there reading it before Import/Skip)
@@ -488,6 +493,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 	private void startImport(List<GitCommitInfo> commitsOldestFirst, boolean useLlm, boolean reviewEach) {
 		this.runningFeatures = new LinkedHashSet<>();
+		this.knownFeatures = new java.util.HashSet<>();
+		if (this.service.isInitialized())
+			for (at.jku.isse.ecco.feature.Feature feature : this.service.getRepository().getFeatures())
+				this.knownFeatures.add(feature.getName());
 		this.allConstraintWarnings = new ArrayList<>();
 		this.llmSuggestionFailures = new ArrayList<>();
 		this.pendingSuggestion = null;
@@ -582,7 +591,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 					return;
 				}
 				LlmFeatureSuggestionClient.SuggestionBatch batch = this.getValue().batch();
-				String defaultConfig = defaultConfigurationText(ImportGitView.this.runningFeatures, batch.configurations().get(0));
+				String defaultConfig = defaultConfigurationText(ImportGitView.this.runningFeatures, ImportGitView.this.knownFeatures, batch.configurations().get(0));
 				ImportGitView.this.pendingSuggestion = ImportGitView.this.suggestionEntry(commit, this.getValue(), batch.failureReason(), defaultConfig, FeatureSuggestionLog.Outcome.REVIEWED);
 				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, reviewEach, defaultConfig, batch.failureReason(), null);
 			}
@@ -658,10 +667,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 					return;
 				}
 				LlmFeatureSuggestionClient.SuggestionBatch batch = this.getValue().batch();
+				String config = defaultConfigurationText(ImportGitView.this.runningFeatures, ImportGitView.this.knownFeatures, batch.configurations().get(0));
 				if (batch.failureReason() != null) {
-					ImportGitView.this.recordAutoImportSuggestionFailure(commit, batch.failureReason());
+					ImportGitView.this.stopForFailedSuggestion(commitsOldestFirst, index, useLlm, reviewEach, commit, this.getValue(), config, batch.failureReason());
+					return;
 				}
-				String config = defaultConfigurationText(ImportGitView.this.runningFeatures, batch.configurations().get(0));
 				SuggestionConfidence confidence = this.getValue().confidence();
 				if (ImportGitView.this.reviewUncertain && confidence != null && confidence.uncertain()) {
 					// not trusted: a person decides, as on a review commit
@@ -679,13 +689,23 @@ public class ImportGitView extends OperationView implements EccoListener {
 				if (ImportGitView.this.runEnded) {
 					return;
 				}
-				ImportGitView.this.recordAutoImportSuggestionFailure(commit, String.valueOf(this.getException()));
 				String config = defaultConfigurationText(ImportGitView.this.runningFeatures, "");
-				ImportGitView.this.pendingSuggestion = ImportGitView.this.suggestionEntry(commit, null, String.valueOf(this.getException()), config, FeatureSuggestionLog.Outcome.AUTO);
-				ImportGitView.this.importOneCommit(commitsOldestFirst, index, useLlm, reviewEach, config);
+				ImportGitView.this.stopForFailedSuggestion(commitsOldestFirst, index, useLlm, reviewEach, commit, null, config, String.valueOf(this.getException()));
 			}
 		};
 		new Thread(suggestTask).start();
+	}
+
+	/**
+	 * A suggestion failed for an unattended commit: it stops for review and says why. It was imported
+	 * with the configuration of the commit before - tinycc's import had the LLM unreachable for 1,122
+	 * of its 1,139 commits, all of them got the same features, and its code could be traced to none.
+	 */
+	private void stopForFailedSuggestion(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm, boolean reviewEach,
+										 GitCommitInfo commit, Suggested suggested, String config, String reason) {
+		this.recordAutoImportSuggestionFailure(commit, reason);
+		this.pendingSuggestion = this.suggestionEntry(commit, suggested, reason, config, FeatureSuggestionLog.Outcome.REVIEWED);
+		this.showCommitReview(commitsOldestFirst, index, useLlm, reviewEach, config, reason, null);
 	}
 
 	/**
@@ -697,7 +717,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 	private void recordAutoImportSuggestionFailure(GitCommitInfo commit, String reason) {
 		this.llmSuggestionFailures.add(commit.getShortId() + ": " + reason);
 		this.logArea.appendText("*** LLM SUGGESTION FAILED for " + commit.getShortId() +
-				" (auto-imported with unchanged configuration): " + reason + System.lineSeparator());
+				" (stopped for review): " + reason + System.lineSeparator());
 	}
 
 	/**
@@ -854,6 +874,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		if (suggestionFailureReason != null) {
 			Label warningLabel = new Label("LLM feature suggestion failed for this commit, so Configuration is " +
 					"blank/unchanged below - fill it in by hand. Reason: " + suggestionFailureReason);
+			warningLabel.setId(SUGGESTION_FAILURE_LABEL_ID);
 			warningLabel.setWrapText(true);
 			warningLabel.setStyle("-fx-text-fill: #cc6600;");
 			gridPane.add(warningLabel, 0, row, 1, 1);
@@ -920,7 +941,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 		TextField configField = new TextField(defaultConfig == null ? "" : defaultConfig);
 		configField.setPromptText(COMMIT_CONFIGURATION_HINT + BLANK_READS_CONFIG_FILE);
-		configField.setTooltip(new Tooltip(COMMIT_CONFIGURATION_HINT + BLANK_READS_CONFIG_FILE));
+		configField.setTooltip(new Tooltip(COMMIT_CONFIGURATION_HINT + BLANK_READS_CONFIG_FILE + NEW_REVISION_HINT));
 		focusWhenShown(configField);
 		gridPane.add(at.jku.isse.ecco.gui.io.ConfigurationPickerDialog.withPicker(configField, this.service), 0, row, 1, 1);
 		row++;
@@ -1055,6 +1076,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				ImportGitView.this.importedCount++;
 				ImportGitView.this.recordSuggestionOutcome(commit, configurationText, commitChanges.get());
 				applyConfigurationToRunning(ImportGitView.this.runningFeatures, configurationText);
+				ImportGitView.this.knownFeatures.addAll(ImportGitView.this.runningFeatures);
 				if (ImportGitView.this.runEnded) {
 					return;
 				}
@@ -1276,7 +1298,19 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 * {@code runningFeatures} is a safe no-op, never an error. Pure and package-visible for testing.
 	 */
 	static String defaultConfigurationText(LinkedHashSet<String> runningFeatures, String suggestion) {
+		return defaultConfigurationText(runningFeatures, java.util.Set.of(), suggestion);
+	}
+
+	/**
+	 * As above; a feature [suggestion] names that is known already - running, or one of the
+	 * repository's [knownFeatures] - gets a new revision ("A'"): the commit changes it. With one
+	 * revision per feature, and nearly the same features on every commit, code that came or changed
+	 * later could be traced to no feature: tinycc's import 95% of its associations, zip4j's first
+	 * 275 commits 28% - 1.3% with a new revision for each feature the suggestions named.
+	 */
+	static String defaultConfigurationText(LinkedHashSet<String> runningFeatures, java.util.Set<String> knownFeatures, String suggestion) {
 		LinkedHashSet<String> combined = new LinkedHashSet<>(runningFeatures);
+		java.util.Set<String> revised = new java.util.HashSet<>();
 		if (suggestion != null) {
 			for (String token : suggestion.split(",")) {
 				String trimmed = token.trim();
@@ -1286,11 +1320,22 @@ public class ImportGitView extends OperationView implements EccoListener {
 				if (trimmed.startsWith("-") && trimmed.length() > 1) {
 					combined.remove(trimmed.substring(1).trim());
 				} else {
-					combined.add(trimmed);
+					String name = plainName(trimmed);
+					if (runningFeatures.contains(name) || knownFeatures.contains(name))
+						revised.add(name);
+					combined.add(name);
 				}
 			}
 		}
-		return String.join(", ", combined);
+		List<String> text = new ArrayList<>();
+		for (String name : combined)
+			text.add(revised.contains(name) ? name + "'" : name);
+		return String.join(", ", text);
+	}
+
+	/** A feature's name without the new revision mark "'". */
+	private static String plainName(String token) {
+		return token.endsWith("'") ? token.substring(0, token.length() - 1).trim() : token;
 	}
 
 	/**
@@ -1301,7 +1346,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 */
 	static void applyConfigurationToRunning(LinkedHashSet<String> runningFeatures, String configurationString) {
 		runningFeatures.clear();
-		runningFeatures.addAll(parseFeatureTokens(configurationString));
+		for (String token : parseFeatureTokens(configurationString))
+			runningFeatures.add(plainName(token));
 	}
 
 	@Override

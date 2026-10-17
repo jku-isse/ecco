@@ -21,6 +21,9 @@ public class ImportedFeatureTracesTest {
 		assertEquals(Set.of("B"), ImportedFeatureTraces.labels("A", "B", "A, B"));
 		// a known feature changed again: the configuration does not change, the kept suggestion says which
 		assertEquals(Set.of("A"), ImportedFeatureTraces.labels("A, B", "A", "A, B"));
+		// ... committed as a new revision of it, "A'": still A (it read "A'", a feature of its own)
+		assertEquals(Set.of("A"), ImportedFeatureTraces.labels("A, B", "A", "A', B"));
+		assertEquals(java.util.Map.of("C", "A"), ImportedFeatureTraces.keptParents(java.util.Map.of("C", "A"), "A', C"));
 		// a suggestion the reviewer replaced
 		assertEquals(Set.of("C"), ImportedFeatureTraces.labels("A", "B", "A, C"));
 		// a removal is no label; nothing added and no suggestion: no label

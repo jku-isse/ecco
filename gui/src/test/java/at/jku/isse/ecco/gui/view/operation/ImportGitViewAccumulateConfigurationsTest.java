@@ -35,7 +35,31 @@ public class ImportGitViewAccumulateConfigurationsTest {
 		LinkedHashSet<String> running = new LinkedHashSet<>();
 		ImportGitView.applyConfigurationToRunning(running, "A, B");
 
-		assertEquals("A, B", ImportGitView.defaultConfigurationText(running, "A"));
+		// named again: a new revision of it, not a second A
+		assertEquals("A', B", ImportGitView.defaultConfigurationText(running, "A"));
+	}
+
+	/**
+	 * A feature the suggestion names that is known already - imported before in this run or in the
+	 * repository - gets a new revision ("A'"): the commit changes it. With one revision per feature
+	 * and nearly the same features on every commit, code that came or changed later could be traced
+	 * to no feature (tinycc's import: 95% of its associations; zip4j's first 275 commits: 28%, 1.3%
+	 * with revisions). A new feature is its first revision; one not named stays as it is.
+	 */
+	@Test
+	public void aKnownFeatureTheSuggestionNamesGetsANewRevision() {
+		LinkedHashSet<String> running = new LinkedHashSet<>(java.util.List.of("BASE", "A", "B"));
+		assertEquals("BASE, A', B, C", ImportGitView.defaultConfigurationText(running, java.util.Set.of(), "A, C"));
+		// known from the repository though not running: named, a new revision
+		assertEquals("BASE, A, B, D'", ImportGitView.defaultConfigurationText(running, java.util.Set.of("D"), "D"));
+		// a removal stays one
+		assertEquals("BASE, B", ImportGitView.defaultConfigurationText(running, java.util.Set.of(), "-A"));
+		// nothing suggested: nothing revised
+		assertEquals("BASE, A, B", ImportGitView.defaultConfigurationText(running, java.util.Set.of(), ""));
+
+		// the running features are the plain names
+		ImportGitView.applyConfigurationToRunning(running, "BASE, A', B, C");
+		assertEquals(java.util.List.of("BASE", "A", "B", "C"), java.util.List.copyOf(running));
 	}
 
 	@Test
