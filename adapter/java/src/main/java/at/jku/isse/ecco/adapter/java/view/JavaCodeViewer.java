@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.adapter.java.view;
 
+import at.jku.isse.ecco.adapter.view.JavaCodeLine;
+import at.jku.isse.ecco.adapter.view.JavaSyntaxHighlighter;
 import at.jku.isse.ecco.adapter.AssociationInfo;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.java.JavaPlugin;

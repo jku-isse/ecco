@@ -1,4 +1,4 @@
-package at.jku.cdl.ecco.adapter.java.view;
+package at.jku.isse.ecco.adapter.view;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
@@ -11,12 +11,12 @@ import javafx.scene.paint.Color;
 import java.util.List;
 
 /**
- * One rendered, indented line of the pretty-printed reconstruction shown by {@link JavaCodeViewer}.
+ * One rendered, indented line of the pretty-printed reconstruction shown by the Java adapters' {@code JavaCodeViewer}s (shared by both).
  * Unlike lilypond's per-token {@code NodeTextBlock}, a Java artifact's stored text already
  * represents a whole statement/declaration, so there is usually a 1:1 mapping between an artifact
  * node and a rendered line here (synthetic lines such as a closing "}" have a null node/association)
  * - except that a single artifact whose text carries an embedded newline is fanned out across
- * several consecutive JavaCodeLine rows by {@link JavaCodeViewer#addLine}.
+ * several consecutive JavaCodeLine rows by {@code JavaCodeViewer#addLine}.
  */
 public class JavaCodeLine {
 

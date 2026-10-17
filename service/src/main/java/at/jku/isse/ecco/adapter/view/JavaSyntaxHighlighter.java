@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.adapter.java.view;
+package at.jku.isse.ecco.adapter.view;
 
 import javafx.scene.paint.Color;
 
@@ -9,15 +9,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Lightweight, regex-based re-lexer for the Java-looking text {@link JavaCodeViewer} reconstructs
+ * Lightweight, regex-based re-lexer for the Java-looking text the Java adapters' {@code JavaCodeViewer}s reconstructs
  * from an artifact tree. Unlike lilypond's parce-based highlighter, the Java adapter's tree does
  * not retain per-token lexer output (each artifact already stores a summarized text fragment such
  * as a whole statement or field declaration), so there is no token stream to color directly -
  * instead each rendered line's text is re-tokenized here with a small regex scanner.
  */
-final class JavaSyntaxHighlighter {
+public final class JavaSyntaxHighlighter {
 
-	record Style(Color color, boolean bold, boolean italic) {
+	public record Style(Color color, boolean bold, boolean italic) {
 		private static Style of(Color color) {
 			return new Style(color, false, false);
 		}
@@ -31,7 +31,7 @@ final class JavaSyntaxHighlighter {
 		}
 	}
 
-	record Token(String text, Style style) {
+	public record Token(String text, Style style) {
 	}
 
 	private static final Style PLAIN = new Style(null, false, false);
@@ -67,7 +67,7 @@ final class JavaSyntaxHighlighter {
 	private JavaSyntaxHighlighter() {
 	}
 
-	static List<Token> tokenize(String text) {
+	public static List<Token> tokenize(String text) {
 		List<Token> tokens = new ArrayList<>();
 		Matcher m = TOKEN_PATTERN.matcher(text);
 		int last = 0;
@@ -118,7 +118,7 @@ final class JavaSyntaxHighlighter {
 	 * re-tokenizing that row's text in isolation (which would lose track of a comment/string that
 	 * opened on an earlier row).
 	 */
-	static List<List<Token>> tokenizeLines(String text) {
+	public static List<List<Token>> tokenizeLines(String text) {
 		List<List<Token>> rows = new ArrayList<>();
 		List<Token> current = new ArrayList<>();
 		for (Token token : tokenize(text)) {

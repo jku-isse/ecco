@@ -1,5 +1,7 @@
 package at.jku.cdl.ecco.adapter.java.view;
 
+import at.jku.isse.ecco.adapter.view.JavaCodeLine;
+import at.jku.isse.ecco.adapter.view.JavaSyntaxHighlighter;
 import at.jku.cdl.ecco.adapter.java.JavaASTPlugin;
 import at.jku.cdl.ecco.adapter.java.JavaASTReader;
 import at.jku.cdl.ecco.adapter.java.artifactData.ASTNodeType;

@@ -1,5 +1,6 @@
 package at.jku.cdl.ecco.adapter.java.view;
 
+import at.jku.isse.ecco.adapter.view.JavaCodeLine;
 import at.jku.cdl.ecco.adapter.java.JavaASTReader;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
