@@ -60,7 +60,9 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 	private volatile boolean tabVisible = true;
 
 	/** A later load supersedes one still running; see {@link #refresh()}. */
-	private final AtomicLong refreshGeneration = new AtomicLong();
+	private final at.jku.isse.ecco.gui.LatestRefresh<Runnable> refresher;
+	/** Whether "Advanced: Modules per Order" is open - read by the refresh in the background. */
+	private volatile boolean advancedOpen;
 
 	private XYChart.Series<Number, String> artifactsPerAssociationSeries;
 	private CategoryAxis associationAxis;
@@ -73,6 +75,8 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 
 	public ChartsView(EccoService service) {
 		this.service = service;
+		this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Charts", service, this::computeCharts, Runnable::run,
+				failure -> new at.jku.isse.ecco.gui.ExceptionAlert(failure).show());
 
 
 		ScrollPane scrollPane = new ScrollPane();
@@ -156,6 +160,7 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 			this.modulesPerOrderPane = modulesPerOrderPane;
 			// computed only while open: it took most of a refresh (9.5 of 11 s for tinycc), on every change
 			modulesPerOrderPane.expandedProperty().addListener((o, wasOpen, open) -> {
+				this.advancedOpen = open;
 				if (open && this.service.isInitialized() && this.tabVisible)
 					this.refresh();
 			});
@@ -192,13 +197,17 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 	}
 
 	private void refresh() {
-		long generation = this.refreshGeneration.incrementAndGet();
-		boolean advanced = this.modulesPerOrderPane.isExpanded();
+		this.refresher.request();
+	}
 
-		Task<Void> refreshTask = new Task<>() {
-			@Override
-			public Void call() throws EccoException {
-				Repository repository = ChartsView.this.service.getRepository();
+	/**
+	 * The charts' data, read in the background holding the service's lock - the latest only, not
+	 * while the tab is hidden (see {@link at.jku.isse.ecco.gui.LatestRefresh}) - and how to show it,
+	 * on the FX thread.
+	 */
+	private Runnable computeCharts(EccoService service) {
+				boolean advanced = this.advancedOpen;
+				Repository repository = service.getRepository();
 
 				// artifacts per depth
 				LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
@@ -255,10 +264,7 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 				featureBars = largestFirst(featureBars, Integer.MAX_VALUE);
 				List<Bar> shownAssociationBars = associationBars, shownFeatureBars = featureBars;
 
-				Platform.runLater(() -> {
-					if (ChartsView.this.refreshGeneration.get() != generation)
-						return; // a newer load shows its own
-
+				return () -> {
 					show(ChartsView.this.artifactsPerAssociationChart, ChartsView.this.artifactsPerAssociationSeries, shownAssociationBars);
 					ChartsView.this.associationAxis.setLabel(associationCount > shownAssociationBars.size()
 							? "The " + shownAssociationBars.size() + " largest of " + associationCount : null);
@@ -278,15 +284,7 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 					final ObservableList<XYChart.Data<String, Number>> maxOrderAbsorbedData = ChartsView.this.modulesPerOrderAbsorbedSeries.getData();
 					maxOrderAbsorbedData.clear();
 					modulesPerOrderAbsorbedMap.forEach((key, value) -> maxOrderAbsorbedData.add(new XYChart.Data<>(Integer.toString(key), value)));
-				});
-				return null;
-			}
-		};
-
-		TaskFailures.reportAndReenable(refreshTask);
-		Thread thread = new Thread(refreshTask);
-		thread.setDaemon(true);
-		thread.start();
+				};
 	}
 
 	/** Counts and depths: no "0.5" between them. */
@@ -347,21 +345,17 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 	/** Called by {@code MainView#switchTo}: shown again, the charts are loaded again. */
 	@Override
 	public void setTabVisible(boolean tabVisible) {
-		boolean becameVisible = tabVisible && !this.tabVisible;
 		this.tabVisible = tabVisible;
-		if (becameVisible && this.service.isInitialized())
-			Platform.runLater(this::refresh);
+		this.refresher.setVisible(tabVisible);
 	}
 
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
-			Platform.runLater(() -> {
-				this.setDisable(false);
-				if (this.tabVisible)
-					this.refresh();
-			});
+			Platform.runLater(() -> this.setDisable(false));
+			this.refresh();
 		} else {
+			this.refresher.clear();
 			Platform.runLater(() -> this.setDisable(true));
 		}
 	}

@@ -145,7 +145,7 @@ public class PartialOrderGraphView extends BorderPane {
 	 * (ConcurrentModificationException).
 	 */
 	public void showGraph(PartialOrderGraph pog, at.jku.isse.ecco.tree.Node shownNode, Object lock) {
-		this.showGraph(pog, shownNode, null, lock);
+		this.showGraph(pog, shownNode, (java.util.function.Supplier<at.jku.isse.ecco.repository.Repository>) null, lock);
 	}
 
 	/**
@@ -153,6 +153,14 @@ public class PartialOrderGraphView extends BorderPane {
 	 * when no feature does (may be null: then the conditions only).
 	 */
 	public void showGraph(PartialOrderGraph pog, at.jku.isse.ecco.tree.Node shownNode, at.jku.isse.ecco.repository.Repository repository, Object lock) {
+		this.showGraph(pog, shownNode, repository == null ? null : (java.util.function.Supplier<at.jku.isse.ecco.repository.Repository>) () -> repository, lock);
+	}
+
+	/**
+	 * As above, the repository got by [repository] in the background, holding [lock] - got on the FX
+	 * thread, it waited there for a running commit, which holds the lock (may be null; it may give null).
+	 */
+	public void showGraph(PartialOrderGraph pog, at.jku.isse.ecco.tree.Node shownNode, java.util.function.Supplier<at.jku.isse.ecco.repository.Repository> repository, Object lock) {
 		if (null == viewer) {
 			initView();
 		}
@@ -164,7 +172,8 @@ public class PartialOrderGraphView extends BorderPane {
 		Thread th = new Thread(() -> {
 			Snapshot snapshot;
 			synchronized (lock) {
-				snapshot = blocksOf(pog, shownNode, repository == null ? PartialOrderGraphView::conditionOrNotTraced : new ArtifactOrigins(repository)::describe, others);
+				at.jku.isse.ecco.repository.Repository origins = repository == null ? null : repository.get();
+				snapshot = blocksOf(pog, shownNode, origins == null ? PartialOrderGraphView::conditionOrNotTraced : new ArtifactOrigins(origins)::describe, others);
 			}
 			// one rebuild at a time: selecting another node before the previous rebuild finished used
 			// to start a second thread clearing and filling the same (not thread-safe) graph

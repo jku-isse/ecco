@@ -43,7 +43,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class ArtifactsView extends BorderPane implements EccoListener {
+public class ArtifactsView extends BorderPane implements EccoListener, at.jku.isse.ecco.gui.TabVisibilityAware {
 
     private static final double BAR_WIDTH = 60;
     private static final double BAR_HEIGHT = 10;
@@ -65,11 +65,12 @@ public class ArtifactsView extends BorderPane implements EccoListener {
     // composes once the ticks have settled - Select All ticks every row, one by one
     private final javafx.animation.PauseTransition composeDelay = new javafx.animation.PauseTransition(javafx.util.Duration.millis(250));
     private final ToggleButton featuresButton = new ToggleButton("Features");
-    private final AtomicLong refreshGeneration = new AtomicLong();
 
 
     public ArtifactsView(final EccoService service, MinimizationResults minimizationResults) {
         this.service = service;
+        this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Artifacts", service, ArtifactsView::computeRefresh, this::applyRefresh,
+                failure -> new ExceptionAlert(failure).show());
         this.minimizationResults = minimizationResults;
 
         // the shared minimization run (see MinimizationResults): its button is here, with the results.
@@ -554,108 +555,83 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         }
     }
 
+    /**
+     * The associations, their artifact counts and conditions, read again after every change of the
+     * repository - the latest only, one at a time, not while the tab is hidden, and holding the
+     * service's lock, see {@link at.jku.isse.ecco.gui.LatestRefresh}: each change started a
+     * computation of its own (1.3 s of conditions for tinycc), also with the tab hidden, and read
+     * the counters while the next commit changed them.
+     */
+    private final at.jku.isse.ecco.gui.LatestRefresh<RefreshResult> refresher;
+
     private void refresh() {
-        // statusChangedEvent can fire many times in quick succession (e.g. once per folder from
-        // both setBaseDir() and commit() during a multi-folder Commit, or once per commit in a
-        // large bulk-commit session), each spawning its own background computation here - without
-        // a generation guard, whichever one happens to finish last wins, which isn't necessarily
-        // the one started last, so an earlier commit's stale (or empty, mid-commit) association
-        // list could silently overwrite the true final state. Same pattern as
-        // applyLiveConfiguration()'s liveConfigurationGeneration.
-        //
-        // Deliberately does NOT clear associationsData/the tree up front, unlike earlier versions
-        // of this method: on a large repository, this computation (countArtifacts() over every
-        // association) can take longer than the gap between commits during a fast bulk-commit
-        // session, so every attempt keeps losing the generation race to the next one - clearing
-        // eagerly meant the tab stayed visibly blank for the whole session instead of just showing
-        // the previous (slightly stale, but real) state until a refresh actually wins.
-        //
-        // Uses a real Task (unlike the raw Thread this used to be) specifically so a failure here -
-        // e.g. an OutOfMemoryError from walking a very large tree - surfaces via setOnFailed()
-        // instead of silently killing the thread and leaving the toolbar disabled and the tree
-        // stuck on whatever it last showed until the app is restarted.
-        long generation = refreshGeneration.incrementAndGet();
+        this.refresher.request();
+    }
 
-        Platform.runLater(() -> toolBar.setDisable(true));
+    /** Shown or hidden by {@code MainView#switchTo}: hidden, the associations are read again only when shown. */
+    @Override
+    public void setTabVisible(boolean visible) {
+        this.refresher.setVisible(visible);
+    }
 
-        Task<RefreshResult> refreshTask = new Task<>() {
-            @Override
-            protected RefreshResult call() {
-                // sorted by id (stable regardless of the repository's own iteration order) so
-                // that, as long as the set of associations doesn't change, each one keeps the
-                // same auto-assigned color across refreshes rather than reshuffling
-                List<? extends Association> associations = ArtifactsView.this.service.getRepository().getAssociations().stream()
-                        .sorted(Comparator.comparing(Association::getId))
-                        .toList();
-                int max = 1;
-                Map<String, Integer> counts = new HashMap<>();
-                Map<String, String> conditions = new HashMap<>();
-                for (Association a : associations) {
-                    int count = a.getRootNode().countArtifacts();
-                    counts.put(a.getId(), count);
-                    conditions.put(a.getId(), a.computeCondition().toDisplayString());
-                    max = Math.max(max, count);
+    private static RefreshResult computeRefresh(EccoService service) {
+        // sorted by id (stable regardless of the repository's own iteration order) so that, as long
+        // as the set of associations doesn't change, each one keeps the same auto-assigned color
+        // across refreshes rather than reshuffling
+        List<? extends Association> associations = service.getRepository().getAssociations().stream()
+                .sorted(Comparator.comparing(Association::getId))
+                .toList();
+        int max = 1;
+        Map<String, Integer> counts = new HashMap<>();
+        Map<String, String> conditions = new HashMap<>();
+        for (Association a : associations) {
+            int count = a.getRootNode().countArtifacts();
+            counts.put(a.getId(), count);
+            conditions.put(a.getId(), a.computeCondition().toDisplayString());
+            max = Math.max(max, count);
+        }
+        RefreshResult result = new RefreshResult(associations, max, service.validMinimizedConditions());
+        result.numArtifacts.putAll(counts);
+        result.conditions.putAll(conditions);
+        return result;
+    }
+
+    private void applyRefresh(RefreshResult result) {
+        // set before mutating associationsData so cells never render against a stale max
+        this.maxNumArtifacts = result.maxNumArtifacts;
+        artifactTreeView.setRootNode(null);
+        List<AssociationInfoImpl> rows = new ArrayList<>();
+        int index = 0;
+        for (Association a : result.associations) {
+            // prefer the persisted value, if still valid (see EccoService#validMinimizedConditions);
+            // falls back to the shared live map, which MinimizationResults keeps to valid results
+            // too; kept in sync afterward by the MapChangeListener registered in the constructor.
+            String minimizedCondition = result.validMinimized.get(a.getId());
+            if (minimizedCondition == null) {
+                minimizedCondition = this.minimizationResults.getMinimizedByAssociationId().get(a.getId());
+            }
+            AssociationInfoImpl associationInfo = new AssociationInfoImpl(a, minimizedCondition,
+                    result.numArtifacts.getOrDefault(a.getId(), 0), result.conditions.get(a.getId()));
+            // color is only actually assigned once the association is selected (so the
+            // "Highlighted" column and the code viewers stay blank for everything else),
+            // but its slot is fixed now so the color stays the same association's color
+            // across selections rather than depending on selection order
+            Color assignedColor = CategoricalColorPalette.tintForBackground(CategoricalColorPalette.colorForIndex(index));
+            associationInfo.selectedProperty().addListener((observable, wasSelected, isSelected) -> {
+                if (isSelected && associationInfo.colorProperty().get().equals(Color.TRANSPARENT)) {
+                    associationInfo.colorProperty().set(assignedColor);
                 }
-                RefreshResult result = new RefreshResult(associations, max, ArtifactsView.this.service.validMinimizedConditions());
-                result.numArtifacts.putAll(counts);
-                result.conditions.putAll(conditions);
-                return result;
-            }
-        };
-        refreshTask.setOnSucceeded(event -> {
-            if (refreshGeneration.get() != generation) {
-                return;
-            }
-
-            RefreshResult result = refreshTask.getValue();
-
-            // set before mutating associationsData so cells never render against a stale max
-            this.maxNumArtifacts = result.maxNumArtifacts;
-            artifactTreeView.setRootNode(null);
-            this.associationsData.clear();
-            int index = 0;
-            for (Association a : result.associations) {
-                // prefer the persisted value, if still valid (see EccoService#validMinimizedConditions)
-                // -- no timing dependency on whether MinimizationResults' own seeding (async, via
-                // Platform.runLater) has already run by the time this refresh's own background Task
-                // completes. Falls back to the shared live map, which MinimizationResults keeps to
-                // valid results too; kept in sync afterward by the MapChangeListener registered in
-                // the constructor.
-                String minimizedCondition = result.validMinimized.get(a.getId());
-                if (minimizedCondition == null) {
-                    minimizedCondition = this.minimizationResults.getMinimizedByAssociationId().get(a.getId());
-                }
-                AssociationInfoImpl associationInfo = new AssociationInfoImpl(a, minimizedCondition,
-                        result.numArtifacts.getOrDefault(a.getId(), 0), result.conditions.get(a.getId()));
-                // color is only actually assigned once the association is selected (so the
-                // "Highlighted" column and the code viewers stay blank for everything else),
-                // but its slot is fixed now so the color stays the same association's color
-                // across selections rather than depending on selection order
-                Color assignedColor = CategoricalColorPalette.tintForBackground(CategoricalColorPalette.colorForIndex(index));
-                associationInfo.selectedProperty().addListener((observable, wasSelected, isSelected) -> {
-                    if (isSelected && associationInfo.colorProperty().get().equals(Color.TRANSPARENT)) {
-                        associationInfo.colorProperty().set(assignedColor);
-                    }
-                });
-                index++;
-                this.associationsData.add(associationInfo);
-            }
-            artifactTreeView.setAssociationInfo(this.associationsData);
-            // the features may have changed: built again, when shown again
-            this.featureTogglePanel = null;
-            if (this.featuresButton.isSelected())
-                this.showFeatures(true);
-
-            toolBar.setDisable(false);
-        });
-        refreshTask.setOnFailed(event -> {
-            if (refreshGeneration.get() == generation) {
-                toolBar.setDisable(false);
-            }
-            if (!at.jku.isse.ecco.gui.TaskFailures.repositoryClosed(refreshTask.getException()))
-                new ExceptionAlert(refreshTask.getException()).show();
-        });
-        new Thread(refreshTask).start();
+            });
+            index++;
+            rows.add(associationInfo);
+        }
+        // at once: thousands of rows added one by one were as many list changes
+        this.associationsData.setAll(rows);
+        artifactTreeView.setAssociationInfo(this.associationsData);
+        // the features may have changed: built again, when shown again
+        this.featureTogglePanel = null;
+        if (this.featuresButton.isSelected())
+            this.showFeatures(true);
     }
 
     @Override
@@ -664,6 +640,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             Platform.runLater(() -> this.setDisable(false));
             refresh();
         } else {
+            this.refresher.clear();
             Platform.runLater(() -> {
                 this.setDisable(true);
                 this.artifactTreeView.setRootNode(null);

@@ -432,23 +432,34 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         return parsed;
     }
 
-    /**
-     * Counts refreshes: each runs in a task of its own, and one started earlier can finish later -
-     * its result would replace the newer one (seen as a stale list after changing a threshold).
-     */
-    private final java.util.concurrent.atomic.AtomicInteger refreshes = new java.util.concurrent.atomic.AtomicInteger();
 
+    /** The thresholds the next refresh mines with - set on the FX thread, read by the refresh in the background. */
+    private volatile int minWitness;
+    private volatile double confidence;
+    private at.jku.isse.ecco.gui.LatestRefresh<Runnable> refresher;
+
+    /**
+     * Mines and lists the suggestions again - in the background, holding the service's lock, the
+     * latest only (see {@link at.jku.isse.ecco.gui.LatestRefresh}): each change started a mining of
+     * its own, read the repository while a commit changed it.
+     */
     private void refresh() {
         if (!service.isInitialized()) return;
-        int refresh = this.refreshes.incrementAndGet();
-
+        if (this.refresher == null)
+            this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Constraint suggestions", this.service, this::computeRows, Runnable::run, failure -> {
+                top.setDisable(false);
+                new at.jku.isse.ecco.gui.ExceptionAlert(failure).show();
+            });
         top.setDisable(true);
-        int minWitness = minWitnessSpinner.getValue();
-        double confidence = confidenceSpinner.getValue();
+        this.minWitness = minWitnessSpinner.getValue();
+        this.confidence = confidenceSpinner.getValue();
+        this.refresher.request();
+    }
 
-        Task<Void> refreshTask = new Task<>() {
-            @Override
-            protected Void call() {
+    /** The rows, read in the background - and how to show them, on the FX thread. */
+    private Runnable computeRows(EccoService ignored) {
+                int minWitness = this.minWitness;
+                double confidence = this.confidence;
                 // rejections kept per machine by earlier versions (a no-op once they are moved)
                 ConstraintSuggestionsView.this.service.moveLocalRejectionsIntoRepository();
                 List<Set<String>> configs = ConfigurationBridge.readConfigurations(ConstraintSuggestionsView.this.service);
@@ -528,20 +539,13 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                 for (String signature : rejected.stream().sorted().toList())
                     all.add(new ReviewRow(signature, Status.REJECTED, lenientBySignature.get(signature), null));
 
-                Platform.runLater(() -> {
-                    if (refresh != ConstraintSuggestionsView.this.refreshes.get())
-                        return; // a newer refresh shows its own
+                return () -> {
                     ConstraintSuggestionsView.this.relations = codeRelations;
                     codeCol.setVisible(!codeRelations.isEmpty());
                     rows.setAll(all);
                     updateCounts();
                     top.setDisable(false);
-                });
-                return null;
-            }
-        };
-        TaskFailures.reportAndReenable(refreshTask, top);
-        new Thread(refreshTask).start();
+                };
     }
 
     /** "Pending (3)" - how many there are, on each filter button. */
@@ -595,6 +599,8 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                 if (this.tabVisible) refresh();
             });
         } else {
+            if (this.refresher != null)
+                this.refresher.clear();
             Platform.runLater(() -> {
                 rows.clear();
                 updateCounts();

@@ -117,7 +117,11 @@ public class AssociationDetailView extends BorderPane {
 
 	/** The module revisions of [association]'s condition, by order, with their counts. Package-visible for testing. */
 	static java.util.List<ModuleRow> moduleRows(Association association) {
-		Condition condition = association.computeCondition();
+		return moduleRows(association, association.computeCondition());
+	}
+
+	/** As above, with the association's [condition] computed already - it was computed twice per selection. */
+	static java.util.List<ModuleRow> moduleRows(Association association, Condition condition) {
 		java.util.Set<ModuleRevision> absorbed = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 		absorbed.addAll(condition.getAbsorbedModuleRevisions());
 		java.util.List<ModuleRow> rows = new java.util.ArrayList<>();
@@ -145,8 +149,9 @@ public class AssociationDetailView extends BorderPane {
 
 			// show details
 			this.associationId.setText(String.valueOf(association.getId()));
-			this.associationPC.setText(association.computeCondition().toDisplayString());
-			java.util.List<ModuleRow> rows = moduleRows(association);
+			Condition condition = association.computeCondition();
+			this.associationPC.setText(condition.toDisplayString());
+			java.util.List<ModuleRow> rows = moduleRows(association, condition);
 			this.modulesTable.setItems(FXCollections.observableArrayList(rows));
 			this.modulesSummary.setText(rows.size() + " module revision(s), " + rows.stream().filter(ModuleRow::inCondition).count()
 					+ " of them in the condition - the others are absorbed by one with fewer literals");

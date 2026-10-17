@@ -124,6 +124,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	 * layout/freeze cycle) and skip freezing anything.
 	 */
 	private int layoutGeneration = 0;
+	private final at.jku.isse.ecco.gui.LatestRefresh<FeatureModelSnapshot> refresher;
 
 	/**
 	 * The legend's keys for the suggested relations: shown only when there are any, and they name
@@ -136,6 +137,8 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 
 	public FeaturesView(EccoService service, MinimizationResults minimizationResults) {
 		this.service = service;
+		this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Feature Model", service, s -> this.buildSnapshot(), this::showSnapshot,
+				failure -> new at.jku.isse.ecco.gui.ExceptionAlert(failure).show());
 
 		this.toolBar = new ToolBar();
 		this.setTop(toolBar);
@@ -393,9 +396,22 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		}
 	}
 
-	/** Builds a fresh snapshot and queues it for rendering; see {@link at.jku.isse.ecco.gui.view.graph.ArtifactGraphView#refreshGraph()}. */
+	/**
+	 * Builds a fresh snapshot - in the background, holding the service's lock, the latest only (see
+	 * {@link at.jku.isse.ecco.gui.LatestRefresh}) - and queues it for rendering. It was built on the
+	 * FX thread, reading the suggestion log of every import there, and waiting for a running commit.
+	 */
 	private void refreshGraph() {
-		this.refreshGraph(this.buildSnapshot());
+		this.refresher.request();
+	}
+
+	/** Shows a snapshot built by {@link #refresher}, on the FX thread. */
+	private void showSnapshot(FeatureModelSnapshot snapshot) {
+		if (this.viewer == null || this.view == null) {
+			initView();
+		}
+		this.setDisable(false);
+		this.refreshGraph(snapshot);
 	}
 
 	private void refreshGraph(FeatureModelSnapshot snapshot) {
@@ -860,15 +876,10 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 					this.viewer.disableAutoLayout();
 			});
 		this.suggestionsView.setTabVisible(tabVisible);
-		if (becameVisible && this.service.isInitialized()) {
-			Platform.runLater(() -> {
-				if (this.viewer == null || this.view == null) {
-					initView();
-				}
-				this.setDisable(false);
-				this.refreshGraph();
-			});
-		}
+		// shown again, a change missed while hidden is caught up with
+		this.refresher.setVisible(tabVisible);
+		if (becameVisible && this.service.isInitialized())
+			this.refresher.request();
 	}
 
 	/**
@@ -885,15 +896,9 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 				Platform.runLater(() -> this.setDisable(false));
 				return;
 			}
-			FeatureModelSnapshot snapshot = this.buildSnapshot();
-			Platform.runLater(() -> {
-				if (this.viewer == null || this.view == null) {
-					initView();
-				}
-				this.setDisable(false);
-				this.refreshGraph(snapshot);
-			});
+			this.refresher.request();
 		} else {
+			this.refresher.clear();
 			Platform.runLater(() -> {
 				closeView();
 				this.setDisable(true);

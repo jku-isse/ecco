@@ -65,7 +65,7 @@ public class FetchView extends OperationView {
 		row++;
 
 
-		fillRemotes(remoteComboBox, this.service.getRemotes());
+		fillRemotesLater(this.service, remoteComboBox);
 		focusWhenShown(remoteComboBox);
 
 

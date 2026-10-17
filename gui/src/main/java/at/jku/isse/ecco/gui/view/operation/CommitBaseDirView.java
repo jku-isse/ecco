@@ -165,11 +165,33 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 			String commitMessage = commitMessageField.getText();
 			String configurationString = configurationField.getText();
 
-			String warning = ConstraintWarnings.describe(this.service, configurationString != null && !configurationString.isBlank()
-					? configurationString : this.service.getConfigStringFromFile(this.service.getBaseDir()));
-			if (!warning.isEmpty() && !this.confirmCommitAnyway(warning))
-				return;
+			// checked in the background: on the FX thread it waited for a commit running meanwhile
+			// (an import's), which holds the service's lock - the window froze
+			commitButton.setDisable(true);
+			Thread check = new Thread(() -> {
+				String warning;
+				try {
+					warning = ConstraintWarnings.describe(this.service, configurationString != null && !configurationString.isBlank()
+							? configurationString : this.service.getConfigStringFromFile(this.service.getBaseDir()));
+				} catch (RuntimeException e) {
+					warning = "";
+				}
+				String found = warning;
+				Platform.runLater(() -> {
+					commitButton.setDisable(false);
+					if (!found.isEmpty() && !this.confirmCommitAnyway(found))
+						return;
+					this.startCommit(commitMessage, configurationString);
+				});
+			}, "constraint check");
+			check.setDaemon(true);
+			check.start();
+		});
+	}
 
+	/** Commits, after the constraints were checked. */
+	private void startCommit(String commitMessage, String configurationString) {
+		{
 			this.step2(() -> this.service.cancelCommit());
 
 			this.logArea.clear();
@@ -208,7 +230,7 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 			};
 			this.track(commitTask, "The commit");
 			new Thread(commitTask).start();
-		});
+		}
 	}
 
 	/**

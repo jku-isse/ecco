@@ -70,6 +70,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -743,17 +744,11 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	}
 
 	private Association findAssociationById(String associationId) {
-		for (Association candidate : this.service.getRepository().getAssociations()) {
-			if (associationId.equals(candidate.getId())) return candidate;
-		}
-		return null;
+		return this.associationsById.get(associationId);
 	}
 
 	private Commit findCommitById(String commitId) {
-		for (Commit candidate : this.service.getRepository().getCommits()) {
-			if (commitId.equals(candidate.getId())) return candidate;
-		}
-		return null;
+		return this.commitsById.get(commitId);
 	}
 
 	/**
@@ -985,9 +980,23 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	 * {@code ArtifactGraphView#buildSnapshot()} for the full rationale.
 	 */
 	private KnowledgeGraphLayout.Snapshot buildSnapshot() {
-		return KnowledgeGraphLayout.compute(this.service.getRepository(), Set.copyOf(this.enabledKinds),
+		at.jku.isse.ecco.repository.Repository repository = this.service.getRepository();
+		// for hover and click: looked up in the repository on the FX thread, they waited there for a running commit
+		Map<String, Association> associations = new HashMap<>();
+		for (Association association : repository.getAssociations())
+			associations.put(association.getId(), association);
+		Map<String, Commit> commits = new HashMap<>();
+		for (Commit commit : repository.getCommits())
+			commits.put(commit.getId(), commit);
+		this.associationsById = associations;
+		this.commitsById = commits;
+		return KnowledgeGraphLayout.compute(repository, Set.copyOf(this.enabledKinds),
 				this.commitLimit, this.includeConstraints, this.includeComputedVariantAssociationEdges, this.commitLinksAddedOnly);
 	}
+
+	/** The associations and commits of the last snapshot, by id - see {@link #buildSnapshot}. */
+	private volatile Map<String, Association> associationsById = Map.of();
+	private volatile Map<String, Commit> commitsById = Map.of();
 
 	/**
 	 * Renders a previously-built snapshot into the live GraphStream graph. Swing-thread only. Same

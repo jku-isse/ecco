@@ -293,6 +293,23 @@ public abstract class OperationView extends BorderPane {
 					.ifPresent(r -> comboBox.getSelectionModel().select(r));
 	}
 
+	/**
+	 * Fills [comboBox] with [service]'s remotes, read in the background: read on the FX thread, opening
+	 * Fetch, Pull or Push waited there for a running commit, which holds the service's lock.
+	 */
+	protected static void fillRemotesLater(at.jku.isse.ecco.service.EccoService service, javafx.scene.control.ComboBox<at.jku.isse.ecco.core.Remote> comboBox) {
+		Thread thread = new Thread(() -> {
+			try {
+				java.util.Collection<? extends at.jku.isse.ecco.core.Remote> remotes = service.getRemotes();
+				Platform.runLater(() -> fillRemotes(comboBox, remotes));
+			} catch (RuntimeException e) {
+				java.util.logging.Logger.getLogger(OperationView.class.getName()).log(java.util.logging.Level.WARNING, "Could not read the remotes", e);
+			}
+		}, "remotes");
+		thread.setDaemon(true);
+		thread.start();
+	}
+
 	/** Puts the keyboard focus on [node] once it is shown - the first field of a step. */
 	protected static void focusWhenShown(javafx.scene.Node node) {
 		Platform.runLater(node::requestFocus);

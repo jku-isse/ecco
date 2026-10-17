@@ -198,6 +198,8 @@ public class CommitBaseDirViewTest {
                     fields(view).get(2).setText("");
                     button(view, "Commit").fire();
                 });
+                // checked in the background (it waited on the FX thread for a commit running meanwhile)
+                waitUntil("asked", () -> askedAbout.size() == 1 && !button(view, "Commit").isDisabled());
                 assertEquals(1, askedAbout.size());
                 assertTrue(askedAbout.get(0).startsWith("Violates accepted constraint(s): MANDATORY A"), askedAbout.get(0));
                 assertEquals(4, service.getCommits().size(), "declined: nothing is committed");

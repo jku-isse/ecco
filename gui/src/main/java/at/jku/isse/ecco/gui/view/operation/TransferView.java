@@ -51,7 +51,7 @@ public abstract class TransferView extends OperationView {
 		this.deselectionTextField.textProperty().addListener((observable, oldValue, newValue) -> this.tickFromField());
 
 		// filled once here, not in stepRemote(): going back to that step appended every remote again
-		fillRemotes(this.remoteComboBox, this.service.getRemotes());
+		fillRemotesLater(this.service, this.remoteComboBox);
 
 		this.stepRemote();
 	}

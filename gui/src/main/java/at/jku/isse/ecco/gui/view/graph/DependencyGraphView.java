@@ -29,6 +29,7 @@ import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class DependencyGraphView extends BorderPane implements EccoListener, TabVisibilityAware {
@@ -45,8 +46,9 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	private static final double MAX_VIEW_PERCENT = 1.0;
 
 	private boolean showLabels = true;
-	private boolean simplifyLabels = true;
-	private boolean hideImpliedDependencies = true;
+	private volatile boolean simplifyLabels = true;
+	private volatile boolean hideImpliedDependencies = true;
+	private final at.jku.isse.ecco.gui.LatestRefresh<Dependencies> refresher;
 	private boolean hideTransitiveDependencies = true;
 
 	/**
@@ -62,11 +64,13 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	private volatile boolean tabVisible = true;
 
 
-	private DependencyGraph dg = null;
+	private volatile DependencyGraph dg = null;
 
 
 	public DependencyGraphView(EccoService service) {
 		this.service = service;
+		this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Dependency Graph", service, this::computeDependencies, this::showDependencies,
+				failure -> new ExceptionAlert(failure).show());
 
 
 		ToolBar toolBar = new ToolBar();
@@ -218,76 +222,64 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	}
 
 	private void updateGraph() {
-		// queued on the AWT thread: the repository may have been closed (and the viewer torn down)
-		// in the meantime - like ArtifactGraphView#refreshGraph, which already returned here; this
-		// threw "Service is not initialized" on the AWT thread
+		this.refresher.request();
+	}
+
+	/** What the graph shows: its nodes - an association's id and label - and edges, read in the background. */
+	record Dependencies(Map<String, String> labels, List<String[]> edges) {
+	}
+
+	/**
+	 * The dependencies and their conditions, in the background holding the service's lock - the
+	 * latest only, not while hidden (see {@link at.jku.isse.ecco.gui.LatestRefresh}): computed on the
+	 * Swing thread, they took 2.5 s there for tinycc, for each commit, and read the counters while
+	 * the next commit changed them.
+	 */
+	private Dependencies computeDependencies(EccoService service) {
+		boolean hideImplied = this.hideImpliedDependencies, simplify = this.simplifyLabels;
+		DependencyGraph graph = new DependencyGraph(service.getRepository().getAssociations());
+		this.dg = graph;
+		Map<String, String> labels = new java.util.LinkedHashMap<>();
+		List<String[]> edges = new java.util.ArrayList<>();
+		// once per association, not per dependency: an association is in many (2.5 s for tinycc)
+		Map<Association, Condition> conditions = new IdentityHashMap<>();
+		for (DependencyGraph.Dependency dep : graph.getDependencies()) {
+			Condition from = conditions.computeIfAbsent(dep.getFrom(), Association::computeCondition);
+			Condition to = conditions.computeIfAbsent(dep.getTo(), Association::computeCondition);
+			if (hideImplied && isImplied(from, to))
+				continue;
+			labels.computeIfAbsent(String.valueOf(dep.getFrom().getId()), id -> "[" + (simplify ? from.toDisplayString(false) : from.toDisplayString()) + "]");
+			labels.computeIfAbsent(String.valueOf(dep.getTo().getId()), id -> "[" + (simplify ? to.toDisplayString(false) : to.toDisplayString()) + "]");
+			edges.add(new String[]{String.valueOf(dep.getFrom().getId()), String.valueOf(dep.getTo().getId()), String.valueOf(dep.getWeight())});
+		}
+		return new Dependencies(labels, edges);
+	}
+
+	/** Shows [dependencies], on the FX thread: the viewer made if there is none - kept, not made anew for each commit. */
+	private void showDependencies(Dependencies dependencies) {
+		if (this.viewer == null || this.view == null)
+			initView();
+		this.setDisable(false);
+		SwingUtilities.invokeLater(() -> this.drawDependencies(dependencies));
+	}
+
+	/** Draws [dependencies] - Swing thread only, like every GraphStream change here. */
+	private void drawDependencies(Dependencies dependencies) {
+		// queued on the AWT thread: the repository may have been closed (and the viewer torn down) meanwhile
 		if (this.viewer == null || this.view == null || !this.service.isInitialized())
 			return;
 
 		this.viewer.disableAutoLayout();
-
 		this.layout.clear();
 		this.graph.clear();
-
 		this.view.getCamera().resetView();
-
-
-		//this.graph.setStrict(false);
-
 		this.graph.setAttribute("ui.quality");
 		this.graph.setAttribute("ui.antialias");
-
 		this.updateGraphStylehseet();
 
-
-		// always rebuilt, not just when null: this is also what the automatic refresh path
-		// (statusChangedEvent/setTabVisible, below) calls now, and a commit changing the
-		// repository's associations should be reflected the same way the manual Refresh button
-		// already does (which always rebuilds), not show whatever was there at the last refresh.
-		dg = new DependencyGraph(this.service.getRepository().getAssociations());
-
-		// once per association, not per dependency: an association is in many (2.5 s for tinycc)
-		Map<Association, Condition> conditions = new IdentityHashMap<>();
-		for (DependencyGraph.Dependency dep : dg.getDependencies()) {
-			Condition depFromCondition = conditions.computeIfAbsent(dep.getFrom(), Association::computeCondition);
-			Condition depToCondition = conditions.computeIfAbsent(dep.getTo(), Association::computeCondition);
-			if (!hideImpliedDependencies || !isImplied(depFromCondition, depToCondition)) {
-				Node from = this.graph.getNode(String.valueOf(dep.getFrom().getId()));
-				if (from == null) {
-					from = this.graph.addNode(String.valueOf(dep.getFrom().getId()));
-					if (simplifyLabels)
-						from.setAttribute("label", "[" + depFromCondition.toDisplayString(false) + "]");
-					else
-						from.setAttribute("label", "[" + depFromCondition.toDisplayString() + "]");
-//				from.setAttribute("implied", implied);
-//				if (implied)
-//					from.setAttribute("hide");
-				}
-//			if ((boolean) from.getAttribute("implied") && !implied) {
-//				from.setAttribute("implied", false);
-//				from.removeAttribute("hide");
-//			}
-				Node to = this.graph.getNode(String.valueOf(dep.getTo().getId()));
-				if (to == null) {
-					to = this.graph.addNode(String.valueOf(dep.getTo().getId()));
-					if (simplifyLabels)
-						to.setAttribute("label", "[" + depToCondition.toDisplayString(false) + "]");
-					else
-						to.setAttribute("label", "[" + depToCondition.toDisplayString() + "]");
-//				to.setAttribute("implied", implied);
-//				if (implied)
-//					to.setAttribute("hide");
-				}
-//			if ((boolean) to.getAttribute("implied") && !implied) {
-//				to.setAttribute("implied", false);
-//				to.removeAttribute("hide");
-//			}
-				Edge edge = this.graph.addEdge(dep.getFrom().getId() + "-" + dep.getTo().getId(), from, to, true);
-				edge.setAttribute("label", String.valueOf(dep.getWeight()));
-//			if (implied)
-//				edge.setAttribute("hide");
-			}
-		}
+		dependencies.labels().forEach((id, label) -> this.graph.addNode(id).setAttribute("label", label));
+		for (String[] edge : dependencies.edges())
+			this.graph.addEdge(edge[0] + "-" + edge[1], edge[0], edge[1], true).setAttribute("label", edge[2]);
 
 		this.viewer.enableAutoLayout(this.layout);
 		LayoutFreeze.schedule(this.viewer);
@@ -318,16 +310,10 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
-			if (!this.tabVisible) {
-				Platform.runLater(() -> this.setDisable(false));
-				return;
-			}
-			Platform.runLater(() -> {
-				initView();
-				this.setDisable(false);
-				SwingUtilities.invokeLater(this::updateGraph);
-			});
+			Platform.runLater(() -> this.setDisable(false));
+			this.refresher.request(); // noted while hidden, shown when shown
 		} else {
+			this.refresher.clear();
 			Platform.runLater(() -> {
 				closeView();
 				this.setDisable(true);
@@ -342,7 +328,6 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	 */
 	@Override
 	public void setTabVisible(boolean tabVisible) {
-		boolean becameVisible = tabVisible && !this.tabVisible;
 		this.tabVisible = tabVisible;
 		// hidden: no more layout steps - its viewer redrew the graph on every step into a canvas no
 		// longer in the window, whose drawing commands then piled up until the heap ran out
@@ -352,13 +337,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 				if (this.viewer != null)
 					this.viewer.disableAutoLayout();
 			});
-		if (becameVisible && this.service.isInitialized()) {
-			Platform.runLater(() -> {
-				initView();
-				this.setDisable(false);
-				SwingUtilities.invokeLater(this::updateGraph);
-			});
-		}
+		this.refresher.setVisible(tabVisible);
 	}
 
 }

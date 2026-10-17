@@ -262,7 +262,8 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			PartialOrderGraph pog = node.getArtifact().getPartialOrderGraph();
 			Platform.runLater(() -> {
 				if (pogGeneration.get() != generation || graphView != partialOrderGraphView) { return; }
-				graphView.showGraph(pog, node, this.service.isInitialized() ? this.service.getRepository() : null, this.service);
+				// got in the background: on the FX thread it waited for a running commit
+				graphView.showGraph(pog, node, () -> this.service.isInitialized() ? this.service.getRepository() : null, this.service);
 			});
 		});
 		th.setDaemon(true);
