@@ -9,7 +9,6 @@ import at.jku.isse.ecco.service.EccoService;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.Chart;
 import javafx.scene.chart.LineChart;
-import javafx.scene.chart.PieChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.TitledPane;
@@ -35,8 +34,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * What the Charts tab decides: the charts load when the tab is shown (nothing is computed while it
  * is hidden) and again after every change of the repository, each one from the repository
- * (artifacts per association, leaving out empty ones; revisions per feature; artifacts per depth;
- * modules per order raw and after absorption), and a failing load is shown.
+ * (artifacts per association, leaving out empty ones, and revisions per feature, as bars largest
+ * first; artifacts per depth; modules per order raw and after absorption), and a failing load is shown.
  */
 public class ChartsViewTest {
 
@@ -64,13 +63,13 @@ public class ChartsViewTest {
             });
             waitUntil("the view is enabled", () -> !view.isDisable());
 
-            assertTrue(onFx(() -> pie(view, "Artifacts per Association").getData().isEmpty()));
-            assertTrue(onFx(() -> pie(view, "Revisions per Feature").getData().isEmpty()));
+            assertTrue(onFx(() -> bars(view, "Artifacts per Association").isEmpty()));
+            assertTrue(onFx(() -> bars(view, "Revisions per Feature").isEmpty()));
             assertTrue(onFx(() -> depthSeries(view).getData().isEmpty()));
             assertTrue(onFx(() -> orderSeries(view, "Raw").getData().isEmpty()));
 
             onFx(() -> view.setTabVisible(true));
-            waitUntil("the charts", () -> !pie(view, "Revisions per Feature").getData().isEmpty());
+            waitUntil("the charts", () -> !bars(view, "Revisions per Feature").isEmpty());
         }
     }
 
@@ -82,10 +81,25 @@ public class ChartsViewTest {
 
             Map<String, Double> expected = service.getRepository().getAssociations().stream()
                     .filter(a -> a.getRootNode().countArtifacts() > 0)
-                    .collect(Collectors.toMap(a -> "A" + a.getId(), a -> (double) a.getRootNode().countArtifacts()));
+                    .collect(Collectors.toMap(a -> a.getId().substring(0, 8), a -> (double) a.getRootNode().countArtifacts()));
             assertFalse(expected.isEmpty());
-            assertEquals(expected, onFx(() -> pieValues(pie(view, "Artifacts per Association"))));
+            assertEquals(expected, onFx(() -> barValues(view, "Artifacts per Association")));
+            List<Double> topDown = onFx(() -> bars(view, "Artifacts per Association").stream().map(d -> d.getXValue().doubleValue()).toList()).reversed();
+            assertEquals(topDown.stream().sorted(java.util.Comparator.reverseOrder()).toList(), topDown, "the largest at the top");
         }
+    }
+
+    /** At most the largest {@link ChartsView#MAX_ASSOCIATION_BARS}, largest first, ties by name. */
+    @Test
+    public void onlyTheLargestBarsAreShownLargestFirst() {
+        List<ChartsView.Bar> bars = new java.util.ArrayList<>();
+        for (int i = 0; i < ChartsView.MAX_ASSOCIATION_BARS + 5; i++)
+            bars.add(new ChartsView.Bar("b" + i, i % 7, ""));
+        List<ChartsView.Bar> shown = ChartsView.largestFirst(bars, ChartsView.MAX_ASSOCIATION_BARS);
+        assertEquals(ChartsView.MAX_ASSOCIATION_BARS, shown.size());
+        assertEquals(6, shown.get(0).value());
+        assertEquals(List.of("b13", "b20", "b6"), shown.stream().limit(3).map(ChartsView.Bar::label).toList());
+        assertTrue(shown.stream().noneMatch(b -> b.value() == 0), "the smallest are left out");
     }
 
     @Test
@@ -94,7 +108,7 @@ public class ChartsViewTest {
         try (EccoService service = sample(tmp)) {
             ChartsView view = refreshed(service);
 
-            assertEquals(Map.of("A", 2.0, "B", 1.0), onFx(() -> pieValues(pie(view, "Revisions per Feature"))));
+            assertEquals(Map.of("A", 2.0, "B", 1.0), onFx(() -> barValues(view, "Revisions per Feature")));
         }
     }
 
@@ -140,13 +154,13 @@ public class ChartsViewTest {
     public void aCommitReloadsTheChartsInsteadOfAddingToThem(@TempDir Path tmp) throws Exception {
         try (EccoService service = sample(tmp)) {
             ChartsView view = refreshed(service);
-            Map<String, Double> first = onFx(() -> pieValues(pie(view, "Revisions per Feature")));
+            Map<String, Double> first = onFx(() -> barValues(view, "Revisions per Feature"));
             int depths = onFx(() -> depthSeries(view).getData().size());
 
             commit(service, tmp.resolve("v4"), "C.1", Map.of("c.txt", "c\n"));
-            waitUntil("the reload", () -> pie(view, "Revisions per Feature").getData().size() == 3);
+            waitUntil("the reload", () -> bars(view, "Revisions per Feature").size() == 3);
 
-            Map<String, Double> second = onFx(() -> pieValues(pie(view, "Revisions per Feature")));
+            Map<String, Double> second = onFx(() -> barValues(view, "Revisions per Feature"));
             assertEquals(first.get("A"), second.get("A"));
             assertEquals(1.0, second.get("C"));
             assertEquals(depths, onFx(() -> depthSeries(view).getData().size()), "the same depths, not twice as many");
@@ -215,12 +229,13 @@ public class ChartsViewTest {
 
     private static ChartsView refreshed(EccoService service) throws Exception {
         ChartsView view = loaded(service);
-        waitUntil("the charts", () -> !pie(view, "Revisions per Feature").getData().isEmpty());
+        waitUntil("the charts", () -> !bars(view, "Revisions per Feature").isEmpty());
         return view;
     }
 
-    private static PieChart pie(ChartsView view, String title) {
-        return (PieChart) chart(view, title);
+    @SuppressWarnings("unchecked")
+    private static List<XYChart.Data<Number, String>> bars(ChartsView view, String title) {
+        return ((BarChart<Number, String>) chart(view, title)).getData().get(0).getData();
     }
 
     /** The chart in the pane titled [title] - the charts have no titles of their own any more, they repeated the pane's. */
@@ -239,12 +254,12 @@ public class ChartsViewTest {
 
     @SuppressWarnings("unchecked")
     private static XYChart.Series<String, Number> orderSeries(ChartsView view, String name) {
-        BarChart<String, Number> chart = (BarChart<String, Number>) chart(view, "Modules per Order (raw vs. absorbed)");
+        BarChart<String, Number> chart = (BarChart<String, Number>) chart(view, "Advanced: Modules per Order (raw vs. absorbed)");
         return chart.getData().stream().filter(s -> name.equals(s.getName())).findFirst().orElseThrow();
     }
 
-    private static Map<String, Double> pieValues(PieChart chart) {
-        return chart.getData().stream().collect(Collectors.toMap(PieChart.Data::getName, PieChart.Data::getPieValue));
+    private static Map<String, Double> barValues(ChartsView view, String title) {
+        return bars(view, title).stream().collect(Collectors.toMap(XYChart.Data::getYValue, d -> d.getXValue().doubleValue()));
     }
 
     private static Map<String, Integer> categoryValues(XYChart.Series<String, Number> series) {

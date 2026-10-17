@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.gui.TabVisibilityAware;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
@@ -17,7 +18,6 @@ import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -29,7 +29,11 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -40,6 +44,12 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class ChartsView extends BorderPane implements EccoListener, TabVisibilityAware {
 
+	/** More bars than this were too thin to read or label. */
+	static final int MAX_ASSOCIATION_BARS = 20;
+	private static final double BAR_HEIGHT = 22;
+	private static final double BAR_CHART_PADDING = 90; // the value axis and its label
+	private static final double MIN_BAR_CHART_HEIGHT = 200;
+
 	private EccoService service;
 
 	/** See {@link at.jku.isse.ecco.gui.view.graph.ArtifactGraphView#tabVisible}: nothing is computed while hidden. */
@@ -48,8 +58,11 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 	/** A later load supersedes one still running; see {@link #refresh()}. */
 	private final AtomicLong refreshGeneration = new AtomicLong();
 
-	private ObservableList<PieChart.Data> artifactsPerAssociationData;
-	private ObservableList<PieChart.Data> revisionsPerFeature;
+	private XYChart.Series<Number, String> artifactsPerAssociationSeries;
+	private CategoryAxis associationAxis;
+	private BarChart<Number, String> artifactsPerAssociationChart;
+	private XYChart.Series<Number, String> revisionsPerFeatureSeries;
+	private BarChart<Number, String> revisionsPerFeatureChart;
 	private XYChart.Series<Number, Number> artifactsPerDepthSeries;
 	private XYChart.Series<String, Number> modulesPerOrderSeries;
 	private XYChart.Series<String, Number> modulesPerOrderAbsorbedSeries;
@@ -71,19 +84,33 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 		scrollPane.setContent(centerBox);
 
 
-		{ // artifacts per association
+		{ // artifacts per association: the largest first, as bars - a pie of dozens of slices was unreadable
 			TitledPane artifactsPerAssociationPane = new TitledPane();
 			artifactsPerAssociationPane.setAnimated(false);
 			artifactsPerAssociationPane.setText("Artifacts per Association");
 
-			this.artifactsPerAssociationData = FXCollections.observableArrayList();
+			this.associationAxis = new CategoryAxis();
+			this.artifactsPerAssociationChart = horizontalBarChart(this.associationAxis, "Number of Artifacts");
+			this.artifactsPerAssociationSeries = new XYChart.Series<>();
+			this.artifactsPerAssociationChart.getData().add(this.artifactsPerAssociationSeries);
 
-
-			final PieChart pieChart = new PieChart(this.artifactsPerAssociationData);
-
-			artifactsPerAssociationPane.setContent(pieChart);
+			artifactsPerAssociationPane.setContent(this.artifactsPerAssociationChart);
 
 			centerBox.getChildren().add(artifactsPerAssociationPane);
+		}
+
+		{ // revisions per feature: the most first, as bars
+			TitledPane titledPane = new TitledPane();
+			titledPane.setAnimated(false);
+			titledPane.setText("Revisions per Feature");
+
+			this.revisionsPerFeatureChart = horizontalBarChart(new CategoryAxis(), "Number of Revisions");
+			this.revisionsPerFeatureSeries = new XYChart.Series<>();
+			this.revisionsPerFeatureChart.getData().add(this.revisionsPerFeatureSeries);
+
+			titledPane.setContent(this.revisionsPerFeatureChart);
+
+			centerBox.getChildren().add(titledPane);
 		}
 
 
@@ -100,7 +127,11 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 			yAxis.setLabel("Number of Artifacts");
 			yAxis.setTickUnit(1.0);
 			yAxis.setMinorTickVisible(false);
+			xAxis.setTickLabelFormatter(WHOLE_NUMBERS);
+			yAxis.setTickLabelFormatter(WHOLE_NUMBERS);
 			final LineChart<Number, Number> artifactsPerDepthChart = new LineChart<>(xAxis, yAxis);
+			// one series, named like its axis
+			artifactsPerDepthChart.setLegendVisible(false);
 
 			this.artifactsPerDepthSeries = new XYChart.Series<>();
 			this.artifactsPerDepthSeries.setName("Number of Artifacts at Depth");
@@ -119,7 +150,9 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 			// see CONSTRAINT_MINING_DESIGN.md's "Surplus-module suppression" section
 			TitledPane modulesPerOrderPane = new TitledPane();
 			modulesPerOrderPane.setAnimated(false);
-			modulesPerOrderPane.setText("Modules per Order (raw vs. absorbed)");
+			modulesPerOrderPane.setText("Advanced: Modules per Order (raw vs. absorbed)");
+			// how the conditions are stored, not what the repository holds: folded away unless asked for
+			modulesPerOrderPane.setExpanded(false);
 
 			final CategoryAxis xAxis = new CategoryAxis();
 			final NumberAxis yAxis = new NumberAxis();
@@ -142,20 +175,6 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 			centerBox.getChildren().add(modulesPerOrderPane);
 		}
 
-
-		{ // revisions per feature
-			TitledPane titledPane = new TitledPane();
-			titledPane.setAnimated(false);
-			titledPane.setText("Revisions per Feature");
-
-			this.revisionsPerFeature = FXCollections.observableArrayList();
-
-			final PieChart pieChart = new PieChart(revisionsPerFeature);
-
-			titledPane.setContent(pieChart);
-
-			centerBox.getChildren().add(titledPane);
-		}
 
 		Platform.runLater(() -> statusChangedEvent(service));
 
@@ -197,28 +216,37 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 					}
 				}
 
-				Map<String, Integer> artifactsPerAssociation = new java.util.LinkedHashMap<>();
+				List<Bar> associationBars = new ArrayList<>();
+				Set<String> shortIds = new HashSet<>();
 				for (Association association : repository.getAssociations()) {
 					int numArtifacts = association.getRootNode().countArtifacts();
-					if (numArtifacts > 0)
-						artifactsPerAssociation.put("A" + association.getId(), numArtifacts);
+					if (numArtifacts > 0) {
+						// the short id the tables show; the whole one should two share a prefix
+						String id = association.getId();
+						String label = id.length() > TableColumns.SHORT_ID_LENGTH && shortIds.add(id.substring(0, TableColumns.SHORT_ID_LENGTH))
+								? id.substring(0, TableColumns.SHORT_ID_LENGTH) : id;
+						associationBars.add(new Bar(label, numArtifacts, id + "\n" + association.computeCondition().toDisplayString()));
+					}
 				}
-				Map<String, Integer> revisionsPerFeature = new java.util.LinkedHashMap<>();
+				int associationCount = associationBars.size();
+				associationBars = largestFirst(associationBars, MAX_ASSOCIATION_BARS);
+				List<Bar> featureBars = new ArrayList<>();
 				for (Feature feature : repository.getFeatures()) {
 					int numRevisions = feature.getRevisions().size();
 					if (numRevisions > 0)
-						revisionsPerFeature.put(feature.getName(), numRevisions);
+						featureBars.add(new Bar(feature.getName(), numRevisions, feature.getName()));
 				}
+				featureBars = largestFirst(featureBars, Integer.MAX_VALUE);
+				List<Bar> shownAssociationBars = associationBars, shownFeatureBars = featureBars;
 
 				Platform.runLater(() -> {
 					if (ChartsView.this.refreshGeneration.get() != generation)
 						return; // a newer load shows its own
 
-					ChartsView.this.artifactsPerAssociationData.clear();
-					artifactsPerAssociation.forEach((name, value) -> ChartsView.this.artifactsPerAssociationData.add(new PieChart.Data(name, value)));
-
-					ChartsView.this.revisionsPerFeature.clear();
-					revisionsPerFeature.forEach((name, value) -> ChartsView.this.revisionsPerFeature.add(new PieChart.Data(name, value)));
+					show(ChartsView.this.artifactsPerAssociationChart, ChartsView.this.artifactsPerAssociationSeries, shownAssociationBars);
+					ChartsView.this.associationAxis.setLabel(associationCount > shownAssociationBars.size()
+							? "The " + shownAssociationBars.size() + " largest of " + associationCount : null);
+					show(ChartsView.this.revisionsPerFeatureChart, ChartsView.this.revisionsPerFeatureSeries, shownFeatureBars);
 
 					ChartsView.this.artifactsPerDepthSeries.getData().clear();
 					for (Map.Entry<Integer, Integer> entry : artifactsPerDepth.entrySet()) {
@@ -241,6 +269,61 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 		Thread thread = new Thread(refreshTask);
 		thread.setDaemon(true);
 		thread.start();
+	}
+
+	/** Counts and depths: no "0.5" between them. */
+	private static final javafx.util.StringConverter<Number> WHOLE_NUMBERS = new javafx.util.StringConverter<>() {
+		@Override
+		public String toString(Number value) {
+			return value.doubleValue() == Math.rint(value.doubleValue()) ? Long.toString(value.longValue()) : "";
+		}
+
+		@Override
+		public Number fromString(String text) {
+			return Double.valueOf(text);
+		}
+	};
+
+	/** One bar: its label on the axis, its length, and what its tooltip says. */
+	record Bar(String label, int value, String tooltip) {
+	}
+
+	/** The [max] largest, largest first; ties by label, so a reload keeps the order. */
+	static List<Bar> largestFirst(List<Bar> bars, int max) {
+		return bars.stream()
+				.sorted(Comparator.comparingInt(Bar::value).reversed().thenComparing(Bar::label))
+				.limit(max)
+				.toList();
+	}
+
+	/** Bars along the x axis, their names down the y axis. */
+	private static BarChart<Number, String> horizontalBarChart(CategoryAxis categoryAxis, String valueLabel) {
+		NumberAxis valueAxis = new NumberAxis();
+		valueAxis.setLabel(valueLabel);
+		valueAxis.setMinorTickVisible(false);
+		valueAxis.setTickLabelFormatter(WHOLE_NUMBERS);
+		BarChart<Number, String> chart = new BarChart<>(valueAxis, categoryAxis);
+		chart.setLegendVisible(false);
+		chart.setAnimated(false);
+		chart.setCategoryGap(4);
+		return chart;
+	}
+
+	/** Shows [bars] largest at the top - a category axis runs bottom up - each with its tooltip, and the chart tall enough for them. */
+	private static void show(BarChart<Number, String> chart, XYChart.Series<Number, String> series, List<Bar> bars) {
+		List<XYChart.Data<Number, String>> data = new ArrayList<>();
+		for (int i = bars.size() - 1; i >= 0; i--) {
+			Bar bar = bars.get(i);
+			XYChart.Data<Number, String> datum = new XYChart.Data<>(bar.value(), bar.label());
+			datum.nodeProperty().addListener((observable, oldNode, node) -> {
+				if (node != null)
+					Tooltip.install(node, new Tooltip(bar.tooltip() + "\n" + bar.value()));
+			});
+			data.add(datum);
+		}
+		((CategoryAxis) chart.getYAxis()).getCategories().setAll(data.stream().map(XYChart.Data::getYValue).toList());
+		series.getData().setAll(data);
+		chart.setPrefHeight(Math.max(MIN_BAR_CHART_HEIGHT, BAR_CHART_PADDING + BAR_HEIGHT * bars.size()));
 	}
 
 	/** Called by {@code MainView#switchTo}: shown again, the charts are loaded again. */
