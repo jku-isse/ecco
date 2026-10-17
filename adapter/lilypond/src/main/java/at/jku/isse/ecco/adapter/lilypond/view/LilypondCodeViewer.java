@@ -250,6 +250,8 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 			ArtifactData d = n.getArtifact().getData();
 			if (d instanceof PluginArtifactData pad && getPluginId().equals(pad.getPluginId())) {
 				result.add(n);
+				// no file in a file: its lines were walked too, building every node of a lazy composition
+				return;
 			}
 		}
 		for (Node child : n.getChildren()) {

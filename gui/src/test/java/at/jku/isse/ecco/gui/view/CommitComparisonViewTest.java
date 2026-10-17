@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * The commit comparison lists the associations of two commits side by side: one row per association,
  * under the commit (or both commits) it belongs to. Associations only in the newer commit used to be
- * listed under the older one and vice versa.
+ * listed under the older one and vice versa. The conditions are computed once, in the background.
  */
 public class CommitComparisonViewTest {
 
@@ -45,6 +45,8 @@ public class CommitComparisonViewTest {
             assertSame(base, association(older, "BASE"), "the shared association");
 
             CommitComparisonView view = onFx(() -> new CommitComparisonView(service, older, newer));
+            // the conditions come in the background
+            waitUntil("the conditions", () -> rows(view).stream().noneMatch(row -> row.contains(CommitComparisonView.COMPUTING)));
             assertEquals(List.of("Commit " + older.getId().substring(0, 8), "Commit " + newer.getId().substring(0, 8)),
                     onFx(() -> table(view).getColumns().stream().map(TableColumn::getText).toList()));
             assertEquals(List.of(
@@ -57,6 +59,13 @@ public class CommitComparisonViewTest {
             assertEquals(List.of(base.getId(), full(base), base.getId(), full(base)), onFx(() -> rows(view)).get(0));
             assertNotEquals(simple(onlyNewer), full(onlyNewer), "the two label kinds differ");
             assertEquals(List.of("", "", onlyNewer.getId(), full(onlyNewer)), onFx(() -> rows(view)).get(1));
+
+            // sorted by a condition: by its text, computed once - computed for each comparison, sorting took 10 s for tinycc
+            onFx(() -> table(view).getSortOrder().setAll(table(view).getColumns().get(1).getColumns().get(1)));
+            List<String> sorted = onFx(() -> rows(view)).stream().map(row -> row.get(3)).toList();
+            assertEquals(sorted.stream().sorted().toList(), sorted);
+            assertEquals(java.util.Set.of("", full(base), full(onlyNewer)), java.util.Set.copyOf(sorted));
+            onFx(() -> table(view).getSortOrder().clear());
 
             // selecting a row of either side shows its artifacts without failing
             for (int row = 0; row < 3; row++) {

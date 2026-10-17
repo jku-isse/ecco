@@ -69,6 +69,7 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 
 	private final HashMap<String, AssociationInfo> associationInfos = new HashMap<>();
 	private final HashMap<String, PropertyChangeListener> associationListeners = new HashMap<>();
+	/** The files rendered so far - the one shown, and those whose tab was selected since. */
 	private final Map<Node, ObservableList<JavaCodeLine>> linesByFile = new LinkedHashMap<>();
 	private final Callback<ListView<JavaCodeLine>, ListCell<JavaCodeLine>> cellFactory = createCellFactory();
 	private final SplitPane splitPane;
@@ -105,24 +106,18 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 		// since that only tracks nodes that produced a rendered line - the file node itself
 		// never would, and would otherwise fail to select any tab at all
 		Node selectedFileNode = findContainingFileNode(n);
-		Integer selectedIndex = null;
+		rebuildView(fileNodes, selectedFileNode, n);
+	}
 
-		for (Node fileNode : fileNodes) {
-			List<JavaCodeLine> built = new ArrayList<>();
-			Map<Node, Integer> indexByNode = new HashMap<>();
-			for (Node child : inWrittenOrder(fileNode.getChildren())) {
-				renderNode(child, 0, built, indexByNode);
-			}
-
-			ObservableList<JavaCodeLine> lines = FXCollections.observableArrayList(built);
-			linesByFile.put(fileNode, lines);
-
-			if (fileNode.equals(selectedFileNode)) {
-				selectedIndex = indexByNode.get(n);
-			}
+	/** Renders [fileNode]'s lines and keeps them for colour changes; [indexByNode] gets each node's first line. */
+	private ObservableList<JavaCodeLine> render(Node fileNode, Map<Node, Integer> indexByNode) {
+		List<JavaCodeLine> built = new ArrayList<>();
+		for (Node child : fileNode.getChildren()) {
+			renderNode(child, 0, built, indexByNode);
 		}
-
-		rebuildView(selectedFileNode, selectedIndex);
+		ObservableList<JavaCodeLine> lines = FXCollections.observableArrayList(built);
+		linesByFile.put(fileNode, lines);
+		return lines;
 	}
 
 	@Override
@@ -170,6 +165,8 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 			ArtifactData d = n.getArtifact().getData();
 			if (d instanceof PluginArtifactData pad && getPluginId().equals(pad.getPluginId())) {
 				result.add(n);
+				// no file in a file: its lines were walked too, building every node of a lazy composition
+				return;
 			}
 		}
 		for (Node child : n.getChildren()) {
@@ -189,36 +186,50 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 		return null;
 	}
 
-	private void rebuildView(Node selectedFileNode, Integer selectedIndex) {
-		if (linesByFile.size() <= 1) {
-			ObservableList<JavaCodeLine> lines = linesByFile.isEmpty()
+	/**
+	 * A list of the file's lines, or with several files a tab for each: the file shown (that of
+	 * [shownNode], else the first) is rendered now, the others once their tab is selected - all of
+	 * them were rendered, on every click, which for a commit of tinycc were hundreds of files.
+	 */
+	private void rebuildView(List<Node> fileNodes, Node selectedFileNode, Node shownNode) {
+		if (fileNodes.size() <= 1) {
+			Map<Node, Integer> indexByNode = new HashMap<>();
+			ObservableList<JavaCodeLine> lines = fileNodes.isEmpty()
 					? FXCollections.observableArrayList()
-					: linesByFile.values().iterator().next();
+					: render(fileNodes.get(0), indexByNode);
 			ListView<JavaCodeLine> listView = createListView(lines);
 			splitPane.getItems().set(0, listView);
-			scrollToLine(listView, selectedIndex);
+			scrollToLine(listView, indexByNode.get(shownNode));
 			return;
 		}
 
+		Node shownFile = selectedFileNode != null && fileNodes.contains(selectedFileNode) ? selectedFileNode : fileNodes.get(0);
 		TabPane tabPane = new TabPane();
 		Tab tabToSelect = null;
-		for (Map.Entry<Node, ObservableList<JavaCodeLine>> entry : linesByFile.entrySet()) {
-			Node fileNode = entry.getKey();
-			ListView<JavaCodeLine> listView = createListView(entry.getValue());
-
-			Tab tab = new Tab(fileLabel(fileNode), listView);
+		Map<Tab, Node> notRendered = new HashMap<>();
+		for (Node fileNode : fileNodes) {
+			Tab tab = new Tab(fileLabel(fileNode));
 			tab.setClosable(false);
 			tabPane.getTabs().add(tab);
 
-			if (fileNode.equals(selectedFileNode)) {
+			if (fileNode.equals(shownFile)) {
 				tabToSelect = tab;
-				scrollToLine(listView, selectedIndex);
+				Map<Node, Integer> indexByNode = new HashMap<>();
+				ListView<JavaCodeLine> listView = createListView(render(fileNode, indexByNode));
+				tab.setContent(listView);
+				scrollToLine(listView, indexByNode.get(shownNode));
+			} else {
+				notRendered.put(tab, fileNode);
 			}
 		}
 
-		if (tabToSelect != null) {
-			tabPane.getSelectionModel().select(tabToSelect);
-		}
+		tabPane.getSelectionModel().select(tabToSelect);
+		// only now: adding the first tab selected it
+		tabPane.getSelectionModel().selectedItemProperty().addListener((o, was, tab) -> {
+			Node fileNode = tab == null ? null : notRendered.remove(tab);
+			if (fileNode != null)
+				tab.setContent(createListView(render(fileNode, new HashMap<>())));
+		});
 
 		splitPane.getItems().set(0, tabPane);
 	}
