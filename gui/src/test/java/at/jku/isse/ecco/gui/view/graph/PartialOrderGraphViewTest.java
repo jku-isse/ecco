@@ -61,16 +61,64 @@ public class PartialOrderGraphViewTest {
         pog.merge(artifacts(a));
         pog.merge(artifacts(b));
 
-        PartialOrderGraphView.Snapshot snapshot = PartialOrderGraphView.snapshot(pog);
+        PartialOrderGraphView.Snapshot snapshot = PartialOrderGraphView.blocksOf(pog, null);
 
+        // every line is where alternatives part or meet: no run to fold, a block each
         int[] edges = {0};
         assertEquals(countNodesAndEdges(pog, edges), snapshot.labels().size());
         assertEquals(edges[0], snapshot.edges().size());
-        assertEquals(2 + 60, snapshot.labels().size(), "head, tail and 60 lines");
+        assertEquals(2 + 60, snapshot.labels().size(), "start, end and 60 lines");
         assertEquals(snapshot.edges().size(), snapshot.edges().stream().map(Arrays::toString).distinct().count(), "no edge twice");
         assertEquals("start", snapshot.classes().get(0), "the head");
+        assertEquals("Start", snapshot.labels().get(0), "it was \"null [-]\"");
         assertEquals(1, snapshot.classes().stream().filter("end"::equals).count(), "the tail");
-        assertTrue(snapshot.labels().stream().anyMatch(l -> l.startsWith("Line[text=only b 19]")), snapshot.labels().toString());
+        assertTrue(snapshot.labels().contains("End"));
+        assertTrue(snapshot.labels().stream().anyMatch(l -> l.equals("Line[text=only b 19]")), snapshot.labels().toString());
+        // alternatives side by side: "only a i" and "only b i" in one layer, below "shared i"
+        int onlyA = snapshot.labels().indexOf("Line[text=only a 7]"), onlyB = snapshot.labels().indexOf("Line[text=only b 7]"), shared = snapshot.labels().indexOf("Line[text=shared 7]");
+        assertEquals(snapshot.places().get(onlyA)[1], snapshot.places().get(onlyB)[1]);
+        assertNotEquals(snapshot.places().get(onlyA)[0], snapshot.places().get(onlyB)[0]);
+        assertTrue(snapshot.places().get(shared)[1] > snapshot.places().get(onlyA)[1], "top to bottom");
+        assertEquals("branch", snapshot.classes().get(shared), "they part after it");
+    }
+
+    /**
+     * A straight run is one block, labelled with where it is in the node shown - its places, or its
+     * lines - how many it holds and its first and last text; what only other variants have is
+     * labelled so; the details say the rest, the order numbers among it.
+     */
+    @Test
+    public void blocksAreLabelledWithWhereTheyAreAndWhatTheyHold() {
+        List<Artifact.Op<?>> shared = artifacts(List.of("a1", "a2"));
+        List<Artifact.Op<?>> x = artifacts(List.of("x"));
+        List<Artifact.Op<?>> y = artifacts(List.of("y1", "y2", "y3"));
+        List<Artifact.Op<?>> end = artifacts(List.of("z"));
+        PartialOrderGraph.Op pog = new SerPartialOrderGraph();
+        List<Artifact.Op<?>> variantX = new ArrayList<>(shared);
+        variantX.addAll(x);
+        variantX.addAll(end);
+        List<Artifact.Op<?>> variantY = new ArrayList<>(shared);
+        variantY.addAll(y);
+        variantY.addAll(end);
+        pog.merge(variantX);
+        pog.merge(variantY);
+
+        // the variant with y shown: a file of those lines
+        at.jku.isse.ecco.storage.ser.tree.SerNode file = new at.jku.isse.ecco.storage.ser.tree.SerNode(new SerArtifact<>(new Line("file")));
+        for (Artifact.Op<?> artifact : variantY)
+            file.addChild(new at.jku.isse.ecco.storage.ser.tree.SerNode(artifact));
+
+        PartialOrderGraphView.Snapshot snapshot = PartialOrderGraphView.blocksOf(pog, file);
+
+        assertEquals(List.of("Start", "1-2 (2)  Line[text=a1] \u2026 Line[text=a2]", "other  Line[text=x]",
+                        "3-5 (3)  Line[text=y1] \u2026 Line[text=y3]", "6  Line[text=z]", "End"),
+                snapshot.labels().stream().sorted(java.util.Comparator.comparing(l -> l.equals("Start") ? "0" : l.equals("End") ? "9" : l.startsWith("other") ? "2b" : l)).toList());
+        int other = snapshot.labels().indexOf("other  Line[text=x]");
+        assertEquals("other", snapshot.classes().get(other));
+        String yDetails = snapshot.details().get(snapshot.labels().indexOf("3-5 (3)  Line[text=y1] \u2026 Line[text=y3]"));
+        assertTrue(yDetails.startsWith("3 elements in this order, at 3-5 of what is shown"), yDetails);
+        assertTrue(yDetails.contains("\nFirst: Line[text=y1]\nLast: Line[text=y3]\nOrder numbers: "), yDetails);
+        assertTrue(snapshot.details().get(other).contains("only in other variants"));
     }
 
     private static PartialOrderGraph graph(String... lines) {
@@ -102,9 +150,11 @@ public class PartialOrderGraphViewTest {
             Thread.sleep(300);
             assertEquals(0, view.drawnGraph().getNodeCount(), "nothing read while the lock is held");
         }
-        at.jku.isse.ecco.gui.FxTestSupport.waitUntil("the later graph", () -> view.drawnGraph().getNodeCount() == 2 + 5);
+        // start, the five lines as one block, end
+        at.jku.isse.ecco.gui.FxTestSupport.waitUntil("the later graph", () -> view.drawnGraph().getNodeCount() == 3
+                && view.drawnDetails().values().stream().anyMatch(d -> d.startsWith("5 elements")));
         Thread.sleep(300);
-        assertEquals(2 + 5, view.drawnGraph().getNodeCount(), "the earlier graph is not drawn over it");
+        assertEquals(3, view.drawnGraph().getNodeCount(), "the earlier graph is not drawn over it");
     }
 
     /** Closed while the graph waited for the lock: nothing is drawn, nothing fails. */

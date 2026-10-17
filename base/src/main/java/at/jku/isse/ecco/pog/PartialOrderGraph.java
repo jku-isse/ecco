@@ -77,18 +77,8 @@ public interface PartialOrderGraph extends Persistable {
 	 * set of children*, in their current order, still has an actual decision left in it.
 	 */
 	default boolean hasUnresolvedOrder(at.jku.isse.ecco.tree.Node treeNode) {
-		Map<at.jku.isse.ecco.tree.Node, PartialOrderGraph.Node> matched = this.matchChildren(treeNode);
-		List<? extends at.jku.isse.ecco.tree.Node> children = treeNode.getChildren();
-
-		for (int i = 0; i < children.size() - 1; i++) {
-			PartialOrderGraph.Node a = matched.get(children.get(i));
-			PartialOrderGraph.Node b = matched.get(children.get(i + 1));
-			boolean fixed = a != null && b != null && PartialOrderGraph.Op.canReach(a, b);
-			if (!fixed) {
-				return true;
-			}
-		}
-		return false;
+		// the ranges themselves name where (OrderRegions.undecided): in the warnings and the reorder dialog
+		return !OrderRegions.undecided(this, treeNode).isEmpty();
 	}
 
 

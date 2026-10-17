@@ -55,22 +55,19 @@ public class GraphLayoutStopsTest {
         }
     }
 
-    /** The order graph of a node (in the artifact details) stops its layout after a while too. */
+    /** The order graph of a node (in the artifact details) runs no layout: its blocks are placed in layers. */
     @Test
     @Timeout(60)
-    public void theOrderGraphsLayoutStopsAfterAWhile(@TempDir Path tmp) throws Exception {
-        long before = LayoutFreeze.timeoutMs;
-        LayoutFreeze.timeoutMs = 500;
+    public void theOrderGraphRunsNoLayout(@TempDir Path tmp) throws Exception {
         try (EccoService service = sample(tmp)) {
             at.jku.isse.ecco.tree.Node file = service.getRepository().getAssociations().stream()
                     .flatMap(a -> a.getRootNode().getChildren().stream()).flatMap(d -> d.getChildren().stream())
                     .filter(f -> f.getArtifact().getPartialOrderGraph() != null).findFirst().orElseThrow();
             PartialOrderGraphView view = onFx(() -> new PartialOrderGraphView());
-            onFx(() -> view.showGraph(file.getArtifact().getPartialOrderGraph(), service));
-            waitUntil("the layout runs", () -> orderLayoutRunning(view));
-            waitUntil("the layout stopped by itself", () -> !orderLayoutRunning(view));
-        } finally {
-            LayoutFreeze.timeoutMs = before;
+            onFx(() -> view.showGraph(file.getArtifact().getPartialOrderGraph(), file, service));
+            waitUntil("drawn", () -> view.drawnGraph().getNodeCount() > 0);
+            Thread.sleep(300);
+            org.junit.jupiter.api.Assertions.assertFalse(orderLayoutRunning(view));
         }
     }
 

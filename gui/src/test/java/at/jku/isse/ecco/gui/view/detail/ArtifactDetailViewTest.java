@@ -105,9 +105,9 @@ public class ArtifactDetailViewTest {
     }
 
     /**
-     * The order graph is drawn only while its tab is selected, and its layout stops when another tab
-     * is: drawn for every node shown, the graph of a large file - one node per line - was laid out
-     * and redrawn without end into a canvas that was not rendered, until the heap ran out.
+     * The order graph is drawn only while its tab is selected, and runs no layout: drawn for every
+     * node shown, the graph of a large file - one node per line - was laid out and redrawn without
+     * end into a canvas that was not rendered, until the heap ran out.
      */
     @Test
     @Timeout(60)
@@ -122,10 +122,10 @@ public class ArtifactDetailViewTest {
 
             onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Order graph")));
             waitUntil("drawn when selected", () -> drawnNodes(view) > 0);
-            waitUntil("laid out", () -> layoutRunning(view));
+            Thread.sleep(300);
+            assertFalse(layoutRunning(view), "placed in layers, not laid out");
 
             onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Code")));
-            waitUntil("the layout stopped when left", () -> !layoutRunning(view));
 
             // shown again with the graph's tab selected: drawn right away
             onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Order graph")));

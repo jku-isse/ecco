@@ -245,7 +245,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			PartialOrderGraph pog = node.getArtifact().getPartialOrderGraph();
 			Platform.runLater(() -> {
 				if (pogGeneration.get() != generation || graphView != partialOrderGraphView) { return; }
-				graphView.showGraph(pog, this.service);
+				graphView.showGraph(pog, node, this.service);
 			});
 		});
 		th.setDaemon(true);
