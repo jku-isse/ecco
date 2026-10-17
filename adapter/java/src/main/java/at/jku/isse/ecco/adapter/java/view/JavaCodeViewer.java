@@ -2,7 +2,6 @@ package at.jku.isse.ecco.adapter.java.view;
 
 import at.jku.isse.ecco.adapter.AssociationInfo;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.java.JavaPlugin;
 import at.jku.isse.ecco.adapter.java.data.BlockArtifactData;
 import at.jku.isse.ecco.adapter.java.data.ClassArtifactData;
@@ -11,8 +10,9 @@ import at.jku.isse.ecco.adapter.java.data.ImportArtifactData;
 import at.jku.isse.ecco.adapter.java.data.LineArtifactData;
 import at.jku.isse.ecco.adapter.java.data.MethodArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactData;
+import at.jku.isse.ecco.adapter.view.AssociationColors;
+import at.jku.isse.ecco.adapter.view.FileTabs;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.tree.Node;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -22,8 +22,6 @@ import javafx.geometry.Pos;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -31,7 +29,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.util.Callback;
 
-import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -49,7 +46,7 @@ import java.util.regex.Pattern;
  * <p>
  * A commit (or any other composed view) can span multiple Java files, so {@link #showTree(Node)}
  * walks up to the true root of whatever tree was passed in, then finds every distinct Java file
- * reachable from there (each is its own {@link PluginArtifactData} node) and shows each as its own
+ * reachable from there (each is its own {@code PluginArtifactData} node) and shows each as its own
  * tab, defaulting to the tab/line containing the node that was actually selected. If only one file
  * is present, the tab chrome is skipped and the code is shown directly, matching the single-file
  * Artifacts panel case.
@@ -58,8 +55,7 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 
 	private static final String INDENT_UNIT = "    ";
 
-	private final HashMap<String, AssociationInfo> associationInfos = new HashMap<>();
-	private final HashMap<String, PropertyChangeListener> associationListeners = new HashMap<>();
+	private final AssociationColors colors = new AssociationColors(this::recolor);
 	/** The files rendered so far - the one shown, and those whose tab was selected since. */
 	private final Map<Node, ObservableList<JavaCodeLine>> linesByFile = new LinkedHashMap<>();
 	private final Callback<ListView<JavaCodeLine>, ListCell<JavaCodeLine>> cellFactory = createCellFactory();
@@ -83,21 +79,15 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 	@Override
 	public void showTree(Node node) {
 		final Node n = node.getNode();
-		Node root = n;
-		while (root.getParent() != null) {
-			root = root.getParent();
-		}
-
-		List<Node> fileNodes = new ArrayList<>();
-		collectFileNodes(root, fileNodes);
-
 		linesByFile.clear();
-
-		// found by walking UP from the clicked node, rather than checking indexByNode below,
-		// since that only tracks nodes that produced a rendered line - the file node itself
-		// never would, and would otherwise fail to select any tab at all
-		Node selectedFileNode = findContainingFileNode(n);
-		rebuildView(fileNodes, selectedFileNode, n);
+		// the file shown: that of [n], else the first - only it is rendered now, the others once
+		// their tab is selected
+		splitPane.getItems().set(0, FileTabs.show(FileTabs.files(n, getPluginId()), FileTabs.fileOf(n, getPluginId()), FileTabs::label, fileNode -> {
+			Map<Node, Integer> indexByNode = new HashMap<>();
+			ListView<JavaCodeLine> listView = createListView(render(fileNode, indexByNode));
+			scrollToLine(listView, indexByNode.get(n));
+			return listView;
+		}, () -> createListView(FXCollections.observableArrayList())));
 	}
 
 	/** Renders [fileNode]'s lines and keeps them for colour changes; [indexByNode] gets each node's first line. */
@@ -128,81 +118,6 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 		return JavaPlugin.class.getName();
 	}
 
-	private void collectFileNodes(Node n, List<Node> result) {
-		// composition root/container nodes have no artifact of their own
-		if (n.getArtifact() != null) {
-			ArtifactData d = n.getArtifact().getData();
-			if (d instanceof PluginArtifactData pad && getPluginId().equals(pad.getPluginId())) {
-				result.add(n);
-				// no file in a file: its lines were walked too, building every node of a lazy composition
-				return;
-			}
-		}
-		for (Node child : n.getChildren()) {
-			collectFileNodes(child, result);
-		}
-	}
-
-	private Node findContainingFileNode(Node n) {
-		for (Node cur = n; cur != null; cur = cur.getParent()) {
-			if (cur.getArtifact() != null) {
-				ArtifactData d = cur.getArtifact().getData();
-				if (d instanceof PluginArtifactData pad && getPluginId().equals(pad.getPluginId())) {
-					return cur;
-				}
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * A list of the file's lines, or with several files a tab for each: the file shown (that of
-	 * [shownNode], else the first) is rendered now, the others once their tab is selected - all of
-	 * them were rendered, on every click, which for a commit of tinycc were hundreds of files.
-	 */
-	private void rebuildView(List<Node> fileNodes, Node selectedFileNode, Node shownNode) {
-		if (fileNodes.size() <= 1) {
-			Map<Node, Integer> indexByNode = new HashMap<>();
-			ObservableList<JavaCodeLine> lines = fileNodes.isEmpty()
-					? FXCollections.observableArrayList()
-					: render(fileNodes.get(0), indexByNode);
-			ListView<JavaCodeLine> listView = createListView(lines);
-			splitPane.getItems().set(0, listView);
-			scrollToLine(listView, indexByNode.get(shownNode));
-			return;
-		}
-
-		Node shownFile = selectedFileNode != null && fileNodes.contains(selectedFileNode) ? selectedFileNode : fileNodes.get(0);
-		TabPane tabPane = new TabPane();
-		Tab tabToSelect = null;
-		Map<Tab, Node> notRendered = new HashMap<>();
-		for (Node fileNode : fileNodes) {
-			Tab tab = new Tab(fileLabel(fileNode));
-			tab.setClosable(false);
-			tabPane.getTabs().add(tab);
-
-			if (fileNode.equals(shownFile)) {
-				tabToSelect = tab;
-				Map<Node, Integer> indexByNode = new HashMap<>();
-				ListView<JavaCodeLine> listView = createListView(render(fileNode, indexByNode));
-				tab.setContent(listView);
-				scrollToLine(listView, indexByNode.get(shownNode));
-			} else {
-				notRendered.put(tab, fileNode);
-			}
-		}
-
-		tabPane.getSelectionModel().select(tabToSelect);
-		// only now: adding the first tab selected it
-		tabPane.getSelectionModel().selectedItemProperty().addListener((o, was, tab) -> {
-			Node fileNode = tab == null ? null : notRendered.remove(tab);
-			if (fileNode != null)
-				tab.setContent(createListView(render(fileNode, new HashMap<>())));
-		});
-
-		splitPane.getItems().set(0, tabPane);
-	}
-
 	private void scrollToLine(ListView<JavaCodeLine> listView, Integer index) {
 		if (index == null) {
 			return;
@@ -211,14 +126,6 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 			listView.scrollTo(index);
 			listView.getSelectionModel().clearAndSelect(index);
 		});
-	}
-
-	private String fileLabel(Node fileNode) {
-		ArtifactData d = fileNode.getArtifact().getData();
-		if (d instanceof PluginArtifactData pad) {
-			return pad.getPath().toString();
-		}
-		return "?";
 	}
 
 	private ListView<JavaCodeLine> createListView(ObservableList<JavaCodeLine> lines) {
@@ -285,9 +192,7 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 
 	private void renderNode(Node n, int indent, List<JavaCodeLine> lines, Map<Node, Integer> indexByNode) {
 		ArtifactData d = n.getArtifact().getData();
-		Association association = n.getArtifact().getContainingNode() != null
-				? n.getArtifact().getContainingNode().getContainingAssociation()
-				: null;
+		Association association = AssociationColors.associationOf(n);
 
 		if (d instanceof ClassArtifactData classData) {
 			addLine(n, association, "class " + simpleName(classData.getName()) + " {", indent, lines, indexByNode);
@@ -334,17 +239,7 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 	}
 
 	private void addLine(Node n, Association association, String text, int indent, List<JavaCodeLine> lines, Map<Node, Integer> indexByNode) {
-		Color bgCol = Color.WHITE;
-		if (association != null) {
-			String aiId = association.getId();
-			AssociationInfo ai = associationInfos.get(aiId);
-			if (ai != null && Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
-				Object val = ai.getPropertyValue("color");
-				if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
-					bgCol = col;
-				}
-			}
-		}
+		Color bgCol = colors.colorFor(association);
 
 		// A single artifact's stored text can itself carry a raw newline (most commonly a
 		// multi-line block comment, or a trailing // comment followed by more of the original
@@ -415,58 +310,22 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 		if (taInfo == null || a == null) {
 			return;
 		}
-
-		// once per association: computed again for every line the mouse crossed, on the FX thread
-		taInfo.setText(hoverTexts.computeIfAbsent(a, association -> {
-			Condition c = association.computeCondition();
-			return association.getId().concat(" (").concat(c.toDisplayString(false)).concat(")\n").concat(c.toDisplayString());
-		}));
+		taInfo.setText(colors.hoverText(a));
 	}
-
-	/** The details shown when the mouse is over an association's line - see {@link #showAssociationInfo}; cleared when the associations are set anew. */
-	private final java.util.Map<Association, String> hoverTexts = new java.util.IdentityHashMap<>();
 
 	@Override
 	public void setAssociationInfos(Collection<AssociationInfo> associationInfos) {
-		this.hoverTexts.clear();
-		// remove listeners
-		for (Map.Entry<String, AssociationInfo> entry : this.associationInfos.entrySet()) {
-			entry.getValue().removePropertyChangeListener(associationListeners.get(entry.getKey()));
-		}
-
-		this.associationInfos.clear();
-		associationListeners.clear();
-		if (associationInfos == null) {
-			return;
-		}
-
-		for (AssociationInfo ai : associationInfos) {
-			this.associationInfos.put(ai.getAssociation().getId(), ai);
-		}
-
-		for (AssociationInfo ai : this.associationInfos.values()) {
-			final PropertyChangeListener pcl = getColorPropertyListener();
-			ai.addPropertyChangeListener(pcl);
-			associationListeners.put(ai.getAssociation().getId(), pcl);
-		}
+		colors.set(associationInfos);
 	}
 
-	private PropertyChangeListener getColorPropertyListener() {
-		return evt -> {
-			if (evt.getPropertyName().equals("color")) {
-				AssociationInfo ai = (AssociationInfo) evt.getSource();
-				if (!Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
-					return;
-				}
-				String aId = ai.getAssociation().getId();
-				for (ObservableList<JavaCodeLine> lines : linesByFile.values()) {
-					for (JavaCodeLine line : lines) {
-						if (line.getAssociation() != null && aId.equals(line.getAssociation().getId())) {
-							line.backgroundColor().set((Color) evt.getNewValue());
-						}
-					}
+	/** Colours the lines of association [id] [color]: its colour changed. */
+	private void recolor(String id, Color color) {
+		for (ObservableList<JavaCodeLine> lines : linesByFile.values()) {
+			for (JavaCodeLine line : lines) {
+				if (line.getAssociation() != null && id.equals(line.getAssociation().getId())) {
+					line.backgroundColor().set(color);
 				}
 			}
-		};
+		}
 	}
 }
