@@ -497,6 +497,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 			this.updateGraphStylehseet(showLabels);
 
 			this.viewer.enableAutoLayout(this.layout);
+			LayoutFreeze.schedule(this.viewer);
 		} finally {
 			this.view.setVisible(true);
 		}
@@ -676,6 +677,14 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 	public void setTabVisible(boolean tabVisible) {
 		boolean becameVisible = tabVisible && !this.tabVisible;
 		this.tabVisible = tabVisible;
+		// hidden: no more layout steps - its viewer redrew the graph on every step into a canvas no
+		// longer in the window, whose drawing commands then piled up until the heap ran out
+		// (OutOfMemoryError in GraphicsContext.writePaint); shown again, the view lays it out anew
+		if (!tabVisible)
+			Platform.runLater(() -> {
+				if (this.viewer != null)
+					this.viewer.disableAutoLayout();
+			});
 		if (becameVisible && this.service.isInitialized()) {
 			Platform.runLater(() -> {
 				if (this.viewer == null || this.view == null) {
