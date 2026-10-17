@@ -96,4 +96,26 @@ public class TableColumnsTest {
                 .map(n -> ((javafx.scene.text.Text) n).getText()).collect(Collectors.toSet()));
         assertTrue(headers.contains("NumArtifacts") && headers.contains("Simplified Condition"), "headers not cut off: " + headers);
     }
+
+    /**
+     * A table whose column grows to fill it is freed with it: a static map kept every one - each
+     * Commit Comparison window with its thousands of rows and details, and every dialog's.
+     */
+    @Test
+    @org.junit.jupiter.api.Timeout(60)
+    public void aTableWithAGrowingColumnIsFreedWithIt() throws Exception {
+        java.lang.ref.WeakReference<javafx.scene.control.TableView<String>> reference = onFx(() -> {
+            javafx.scene.control.TableView<String> table = new javafx.scene.control.TableView<>();
+            javafx.scene.control.TableColumn<String, String> column = new javafx.scene.control.TableColumn<>("c");
+            table.getColumns().add(column);
+            TableColumns.growToFill(table, column);
+            return new java.lang.ref.WeakReference<>(table);
+        });
+        onFx(() -> { }); // the layout pass growToFill asked for
+        for (int i = 0; i < 50 && reference.get() != null; i++) {
+            System.gc();
+            Thread.sleep(50);
+        }
+        assertNull(reference.get(), "still held");
+    }
 }

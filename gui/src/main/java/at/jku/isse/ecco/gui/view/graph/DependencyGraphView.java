@@ -210,6 +210,9 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 			// back-to-back status-changed events during a batch commit) - harmless here
 			// since the viewer/view are discarded immediately after anyway.
 		}
+		// the closed viewer's pipe stays registered with the graph and queues every later change
+		// of it - a viewer made for each commit piled them up (GraphLayoutStopsTest)
+		this.graph.clearSinks();
 		view = null;
 		viewer = null;
 	}

@@ -334,6 +334,9 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		} catch (Exception ignored) {
 			// see ArtifactGraphView.closeView() for why this is safely ignorable
 		}
+		// the closed viewer's pipe stays registered with the graph and queues every later change
+		// of it - a viewer made for each commit piled them up (GraphLayoutStopsTest)
+		this.graph.clearSinks();
 		view = null;
 		viewer = null;
 	}

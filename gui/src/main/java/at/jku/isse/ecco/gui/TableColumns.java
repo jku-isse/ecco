@@ -58,8 +58,21 @@ public final class TableColumns {
 	/** An id is shown by its first characters, as on the command line; the cell's tooltip has all of it. */
 	public static final int SHORT_ID_LENGTH = 8;
 
-	private static final Map<TableView<?>, List<TableColumn<?, ?>>> tableGrowColumns = new WeakHashMap<>();
-	private static final Map<TreeTableView<?>, List<TreeTableColumn<?, ?>>> treeGrowColumns = new WeakHashMap<>();
+	/**
+	 * The key of a table's growing columns in its properties: kept there, they go with the table - a
+	 * static WeakHashMap kept every table, its columns referring to it.
+	 */
+	private static final String GROW_COLUMNS = "ecco.growColumns";
+
+	@SuppressWarnings("unchecked")
+	private static List<TableColumn<?, ?>> tableGrowColumns(TableView<?> table) {
+		return (List<TableColumn<?, ?>>) table.getProperties().get(GROW_COLUMNS);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static List<TreeTableColumn<?, ?>> treeGrowColumns(TreeTableView<?> table) {
+		return (List<TreeTableColumn<?, ?>>) table.getProperties().get(GROW_COLUMNS);
+	}
 
 
 	// ---------------------------------------------------------------- TableView
@@ -198,11 +211,11 @@ public final class TableColumns {
 	 * up registered or in what order.
 	 */
 	public static void growToFill(TableView<?> table, TableColumn<?, ?> column) {
-		List<TableColumn<?, ?>> grown = tableGrowColumns.get(table);
+		List<TableColumn<?, ?>> grown = tableGrowColumns(table);
 		boolean firstTimeForThisTable = grown == null;
 		if (firstTimeForThisTable) {
 			grown = new ArrayList<>();
-			tableGrowColumns.put(table, grown);
+			table.getProperties().put(GROW_COLUMNS, grown);
 		}
 		grown.add(column);
 
@@ -219,7 +232,7 @@ public final class TableColumns {
 	}
 
 	private static void recomputeTableGrow(TableView<?> table) {
-		List<TableColumn<?, ?>> grown = tableGrowColumns.get(table);
+		List<TableColumn<?, ?>> grown = tableGrowColumns(table);
 		if (grown == null || grown.isEmpty()) {
 			return;
 		}
@@ -317,11 +330,11 @@ public final class TableColumns {
 
 	/** Same as {@link #growToFill(TableView, TableColumn)}, for a {@link TreeTableView}/{@link TreeTableColumn}. */
 	public static void growToFill(TreeTableView<?> table, TreeTableColumn<?, ?> column) {
-		List<TreeTableColumn<?, ?>> grown = treeGrowColumns.get(table);
+		List<TreeTableColumn<?, ?>> grown = treeGrowColumns(table);
 		boolean firstTimeForThisTable = grown == null;
 		if (firstTimeForThisTable) {
 			grown = new ArrayList<>();
-			treeGrowColumns.put(table, grown);
+			table.getProperties().put(GROW_COLUMNS, grown);
 		}
 		grown.add(column);
 
@@ -338,7 +351,7 @@ public final class TableColumns {
 	}
 
 	private static void recomputeTreeGrow(TreeTableView<?> table) {
-		List<TreeTableColumn<?, ?>> grown = treeGrowColumns.get(table);
+		List<TreeTableColumn<?, ?>> grown = treeGrowColumns(table);
 		if (grown == null || grown.isEmpty()) {
 			return;
 		}

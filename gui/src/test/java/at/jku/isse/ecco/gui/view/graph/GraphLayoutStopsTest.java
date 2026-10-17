@@ -55,6 +55,30 @@ public class GraphLayoutStopsTest {
         }
     }
 
+    /**
+     * A closed viewer stops listening to its graph: its pipe stayed registered and queued every later
+     * change of the graph - the Dependency Graph makes a new viewer for each commit while shown, so
+     * an import piled them up, each holding all its rebuilds.
+     */
+    @Test
+    @Timeout(60)
+    public void aClosedViewerNoLongerListensToTheGraph(@TempDir Path tmp) throws Exception {
+        try (EccoService service = sample(tmp)) {
+            DependencyGraphView view = onFx(() -> new DependencyGraphView(service));
+            onFx(() -> view.setTabVisible(true));
+            for (int i = 0; i < 3; i++) {
+                onFx(() -> view.statusChangedEvent(service));
+                Thread.sleep(300);
+            }
+            onFx(() -> { });
+            Field graphField = DependencyGraphView.class.getDeclaredField("graph");
+            graphField.setAccessible(true);
+            org.graphstream.graph.Graph graph = (org.graphstream.graph.Graph) graphField.get(view);
+            long sinks = java.util.stream.StreamSupport.stream(((org.graphstream.graph.implementations.AbstractGraph) graph).elementSinks().spliterator(), false).count();
+            org.junit.jupiter.api.Assertions.assertTrue(sinks <= 1, "the live viewer's only: " + sinks);
+        }
+    }
+
     /** The order graph of a node (in the artifact details) runs no layout: its blocks are placed in layers. */
     @Test
     @Timeout(60)
