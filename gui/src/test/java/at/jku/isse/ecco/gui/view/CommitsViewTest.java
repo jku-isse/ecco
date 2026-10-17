@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.gui.view.artifacts.ArtifactTreeTableView;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.scene.Scene;
@@ -23,9 +24,9 @@ import static at.jku.isse.ecco.gui.FxTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * What the Commits tab decides: which commits it lists (and when it lists them again), that at most
- * two commits can be ticked for a comparison, that "Compare" is enabled with exactly two ticked and
- * opens the comparison of exactly those two, and what the detail pane shows for the selected row.
+ * What the Commits tab decides: which commits it lists (and when it lists them again), that "Compare"
+ * is enabled with exactly two rows selected and opens the comparison of exactly those two, and what
+ * the detail pane and the artifact tree show for the selected row.
  */
 public class CommitsViewTest {
 
@@ -52,8 +53,8 @@ public class CommitsViewTest {
             commit(service, tmp.resolve("v2"), "A.1, B.1", Map.of("a.txt", "a\n", "b.txt", "b\n"));
             CommitsView view = loaded(service, 2);
 
-            assertEquals(ids(service.getCommits()), onFx(() -> view.commitsData.stream().map(i -> i.getCommit().getId()).toList()));
-            assertTrue(onFx(() -> view.commitsData.stream().noneMatch(i -> i.isSelected().get())));
+            assertEquals(ids(service.getCommits()), onFx(() -> view.commitsData.stream().map(Commit::getId).toList()));
+            assertTrue(onFx(() -> view.commitsTable.getSelectionModel().getSelectedItems().isEmpty()));
         }
     }
 
@@ -66,39 +67,13 @@ public class CommitsViewTest {
 
             commit(service, tmp.resolve("v2"), "B.1", Map.of("b.txt", "b\n"));
             waitUntil("the second commit", () -> view.commitsData.size() == 2);
-            assertEquals(ids(service.getCommits()), onFx(() -> view.commitsData.stream().map(i -> i.getCommit().getId()).toList()));
+            assertEquals(ids(service.getCommits()), onFx(() -> view.commitsData.stream().map(Commit::getId).toList()));
         }
     }
 
     @Test
     @Timeout(60)
-    public void atMostTwoCommitsCanBeTickedForAComparison(@TempDir Path tmp) throws Exception {
-        try (EccoService service = repository(tmp.resolve("repo"))) {
-            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
-            commit(service, tmp.resolve("v2"), "B.1", Map.of("b.txt", "b\n"));
-            commit(service, tmp.resolve("v3"), "C.1", Map.of("c.txt", "c\n"));
-            CommitsView view = shown(service, 3);
-
-            onFx(() -> {
-                view.commitsData.get(0).setSelected(true);
-                view.commitsData.get(1).setSelected(true);
-                view.commitsData.get(2).setSelected(true);
-            });
-
-            assertEquals(List.of(true, true, false), onFx(() -> view.commitsData.stream().map(i -> i.isSelected().get()).toList()),
-                    "the third tick is taken back");
-            onFx(() -> {
-                view.commitsData.get(0).setSelected(false);
-                view.commitsData.get(2).setSelected(true);
-            });
-            assertEquals(List.of(false, true, true), onFx(() -> view.commitsData.stream().map(i -> i.isSelected().get()).toList()),
-                    "after an untick another commit can be ticked");
-        }
-    }
-
-    @Test
-    @Timeout(60)
-    public void compareOpensTheComparisonOfTheTwoTickedCommits(@TempDir Path tmp) throws Exception {
+    public void compareOpensTheComparisonOfTheTwoSelectedCommits(@TempDir Path tmp) throws Exception {
         try (EccoService service = repository(tmp.resolve("repo"))) {
             commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
             commit(service, tmp.resolve("v2"), "A.1, B.1", Map.of("a.txt", "a\n", "b.txt", "b\n"));
@@ -106,8 +81,7 @@ public class CommitsViewTest {
             CommitsView view = shown(service, 3);
 
             onFx(() -> {
-                view.commitsData.get(0).setSelected(true);
-                view.commitsData.get(1).setSelected(true);
+                view.commitsTable.getSelectionModel().selectIndices(0, 2);
                 button(view, "Compare").fire();
             });
 
@@ -121,19 +95,24 @@ public class CommitsViewTest {
 
     @Test
     @Timeout(60)
-    public void compareIsEnabledWithExactlyTwoTicked(@TempDir Path tmp) throws Exception {
+    public void compareIsEnabledWithExactlyTwoSelected(@TempDir Path tmp) throws Exception {
         try (EccoService service = repository(tmp.resolve("repo"))) {
             commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
             commit(service, tmp.resolve("v2"), "B.1", Map.of("b.txt", "b\n"));
             CommitsView view = loaded(service, 2);
 
-            assertTrue(onFx(() -> button(view, "Compare").isDisable()), "none ticked");
-            onFx(() -> view.commitsData.get(0).setSelected(true));
-            assertTrue(onFx(() -> button(view, "Compare").isDisable()), "one ticked");
-            onFx(() -> view.commitsData.get(1).setSelected(true));
-            assertFalse(onFx(() -> button(view, "Compare").isDisable()), "two ticked");
-            onFx(() -> view.commitsData.get(1).setSelected(false));
-            assertTrue(onFx(() -> button(view, "Compare").isDisable()), "one ticked again");
+            commit(service, tmp.resolve("v3"), "C.1", Map.of("c.txt", "c\n"));
+            waitUntil("3 commits", () -> view.commitsData.size() == 3);
+            var selection = onFx(() -> view.commitsTable.getSelectionModel());
+            assertTrue(onFx(() -> button(view, "Compare").isDisable()), "none selected");
+            onFx(() -> selection.select(0));
+            assertTrue(onFx(() -> button(view, "Compare").isDisable()), "one selected");
+            onFx(() -> selection.select(1));
+            assertFalse(onFx(() -> button(view, "Compare").isDisable()), "two selected");
+            onFx(() -> selection.select(2));
+            assertTrue(onFx(() -> button(view, "Compare").isDisable()), "three selected");
+            onFx(() -> selection.clearSelection(0));
+            assertFalse(onFx(() -> button(view, "Compare").isDisable()), "two selected again");
         }
     }
 
@@ -147,15 +126,21 @@ public class CommitsViewTest {
             CommitDetailView details = onFx(() -> (CommitDetailView) find(view, n -> n instanceof CommitDetailView));
             assertNull(onFx(() -> details.getCenter()), "nothing is selected yet");
 
-            Commit second = onFx(() -> view.commitsData.get(1).getCommit());
+            Commit second = onFx(() -> view.commitsData.get(1));
             onFx(() -> table(view).getSelectionModel().select(1));
             assertNotNull(onFx(() -> details.getCenter()), "the details are shown");
             TextField idField = onFx(() -> (TextField) find(details, n -> n instanceof TextField));
             assertEquals(second.getId(), onFx(() -> idField.getText()));
+            // its artifacts, as a tree to pick a node from
+            ArtifactTreeTableView tree = onFx(() -> (ArtifactTreeTableView) find(view, n -> n instanceof ArtifactTreeTableView));
+            assertNotNull(onFx(() -> tree.getRoot()));
+            assertTrue(onFx(() -> treeLabels(tree.getRoot()).stream().anyMatch(l -> l.startsWith("b.txt"))),
+                    onFx(() -> treeLabels(tree.getRoot()).toString()));
 
             onFx(() -> table(view).getSelectionModel().clearSelection());
             assertEquals("", onFx(() -> idField.getText()));
             assertNull(onFx(() -> details.getCenter()));
+            assertNull(onFx(() -> tree.getRoot()));
         }
     }
 
@@ -202,8 +187,15 @@ public class CommitsViewTest {
         return commits.stream().map(Commit::getId).toList();
     }
 
-    @SuppressWarnings("unchecked")
-    private static TableView<CommitsView.CommitInfo> table(CommitsView view) {
-        return (TableView<CommitsView.CommitInfo>) find(view, n -> n instanceof TableView<?> t && t.getItems() == view.commitsData);
+    private static TableView<Commit> table(CommitsView view) {
+        return view.commitsTable;
+    }
+
+    private static List<String> treeLabels(javafx.scene.control.TreeItem<ArtifactTreeTableView.NodeWrapper> item) {
+        List<String> labels = new java.util.ArrayList<>();
+        labels.add(String.valueOf(item.getValue()));
+        for (var child : item.getChildren())
+            labels.addAll(treeLabels(child));
+        return labels;
     }
 }

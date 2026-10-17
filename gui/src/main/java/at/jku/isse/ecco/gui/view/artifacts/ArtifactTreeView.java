@@ -62,6 +62,11 @@ public class ArtifactTreeView extends BorderPane {
 		this.artifactDetailView.showTree(defaultNode, previouslySelectedTabKey);
 	}
 
+	/** What the empty tree says - where its artifacts come from differs between the tabs that show one. */
+	public void setPlaceholder(String text) {
+		this.artifactTreeTableView.setPlaceholder(new javafx.scene.control.Label(text));
+	}
+
 	public void setAssociationInfo(Collection<AssociationInfoImpl> associationInfos) {
 		this.artifactDetailView.setAssociationInfo(associationInfos);
 		this.artifactTreeTableView.setAssociationInfo(associationInfos);
