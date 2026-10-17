@@ -66,18 +66,26 @@ final class ChatEndpoint {
 		return new Reply(response.statusCode(), response.body());
 	}
 
+	/**
+	 * Whether the server is an Ollama - remembered once it answered; not when it could not be reached:
+	 * a failed check was remembered for good, and an Ollama not up yet at the first request got
+	 * every later prompt on the OpenAI endpoint, cut to 4,096 tokens.
+	 */
 	private boolean isOllama() {
-		return OLLAMA.computeIfAbsent(this.base, base -> {
-			try {
-				HttpResponse<String> response = get(base + "/api/version");
-				return response.statusCode() / 100 == 2 && MAPPER.readTree(response.body()).path("version").isTextual();
-			} catch (IOException | RuntimeException e) {
-				return false;
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				return false;
-			}
-		});
+		Boolean known = OLLAMA.get(this.base);
+		if (known != null)
+			return known;
+		try {
+			HttpResponse<String> response = get(this.base + "/api/version");
+			boolean ollama = response.statusCode() / 100 == 2 && MAPPER.readTree(response.body()).path("version").isTextual();
+			OLLAMA.put(this.base, ollama);
+			return ollama;
+		} catch (IOException | RuntimeException e) {
+			return false; // unreachable: asked again next time
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return false;
+		}
 	}
 
 	private Reply sendToOllama(ObjectNode body, Duration timeout) throws IOException, InterruptedException {

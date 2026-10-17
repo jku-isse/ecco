@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
@@ -48,7 +50,11 @@ public class ChatEndpointTest {
 	}
 
 	private String startServer(boolean ollama) throws IOException {
-		this.server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+		return this.startServer(ollama, 0);
+	}
+
+	private String startServer(boolean ollama, int port) throws IOException {
+		this.server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
 		this.server.createContext("/", exchange -> {
 			String path = exchange.getRequestURI().getPath();
 			this.paths.add(path);
@@ -125,6 +131,25 @@ public class ChatEndpointTest {
 		new ChatEndpoint(endpoint).send(request(3_000), Duration.ofSeconds(10));
 
 		assertEquals(32768, this.chats.get(0).path("options").path("num_ctx").asInt());
+	}
+
+	/**
+	 * Ollama not up yet at the first request: once it is, it is asked as Ollama - the failed check
+	 * was remembered for good, and every later prompt went to the OpenAI endpoint, cut to 4,096 tokens.
+	 */
+	@Test
+	@Timeout(30)
+	public void anOllamaNotUpYetIsTakenForOllamaOnceItIs() throws Exception {
+		String endpoint = this.startServer(true);
+		int port = this.server.getAddress().getPort();
+		this.server.stop(0);
+
+		assertThrows(IOException.class, () -> new ChatEndpoint(endpoint).send(request(3_000), Duration.ofSeconds(5)));
+
+		this.startServer(true, port);
+		new ChatEndpoint(endpoint).send(request(3_000), Duration.ofSeconds(10));
+		assertTrue(this.paths.contains("/api/chat"), this.paths.toString());
+		assertFalse(this.paths.contains("/v1/chat/completions"), this.paths.toString());
 	}
 
 	@Test
