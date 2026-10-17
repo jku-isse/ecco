@@ -494,18 +494,7 @@ public class MainView extends BorderPane implements EccoListener {
 	 *                 happen in practice far more often than before, not a new category of risk.
 	 */
 	private void openDialog(String title, Parent content, Modality modality) {
-		final Stage dialog = new Stage();
-		dialog.initStyle(StageStyle.UTILITY);
-		dialog.initModality(modality);
-		dialog.initOwner(MainView.this.getScene().getWindow());
-
-		Scene dialogScene = new Scene(content);
-		installStandardAccelerators(dialogScene);
-		dialog.setScene(dialogScene);
-		dialog.setTitle(title);
-
-		dialog.show();
-		dialog.requestFocus();
+		Dialogs.open(MainView.this.getScene().getWindow(), title, content, modality);
 	}
 
 
@@ -520,9 +509,7 @@ public class MainView extends BorderPane implements EccoListener {
 	 * platform's own shortcut modifier).
 	 */
 	private static void installStandardAccelerators(Scene scene) {
-		scene.getAccelerators().put(new KeyCodeCombination(KeyCode.Q, KeyCombination.SHORTCUT_DOWN), Platform::exit);
-		scene.getAccelerators().put(new KeyCodeCombination(KeyCode.W, KeyCombination.SHORTCUT_DOWN),
-				() -> ((Stage) scene.getWindow()).close());
+		Dialogs.installStandardAccelerators(scene);
 	}
 
 

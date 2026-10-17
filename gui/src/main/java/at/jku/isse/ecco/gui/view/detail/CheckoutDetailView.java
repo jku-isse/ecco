@@ -282,6 +282,9 @@ public class CheckoutDetailView extends BorderPane {
 		dialog.setHeaderText(null);
 		dialog.getDialogPane().setContent(grid);
 		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+		// a blank name did nothing on OK, without a word
+		dialog.getDialogPane().lookupButton(ButtonType.OK).disableProperty().bind(nameField.textProperty().isEmpty());
+		javafx.application.Platform.runLater(nameField::requestFocus);
 		Optional<ButtonType> result = dialog.showAndWait();
 		if (result.isEmpty() || result.get() != ButtonType.OK) return;
 		if (nameField.getText() == null || nameField.getText().isBlank()) return;
@@ -297,13 +300,13 @@ public class CheckoutDetailView extends BorderPane {
 						.findFirst().orElse(null);
 				if (duplicate != null) {
 					String existingName = duplicate.getName();
-					javafx.application.Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION,
-							"This configuration is already saved as variant '" + existingName + "'.").showAndWait());
+					// a notification, as other quick operations report - it was a message box to dismiss
+					javafx.application.Platform.runLater(() -> at.jku.isse.ecco.gui.Notifications.info(
+							"This configuration is already saved as variant '" + existingName + "'."));
 					return;
 				}
 				this.service.addVariant(configuration, name, description);
-				javafx.application.Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION,
-						"Saved as variant '" + name + "'.").showAndWait());
+				javafx.application.Platform.runLater(() -> at.jku.isse.ecco.gui.Notifications.success("Saved as variant '" + name + "'."));
 			} catch (RuntimeException e) {
 				javafx.application.Platform.runLater(() -> new ExceptionAlert(e).showAndWait());
 			}
@@ -375,10 +378,20 @@ public class CheckoutDetailView extends BorderPane {
 
 		// MISSING content usually comes from somewhere new (default: repository home dir)
 		Path defaultDirectory = this.service.getRepositoryHomeDir();
-		ApplyFixDialog dialog = new ApplyFixDialog(defaultDirectory, diagnosticInfo.getSuggestedConfigurationString());
+		ApplyFixDialog dialog = new ApplyFixDialog(this.service, defaultDirectory, diagnosticInfo.getSuggestedConfigurationString());
 		Optional<ApplyFixDialog.Result> resultOpt = dialog.showAndWait();
 		if (resultOpt.isEmpty()) return;
 		ApplyFixDialog.Result result = resultOpt.get();
+		// before the commit, as Commit does: checked after it, it could find nothing - the committed
+		// configuration is the exception to every rule it violates
+		List<String> violations;
+		try {
+			violations = this.service.checkConstraintViolations(this.service.parseConfigurationString(result.getConfigurationString()));
+		} catch (RuntimeException e) {
+			violations = List.of();
+		}
+		if (!violations.isEmpty() && !this.confirmDespiteViolations(violations))
+			return;
 		Path checkoutBaseDirToReplay = this.currentBaseDir;
 
 		Task<Commit> commitTask = new Task<Commit>() {
@@ -391,12 +404,6 @@ public class CheckoutDetailView extends BorderPane {
 			@Override
 			public void succeeded() {
 				super.succeeded();
-				List<String> violations = CheckoutDetailView.this.service.checkConstraintViolations(getValue().getConfiguration());
-				if (!violations.isEmpty()) {
-					Alert alert = new Alert(Alert.AlertType.WARNING,
-							"The committed fix violates accepted constraint(s):\n" + String.join("\n", violations));
-					alert.showAndWait();
-				}
 				CheckoutDetailView.this.rerunCheckoutAfterFix(checkoutBaseDirToReplay);
 			}
 
@@ -413,6 +420,14 @@ public class CheckoutDetailView extends BorderPane {
 			}
 		};
 		new Thread(commitTask).start();
+	}
+
+	/** Whether to commit a fix that violates [violations] anyway. Package-visible for testing. */
+	boolean confirmDespiteViolations(List<String> violations) {
+		Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+				"The fix violates accepted constraint(s):\n" + String.join("\n", violations) + "\n\nCommit it anyway?");
+		alert.setHeaderText("Constraint violation");
+		return alert.showAndWait().filter(button -> button == ButtonType.OK).isPresent();
 	}
 
 	/**
@@ -512,10 +527,13 @@ public class CheckoutDetailView extends BorderPane {
 	 */
 	private static class ApplyFixDialog extends Dialog<ApplyFixDialog.Result> {
 
-		ApplyFixDialog(Path defaultDirectory, String suggestedConfigurationString) {
+		/** What its OK button is called: what it does - it said OK. */
+		static final ButtonType COMMIT = new ButtonType("Commit and Re-check", ButtonBar.ButtonData.OK_DONE);
+
+		ApplyFixDialog(EccoService service, Path defaultDirectory, String suggestedConfigurationString) {
 			setTitle("Apply Fix");
-			setHeaderText("Commit content under this configuration, then re-run the checkout to verify.");
-			getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+			setHeaderText("Commit the missing content from a variant folder under this configuration, then check out again to verify.");
+			getDialogPane().getButtonTypes().addAll(COMMIT, ButtonType.CANCEL);
 
 			GridPane gridPane = new GridPane();
 			gridPane.setHgap(10);
@@ -524,7 +542,7 @@ public class CheckoutDetailView extends BorderPane {
 
 			int row = 0;
 
-			Label directoryLabel = new Label("Directory: ");
+			Label directoryLabel = new Label("Variant Folder: ");
 			gridPane.add(directoryLabel, 0, row, 1, 1);
 			TextField directoryField = new TextField(defaultDirectory == null ? "" : defaultDirectory.toString());
 			gridPane.add(directoryField, 1, row, 1, 1);
@@ -536,12 +554,14 @@ public class CheckoutDetailView extends BorderPane {
 			gridPane.add(configurationLabel, 0, row, 1, 1);
 			TextField configurationField = new TextField(suggestedConfigurationString);
 			configurationField.setPromptText(at.jku.isse.ecco.gui.view.operation.OperationView.COMMIT_CONFIGURATION_HINT);
-			gridPane.add(configurationField, 1, row, 2, 1);
+			gridPane.add(at.jku.isse.ecco.gui.io.ConfigurationPickerDialog.withPicker(configurationField, service), 1, row, 2, 1);
 			row++;
 
 			Label commitMessageLabel = new Label("Commit Message: ");
 			gridPane.add(commitMessageLabel, 0, row, 1, 1);
 			TextField commitMessageField = new TextField();
+			// optional, as in Commit - it was required here only
+			commitMessageField.setPromptText("optional");
 			gridPane.add(commitMessageField, 1, row, 2, 1);
 			row++;
 
@@ -561,16 +581,18 @@ public class CheckoutDetailView extends BorderPane {
 
 			getDialogPane().setContent(gridPane);
 
-			javafx.scene.Node okButton = getDialogPane().lookupButton(ButtonType.OK);
+			javafx.scene.Node okButton = getDialogPane().lookupButton(COMMIT);
 			okButton.setDisable(true);
 			Runnable validate = () -> okButton.setDisable(
-					directoryField.getText().isBlank() || configurationField.getText().isBlank() || commitMessageField.getText().isBlank());
+					directoryField.getText().isBlank() || configurationField.getText().isBlank());
+			validate.run();
 			directoryField.textProperty().addListener((observable, oldValue, newValue) -> validate.run());
 			configurationField.textProperty().addListener((observable, oldValue, newValue) -> validate.run());
 			commitMessageField.textProperty().addListener((observable, oldValue, newValue) -> validate.run());
 
-			setResultConverter(buttonType -> buttonType != ButtonType.OK ? null :
-					new Result(Paths.get(directoryField.getText()), configurationField.getText(), commitMessageField.getText()));
+			setResultConverter(buttonType -> buttonType != COMMIT ? null :
+					new Result(Paths.get(directoryField.getText()), configurationField.getText(),
+							commitMessageField.getText().isBlank() ? "Fix: " + configurationField.getText() : commitMessageField.getText()));
 		}
 
 		static final class Result {

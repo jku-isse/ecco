@@ -36,6 +36,22 @@ public class HelpView extends ScrollPane {
 		intro.setWrapText(true);
 		content.getChildren().add(intro);
 
+		// the dialogs name three folders - they said repository directory, base directory, directory, folder
+		content.getChildren().add(heading("Folders"));
+		GridPane folders = new GridPane();
+		folders.setHgap(14);
+		folders.setVgap(3);
+		String[][] names = {
+				{"Repository folder", "The folder you work in. The repository is the .ecco folder in it - you never pick .ecco itself."},
+				{"Variant folder", "A folder with one variant of the system, to commit with its configuration."},
+				{"Checkout folder", "Where a checkout writes a variant - best an empty folder: one that is not is emptied first, after asking."},
+				{"Working folder", "The last variant or checkout folder used, shown under Status."}};
+		for (int i = 0; i < names.length; i++) {
+			folders.add(name(names[i][0]), 0, i);
+			folders.add(description(names[i][1]), 1, i);
+		}
+		content.getChildren().add(folders);
+
 		for (RibbonTabSpec tab : tabs) {
 			content.getChildren().add(heading(tab.label()));
 			GridPane buttons = new GridPane();

@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * The "add variant" operation: Add puts a variant with the typed configuration and name into the
- * repository and ends on the success header; an empty or invalid configuration adds nothing and
+ * repository and closes with a notification; an empty or invalid configuration adds nothing and
  * ends on the error header; Cancel closes the window.
  */
 public class VariantViewTest {
@@ -50,7 +50,7 @@ public class VariantViewTest {
         return find(view, n -> n instanceof Button b && "Done".equals(b.getText())) != null && !view.toolBar.isDisable();
     }
 
-    /** Add stores a variant with the typed configuration and name, and the view ends on the success header. */
+    /** Add stores a variant with the typed configuration and name. */
     @Test
     @Timeout(60)
     public void addPutsTheTypedVariantIntoTheRepository(@TempDir Path tmp) throws Exception {
@@ -64,7 +64,8 @@ public class VariantViewTest {
                 fields(view).get(1).setText("my variant");
                 button(view, "Add").fire();
             });
-            waitUntil("the success header", () -> done(view) && view.toolBar.getStyleClass().contains("success"));
+            // a notification, and the dialog closes - it ended on a Done screen
+            waitUntil("added", () -> variants(service).size() == 2);
 
             assertEquals(Set.of(Set.of("A.1"), Set.of("A.1", "B.1")), variants(service));
             Variant added = service.getRepository().getVariants().stream()

@@ -132,7 +132,7 @@ public class CheckoutView extends OperationView implements EccoListener {
         int row = 0;
 
 
-        Label baseDirLabel = new Label("Base Directory: ");
+        Label baseDirLabel = new Label("Checkout Folder: ");
         gridPane.add(baseDirLabel, 0, row, 1, 1);
 
         TextField baseDirTextField = new TextField(initialBaseDir);
@@ -156,7 +156,7 @@ public class CheckoutView extends OperationView implements EccoListener {
         configurationStringTextField.setDisable(false);
         configurationStringTextField.setPromptText(at.jku.isse.ecco.gui.view.operation.OperationView.CONFIGURATION_HINT);
         configurationStringLabel.setLabelFor(configurationStringTextField);
-        gridPane.add(configurationStringTextField, 1, row, 2, 1);
+        gridPane.add(at.jku.isse.ecco.gui.io.ConfigurationPickerDialog.withPicker(configurationStringTextField, this.service), 1, row, 2, 1);
         row++;
 
         // known-variants picker -- speeds up checkout by prefilling Configuration from an

@@ -922,7 +922,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		configField.setPromptText(COMMIT_CONFIGURATION_HINT + BLANK_READS_CONFIG_FILE);
 		configField.setTooltip(new Tooltip(COMMIT_CONFIGURATION_HINT + BLANK_READS_CONFIG_FILE));
 		focusWhenShown(configField);
-		gridPane.add(configField, 0, row, 1, 1);
+		gridPane.add(at.jku.isse.ecco.gui.io.ConfigurationPickerDialog.withPicker(configField, this.service), 0, row, 1, 1);
 		row++;
 
 		Label constraintWarningLabel = new Label();

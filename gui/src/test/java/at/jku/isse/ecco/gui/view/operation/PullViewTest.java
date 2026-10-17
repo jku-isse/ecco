@@ -102,7 +102,7 @@ public class PullViewTest {
                 chooseRemote(view, "origin");
                 button(view, "Choose Features...").fire();
             });
-            assertEquals("Selection", onFx(() -> view.headerLabel.getText()));
+            assertEquals("Feature Revisions", onFx(() -> view.headerLabel.getText()));
             assertEquals(Set.of("A", "B"), onFx(() -> treeFeatures(view)));
             assertTrue(onFx(() -> deselectionField(view).getText().isEmpty()), "everything is ticked to begin with");
 

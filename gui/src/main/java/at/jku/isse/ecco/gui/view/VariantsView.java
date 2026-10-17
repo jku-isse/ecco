@@ -167,7 +167,7 @@ public class VariantsView extends BorderPane implements EccoListener {
 
         toolBar.getItems().add(new Separator());
 
-        Label baseDirLabel = new Label("Base Directory: ");
+        Label baseDirLabel = new Label("Checkout Folder: ");
         // default to the directory the repository lives in, not whatever service.getBaseDir()
         // happens to still be set to from a previous, possibly unrelated operation -- same rationale
         // as CheckoutView's base-directory field -- still freely editable below before checkout.
@@ -558,21 +558,10 @@ public class VariantsView extends BorderPane implements EccoListener {
     }
 
     private void openDialog(String title, Parent content) {
-        final Stage dialog = new Stage();
-        dialog.initStyle(StageStyle.UTILITY);
-        dialog.initModality(Modality.WINDOW_MODAL);
-        dialog.initOwner(VariantsView.this.getScene().getWindow());
-
-        Scene dialogScene = new Scene(content);
-        dialog.setScene(dialogScene);
-        dialog.setTitle(title);
-
-//		dialog.setMinWidth(400);
-//		dialog.setMinHeight(200);
-
-        dialog.show();
-        dialog.requestFocus();
+        // the main window's way: with Cmd+W, Cmd+Q and Esc, which these lacked
+        at.jku.isse.ecco.gui.Dialogs.open(this.getScene().getWindow(), title, content, Modality.WINDOW_MODAL);
     }
+
 
     public class VariantsInfo {
 

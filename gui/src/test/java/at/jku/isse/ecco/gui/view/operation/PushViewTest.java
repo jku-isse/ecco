@@ -65,7 +65,8 @@ public class PushViewTest {
         Path parent = parent(tmp);
         try (EccoService service = source(tmp, parent)) {
             // with its full id, as it is parsed again (the displayed one is cut to 7 characters)
-            String b = fullRevisionString(tmp.resolve("origin"), "B");
+            // as the tree shows it, short - the field had the full id
+            String b = revisionString(tmp.resolve("origin"), "B");
             PushView view = show(service);
             onFx(() -> {
                 chooseRemote(view, "parent");
@@ -202,13 +203,5 @@ public class PushViewTest {
         ((CheckBoxTreeItem<PushView.FeatureInfo>) featureItem.getChildren().get(0)).setSelected(false);
     }
 
-    private static String fullRevisionString(Path repository, String feature) {
-        try (EccoService service = new EccoService()) {
-            service.setRepositoryDir(repository.resolve(".ecco"));
-            service.open();
-            at.jku.isse.ecco.feature.FeatureRevision revision = service.getRepository().getFeatures().stream()
-                    .filter(f -> f.getName().equals(feature)).findFirst().orElseThrow().getLatestRevision();
-            return feature + "." + revision.getId();
-        }
-    }
+
 }

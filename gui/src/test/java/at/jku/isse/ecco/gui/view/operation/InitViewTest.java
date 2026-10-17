@@ -76,7 +76,8 @@ public class InitViewTest {
         service.setRepositoryDir(tmp.resolve("work").resolve(".ecco"));
         CommitViewTest.Shown<AnsweredInitView> shown = show(() -> new AnsweredInitView(service));
         try {
-            assertEquals(tmp.resolve("work").resolve(".ecco").toString(), onFx(() -> field(shown.view()).getText()));
+            // the folder worked in, not its .ecco - which the user does not pick
+            assertEquals(tmp.resolve("work").toString(), onFx(() -> field(shown.view()).getText()));
         } finally {
             shown.close();
         }
@@ -116,7 +117,7 @@ public class InitViewTest {
                 assertEquals(List.of("Create Directory"), view.asked);
                 assertFalse(Files.exists(tmp.resolve("new")), "declined: nothing is created");
                 assertFalse(service.isInitialized());
-                assertEquals("Repository Directory", onFx(() -> view.headerLabel.getText()), "declined: the dialog stays as it was");
+                assertEquals("Repository Folder", onFx(() -> view.headerLabel.getText()), "declined: the dialog stays as it was");
 
                 view.answer = true;
                 init(shown, work.resolve(".ecco"));
@@ -185,9 +186,9 @@ public class InitViewTest {
 
     @Test
     @Timeout(60)
-    public void anExistingDirectoryThatIsNoRepositoryIsNeverOfferedForDeletion(@TempDir Path tmp) throws Exception {
-        // e.g. a working directory typed in instead of its .ecco: it was offered for deletion as "a
-        // repository", and confirming deleted it with everything in it
+    public void aWorkingFolderGetsTheRepositoryAndKeepsItsFiles(@TempDir Path tmp) throws Exception {
+        // the folder worked in is the repository folder: its .ecco is made in it - a working folder
+        // typed in instead of its .ecco was once offered for deletion as "a repository"
         Path project = Files.createDirectories(tmp.resolve("project"));
         Files.writeString(project.resolve("main.c"), "int main() { return 0; }\n");
         try (EccoService service = new EccoService()) {
@@ -196,13 +197,12 @@ public class InitViewTest {
                 AnsweredInitView view = shown.view();
                 view.answer = true;
                 init(shown, project);
-                waitUntil("the error", () -> view.inputError() != null || !shown.stage().isShowing());
+                waitUntil("created", () -> !shown.stage().isShowing());
 
-                assertEquals(List.of(), view.asked);
-                assertTrue(Files.exists(project.resolve("main.c")), "the directory is kept");
-                assertFalse(service.isInitialized());
-                assertTrue(onFx(view::inputError).contains(project.toString()), onFx(view::inputError));
-                assertNotNull(onFx(() -> button(view, "Create")), "the form stays");
+                assertEquals(List.of(), view.asked, "nothing to replace, nothing to ask");
+                assertTrue(Files.exists(project.resolve("main.c")), "its files are kept");
+                assertTrue(service.isInitialized());
+                assertEquals(project.resolve(".ecco"), service.getRepositoryDir());
             } finally {
                 shown.close();
             }

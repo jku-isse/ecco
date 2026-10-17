@@ -40,7 +40,7 @@ public class OpenView extends OperationView {
 		cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
 		this.leftButtons.getChildren().setAll(cancelButton);
 
-		this.headerLabel.setText("Repository Directory");
+		this.headerLabel.setText("Repository Folder");
 
 		Button openButton = new Button("Open");
 		openButton.setDefaultButton(true);
@@ -64,7 +64,8 @@ public class OpenView extends OperationView {
 
 		int row = 0;
 
-		TextField repositoryDirTextField = new TextField(service.getRepositoryDir().toString());
+		TextField repositoryDirTextField = new TextField(repositoryFolderOf(service.getRepositoryDir()));
+		repositoryDirTextField.setPromptText("The folder you work in, with the repository's .ecco in it");
 		repositoryDirTextField.setDisable(false);
 
 		List<Path> recentRepositories = RecentRepositories.getRecentRepositories();
@@ -86,7 +87,7 @@ public class OpenView extends OperationView {
 			row++;
 		}
 
-		Label repositoryDirLabel = new Label("Repository Directory: ");
+		Label repositoryDirLabel = new Label("Repository Folder: ");
 		gridPane.add(repositoryDirLabel, 0, row, 1, 1);
 
 		repositoryDirLabel.setLabelFor(repositoryDirTextField);
@@ -115,13 +116,13 @@ public class OpenView extends OperationView {
 			}
 			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
 			if (selectedDirectory != null) {
-				repositoryDirTextField.setText(selectedDirectory.toPath().resolve(EccoService.REPOSITORY_DIR_NAME).toString());
+				repositoryDirTextField.setText(selectedDirectory.toPath().toString());
 			}
 		});
 
 		openButton.setOnAction(event -> {
 			this.clearInputError();
-			Path repositoryDir = Paths.get(repositoryDirTextField.getText());
+			Path repositoryDir = repositoryDirOf(repositoryDirTextField.getText());
 			// a relative path resolves against wherever the GUI happens to run, and one without a parent
 			// (e.g. an empty field) failed on its missing working directory without anything shown
 			if (!repositoryDir.isAbsolute() || repositoryDir.getParent() == null) {

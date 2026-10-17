@@ -43,7 +43,7 @@ public class InitView extends OperationView {
 		cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
 		this.leftButtons.getChildren().setAll(cancelButton);
 
-		this.headerLabel.setText("Repository Directory");
+		this.headerLabel.setText("Repository Folder");
 
 		Button initButton = new Button("Create");
 		initButton.setDefaultButton(true);
@@ -67,10 +67,11 @@ public class InitView extends OperationView {
 
 		int row = 0;
 
-		Label repositoryDirLabel = new Label("Repository Directory: ");
+		Label repositoryDirLabel = new Label("Repository Folder: ");
 		gridPane.add(repositoryDirLabel, 0, row, 1, 1);
 
-		TextField repositoryDirTextField = new TextField(service.getRepositoryDir().toString());
+		TextField repositoryDirTextField = new TextField(repositoryFolderOf(service.getRepositoryDir()));
+		repositoryDirTextField.setPromptText("The folder you work in - the repository is made in it, as .ecco");
 		focusWhenShown(repositoryDirTextField);
 		repositoryDirTextField.setDisable(false);
 		repositoryDirLabel.setLabelFor(repositoryDirTextField);
@@ -98,12 +99,12 @@ public class InitView extends OperationView {
 			}
 			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
 			if (selectedDirectory != null) {
-				repositoryDirTextField.setText(selectedDirectory.toPath().resolve(EccoService.REPOSITORY_DIR_NAME).toString());
+				repositoryDirTextField.setText(selectedDirectory.toPath().toString());
 			}
 		});
 		initButton.setOnAction(event -> {
 			this.clearInputError();
-			Path repositoryDir = Paths.get(repositoryDirTextField.getText());
+			Path repositoryDir = repositoryDirOf(repositoryDirTextField.getText());
 			Path baseDir = repositoryDir.getParent();
 
 			// a relative path resolves against wherever the GUI happens to run - an empty field is that
@@ -130,12 +131,7 @@ public class InitView extends OperationView {
 			}
 
 			if (Files.exists(repositoryDir)) {
-				// only a repository directory is deleted and started fresh - any other existing directory
-				// (e.g. a working directory typed in instead of its .ecco) would go with everything in it
-				if (!repositoryDir.getFileName().equals(EccoService.REPOSITORY_DIR_NAME)) {
-					this.showInputError("Not a repository directory (" + EccoService.REPOSITORY_DIR_NAME + "), not replacing it: " + repositoryDir);
-					return;
-				}
+				// repositoryDirOf makes it a .ecco: only a repository is ever deleted and started fresh
 				if (!this.confirm("Delete Existing Repository", "A repository already exists at\n" + repositoryDir + "\nDelete it and start fresh?")) {
 					return;
 				}

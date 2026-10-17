@@ -63,7 +63,7 @@ public class OpenViewTest {
         CommitViewTest.Shown<OpenView> shown = show(() -> new OpenView(service));
         try {
             OpenView view = shown.view();
-            assertEquals(tmp.resolve("work").resolve(".ecco").toString(), onFx(() -> field(view).getText()));
+            assertEquals(tmp.resolve("work").toString(), onFx(() -> field(view).getText()), "the folder worked in, not its .ecco");
             ComboBox<?> recentBox = onFx(() -> (ComboBox<?>) find(view, n -> n instanceof ComboBox));
             assertNotNull(recentBox);
             assertEquals(List.of(recent), onFx(() -> List.copyOf(recentBox.getItems())), "only the recent ones that still exist");
@@ -123,12 +123,21 @@ public class OpenViewTest {
 
     @Test
     @Timeout(60)
-    public void aWorkingDirectoryIsNoRepository(@TempDir Path tmp) throws Exception {
+    public void theFolderWorkedInOpensItsRepository(@TempDir Path tmp) throws Exception {
+        // it failed: "Not an ECCO repository ... did you mean .../.ecco"
         Path work = tmp.resolve("work");
         repository(work).close();
-        String error = failedOpen(work.toString(), "Error opening repository.");
-        assertTrue(error.contains("Not an ECCO repository: " + work), error);
-        assertTrue(error.contains("did you mean " + work.resolve(".ecco")), error);
+        try (EccoService service = new EccoService()) {
+            CommitViewTest.Shown<OpenView> shown = show(() -> new OpenView(service));
+            try {
+                open(shown.view(), work.toString());
+                waitUntil("opened", () -> !shown.stage().isShowing());
+                assertTrue(service.isInitialized());
+                assertEquals(work.resolve(".ecco"), service.getRepositoryDir());
+            } finally {
+                shown.close();
+            }
+        }
     }
 
     @Test

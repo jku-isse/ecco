@@ -72,7 +72,7 @@ public class VariantView extends OperationView implements EccoListener {
         configField.setTooltip(new Tooltip(CONFIGURATION_HINT));
         focusWhenShown(configField);
         configLabel.setLabelFor(configField);
-        gridPane.add(configField, 1, row, 1, 1);
+        gridPane.add(at.jku.isse.ecco.gui.io.ConfigurationPickerDialog.withPicker(configField, this.service), 1, row, 1, 1);
 
         Label nameLabel = new Label("Name: ");
         gridPane.add(nameLabel, 2, row, 1, 1);
@@ -108,7 +108,8 @@ public class VariantView extends OperationView implements EccoListener {
                     public void succeeded() {
                         super.succeeded();
                         toolBar.setDisable(false);
-                        VariantView.this.showSuccessHeader();
+                        // a notification, as other quick operations report - it was a Done screen
+                        VariantView.this.stepSuccess("Variant '" + name + "' added.");
                     }
 
                     @Override

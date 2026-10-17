@@ -92,12 +92,8 @@ public class CommitsView extends BorderPane implements EccoListener {
 			if (selectedCommits.size() != 2)
 				return;
 			CommitComparisonView commitComparisonView = new CommitComparisonView(service, selectedCommits.get(0), selectedCommits.get(1));
-			Stage stage = new Stage();
-			stage.initStyle(StageStyle.UTILITY);
-			stage.initModality(Modality.WINDOW_MODAL);
-			stage.setScene(new Scene(commitComparisonView));
-			stage.setTitle("Commit Comparison");
-			stage.show();
+			// over the main window, with Cmd+W and Esc: it had no owner - "window modal" to nothing
+			at.jku.isse.ecco.gui.Dialogs.open(this.getScene().getWindow(), "Commit Comparison", commitComparisonView, Modality.WINDOW_MODAL);
 		});
 
 		SplitPane top = new SplitPane(commitsTable, commitDetailView);

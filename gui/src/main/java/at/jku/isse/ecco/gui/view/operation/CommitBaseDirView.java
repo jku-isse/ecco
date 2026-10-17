@@ -93,7 +93,7 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 
 		Path baseDir = this.service.getBaseDir();
 
-		Label folderLabel = new Label("Folder: ");
+		Label folderLabel = new Label("Variant Folder: ");
 		gridPane.add(folderLabel, 0, row, 1, 1);
 		TextField folderField = new TextField(String.valueOf(baseDir));
 		folderField.setEditable(false);
@@ -114,7 +114,7 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 		configurationField.setTooltip(new Tooltip("Filled with the previous commit's configuration - make it this variant's.\n"
 				+ COMMIT_CONFIGURATION_HINT + BLANK_READS_CONFIG_FILE));
 		configurationLabel.setLabelFor(configurationField);
-		gridPane.add(configurationField, 1, row, 1, 1);
+		gridPane.add(at.jku.isse.ecco.gui.io.ConfigurationPickerDialog.withPicker(configurationField, this.service), 1, row, 1, 1);
 		row++;
 
 		this.wireCommitButton(commitButton, commitMessageField, configurationField);

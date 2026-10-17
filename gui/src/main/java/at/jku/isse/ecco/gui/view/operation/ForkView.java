@@ -73,6 +73,7 @@ public class ForkView extends OperationView {
 		int row = 0;
 
 		Label remoteLabel = new Label("Fork From: ");
+		// the repository folder, its .ecco, or host:port of an ECCO server
 		gridPane.add(remoteLabel, 0, row, 1, 1);
 
 		TextField remoteTextField = new TextField();
@@ -86,10 +87,11 @@ public class ForkView extends OperationView {
 		gridPane.add(selectRemoteButton, 2, row, 1, 1);
 		row++;
 
-		Label repositoryDirLabel = new Label("New Repository: ");
+		Label repositoryDirLabel = new Label("New Repository Folder: ");
 		gridPane.add(repositoryDirLabel, 0, row, 1, 1);
 
-		TextField repositoryDirTextField = new TextField(service.getRepositoryDir().toString());
+		TextField repositoryDirTextField = new TextField(repositoryFolderOf(service.getRepositoryDir()));
+		repositoryDirTextField.setPromptText("The folder to work in - the fork is made in it, as .ecco");
 		repositoryDirLabel.setLabelFor(repositoryDirTextField);
 		gridPane.add(repositoryDirTextField, 1, row, 1, 1);
 
@@ -120,7 +122,7 @@ public class ForkView extends OperationView {
 		selectRepositoryDirectoryButton.setOnAction(event -> {
 			File selected = chooseDirectory(repositoryDirTextField.getText());
 			if (selected != null)
-				repositoryDirTextField.setText(selected.toPath().resolve(EccoService.REPOSITORY_DIR_NAME).toString());
+				repositoryDirTextField.setText(selected.toPath().toString());
 		});
 
 		forkButton.setOnAction(event -> {
@@ -144,7 +146,7 @@ public class ForkView extends OperationView {
 
 			Path repositoryDir;
 			try {
-				repositoryDir = Paths.get(repositoryDirTextField.getText());
+				repositoryDir = repositoryDirOf(repositoryDirTextField.getText());
 			} catch (InvalidPathException e) {
 				invalidInput("Invalid repository directory: " + e.getMessage());
 				return;

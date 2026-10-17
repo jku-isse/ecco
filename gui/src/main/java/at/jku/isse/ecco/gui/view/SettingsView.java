@@ -59,14 +59,16 @@ public class SettingsView extends BorderPane implements EccoListener {
 
 			int row = 0;
 
-			Label baseDirLabel = new Label("Base Directory: ");
+			// the names the dialogs use (see Help, "Folders")
+			Label baseDirLabel = new Label("Working Folder: ");
+			baseDirLabel.setTooltip(new Tooltip("Where Commit reads a variant from and Checkout writes one to - set by the last of them"));
 			gridPane.add(baseDirLabel, 0, row, 1, 1);
 			this.baseDirUrl = new TextField(service.getBaseDir().toString());
 			this.baseDirUrl.setEditable(false);
 			gridPane.add(baseDirUrl, 1, row, 1, 1);
 			row++;
 
-			Label repositoryDirLabel = new Label("Repository Directory: ");
+			Label repositoryDirLabel = new Label("Repository (.ecco): ");
 			gridPane.add(repositoryDirLabel, 0, row, 1, 1);
 			this.repositoryDirUrl = new TextField(service.getRepositoryDir().toString());
 			this.repositoryDirUrl.setEditable(false);

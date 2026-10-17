@@ -77,17 +77,22 @@ public class FetchView extends OperationView {
 
 			Remote remote = remoteComboBox.getValue();
 
-			Task fetchTask = new Task<Void>() {
+			Task<java.util.List<String>> fetchTask = new Task<>() {
 				@Override
-				public Void call() {
+				public java.util.List<String> call() {
+					at.jku.isse.ecco.core.Remote known = FetchView.this.service.getRemote(remote.getName());
+					java.util.Set<String> before = known == null ? new java.util.HashSet<>() : TransferView.revisions(known.getFeatures());
 					FetchView.this.service.fetch(remote.getName());
-					return null;
+					java.util.Set<String> after = TransferView.revisions(FetchView.this.service.getRemote(remote.getName()).getFeatures());
+					after.removeAll(before);
+					return after.stream().sorted().toList();
 				}
 
 				@Override
 				public void succeeded() {
 					super.succeeded();
-					FetchView.this.stepSuccess("Fetch operation was successful.");
+					// what came over - it said "Fetch operation was successful."
+					FetchView.this.stepSuccess(TransferView.transferred("Fetch", "from", remote.getName(), this.getValue()));
 					FetchView.this.setDisable(false);
 				}
 

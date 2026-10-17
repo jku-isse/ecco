@@ -238,6 +238,21 @@ public abstract class OperationView extends BorderPane {
 		}
 	}
 
+	/**
+	 * The repository's .ecco for a typed folder: the folder worked in, where it is made - or the .ecco
+	 * itself, as typed before. The dialogs asked for the .ecco, which the user does not pick.
+	 */
+	protected static java.nio.file.Path repositoryDirOf(String typed) {
+		java.nio.file.Path path = java.nio.file.Paths.get(typed.trim());
+		return at.jku.isse.ecco.service.EccoService.REPOSITORY_DIR_NAME.equals(path.getFileName()) ? path : path.resolve(at.jku.isse.ecco.service.EccoService.REPOSITORY_DIR_NAME);
+	}
+
+	/** The folder worked in, of a repository's .ecco - what the repository fields show. */
+	protected static String repositoryFolderOf(java.nio.file.Path repositoryDir) {
+		java.nio.file.Path parent = repositoryDir == null ? null : repositoryDir.getParent();
+		return parent == null ? "" : parent.toString();
+	}
+
 	/** The prompt of a configuration field to check out or save - nothing said how to write one. */
 	public static final String CONFIGURATION_HINT = "Features, comma-separated: A (its latest revision), A.3f2a9c1 (that revision)";
 	/** The prompt of a configuration field to commit with. */
@@ -288,7 +303,11 @@ public abstract class OperationView extends BorderPane {
 		// kept its size (macOS keeps a utility window's width when its content gets smaller) the
 		// scene never laid the view out again - it stayed that narrow inside the wider window
 		if (this.getScene() != null && this.getScene().getWindow() != null) {
-			this.getScene().getWindow().sizeToScene();
+			// a size the user gave this dialog before (see Dialogs) only grows
+			if (this.getScene().getWindow().getProperties().containsKey(at.jku.isse.ecco.gui.Dialogs.SIZE_GIVEN))
+				this.growToFit();
+			else
+				this.getScene().getWindow().sizeToScene();
 		} else {
 			// Not just "not ready yet, try again next pulse": showing a new Stage can itself
 			// trigger a nested pump of this same runLater queue (seen in practice as a one-time
@@ -350,7 +369,9 @@ public abstract class OperationView extends BorderPane {
 	 */
 	protected void stepSuccess(String text) {
 		Notifications.success(text);
-		((Stage) this.getScene().getWindow()).close();
+		this.notRunning();
+		if (this.getScene() != null && this.getScene().getWindow() != null)
+			this.getScene().getWindow().hide();
 	}
 
 
