@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view.artifacts;
 
 import at.jku.isse.ecco.adapter.AssociationInfo;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.module.Condition;
 import javafx.beans.property.*;
 import javafx.scene.paint.Color;
 
@@ -128,7 +129,8 @@ public class AssociationInfoImpl implements AssociationInfo {
     }
 
     public void setMinimizedCondition(String minimizedCondition) {
-        this.minimizedCondition.set(minimizedCondition == null ? "" : minimizedCondition);
+        // the minimizer writes an empty condition as "false": shown, it read as never present
+        this.minimizedCondition.set(minimizedCondition == null ? "" : minimizedCondition.trim().equals("false") ? Condition.NOT_TRACED : minimizedCondition);
     }
 
     public StringProperty minimizedConditionProperty() {

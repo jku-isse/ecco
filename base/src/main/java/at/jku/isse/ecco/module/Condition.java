@@ -105,8 +105,16 @@ public interface Condition extends Persistable {
 	}
 
 	/**
+	 * What a condition without any module revision says to people: its association's presence is
+	 * explained by no feature. It said "false" - as if never present - for most of a Git import's code
+	 * (95% of tinycc's associations, 662 of the 665 in its latest commit).
+	 */
+	String NOT_TRACED = "not traced to a feature";
+
+	/**
 	 * The condition for people, as {@link ConditionText} writes conditions: the module revisions of
-	 * {@link #toLogicString()} (absorbed, sorted), each feature with its displayed revision.
+	 * {@link #toLogicString()} (absorbed, sorted), each feature with its displayed revision; without
+	 * any, {@link #NOT_TRACED}.
 	 */
 	default String toDisplayString() {
 		return this.toDisplayString(true);
@@ -117,7 +125,7 @@ public interface Condition extends Persistable {
 		List<SortedSet<String>> terms = new ArrayList<>();
 		for (ModuleRevision moduleRevision : this.getAbsorbedModuleRevisions())
 			terms.add(ConditionText.literals(moduleRevision, withRevisions));
-		return ConditionText.join(terms);
+		return terms.isEmpty() ? NOT_TRACED : ConditionText.join(terms);
 	}
 
 	/**

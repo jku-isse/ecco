@@ -122,7 +122,8 @@ public class ConditionTest {
         condition.addModuleRevision(moduleB.addRevision(new FeatureRevision[]{b}, new Feature[0]));
         assertEquals(a.getFeatureRevisionString() + " | " + b.getFeatureRevisionString(), condition.toDisplayString(), "A & !B absorbed by A");
         assertEquals("A | B", condition.toDisplayString(false));
-        assertEquals("false", new SerCondition().toDisplayString());
+        assertEquals("not traced to a feature", new SerCondition().toDisplayString(), "it said false: as if never present");
+        assertEquals("false", ConditionText.join(java.util.List.of()), "the logic text stays");
         assertEquals("A & !B | C", ConditionText.join(java.util.List.of(java.util.List.of("C"), java.util.List.of("!B", "A"), java.util.List.of("C", "D"))));
         assertEquals("true", ConditionText.join(java.util.List.of(java.util.List.of("A"), java.util.List.of())));
     }

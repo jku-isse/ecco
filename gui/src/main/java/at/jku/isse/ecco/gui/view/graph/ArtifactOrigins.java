@@ -32,14 +32,14 @@ final class ArtifactOrigins {
 		this.repository = repository;
 	}
 
-	/** "A | B & !C", or "in no feature; 37 commits, the last 2009-05-11 'Fix the ...'". */
+	/** "A | B & !C", or "not traced to a feature; 37 commits, the last 2009-05-11 'Fix the ...'". */
 	String describe(Association association) {
 		String condition = condition(association);
 		if (condition != null)
 			return condition;
 		List<Commit> commits = this.commits().getOrDefault(association, List.of());
 		if (commits.isEmpty())
-			return "in no feature, no commit";
+			return Condition.NOT_TRACED + ", in no commit";
 		Commit last = commits.get(0);
 		for (Commit commit : commits)
 			if (commit.getDate() != null && (last.getDate() == null || commit.getDate().after(last.getDate())))
@@ -47,7 +47,7 @@ final class ArtifactOrigins {
 		String message = last.getCommitMessage() == null ? "" : last.getCommitMessage().lines().findFirst().orElse("").trim();
 		if (message.length() > MESSAGE_TEXT)
 			message = message.substring(0, MESSAGE_TEXT - 1) + "…";
-		return "in no feature; " + (commits.size() == 1 ? "1 commit" : commits.size() + " commits, the last")
+		return Condition.NOT_TRACED + "; " + (commits.size() == 1 ? "1 commit" : commits.size() + " commits, the last")
 				+ (last.getDate() != null ? " " + DATE.format(last.getDate().toInstant()) : "")
 				+ (message.isEmpty() ? "" : " '" + message + "'");
 	}

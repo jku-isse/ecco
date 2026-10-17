@@ -175,7 +175,7 @@ public class PartialOrderGraphView extends BorderPane {
 	static Snapshot blocksOf(PartialOrderGraph pog, at.jku.isse.ecco.tree.Node shownNode) {
 		return blocksOf(pog, shownNode, association -> {
 			String condition = ArtifactOrigins.condition(association);
-			return condition != null ? condition : "in no feature";
+			return condition != null ? condition : at.jku.isse.ecco.module.Condition.NOT_TRACED;
 		});
 	}
 
@@ -213,7 +213,10 @@ public class PartialOrderGraphView extends BorderPane {
 			String label = label(block, childOf, placeOf, shownNode != null);
 			if (!origins.isEmpty()) {
 				String condition = origins.get(0).substring(0, origins.get(0).lastIndexOf(" (association "));
-				label += "  [" + short_(condition, ORIGIN_TEXT) + (origins.size() > 1 ? "; +" + (origins.size() - 1) : "") + "]";
+				// the commits that had it are in the details: in the label it was cut off
+				if (condition.startsWith(at.jku.isse.ecco.module.Condition.NOT_TRACED))
+					condition = at.jku.isse.ecco.module.Condition.NOT_TRACED;
+				label += "  [" + (condition.length() <= ORIGIN_TEXT || condition.equals(at.jku.isse.ecco.module.Condition.NOT_TRACED) ? condition : short_(condition, ORIGIN_TEXT)) + (origins.size() > 1 ? "; +" + (origins.size() - 1) : "") + "]";
 			}
 			labels.add(label);
 			classes.add(switch (block.kind()) {

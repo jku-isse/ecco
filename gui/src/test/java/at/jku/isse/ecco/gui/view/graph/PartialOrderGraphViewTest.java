@@ -226,8 +226,8 @@ public class PartialOrderGraphViewTest {
 
             int old = snapshot.labels().indexOf(snapshot.labels().stream().filter(l -> l.startsWith("other") && l.contains("old")).findFirst().orElseThrow(() -> new AssertionError(snapshot.labels().toString())));
             assertFalse(snapshot.labels().get(old).contains("false"), snapshot.labels().get(old));
-            assertTrue(snapshot.labels().get(old).contains("[in no feature; 1 commit"), snapshot.labels().get(old));
-            assertTrue(snapshot.details().get(old).contains("in no feature; 1 commit") && snapshot.details().get(old).contains("'commit BASE, A'"), snapshot.details().get(old));
+            assertTrue(snapshot.labels().get(old).endsWith("[not traced to a feature]"), snapshot.labels().get(old));
+            assertTrue(snapshot.details().get(old).contains("not traced to a feature; 1 commit") && snapshot.details().get(old).contains("'commit BASE, A'"), snapshot.details().get(old));
         }
     }
 
