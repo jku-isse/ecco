@@ -209,4 +209,81 @@ public class ConstraintService {
         });
     }
 
+
+    // ---- parents in the feature model (see Repository#getFeatureParents) ---------------------------
+
+    /**
+     * Accepts [parents] (feature name to parent name) in one transaction, each with the REQUIRES it
+     * means; a feature's earlier parent goes, with its REQUIRES. Refused - nothing changed - if one
+     * would make a feature its own ancestor.
+     */
+    public void acceptFeatureParents(java.util.Map<String, String> parents) {
+        owner.checkInitialized();
+        checkNotNull(parents);
+        if (parents.isEmpty()) return;
+        java.util.Map<String, String> after = new java.util.HashMap<>(owner.getRepository().getFeatureParents());
+        for (java.util.Map.Entry<String, String> parent : parents.entrySet()) {
+            if (Repository.makesCycle(after, parent.getKey(), parent.getValue()))
+                throw new at.jku.isse.ecco.EccoException("Making " + parent.getValue() + " the parent of " + parent.getKey()
+                        + " would make " + parent.getKey() + " its own ancestor.");
+            after.put(parent.getKey(), parent.getValue());
+        }
+        owner.writeTransaction(repository -> {
+            parents.forEach((feature, parent) -> {
+                withdrawParent(repository, feature);
+                repository.removeRejectedFeatureParent(feature, parent);
+                repository.setFeatureParent(feature, parent);
+                accept(repository, Constraint.Kind.REQUIRES, feature, parent);
+            });
+            return repository;
+        });
+    }
+
+    /** Rejects [parents] (feature, parent) in one transaction; an acceptance of one goes, with its REQUIRES. */
+    public void rejectFeatureParents(List<java.util.Map.Entry<String, String>> parents) {
+        owner.checkInitialized();
+        checkNotNull(parents);
+        if (parents.isEmpty()) return;
+        owner.writeTransaction(repository -> {
+            for (java.util.Map.Entry<String, String> parent : parents) {
+                if (parent.getValue().equals(repository.getFeatureParents().get(parent.getKey())))
+                    withdrawParent(repository, parent.getKey());
+                repository.addRejectedFeatureParent(parent.getKey(), parent.getValue());
+            }
+            return repository;
+        });
+    }
+
+    /** "Move back to pending" for the accepted parents of [features], with their REQUIRES. */
+    public void unacceptFeatureParents(java.util.Collection<String> features) {
+        owner.checkInitialized();
+        checkNotNull(features);
+        if (features.isEmpty()) return;
+        owner.writeTransaction(repository -> {
+            for (String feature : features)
+                withdrawParent(repository, feature);
+            return repository;
+        });
+    }
+
+    /** "Move back to pending" for rejected parents (feature, parent). */
+    public void unrejectFeatureParents(List<java.util.Map.Entry<String, String>> parents) {
+        owner.checkInitialized();
+        checkNotNull(parents);
+        if (parents.isEmpty()) return;
+        owner.writeTransaction(repository -> {
+            for (java.util.Map.Entry<String, String> parent : parents)
+                repository.removeRejectedFeatureParent(parent.getKey(), parent.getValue());
+            return repository;
+        });
+    }
+
+    /** Takes [feature]'s accepted parent away, and the REQUIRES accepted with it. */
+    private static void withdrawParent(Repository.Op repository, String feature) {
+        String parent = repository.getFeatureParents().get(feature);
+        if (parent == null) return;
+        repository.setFeatureParent(feature, null);
+        Constraint requires = repository.getConstraint(Constraint.buildId(Constraint.Kind.REQUIRES.name(), feature, parent));
+        if (requires != null) repository.removeConstraint(requires);
+    }
 }

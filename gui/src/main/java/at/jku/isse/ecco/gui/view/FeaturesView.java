@@ -109,6 +109,9 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		}
 	}
 
+	/** The root of the tree an import makes: the code base as first imported (see {@code ImportGitView}). */
+	static final String ROOT_FEATURE = at.jku.isse.ecco.service.llm.LlmFeatureSuggestionClient.BASE;
+
 	/** Same {@link SpringBox} class/constructor {@code ArtifactGraphView}/{@code KnowledgeGraphView} use; unused (never attached as a sink) in {@link LayoutMode#TREE}. */
 	private final Layout forceDirectedLayout = new SpringBox(false);
 	private LayoutMode layoutMode = LayoutMode.TREE;
@@ -243,8 +246,10 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		Label mandatoryKey = new Label("mandatory", new javafx.scene.shape.Circle(4, Color.BLACK));
 		mandatoryKey.setTooltip(new Tooltip("An accepted MANDATORY: a filled dot on the feature (tree layout) or a bold outline (force-directed layout)."));
 		javafx.scene.layout.FlowPane legend = new javafx.scene.layout.FlowPane(14, 4,
+				legendKey(Color.web("#3d3c38"), "accepted parent", "A parent accepted in the suggestions (Feature Model > Accepted) - with the REQUIRES it means."),
 				legendKey(Color.web("#898781", 0.53), "parent",
-						"Where the feature is placed: the earlier feature it occurs with most often. A positioning hint only, not a dependency or constraint."),
+						"Where a feature with no accepted or suggested parent is placed: under BASE, the code base an import starts from - "
+								+ "without BASE, under the earlier feature it occurs with most often. A positioning hint only, not a dependency or constraint."),
 				legendKey(Color.web("#1baf7a"), "requires", "An accepted REQUIRES."),
 				legendKey(Color.web("#e34948"), "excludes", "An accepted EXCLUDES."),
 				mandatoryKey, this.suggestedSubfeatureKey, this.suggestedRequiresKey);
@@ -294,6 +299,8 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 				"edge { " + textMode + " size: 1px; shape: line; arrow-size: 6px, 4px; } " +
 						// grey: positioning hint only, not a real constraint - see the legend.
 						"edge.tree { fill-color: #89878188; } " +
+						// decided: darker and thicker than a placement or a suggestion
+						"edge.accepted_parent { fill-color: #3d3c38; size: 2px; } " +
 						// same green/red as KnowledgeGraphView's REQUIRES/EXCLUDES edges, for a
 						// consistent meaning across both tabs.
 						"edge.requires { fill-color: #1baf7a; } " +
@@ -710,7 +717,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		}
 	}
 
-	private enum FeatureEdgeKind {TREE, REQUIRES, EXCLUDES, SUGGESTED_SUBFEATURE, SUGGESTED_REQUIRES}
+	private enum FeatureEdgeKind {TREE, ACCEPTED_PARENT, REQUIRES, EXCLUDES, SUGGESTED_SUBFEATURE, SUGGESTED_REQUIRES}
 
 	private static final class FeatureEdgeSnapshot {
 		final String id;
@@ -730,19 +737,30 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	private FeatureModelSnapshot buildSnapshot() {
 		FeatureModelSnapshot snapshot = new FeatureModelSnapshot();
 		Map<String, String> nodeIdByFeatureName = new HashMap<>();
-		// suggested subfeatures make the hierarchy: the heuristic alone chains an import's features
-		List<ImportedFeatureTraces.RelationSuggestion> suggestions = relationSuggestions(this.service);
+		// the hierarchy: accepted parents, then suggested subfeatures - not the rejected ones - and BASE
+		// for the rest (the heuristic alone chains an import's features)
+		Map<String, String> acceptedParents = this.service.getRepository().getFeatureParents();
+		Map<String, Set<String>> rejectedParents = this.service.getRepository().getRejectedFeatureParents();
+		List<ImportedFeatureTraces.RelationSuggestion> suggestions = relationSuggestions(this.service).stream()
+				.filter(r -> r.relation() != ImportedFeatureTraces.Relation.SUBFEATURE
+						|| !rejectedParents.getOrDefault(r.feature(), Set.of()).contains(r.other()))
+				.toList();
 		Map<String, String> suggestedParents = suggestedParents(suggestions);
 		Set<String> placedUnderSuggestion = new HashSet<>();
-		for (FeatureModelTree.Placement placement : FeatureModelTree.compute(this.service.getRepository(), suggestedParents)) {
+		for (FeatureModelTree.Placement placement : FeatureModelTree.compute(this.service.getRepository(), acceptedParents, suggestedParents, ROOT_FEATURE)) {
 			double x = placement.x * X_SPACING;
 			double y = -placement.depth * Y_SPACING;
 			snapshot.nodes.add(new FeatureNodeSnapshot(placement.feature.getId(), placement.feature.getName(), x, y, placement.rootIndex));
 			if (placement.parent != null) {
-				// a suggested parent's edge in the suggestion's colour: the tree shows what is suggested
-				snapshot.edges.add(new FeatureEdgeSnapshot(placement.parent.getId(), placement.feature.getId(),
-						placement.suggestedParent ? FeatureEdgeKind.SUGGESTED_SUBFEATURE : FeatureEdgeKind.TREE));
-				if (placement.suggestedParent)
+				// an accepted parent's edge and a suggested one's in colours of their own: the tree shows
+				// what is decided, what is suggested, and what is only placed (under BASE)
+				FeatureEdgeKind kind = switch (placement.parentSource) {
+					case ACCEPTED -> FeatureEdgeKind.ACCEPTED_PARENT;
+					case SUGGESTED -> FeatureEdgeKind.SUGGESTED_SUBFEATURE;
+					default -> FeatureEdgeKind.TREE;
+				};
+				snapshot.edges.add(new FeatureEdgeSnapshot(placement.parent.getId(), placement.feature.getId(), kind));
+				if (kind != FeatureEdgeKind.TREE)
 					placedUnderSuggestion.add(placement.feature.getName() + "\0" + placement.parent.getName());
 			}
 			nodeIdByFeatureName.put(placement.feature.getName(), placement.feature.getId());
@@ -761,6 +779,9 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 			String featureAId = nodeIdByFeatureName.get(constraint.getFeatureA());
 			String featureBId = nodeIdByFeatureName.get(constraint.getFeatureB());
 			if (featureAId == null || featureBId == null) continue;
+			// the REQUIRES an accepted parent means is its tree edge already
+			if (constraint.getKind() == Constraint.Kind.REQUIRES && constraint.getFeatureB().equals(acceptedParents.get(constraint.getFeatureA())))
+				continue;
 			FeatureEdgeKind kind = constraint.getKind() == Constraint.Kind.REQUIRES ? FeatureEdgeKind.REQUIRES : FeatureEdgeKind.EXCLUDES;
 			snapshot.edges.add(new FeatureEdgeSnapshot(featureAId, featureBId, kind));
 		}
@@ -776,6 +797,8 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 			snapshot.refinements.add(suggestion);
 			if (placedUnderSuggestion.contains(suggestion.feature() + "\0" + suggestion.other()))
 				continue; // its tree edge already
+			if (suggestion.relation() == ImportedFeatureTraces.Relation.SUBFEATURE && acceptedParents.containsKey(suggestion.feature()))
+				continue; // its parent is decided (another can still be accepted under Pending)
 			if (suggestion.relation() == ImportedFeatureTraces.Relation.SUBFEATURE)
 				snapshot.edges.add(new FeatureEdgeSnapshot(otherId, featureId, FeatureEdgeKind.SUGGESTED_SUBFEATURE));
 			else

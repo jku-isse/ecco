@@ -66,32 +66,54 @@ public final class FeatureModelTree {
 		public final double x;
 		/** Index into the (chronologically sorted) root list of {@code feature}'s ultimate ancestor - stable across a render for consistent grouping/coloring. */
 		public final int rootIndex;
-		/** Whether {@code parent} is a suggested one (see {@link #compute(Repository, Map)}), not the co-occurrence heuristic's. */
+		/** Where {@code parent} comes from (see {@link #compute(Repository, Map, Map, String)}). */
+		public final ParentSource parentSource;
+		/** Whether {@code parent} is a suggested one, not accepted, nor the root's or the heuristic's. */
 		public final boolean suggestedParent;
 
-		private Placement(Feature feature, Feature parent, int depth, double x, int rootIndex, boolean suggestedParent) {
+		private Placement(Feature feature, Feature parent, int depth, double x, int rootIndex, ParentSource parentSource) {
 			this.feature = feature;
 			this.parent = parent;
 			this.depth = depth;
 			this.x = x;
 			this.rootIndex = rootIndex;
-			this.suggestedParent = suggestedParent;
+			this.parentSource = parentSource;
+			this.suggestedParent = parentSource == ParentSource.SUGGESTED;
 		}
 	}
 
+	/** Where a feature's parent comes from, strongest first. */
+	public enum ParentSource {
+		/** accepted, stored in the repository ({@link Repository#getFeatureParents}) */
+		ACCEPTED,
+		/** a suggested subfeature (the code, the LLM) */
+		SUGGESTED,
+		/** the root feature, for a feature with no other parent */
+		ROOT,
+		/** the co-occurrence heuristic, without a root feature */
+		HEURISTIC
+	}
+
 	public static List<Placement> compute(Repository repository) {
-		return compute(repository, Map.of());
+		return compute(repository, Map.of(), Map.of(), null);
+	}
+
+	/** As {@link #compute(Repository, Map, Map, String)}, with suggested parents only. */
+	public static List<Placement> compute(Repository repository, Map<String, String> suggestedParents) {
+		return compute(repository, Map.of(), suggestedParents, null);
 	}
 
 	/**
-	 * As {@link #compute(Repository)}, with {@code suggestedParents} (feature name to parent name -
-	 * suggested subfeatures, see {@code FeaturesView#relationSuggestions}) placing a feature under
-	 * its suggested parent instead of the heuristic's: in a Git import every configuration has all
-	 * features so far, and the heuristic put each feature under the one introduced before it - a
-	 * chain. A suggestion naming no known feature, or one that would make a feature its own
-	 * ancestor, is passed over; they are applied in the order the features were introduced.
+	 * As {@link #compute(Repository)}, with given parents (feature name to parent name): first the
+	 * {@code acceptedParents} (stored in the repository), then the {@code suggestedParents}
+	 * (suggested subfeatures, see {@code FeaturesView#relationSuggestions}), and every other feature
+	 * under the feature named {@code root} - BASE, the code base an import starts from - if there is
+	 * one, instead of the heuristic's parent: in a Git import every configuration has all features so
+	 * far, and the heuristic put each feature under the one introduced before it - a chain. A parent
+	 * naming no known feature, or one that would make a feature its own ancestor, is passed over;
+	 * they are applied in the order the features were introduced. The root has no parent.
 	 */
-	public static List<Placement> compute(Repository repository, Map<String, String> suggestedParents) {
+	public static List<Placement> compute(Repository repository, Map<String, String> acceptedParents, Map<String, String> suggestedParents, String root) {
 		Collection<? extends Feature> features = repository.getFeatures();
 
 		Map<Feature, Integer> introOrder = computeIntroOrder(repository, features);
@@ -140,18 +162,42 @@ public final class FeatureModelTree {
 		Map<String, Feature> byName = new HashMap<>();
 		for (Feature feature : features)
 			byName.put(feature.getName(), feature);
-		java.util.Set<Feature> suggested = new java.util.HashSet<>();
-		for (Feature feature : byIntro) {
-			Feature parent = byName.get(suggestedParents.get(feature.getName()));
-			if (parent == null || parent.equals(feature) || isAncestor(feature, parent, parentOf))
-				continue;
-			Feature old = parentOf.put(feature, parent);
-			if (old != null)
-				childrenOf.get(old).remove(feature);
-			else
-				roots.remove(feature);
-			childrenOf.computeIfAbsent(parent, k -> new ArrayList<>()).add(feature);
-			suggested.add(feature);
+		Map<Feature, ParentSource> sources = new HashMap<>();
+		Feature rootFeature = root == null ? null : byName.get(root);
+		if (rootFeature != null) {
+			// the root has none; every other feature gets one of the given parents, or the root
+			for (Feature feature : byIntro) {
+				Feature old = parentOf.remove(feature);
+				if (old != null)
+					childrenOf.get(old).remove(feature);
+				else
+					roots.remove(feature);
+			}
+			roots.add(rootFeature);
+		}
+		for (Map.Entry<ParentSource, Map<String, String>> given : List.of(Map.entry(ParentSource.ACCEPTED, acceptedParents), Map.entry(ParentSource.SUGGESTED, suggestedParents))) {
+			for (Feature feature : byIntro) {
+				Feature parent = byName.get(given.getValue().get(feature.getName()));
+				if (parent == null || parent.equals(feature) || feature.equals(rootFeature) || sources.containsKey(feature)
+						|| isAncestor(feature, parent, parentOf))
+					continue;
+				Feature old = parentOf.put(feature, parent);
+				if (old != null)
+					childrenOf.get(old).remove(feature);
+				else
+					roots.remove(feature);
+				childrenOf.computeIfAbsent(parent, k -> new ArrayList<>()).add(feature);
+				sources.put(feature, given.getKey());
+			}
+		}
+		if (rootFeature != null) {
+			for (Feature feature : byIntro) {
+				if (feature.equals(rootFeature) || parentOf.containsKey(feature))
+					continue;
+				parentOf.put(feature, rootFeature);
+				childrenOf.computeIfAbsent(rootFeature, k -> new ArrayList<>()).add(feature);
+				sources.put(feature, ParentSource.ROOT);
+			}
 		}
 		roots.sort(Comparator.comparingInt(introOrder::get));
 
@@ -168,7 +214,7 @@ public final class FeatureModelTree {
 		for (Feature feature : features) {
 			placements.add(new Placement(feature, parentOf.get(feature),
 					depthOf.getOrDefault(feature, 0), xPos.getOrDefault(feature, 0.0),
-					rootIndexOf.getOrDefault(feature, 0), suggested.contains(feature)));
+					rootIndexOf.getOrDefault(feature, 0), parentOf.get(feature) == null ? null : sources.getOrDefault(feature, ParentSource.HEURISTIC)));
 		}
 		return placements;
 	}

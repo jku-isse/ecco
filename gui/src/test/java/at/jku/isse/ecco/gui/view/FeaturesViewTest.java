@@ -291,6 +291,44 @@ public class FeaturesViewTest {
         }
     }
 
+    /**
+     * Accepted parents come first, rejected suggestions are not used, and a feature with neither an
+     * accepted nor a suggested parent hangs under BASE - each edge in its own colour; the REQUIRES an
+     * accepted parent means is its tree edge, not a second one.
+     */
+    @Test
+    @Timeout(60)
+    public void acceptedParentsFirstRejectedOnesNotAndTheRestUnderBase(@TempDir Path tmp) throws Exception {
+        String location = System.getProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY);
+        Path log = tmp.resolve("suggestions.jsonl");
+        System.setProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v0"), "BASE", Map.of("base.txt", "base\n"));
+            commit(service, tmp.resolve("v1"), "BASE, A", Map.of("a.txt", "a\n"));
+            commit(service, tmp.resolve("v2"), "BASE, A, B", Map.of("b.txt", "b\n"));
+            commit(service, tmp.resolve("v3"), "BASE, A, B, C", Map.of("c.txt", "c\n"));
+            String repo = service.getRepositoryDir().toString().replace("\\", "\\\\");
+            java.nio.file.Files.write(log, List.of(
+                    entry(repo, "BASE", "BASE, A", "{\"A\":\"BASE\"}"),
+                    entry(repo, "BASE, A", "BASE, A, B", "{\"B\":\"A\"}"),
+                    entry(repo, "BASE, A, B", "BASE, A, B, C", "{\"C\":\"A\"}")));
+            service.acceptFeatureParents(Map.of("C", "B"));
+            service.rejectFeatureParents(List.of(Map.entry("B", "A")));
+
+            FeaturesView view = loaded(service);
+
+            waitUntil("the hierarchy", () -> edges(view, "accepted_parent").equals(Set.of("B->C")));
+            assertEquals(Set.of("BASE->A"), onFx(() -> edges(view, "suggested_subfeature")), "C's suggestion is overruled, B's rejected");
+            assertEquals(Set.of("BASE->B"), onFx(() -> edges(view, "tree")), "no other parent: under BASE");
+            assertEquals(Set.of(), onFx(() -> edges(view, "requires")), "REQUIRES C -> B is C's tree edge");
+        } finally {
+            if (location == null)
+                System.clearProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY);
+            else
+                System.setProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY, location);
+        }
+    }
+
     /** A log line of an imported commit with the parents the LLM named. */
     private static String entry(String eccoRepository, String before, String committed, String parents) {
         return "{\"eccoRepository\":\"" + eccoRepository + "\",\"gitRepository\":\"/g\",\"before\":\"" + before + "\",\"committed\":\"" + committed

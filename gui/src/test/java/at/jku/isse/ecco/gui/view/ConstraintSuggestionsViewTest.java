@@ -266,6 +266,61 @@ public class ConstraintSuggestionsViewTest {
         }
     }
 
+    /**
+     * A suggested subfeature is a pending row of its own - instead of the REQUIRES it means - and can be
+     * accepted (as the parent, with that REQUIRES), moved back and rejected, stored in the repository;
+     * it shaped the tree with no way to say no.
+     */
+    @Test
+    @Timeout(60)
+    public void aSuggestedSubfeatureIsReviewedLikeTheConstraints(@TempDir Path tmp) throws Exception {
+        String location = System.getProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY);
+        Path log = tmp.resolve("suggestions.jsonl");
+        System.setProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
+        try (EccoService service = minedRepository(tmp)) {
+            // the LLM named A as B's parent when B was new
+            java.nio.file.Files.writeString(log, "{\"eccoRepository\":\"" + service.getRepositoryDir().toString().replace("\\", "\\\\")
+                    + "\",\"gitRepository\":\"/g\",\"before\":\"Base, A\",\"committed\":\"Base, A, B\",\"outcome\":\"auto\",\"parents\":{\"B\":\"A\"},\"positions\":{}}\n");
+            String subfeature = ConstraintSuggestionsView.parentSignature("B", "A");
+            assertEquals("SUBFEATURE B of A", ConstraintSuggestionsView.describe(subfeature));
+            CountingMinimizationResults minimization = new CountingMinimizationResults(service);
+            ConstraintSuggestionsView view = show(service, minimization);
+            onFx(() -> minWitness(view).getValueFactory().setValue(3));
+            waitUntil("the subfeature", () -> pending(view).contains(subfeature));
+            assertFalse(onFx(() -> pending(view)).contains(B_REQUIRES_A), "accepting the subfeature accepts it");
+
+            onFx(() -> {
+                selectPending(view, subfeature);
+                button(view, "Accept").fire();
+            });
+            waitUntil("accepted", () -> accepted(view).contains(subfeature));
+            assertEquals(Map.of("B", "A"), service.getRepository().getFeatureParents());
+            assertEquals(Set.of(B_REQUIRES_A), ids(service.getRepository().getConstraints()));
+            assertEquals(1, minimization.runs.get());
+            assertEquals("not yet trusted: needs 4 witnesses, has 3", onFx(() -> trust(view).get("SUBFEATURE B of A")));
+
+            onFx(() -> {
+                select(view, ConstraintSuggestionsView.Status.ACCEPTED, subfeature);
+                button(view, "Move back to pending").fire();
+            });
+            waitUntil("pending again", () -> pending(view).contains(subfeature) && !accepted(view).contains(subfeature));
+            assertEquals(Map.of(), service.getRepository().getFeatureParents());
+            assertEquals(Set.of(), ids(service.getRepository().getConstraints()), "its REQUIRES went with it");
+
+            onFx(() -> {
+                selectPending(view, subfeature);
+                button(view, "Reject").fire();
+            });
+            waitUntil("rejected", () -> rejected(view).equals(List.of(subfeature)) && !pending(view).contains(subfeature));
+            assertEquals(Map.of("B", Set.of("A")), service.getRepository().getRejectedFeatureParents());
+        } finally {
+            if (location == null)
+                System.clearProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY);
+            else
+                System.setProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY, location);
+        }
+    }
+
     // --- helpers -------------------------------------------------------------------------------------
 
     /** Runs nothing, counts the runs the view asks for. */

@@ -243,4 +243,32 @@ public class FeatureModelTreeTest {
 			assertEquals(Set.of("notes", "articulation", "lyrics"), fromSuggestions);
 		}
 	}
+
+	/**
+	 * Accepted parents come before suggested ones, and with a root feature every other feature hangs
+	 * under it - not under the feature introduced before it; the root has no parent.
+	 */
+	@Test
+	@Timeout(30)
+	public void acceptedBeforeSuggestedAndTheRestUnderTheRoot() throws IOException {
+		Path repoDir = Files.createTempDirectory("feature-model-tree-test").resolve(".ecco");
+		try (EccoService service = new EccoService()) {
+			service.setRepositoryDir(repoDir);
+			service.init();
+			for (int i = 0; i < VARIANT_DIRS.size(); i++) {
+				service.setBaseDir(EXAMPLES_DIR.resolve(VARIANT_DIRS.get(i)));
+				service.commit(VARIANT_DIRS.get(i), CONFIGURATIONS.get(i));
+			}
+
+			Map<String, FeatureModelTree.Placement> byName = FeatureModelTree.compute(service.getRepository(),
+							Map.of("lyrics", "notes", "setup", "slurs"), Map.of("lyrics", "articulation", "slurs", "notes"), "setup").stream()
+					.collect(Collectors.toMap(p -> p.feature.getName(), p -> p));
+
+			assertNull(byName.get("setup").parent, "the root, though a parent was given for it");
+			assertEquals(List.of("notes", "ACCEPTED"), List.of(byName.get("lyrics").parent.getName(), byName.get("lyrics").parentSource.name()));
+			assertEquals(List.of("notes", "SUGGESTED"), List.of(byName.get("slurs").parent.getName(), byName.get("slurs").parentSource.name()));
+			for (String feature : List.of("notes", "articulation", "dynamics"))
+				assertEquals(List.of("setup", "ROOT"), List.of(byName.get(feature).parent.getName(), byName.get(feature).parentSource.name()), feature);
+		}
+	}
 }

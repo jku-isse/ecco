@@ -217,22 +217,16 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
             TableRow<ReviewRow> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && !row.isEmpty() && row.getItem().status() == Status.PENDING) {
-                    acceptSelected(List.of(row.getItem().suggestion()));
+                    acceptRows(List.of(row.getItem()));
                 }
             });
             return row;
         });
         table.setPlaceholder(new Label("None"));
 
-        acceptButton.setOnAction(e -> acceptSelected(selected().stream().map(ReviewRow::suggestion).toList()));
-        rejectButton.setOnAction(e -> rejectSelected(selected().stream().map(ReviewRow::suggestion).toList()));
-        moveBackButton.setOnAction(e -> {
-            List<String> signatures = selected().stream().map(ReviewRow::signature).toList();
-            if (this.status == Status.ACCEPTED)
-                undoAccepted(signatures);
-            else
-                undoRejected(signatures);
-        });
+        acceptButton.setOnAction(e -> acceptRows(selected()));
+        rejectButton.setOnAction(e -> rejectRows(selected()));
+        moveBackButton.setOnAction(e -> moveBackRows(selected()));
         explanation.setWrapText(true);
         for (Button button : List.of(acceptButton, rejectButton, moveBackButton))
             button.setMinWidth(Region.USE_PREF_SIZE);
@@ -280,8 +274,26 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
 
     /** "REQUIRES B -> A", as constraints read everywhere ({@code Constraint.Kind#describe}). */
     static String describe(String signature) {
+        String[] parent = parentOf(signature);
+        if (parent != null)
+            return "SUBFEATURE " + parent[0] + " of " + parent[1];
         ConstraintSuggestionPreferences.AcceptedConstraint parsed = ConstraintSuggestionPreferences.parseSignature(signature);
         return parsed == null ? signature : parsed.kind.describe(parsed.a, parsed.b);
+    }
+
+    private static final String PARENT_KIND = "SUBFEATURE";
+
+    /** The signature of a parent row: "SUBFEATURE|feature|parent", encoded as the constraints' ({@link Constraint#buildId}). */
+    static String parentSignature(String feature, String parent) {
+        return Constraint.buildId(PARENT_KIND, feature, parent);
+    }
+
+    /** {feature, parent} of a parent row's signature, null for a constraint's. Package-visible for testing. */
+    static String[] parentOf(String signature) {
+        String[] parts = signature.split("\\|", 3);
+        if (parts.length != 3 || !parts[0].equals(PARENT_KIND))
+            return null;
+        return new String[]{Constraint.decodeIdPart(parts[1]), Constraint.decodeIdPart(parts[2])};
     }
 
     /**
@@ -301,6 +313,71 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                 + (suggestion.isHard() ? "No configuration violates it." : suggestion.counterExamples.size() + " configuration(s) violate it (a near miss).")
                 + "\nConfidence " + String.format("%.3f", suggestion.confidence)
                 + ", support " + String.format("%.3f", suggestion.support) + " (the share of all configurations it concerns).";
+    }
+
+    /** Accepts the rows: constraints as constraints, subfeatures as parents (each with its REQUIRES). */
+    void acceptRows(List<ReviewRow> rows) {
+        Map<String, String> parents = new java.util.LinkedHashMap<>();
+        for (ReviewRow row : rows) {
+            String[] parent = parentOf(row.signature());
+            if (parent != null)
+                parents.put(parent[0], parent[1]);
+        }
+        acceptSelected(rows.stream().filter(row -> parentOf(row.signature()) == null).map(ReviewRow::suggestion).toList());
+        if (!parents.isEmpty()) {
+            try {
+                service.acceptFeatureParents(parents);
+            } catch (at.jku.isse.ecco.EccoException e) {
+                this.refused(e.getMessage());
+                return;
+            }
+            minimizationResults.run();
+        }
+    }
+
+    /** Says why a decision was refused (a parent that would close a cycle). Package-visible for testing. */
+    void refused(String why) {
+        Alert alert = new Alert(Alert.AlertType.WARNING, why);
+        alert.setHeaderText("Not accepted");
+        if (this.getScene() != null) alert.initOwner(this.getScene().getWindow());
+        alert.showAndWait();
+    }
+
+    void rejectRows(List<ReviewRow> rows) {
+        List<Map.Entry<String, String>> parents = new ArrayList<>();
+        for (ReviewRow row : rows) {
+            String[] parent = parentOf(row.signature());
+            if (parent != null)
+                parents.add(Map.entry(parent[0], parent[1]));
+        }
+        rejectSelected(rows.stream().filter(row -> parentOf(row.signature()) == null).map(ReviewRow::suggestion).toList());
+        if (!parents.isEmpty()) {
+            service.rejectFeatureParents(parents);
+            minimizationResults.run();
+        }
+    }
+
+    void moveBackRows(List<ReviewRow> rows) {
+        List<Map.Entry<String, String>> parents = new ArrayList<>();
+        List<String> signatures = new ArrayList<>();
+        for (ReviewRow row : rows) {
+            String[] parent = parentOf(row.signature());
+            if (parent != null)
+                parents.add(Map.entry(parent[0], parent[1]));
+            else
+                signatures.add(row.signature());
+        }
+        if (this.status == Status.ACCEPTED) {
+            undoAccepted(signatures);
+            if (!parents.isEmpty()) {
+                service.unacceptFeatureParents(parents.stream().map(Map.Entry::getKey).toList());
+                minimizationResults.run();
+            }
+        } else {
+            undoRejected(signatures);
+            if (!parents.isEmpty())
+                service.unrejectFeatureParents(parents);
+        }
     }
 
     /**
@@ -409,7 +486,36 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                 // backed by the code first
                 pending.sort(java.util.Comparator.comparing((ConstraintMiner.Suggestion p) -> codeEvidence(codeRelations, p).isEmpty()));
 
-                List<ReviewRow> all = new ArrayList<>();
+                // the suggested subfeatures, reviewable like the constraints - they placed features in
+                // the tree with no way to say no; accepted and rejected ones are stored in the repository
+                Map<String, String> acceptedParents = ConstraintSuggestionsView.this.service.getRepository().getFeatureParents();
+                Map<String, Set<String>> rejectedParents = ConstraintSuggestionsView.this.service.getRepository().getRejectedFeatureParents();
+                List<ReviewRow> parentRows = new ArrayList<>();
+                Set<String> coveredRequires = new java.util.HashSet<>();
+                for (at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion relation : codeRelations.values()) {
+                    if (relation.relation() != at.jku.isse.ecco.service.llm.ImportedFeatureTraces.Relation.SUBFEATURE
+                            || relation.other().equals(acceptedParents.get(relation.feature()))
+                            || rejectedParents.getOrDefault(relation.feature(), Set.of()).contains(relation.other()))
+                        continue;
+                    String requires = Constraint.buildId(Constraint.Kind.REQUIRES.name(), relation.feature(), relation.other());
+                    coveredRequires.add(requires);
+                    parentRows.add(new ReviewRow(parentSignature(relation.feature(), relation.other()), Status.PENDING, lenientBySignature.get(requires), null));
+                }
+                parentRows.sort(java.util.Comparator.comparing(ReviewRow::signature));
+                // the REQUIRES a pending subfeature means: accepting the subfeature accepts it
+                pending.removeIf(p -> coveredRequires.contains(ConstraintSuggestionPreferences.signatureOf(p)));
+                acceptedParents.forEach((feature, parent) -> {
+                    String requires = Constraint.buildId(Constraint.Kind.REQUIRES.name(), feature, parent);
+                    ConstraintMiner.Suggestion current = lenientBySignature.get(requires);
+                    String trust = trusted.contains(requires) ? "trusted"
+                            : current == null ? "contradicted: a commit has " + feature + " without " + parent
+                            : "not yet trusted: needs " + EccoService.ACCEPTED_CONSTRAINT_MIN_WITNESS + " witnesses, has " + current.witness;
+                    parentRows.add(new ReviewRow(parentSignature(feature, parent), Status.ACCEPTED, current, trust));
+                });
+                rejectedParents.forEach((feature, parents) -> parents.forEach(parent -> parentRows.add(new ReviewRow(parentSignature(feature, parent), Status.REJECTED,
+                        lenientBySignature.get(Constraint.buildId(Constraint.Kind.REQUIRES.name(), feature, parent)), null))));
+
+                List<ReviewRow> all = new ArrayList<>(parentRows);
                 for (ConstraintMiner.Suggestion suggestion : pending)
                     all.add(new ReviewRow(ConstraintSuggestionPreferences.signatureOf(suggestion), Status.PENDING, suggestion, null));
                 for (String signature : accepted.stream().sorted().toList()) {

@@ -16,6 +16,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.ser.core.SerCommit;
 import at.jku.isse.ecco.storage.ser.core.SerConstraint;
@@ -48,6 +49,12 @@ public final class SerRepository implements Repository, Repository.Op {
 	// rejected constraint suggestions - null on a repository written before they were stored here
 	// (they were per-machine preferences then); older builds ignore the field
 	private Map<String, SerConstraint> rejectedConstraints;
+	// accepted parents in the feature model, feature name to parent name, and the rejected ones - null
+	// on a repository written before they were stored (serialVersionUID stays, as for the fields above:
+	// an older build reading a newer repository ignores them). A later field (e.g. or/alternative
+	// groups) can be added the same way.
+	private Map<String, String> featureParents;
+	private Map<String, Set<String>> rejectedFeatureParents;
 	// only the association IDs are actually serialized as part of the "core" database (see the
 	// fields below) - each association's own (large) content lives in its own file, written only
 	// when dirty. See SerTransactionStrategy for the read/write side of this split.
@@ -508,6 +515,49 @@ public final class SerRepository implements Repository, Repository.Op {
 	@Override
 	public void removeRejectedConstraint(Constraint constraint) {
 		this.rejectedConstraints().remove(constraint.getId());
+	}
+
+	@Override
+	public Map<String, String> getFeatureParents() {
+		return this.featureParents == null ? Map.of() : Collections.unmodifiableMap(this.featureParents);
+	}
+
+	@Override
+	public Map<String, Set<String>> getRejectedFeatureParents() {
+		if (this.rejectedFeatureParents == null)
+			return Map.of();
+		Map<String, Set<String>> copy = new LinkedHashMap<>();
+		this.rejectedFeatureParents.forEach((feature, parents) -> copy.put(feature, Set.copyOf(parents)));
+		return Collections.unmodifiableMap(copy);
+	}
+
+	@Override
+	public void setFeatureParent(String feature, String parent) {
+		if (this.featureParents == null)
+			this.featureParents = new LinkedHashMap<>();
+		if (parent == null) {
+			this.featureParents.remove(feature);
+			return;
+		}
+		if (Repository.makesCycle(this.featureParents, feature, parent))
+			throw new EccoException("Making " + parent + " the parent of " + feature + " would make " + feature + " its own ancestor.");
+		this.featureParents.put(feature, parent);
+	}
+
+	@Override
+	public void addRejectedFeatureParent(String feature, String parent) {
+		if (this.rejectedFeatureParents == null)
+			this.rejectedFeatureParents = new LinkedHashMap<>();
+		this.rejectedFeatureParents.computeIfAbsent(feature, f -> new LinkedHashSet<>()).add(parent);
+	}
+
+	@Override
+	public void removeRejectedFeatureParent(String feature, String parent) {
+		if (this.rejectedFeatureParents == null)
+			return;
+		Set<String> parents = this.rejectedFeatureParents.get(feature);
+		if (parents != null && parents.remove(parent) && parents.isEmpty())
+			this.rejectedFeatureParents.remove(feature);
 	}
 
 	@Override

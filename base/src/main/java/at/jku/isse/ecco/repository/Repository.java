@@ -61,6 +61,28 @@ public interface Repository extends Persistable {
 	 */
 	Collection<? extends Constraint> getRejectedConstraints();
 
+	/**
+	 * Accepted parents in the feature model, feature name to its parent's name: one parent each, no
+	 * cycles. Not a {@link Constraint}: a parent's only logical content - the feature requires its
+	 * parent - is accepted with it as a REQUIRES; which of the features it requires is its parent is
+	 * the model's structure, which configurations cannot decide (She et al., "Reverse engineering
+	 * feature models", ICSE 2011). Stored like the constraints, so it travels with fork/pull/push.
+	 * Empty on a repository written before parents were stored.
+	 */
+	Map<String, String> getFeatureParents();
+
+	/** Rejected parent suggestions: feature name to the parents rejected for it. */
+	Map<String, Set<String>> getRejectedFeatureParents();
+
+	/** Whether making [parent] the parent of [feature] closes a cycle in [parents]: [parent] is [feature] or below it. */
+	static boolean makesCycle(Map<String, String> parents, String feature, String parent) {
+		Set<String> seen = new HashSet<>();
+		for (String f = parent; f != null && seen.add(f); f = parents.get(f))
+			if (f.equals(feature))
+				return true;
+		return false;
+	}
+
 	ArrayList<Variant> getVariants();
 
 	Variant getVariant(Configuration configuration);
@@ -180,6 +202,13 @@ public interface Repository extends Persistable {
 		 * Removes a rejection (e.g. GUI "move back to pending"). No-op if not present.
 		 */
 		void removeRejectedConstraint(Constraint constraint);
+
+		/** Makes [parent] the parent of [feature], or - null - takes its parent away. Checks no cycle: see {@link Repository#makesCycle}. */
+		void setFeatureParent(String feature, String parent);
+
+		void addRejectedFeatureParent(String feature, String parent);
+
+		void removeRejectedFeatureParent(String feature, String parent);
 
 		void addVariant(Variant variant);
 
@@ -898,6 +927,9 @@ public interface Repository extends Persistable {
 			for (Constraint constraint : this.getRejectedConstraints()) {
 				newRepository.addRejectedConstraint(constraint.getKind(), constraint.getFeatureA(), constraint.getFeatureB());
 			}
+			// and the parents, accepted and rejected - feature names, as the constraints
+			this.getFeatureParents().forEach(newRepository::setFeatureParent);
+			this.getRejectedFeatureParents().forEach((feature, parents) -> parents.forEach(parent -> newRepository.addRejectedFeatureParent(feature, parent)));
 
 			// for every association in this repository: trim condition, use it to check if matching association already exists, if not create it, add observations based on trimmed condition, copy artifact tree and trim order graphs. (basically current merge implementation)
 			Map<Set<ModuleRevision>, Association.Op> andConditionAssociationMap = new HashMap<>();
@@ -1106,6 +1138,18 @@ public interface Repository extends Persistable {
 					this.addRejectedConstraint(otherRejected.getKind(), otherRejected.getFeatureA(), otherRejected.getFeatureB());
 				}
 			}
+			// parents likewise: a feature this repository gave a parent keeps it, a parent it rejected
+			// is not taken - nor one that would close a cycle with its own
+			otherRepository.getFeatureParents().forEach((feature, parent) -> {
+				if (!this.getFeatureParents().containsKey(feature)
+						&& !this.getRejectedFeatureParents().getOrDefault(feature, Set.of()).contains(parent)
+						&& !Repository.makesCycle(this.getFeatureParents(), feature, parent))
+					this.setFeatureParent(feature, parent);
+			});
+			otherRepository.getRejectedFeatureParents().forEach((feature, parents) -> parents.forEach(parent -> {
+				if (!parent.equals(this.getFeatureParents().get(feature)))
+					this.addRejectedFeatureParent(feature, parent);
+			}));
 
 			// extract every association. treat it as if it was an input product. only that there is no configuration.
 

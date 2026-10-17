@@ -1645,6 +1645,26 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.constraintService.unrejectConstraints(constraints);
     }
 
+    /** Accepts parents in the feature model, each with its REQUIRES. See {@link ConstraintService#acceptFeatureParents}. */
+    public synchronized void acceptFeatureParents(Map<String, String> parents) {
+        this.constraintService.acceptFeatureParents(parents);
+    }
+
+    /** See {@link ConstraintService#rejectFeatureParents}. */
+    public synchronized void rejectFeatureParents(List<Map.Entry<String, String>> parents) {
+        this.constraintService.rejectFeatureParents(parents);
+    }
+
+    /** See {@link ConstraintService#unacceptFeatureParents}. */
+    public synchronized void unacceptFeatureParents(Collection<String> features) {
+        this.constraintService.unacceptFeatureParents(features);
+    }
+
+    /** See {@link ConstraintService#unrejectFeatureParents}. */
+    public synchronized void unrejectFeatureParents(List<Map.Entry<String, String>> parents) {
+        this.constraintService.unrejectFeatureParents(parents);
+    }
+
     /**
      * See {@link ConstraintService#moveLocalRejectionsIntoRepository}.
      */
