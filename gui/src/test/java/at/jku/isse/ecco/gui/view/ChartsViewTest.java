@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * What the Charts tab decides: the charts load when the tab is shown (nothing is computed while it
  * is hidden) and again after every change of the repository, each one from the repository
  * (artifacts per association, leaving out empty ones, and revisions per feature, as bars largest
- * first; artifacts per depth; modules per order raw and after absorption), and a failing load is shown.
+ * first; artifacts per depth; modules per order raw and after absorption - computed only while its pane is open), and a failing load is shown.
  */
 public class ChartsViewTest {
 
@@ -134,7 +134,10 @@ public class ChartsViewTest {
     public void refreshShowsTheModulesPerOrderRawAndAbsorbed(@TempDir Path tmp) throws Exception {
         try (EccoService service = sample(tmp)) {
             ChartsView view = refreshed(service);
+            assertTrue(onFx(() -> orderSeries(view, "Raw").getData().isEmpty()), "not computed while folded away");
 
+            onFx(() -> advancedPane(view).setExpanded(true));
+            waitUntil("computed when opened", () -> !orderSeries(view, "Raw").getData().isEmpty());
             Map<String, Integer> raw = new HashMap<>();
             for (Association association : service.getRepository().getAssociations())
                 for (Module module : association.computeCondition().getModules().keySet())
@@ -250,6 +253,10 @@ public class ChartsViewTest {
     @SuppressWarnings("unchecked")
     private static XYChart.Series<Number, Number> depthSeries(ChartsView view) {
         return ((LineChart<Number, Number>) chart(view, "Artifacts per Depth")).getData().get(0);
+    }
+
+    private static TitledPane advancedPane(ChartsView view) {
+        return (TitledPane) find(view, n -> n instanceof TitledPane p && "Advanced: Modules per Order (raw vs. absorbed)".equals(p.getText()));
     }
 
     @SuppressWarnings("unchecked")

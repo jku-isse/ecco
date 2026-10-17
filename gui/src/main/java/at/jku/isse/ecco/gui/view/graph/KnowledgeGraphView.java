@@ -909,10 +909,40 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		return null;
 	}
 
-	/** Builds a fresh snapshot and queues it for rendering; see {@code ArtifactGraphView#refreshGraph()}. */
+	/**
+	 * Builds a fresh snapshot in the background and queues it for rendering - built on the FX thread,
+	 * it froze the window (seconds for tinycc) whenever the tab was shown or a limit changed. A
+	 * snapshot overtaken by a newer one (another change, or a commit) is dropped.
+	 */
 	private void refreshGraph() {
-		this.refreshGraph(this.buildSnapshot());
+		if (this.viewer == null || this.view == null) {
+			return;
+		}
+		long generation = this.snapshotGeneration.incrementAndGet();
+		this.setToolBarsDisabled(true);
+		Thread builder = new Thread(() -> {
+			KnowledgeGraphLayout.Snapshot snapshot;
+			try {
+				snapshot = this.buildSnapshot();
+			} catch (RuntimeException e) {
+				Platform.runLater(() -> {
+					this.setToolBarsDisabled(false);
+					if (this.service.isInitialized()) // closed meanwhile: nothing to show
+						new ExceptionAlert(e).show();
+				});
+				return;
+			}
+			Platform.runLater(() -> {
+				if (generation == this.snapshotGeneration.get())
+					this.refreshGraph(snapshot);
+			});
+		}, "Knowledge Graph snapshot");
+		builder.setDaemon(true);
+		builder.start();
 	}
+
+	/** Counts {@link #refreshGraph()} calls and commits, so a slower, older snapshot is not shown over a newer one. */
+	private final java.util.concurrent.atomic.AtomicLong snapshotGeneration = new java.util.concurrent.atomic.AtomicLong();
 
 	private void refreshGraph(KnowledgeGraphLayout.Snapshot snapshot) {
 		if (this.viewer == null || this.view == null) {
@@ -1266,6 +1296,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 				Platform.runLater(() -> this.setDisable(false));
 				return;
 			}
+			this.snapshotGeneration.incrementAndGet();
 			KnowledgeGraphLayout.Snapshot snapshot = this.buildSnapshot();
 			Platform.runLater(() -> {
 				if (this.viewer == null || this.view == null) {

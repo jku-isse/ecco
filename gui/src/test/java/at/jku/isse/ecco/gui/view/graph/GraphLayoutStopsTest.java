@@ -55,6 +55,41 @@ public class GraphLayoutStopsTest {
         }
     }
 
+    /**
+     * However large the repository, the Artifact Graph draws about {@link ArtifactGraphView#maxNodes}
+     * nodes, the rest folded into "not shown" ones: the child-count and depth limits alone made 11,500
+     * for tinycc, which the layout moved at over a second a step.
+     */
+    @Test
+    @Timeout(60)
+    public void theArtifactGraphDrawsAtMostItsNodeBudget(@TempDir Path tmp) throws Exception {
+        int before = ArtifactGraphView.maxNodes;
+        ArtifactGraphView.maxNodes = 50;
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            Map<String, String> files = new java.util.HashMap<>();
+            for (int f = 0; f < 10; f++)
+                files.put("f" + f + ".txt", java.util.stream.IntStream.range(0, 30).mapToObj(l -> "line " + l + "\n").collect(java.util.stream.Collectors.joining()));
+            commit(service, tmp.resolve("v1"), "A.1", files);
+            ArtifactGraphView view = onFx(() -> new ArtifactGraphView(service));
+            onFx(() -> view.setTabVisible(true));
+            waitUntil("drawn", () -> graph(view).getNodeCount() > 0);
+
+            org.graphstream.graph.Graph graph = graph(view);
+            // the budget, plus one folded node for each subtree reached after it ran out
+            org.junit.jupiter.api.Assertions.assertTrue(graph.getNodeCount() <= 2 * 50, "nodes: " + graph.getNodeCount());
+            org.junit.jupiter.api.Assertions.assertTrue(graph.nodes().anyMatch(n -> String.valueOf(n.getAttribute("label")).contains(" not shown, ")),
+                    "the rest is folded, not dropped");
+        } finally {
+            ArtifactGraphView.maxNodes = before;
+        }
+    }
+
+    private static org.graphstream.graph.Graph graph(ArtifactGraphView view) throws Exception {
+        Field graphField = ArtifactGraphView.class.getDeclaredField("graph");
+        graphField.setAccessible(true);
+        return (org.graphstream.graph.Graph) graphField.get(view);
+    }
+
     private static EccoService sample(Path tmp) throws Exception {
         EccoService service = repository(tmp.resolve("repo"));
         commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a1\na2\n"));

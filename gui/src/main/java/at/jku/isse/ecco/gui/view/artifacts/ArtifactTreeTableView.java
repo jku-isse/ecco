@@ -168,30 +168,60 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 	}
 
 
+	/**
+	 * At most this many rows are opened when a tree is shown - breadth first, so the directories and
+	 * files come first; the rest opens on a click.
+	 */
+	static final int MAX_EXPANDED_ROWS = 2_000;
+
+	/**
+	 * Shows [rootNode], opened breadth first up to {@link #MAX_EXPANDED_ROWS} rows. It was opened all
+	 * through after being attached, each row added on its own: the table walked every opened row again
+	 * for each - quadratic, 100 s for a tinycc commit of 57,000 artifacts, on the FX thread. Opened
+	 * while detached, children added at once, so far only.
+	 */
 	public final void setRootNode(RootNode rootNode) {
 		if (rootNode == null) {
 			this.setRoot(null);
 		} else {
 			TreeItem<NodeWrapper> root = new NodeTreeItem(new NodeWrapper(rootNode));
+			expandBreadthFirst(root, MAX_EXPANDED_ROWS);
 			this.setRoot(root);
-			expandAll(root);
 
 			TableColumns.fitToContent(snNodeCol, root);
 
 		}
 	}
 
-	private void expandAll(TreeItem<NodeWrapper> item) {
-		item.setExpanded(true);
-		for (TreeItem<NodeWrapper> child : item.getChildren()) {
-			expandAll(child);
+	/** Opens [root] and below, breadth first, while the opened rows stay within [budget]. */
+	private static void expandBreadthFirst(TreeItem<NodeWrapper> root, int budget) {
+		java.util.ArrayDeque<TreeItem<NodeWrapper>> queue = new java.util.ArrayDeque<>();
+		queue.add(root);
+		int rows = 1;
+		while (!queue.isEmpty()) {
+			TreeItem<NodeWrapper> item = queue.poll();
+			if (item.isLeaf())
+				continue;
+			int children = item.getChildren().size();
+			if (rows + children > budget)
+				break;
+			item.setExpanded(true);
+			rows += children;
+			queue.addAll(item.getChildren());
 		}
 	}
 
 	private Collection<AssociationInfoImpl> associationInfos = null;
 
+	/** The association infos by association, for each row's colour - every row searched all of them. */
+	private java.util.Map<Association, AssociationInfoImpl> associationInfoByAssociation = new java.util.IdentityHashMap<>();
+
 	public void setAssociationInfo(Collection<AssociationInfoImpl> associationInfos) {
 		this.associationInfos = associationInfos;
+		this.associationInfoByAssociation = new java.util.IdentityHashMap<>();
+		if (associationInfos != null)
+			for (AssociationInfoImpl info : associationInfos)
+				this.associationInfoByAssociation.putIfAbsent(info.getAssociation(), info);
 	}
 
 
@@ -205,8 +235,9 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 				if (node != null && node.getArtifact() != null && node.getArtifact().getContainingNode() != null) {
 					Association nodeAssociation = node.getArtifact().getContainingNode().getContainingAssociation();
 					if (nodeAssociation != null) {
-						Optional<AssociationInfoImpl> opt = ArtifactTreeTableView.this.associationInfos.stream().filter(o -> o.getAssociation() == nodeAssociation).findFirst();
-						opt.ifPresent(associationInfo -> node.colorProperty().bind(associationInfo.colorProperty()));
+						AssociationInfoImpl associationInfo = ArtifactTreeTableView.this.associationInfoByAssociation.get(nodeAssociation);
+						if (associationInfo != null)
+							node.colorProperty().bind(associationInfo.colorProperty());
 					}
 				}
 			}
@@ -217,9 +248,11 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 			if (this.firstTimeChildren) {
 				this.firstTimeChildren = false;
 
-				for (Node child : this.getValue().getChildren()) {
-					super.getChildren().add(new NodeTreeItem(new NodeWrapper(child)));
-				}
+				// at once: one change for the table, not one per child
+				List<TreeItem<NodeWrapper>> children = new ArrayList<>();
+				for (Node child : this.getValue().getChildren())
+					children.add(new NodeTreeItem(new NodeWrapper(child)));
+				super.getChildren().setAll(children);
 			}
 			return super.getChildren();
 		}

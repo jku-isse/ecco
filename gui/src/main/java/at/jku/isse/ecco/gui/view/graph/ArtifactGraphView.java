@@ -381,14 +381,39 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 	}
 
 	/**
-	 * Builds a fresh snapshot of the repository's current associations and queues it for rendering.
-	 * Used by the toolbar's child-count/depth-limit spinners, which trigger directly on the FX
-	 * thread in response to a user edit - only the current values matter there, unlike the
-	 * point-in-time correctness {@link #statusChangedEvent} needs (see {@link #buildSnapshot()}).
+	 * Builds a fresh snapshot in the background and queues it for rendering - built on the FX thread,
+	 * it froze the window (seconds for tinycc) whenever the tab was shown or a limit changed. A
+	 * snapshot overtaken by a newer one (another change, or a commit) is dropped.
 	 */
 	private void refreshGraph() {
-		this.refreshGraph(this.buildSnapshot());
+		if (this.viewer == null || this.view == null) {
+			return;
+		}
+		long generation = this.snapshotGeneration.incrementAndGet();
+		this.toolBar.setDisable(true);
+		Thread builder = new Thread(() -> {
+			GraphSnapshot snapshot;
+			try {
+				snapshot = this.buildSnapshot();
+			} catch (RuntimeException e) {
+				Platform.runLater(() -> {
+					this.toolBar.setDisable(false);
+					if (this.service.isInitialized()) // closed meanwhile: nothing to show
+						new ExceptionAlert(e).show();
+				});
+				return;
+			}
+			Platform.runLater(() -> {
+				if (generation == this.snapshotGeneration.get())
+					this.refreshGraph(snapshot);
+			});
+		}, "Artifact Graph snapshot");
+		builder.setDaemon(true);
+		builder.start();
 	}
+
+	/** Counts {@link #refreshGraph()} calls and commits, so a slower, older snapshot is not shown over a newer one. */
+	private final java.util.concurrent.atomic.AtomicLong snapshotGeneration = new java.util.concurrent.atomic.AtomicLong();
 
 	/**
 	 * Queues an already-built snapshot for rendering on GraphStream's background Swing thread.
@@ -511,6 +536,8 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 	private static final int DEPTH_LIMIT_MAX = 50;
 	private static final int DEFAULT_CHILD_COUNT_LIMIT = 20;
 	private static final int DEFAULT_DEPTH_LIMIT = 10;
+	/** Nodes drawn at most, whatever the limits; beyond it subtrees are folded. Package-visible for testing. */
+	static int maxNodes = 2_000;
 	private static final boolean DEFAULT_SHOW_LABELS = true;
 	private static final int MAX_SIZE = 100;
 	private static final int MIN_SIZE = 30;
@@ -608,7 +635,14 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 
 		List<? extends at.jku.isse.ecco.tree.Node> children = eccoNode.getChildren();
 
-		if (depth >= this.depthLimit) {
+		if (snapshot.nodes.size() >= maxNodes) {
+			// the limits alone still made 11,500 nodes for tinycc, which the layout moved at over a
+			// second a step: what is left is folded into one node per subtree
+			if (nodeId != null && !children.isEmpty()) {
+				int notShown = children.stream().mapToInt(at.jku.isse.ecco.tree.Node::countArtifacts).sum();
+				this.addSummaryNode(nodeId, null, "[+" + children.size() + " not shown, " + notShown + "]", notShown, snapshot);
+			}
+		} else if (depth >= this.depthLimit) {
 			// gone too deep to keep expanding - collapse the entire remaining subtree into one
 			// summary node per association instead of continuing to recurse
 			if (nodeId != null && !children.isEmpty()) {
@@ -725,6 +759,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 				Platform.runLater(() -> this.setDisable(false));
 				return;
 			}
+			this.snapshotGeneration.incrementAndGet();
 			GraphSnapshot snapshot = this.buildSnapshot();
 			Platform.runLater(() -> {
 				if (this.viewer == null || this.view == null) {

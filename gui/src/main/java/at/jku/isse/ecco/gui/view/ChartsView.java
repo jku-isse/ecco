@@ -31,6 +31,7 @@ import javafx.scene.layout.FlowPane;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -51,6 +52,9 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 	private static final double MIN_BAR_CHART_HEIGHT = 200;
 
 	private EccoService service;
+
+	/** "Advanced: Modules per Order" - computed only while it is open. */
+	private TitledPane modulesPerOrderPane;
 
 	/** See {@link at.jku.isse.ecco.gui.view.graph.ArtifactGraphView#tabVisible}: nothing is computed while hidden. */
 	private volatile boolean tabVisible = true;
@@ -149,6 +153,12 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 			// stored module lattice is accumulated redundancy rather than real structural complexity -
 			// see CONSTRAINT_MINING_DESIGN.md's "Surplus-module suppression" section
 			TitledPane modulesPerOrderPane = new TitledPane();
+			this.modulesPerOrderPane = modulesPerOrderPane;
+			// computed only while open: it took most of a refresh (9.5 of 11 s for tinycc), on every change
+			modulesPerOrderPane.expandedProperty().addListener((o, wasOpen, open) -> {
+				if (open && this.service.isInitialized() && this.tabVisible)
+					this.refresh();
+			});
 			modulesPerOrderPane.setAnimated(false);
 			modulesPerOrderPane.setText("Advanced: Modules per Order (raw vs. absorbed)");
 			// how the conditions are stored, not what the repository holds: folded away unless asked for
@@ -183,6 +193,7 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 
 	private void refresh() {
 		long generation = this.refreshGeneration.incrementAndGet();
+		boolean advanced = this.modulesPerOrderPane.isExpanded();
 
 		Task<Void> refreshTask = new Task<>() {
 			@Override
@@ -203,7 +214,7 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 				// much of the raw count is accumulation noise rather than real structural complexity
 				final Map<Integer, Integer> modulesPerOrderMap = new TreeMap<>();
 				final Map<Integer, Integer> modulesPerOrderAbsorbedMap = new TreeMap<>();
-				for (Association association : repository.getAssociations()) {
+				for (Association association : advanced ? repository.getAssociations() : List.<Association>of()) {
 					Condition condition = association.computeCondition();
 					for (Module module : condition.getModules().keySet()) {
 						modulesPerOrderMap.merge(module.getOrder(), 1, Integer::sum);
@@ -218,6 +229,7 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 
 				List<Bar> associationBars = new ArrayList<>();
 				Set<String> shortIds = new HashSet<>();
+				Map<String, Association> byLabel = new HashMap<>();
 				for (Association association : repository.getAssociations()) {
 					int numArtifacts = association.getRootNode().countArtifacts();
 					if (numArtifacts > 0) {
@@ -225,11 +237,15 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 						String id = association.getId();
 						String label = id.length() > TableColumns.SHORT_ID_LENGTH && shortIds.add(id.substring(0, TableColumns.SHORT_ID_LENGTH))
 								? id.substring(0, TableColumns.SHORT_ID_LENGTH) : id;
-						associationBars.add(new Bar(label, numArtifacts, id + "\n" + association.computeCondition().toDisplayString()));
+						associationBars.add(new Bar(label, numArtifacts, id));
+						byLabel.put(label, association);
 					}
 				}
 				int associationCount = associationBars.size();
-				associationBars = largestFirst(associationBars, MAX_ASSOCIATION_BARS);
+				// the conditions of the bars shown only: every association's took 1.3 s for tinycc
+				associationBars = largestFirst(associationBars, MAX_ASSOCIATION_BARS).stream()
+						.map(bar -> new Bar(bar.label(), bar.value(), bar.tooltip() + "\n" + byLabel.get(bar.label()).computeCondition().toDisplayString()))
+						.toList();
 				List<Bar> featureBars = new ArrayList<>();
 				for (Feature feature : repository.getFeatures()) {
 					int numRevisions = feature.getRevisions().size();
@@ -253,6 +269,8 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 						ChartsView.this.artifactsPerDepthSeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
 					}
 
+					if (!advanced)
+						return; // folded away: not computed, the last shown kept
 					final ObservableList<XYChart.Data<String, Number>> maxOrderData = ChartsView.this.modulesPerOrderSeries.getData();
 					maxOrderData.clear();
 					modulesPerOrderMap.forEach((key, value) -> maxOrderData.add(new XYChart.Data<>(Integer.toString(key), value)));

@@ -56,6 +56,39 @@ public class ArtifactTreeTableViewTest {
     }
 
     /**
+     * A large tree is shown at once, opened only so far: up to {@link ArtifactTreeTableView#MAX_EXPANDED_ROWS}
+     * rows, breadth first; the rest opens on a click. Opened all through, each row added one by one
+     * made the table walk every opened row again - a tinycc commit (57,000 artifacts) took 100 s on
+     * the FX thread, Select All in the Artifacts tab about 10 minutes.
+     */
+    @Test
+    @Timeout(120)
+    public void aLargeTreeIsShownAtOnceOpenedOnlySoFar(@TempDir Path tmp) throws Exception {
+        StringBuilder lines = new StringBuilder();
+        for (int i = 0; i < 20_000; i++)
+            lines.append("line ").append(i).append('\n');
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "A.1", java.util.Map.of("big.txt", lines.toString()));
+            Association big = service.getRepository().getAssociations().stream()
+                    .max(java.util.Comparator.comparingInt(a -> a.getRootNode().countArtifacts())).orElseThrow();
+            ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView());
+
+            long start = System.nanoTime();
+            onFx(() -> view.setRootNode(big.getRootNode()));
+            long millis = (System.nanoTime() - start) / 1_000_000;
+
+            assertTrue(millis < 2_000, "shown in " + millis + " ms");
+            int shown = onFx(view::getExpandedItemCount);
+            assertTrue(shown <= ArtifactTreeTableView.MAX_EXPANDED_ROWS + 1, shown + " rows open");
+            // the file's lines are there - one click away
+            TreeItem<ArtifactTreeTableView.NodeWrapper> file = onFx(() -> items(view.getRoot()).stream()
+                    .filter(i -> String.valueOf(i.getValue()).startsWith("big.txt")).findFirst().orElseThrow());
+            onFx(() -> file.setExpanded(true));
+            assertEquals(20_000 + 2, (int) onFx(() -> file.getChildren().size()), "every line, the final newline and the format");
+        }
+    }
+
+    /**
      * The tree's internals are hidden at first - they took three quarters of the width, and the code
      * was cut off; the table menu shows them.
      */

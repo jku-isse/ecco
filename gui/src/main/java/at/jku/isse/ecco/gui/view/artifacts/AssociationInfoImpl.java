@@ -27,17 +27,30 @@ public class AssociationInfoImpl implements AssociationInfo {
 
     private final LinkedList<PropertyChangeListener> listeners;
 
+    /**
+     * The full condition as shown, computed once in the background - the Condition column computed
+     * it on the FX thread for every cell, and for both rows of every comparison when sorted: 7.8 s
+     * for tinycc's 5,262 associations. Null: computed when asked.
+     */
+    private String fullCondition;
+
     public AssociationInfoImpl(Association association) {
         this(association, null);
     }
 
     public AssociationInfoImpl(Association association, String minimizedCondition) {
+        this(association, minimizedCondition, association.getRootNode().countArtifacts(), null);
+    }
+
+    /** With what the background refresh already computed: the artifact count and the full condition as shown. */
+    public AssociationInfoImpl(Association association, String minimizedCondition, int numArtifacts, String fullCondition) {
         this.association = association;
+        this.fullCondition = fullCondition;
         this.listeners = new LinkedList<>();
         this.selected = new SimpleBooleanProperty(false);
         this.selected.addListener((observable, oldValue, newValue) ->
                 onPropertyChanged("selected", oldValue, newValue));
-        this.numArtifacts = new SimpleIntegerProperty(association.getRootNode().countArtifacts());
+        this.numArtifacts = new SimpleIntegerProperty(numArtifacts);
         this.numArtifacts.addListener((observable, oldValue, newValue) ->
                 onPropertyChanged("numArtifacts", oldValue, newValue));
         this.color = new SimpleObjectProperty<>(Color.TRANSPARENT);
@@ -49,6 +62,13 @@ public class AssociationInfoImpl implements AssociationInfo {
     @Override
     public final Association getAssociation() {
         return this.association;
+    }
+
+    /** The full condition as shown - computed once, here if the refresh did not. */
+    public String getFullCondition() {
+        if (this.fullCondition == null)
+            this.fullCondition = this.association.computeCondition().toDisplayString();
+        return this.fullCondition;
     }
 
     @Override

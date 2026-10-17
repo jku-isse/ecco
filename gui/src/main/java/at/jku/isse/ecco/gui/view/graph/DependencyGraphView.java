@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.GraphCameraControls;
@@ -27,6 +28,8 @@ import org.graphstream.ui.view.Viewer;
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 public class DependencyGraphView extends BorderPane implements EccoListener, TabVisibilityAware {
 
@@ -240,9 +243,11 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		// already does (which always rebuilds), not show whatever was there at the last refresh.
 		dg = new DependencyGraph(this.service.getRepository().getAssociations());
 
+		// once per association, not per dependency: an association is in many (2.5 s for tinycc)
+		Map<Association, Condition> conditions = new IdentityHashMap<>();
 		for (DependencyGraph.Dependency dep : dg.getDependencies()) {
-			Condition depFromCondition = dep.getFrom().computeCondition();
-			Condition depToCondition = dep.getTo().computeCondition();
+			Condition depFromCondition = conditions.computeIfAbsent(dep.getFrom(), Association::computeCondition);
+			Condition depToCondition = conditions.computeIfAbsent(dep.getTo(), Association::computeCondition);
 			if (!hideImpliedDependencies || !isImplied(depFromCondition, depToCondition)) {
 				Node from = this.graph.getNode(String.valueOf(dep.getFrom().getId()));
 				if (from == null) {

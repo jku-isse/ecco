@@ -290,9 +290,10 @@ public final class TableColumns {
 		if (value != null) {
 			max = measure(String.valueOf(value));
 		}
-		for (TreeItem<S> child : item.getChildren()) {
-			max = Math.max(max, measureTree(column, child));
-		}
+		// the rows shown: measuring closed ones opened - built - the whole tree
+		if (item.isExpanded())
+			for (TreeItem<S> child : item.getChildren())
+				max = Math.max(max, measureTree(column, child));
 		return max;
 	}
 

@@ -205,7 +205,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             // row with real data as soon as the write actually finishes.
             String rawCondition = ArtifactsView.this.service.isWriteInProgress()
                     ? "…"
-                    : param.getValue().getAssociation().computeCondition().toDisplayString();
+                    : param.getValue().getFullCondition();
             // simplified: the minimized condition where there is one - the full one until then; the
             // column was empty until someone minimized the conditions
             StringProperty minimized = param.getValue().minimizedConditionProperty();
@@ -540,6 +540,9 @@ public class ArtifactsView extends BorderPane implements EccoListener {
     private static final class RefreshResult {
         final List<? extends Association> associations;
         final int maxNumArtifacts;
+        // per association id, computed here in the background: the artifact count and the full condition as shown
+        final Map<String, Integer> numArtifacts = new HashMap<>();
+        final Map<String, String> conditions = new HashMap<>();
         // persisted minimized conditions still valid for the repository as it is now
         final Map<String, String> validMinimized;
 
@@ -584,10 +587,18 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                         .sorted(Comparator.comparing(Association::getId))
                         .toList();
                 int max = 1;
+                Map<String, Integer> counts = new HashMap<>();
+                Map<String, String> conditions = new HashMap<>();
                 for (Association a : associations) {
-                    max = Math.max(max, a.getRootNode().countArtifacts());
+                    int count = a.getRootNode().countArtifacts();
+                    counts.put(a.getId(), count);
+                    conditions.put(a.getId(), a.computeCondition().toDisplayString());
+                    max = Math.max(max, count);
                 }
-                return new RefreshResult(associations, max, ArtifactsView.this.service.validMinimizedConditions());
+                RefreshResult result = new RefreshResult(associations, max, ArtifactsView.this.service.validMinimizedConditions());
+                result.numArtifacts.putAll(counts);
+                result.conditions.putAll(conditions);
+                return result;
             }
         };
         refreshTask.setOnSucceeded(event -> {
@@ -613,7 +624,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 if (minimizedCondition == null) {
                     minimizedCondition = this.minimizationResults.getMinimizedByAssociationId().get(a.getId());
                 }
-                AssociationInfoImpl associationInfo = new AssociationInfoImpl(a, minimizedCondition);
+                AssociationInfoImpl associationInfo = new AssociationInfoImpl(a, minimizedCondition,
+                        result.numArtifacts.getOrDefault(a.getId(), 0), result.conditions.get(a.getId()));
                 // color is only actually assigned once the association is selected (so the
                 // "Highlighted" column and the code viewers stay blank for everything else),
                 // but its slot is fixed now so the color stays the same association's color
