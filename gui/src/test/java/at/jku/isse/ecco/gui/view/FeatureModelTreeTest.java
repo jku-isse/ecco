@@ -215,4 +215,39 @@ public class FeatureModelTreeTest {
 		}
 		throw new IllegalStateException("Could not locate repository root (no settings.gradle found in any ancestor directory).");
 	}
+
+	/** A suggested parent replaces the heuristic's - unless it names no feature or would make a feature its own ancestor. */
+	@Test
+	@Timeout(30)
+	public void suggestedParentsReplaceTheHeuristicsUnlessTheyMakeACycle() throws IOException {
+		Path repoDir = Files.createTempDirectory("feature-model-tree-test").resolve(".ecco");
+		try (EccoService service = new EccoService()) {
+			service.setRepositoryDir(repoDir);
+			service.init();
+			for (int i = 0; i < VARIANT_DIRS.size(); i++) {
+				service.setBaseDir(EXAMPLES_DIR.resolve(VARIANT_DIRS.get(i)));
+				service.commit(VARIANT_DIRS.get(i), CONFIGURATIONS.get(i));
+			}
+
+			Map<String, String> suggested = Map.of(
+					"notes", "setup", "articulation", "setup", "lyrics", "setup",
+					// would put setup below notes, its own descendant
+					"setup", "notes",
+					"slurs", "unknown");
+			Map<String, String> parents = new java.util.HashMap<>();
+			Set<String> fromSuggestions = new java.util.HashSet<>();
+			for (FeatureModelTree.Placement placement : FeatureModelTree.compute(service.getRepository(), suggested)) {
+				parents.put(placement.feature.getName(), placement.parent == null ? null : placement.parent.getName());
+				if (placement.suggestedParent)
+					fromSuggestions.add(placement.feature.getName());
+			}
+
+			assertNull(parents.get("setup"), "no cycle: setup stays the root");
+			assertEquals("setup", parents.get("notes"));
+			assertEquals("setup", parents.get("articulation"));
+			assertEquals("setup", parents.get("lyrics"));
+			assertEquals("lyrics", parents.get("slurs"), "an unknown parent leaves the heuristic's");
+			assertEquals(Set.of("notes", "articulation", "lyrics"), fromSuggestions);
+		}
+	}
 }

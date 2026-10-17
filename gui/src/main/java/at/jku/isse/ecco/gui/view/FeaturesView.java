@@ -127,7 +127,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	 * them in their tooltips - they were a line of text under the legend.
 	 */
 	private final Label suggestedSubfeatureKey = legendKey(Color.web("#3b6fd4"), "suggested subfeature",
-			"The feature's imported commits changed mostly code its parent's commits created, and it has none of its own.");
+			"Placed under the feature its imported commits changed mostly code of (with none of its own), or the LLM named as its parent.");
 	private final Label suggestedRequiresKey = legendKey(Color.web("#7fd8b5"), "suggested requires",
 			"The feature's imported commits changed mostly code the other feature's commits created, but it has code of its own elsewhere.");
 
@@ -730,12 +730,20 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	private FeatureModelSnapshot buildSnapshot() {
 		FeatureModelSnapshot snapshot = new FeatureModelSnapshot();
 		Map<String, String> nodeIdByFeatureName = new HashMap<>();
-		for (FeatureModelTree.Placement placement : FeatureModelTree.compute(this.service.getRepository())) {
+		// suggested subfeatures make the hierarchy: the heuristic alone chains an import's features
+		List<ImportedFeatureTraces.RelationSuggestion> suggestions = relationSuggestions(this.service);
+		Map<String, String> suggestedParents = suggestedParents(suggestions);
+		Set<String> placedUnderSuggestion = new HashSet<>();
+		for (FeatureModelTree.Placement placement : FeatureModelTree.compute(this.service.getRepository(), suggestedParents)) {
 			double x = placement.x * X_SPACING;
 			double y = -placement.depth * Y_SPACING;
 			snapshot.nodes.add(new FeatureNodeSnapshot(placement.feature.getId(), placement.feature.getName(), x, y, placement.rootIndex));
 			if (placement.parent != null) {
-				snapshot.edges.add(new FeatureEdgeSnapshot(placement.parent.getId(), placement.feature.getId(), FeatureEdgeKind.TREE));
+				// a suggested parent's edge in the suggestion's colour: the tree shows what is suggested
+				snapshot.edges.add(new FeatureEdgeSnapshot(placement.parent.getId(), placement.feature.getId(),
+						placement.suggestedParent ? FeatureEdgeKind.SUGGESTED_SUBFEATURE : FeatureEdgeKind.TREE));
+				if (placement.suggestedParent)
+					placedUnderSuggestion.add(placement.feature.getName() + "\0" + placement.parent.getName());
 			}
 			nodeIdByFeatureName.put(placement.feature.getName(), placement.feature.getId());
 		}
@@ -760,18 +768,42 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		// suggested subfeatures and REQUIRES, from where the features' imported commits changed things
 		// (Git import) - only from what the log recorded, the clones are not read on a refresh - and
 		// only those the committed configurations do not contradict
-		for (ImportedFeatureTraces.RelationSuggestion suggestion : relationSuggestions(this.service)) {
+		for (ImportedFeatureTraces.RelationSuggestion suggestion : suggestions) {
 			String otherId = nodeIdByFeatureName.get(suggestion.other());
 			String featureId = nodeIdByFeatureName.get(suggestion.feature());
 			if (otherId == null || featureId == null)
 				continue;
 			snapshot.refinements.add(suggestion);
+			if (placedUnderSuggestion.contains(suggestion.feature() + "\0" + suggestion.other()))
+				continue; // its tree edge already
 			if (suggestion.relation() == ImportedFeatureTraces.Relation.SUBFEATURE)
 				snapshot.edges.add(new FeatureEdgeSnapshot(otherId, featureId, FeatureEdgeKind.SUGGESTED_SUBFEATURE));
 			else
 				snapshot.edges.add(new FeatureEdgeSnapshot(featureId, otherId, FeatureEdgeKind.SUGGESTED_REQUIRES));
 		}
 		return snapshot;
+	}
+
+	/**
+	 * Of the suggested subfeatures, the parent each feature is placed under: one the LLM and the
+	 * code agree on first, then the code's, then the LLM's; of equals the larger share of changes.
+	 * Package-visible for testing.
+	 */
+	static Map<String, String> suggestedParents(List<ImportedFeatureTraces.RelationSuggestion> suggestions) {
+		Map<String, ImportedFeatureTraces.RelationSuggestion> best = new HashMap<>();
+		java.util.Comparator<ImportedFeatureTraces.RelationSuggestion> stronger = java.util.Comparator
+				.comparingInt((ImportedFeatureTraces.RelationSuggestion r) -> switch (r.basis()) {
+					case LLM_AND_CODE -> 2;
+					case CODE -> 1;
+					case LLM -> 0;
+				})
+				.thenComparingDouble(ImportedFeatureTraces.RelationSuggestion::share);
+		for (ImportedFeatureTraces.RelationSuggestion suggestion : suggestions)
+			if (suggestion.relation() == ImportedFeatureTraces.Relation.SUBFEATURE)
+				best.merge(suggestion.feature(), suggestion, (a, b) -> stronger.compare(b, a) > 0 ? b : a);
+		Map<String, String> parents = new HashMap<>();
+		best.forEach((feature, suggestion) -> parents.put(feature, suggestion.other()));
+		return parents;
 	}
 
 	/**

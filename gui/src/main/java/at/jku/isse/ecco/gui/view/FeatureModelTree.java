@@ -69,17 +69,32 @@ public final class FeatureModelTree {
 		public final double x;
 		/** Index into the (chronologically sorted) root list of {@code feature}'s ultimate ancestor - stable across a render for consistent grouping/coloring. */
 		public final int rootIndex;
+		/** Whether {@code parent} is a suggested one (see {@link #compute(Repository, Map)}), not the co-occurrence heuristic's. */
+		public final boolean suggestedParent;
 
-		private Placement(Feature feature, Feature parent, int depth, double x, int rootIndex) {
+		private Placement(Feature feature, Feature parent, int depth, double x, int rootIndex, boolean suggestedParent) {
 			this.feature = feature;
 			this.parent = parent;
 			this.depth = depth;
 			this.x = x;
 			this.rootIndex = rootIndex;
+			this.suggestedParent = suggestedParent;
 		}
 	}
 
 	public static List<Placement> compute(Repository repository) {
+		return compute(repository, Map.of());
+	}
+
+	/**
+	 * As {@link #compute(Repository)}, with {@code suggestedParents} (feature name to parent name -
+	 * suggested subfeatures, see {@code FeaturesView#relationSuggestions}) placing a feature under
+	 * its suggested parent instead of the heuristic's: in a Git import every configuration has all
+	 * features so far, and the heuristic put each feature under the one introduced before it - a
+	 * chain. A suggestion naming no known feature, or one that would make a feature its own
+	 * ancestor, is passed over; they are applied in the order the features were introduced.
+	 */
+	public static List<Placement> compute(Repository repository, Map<String, String> suggestedParents) {
 		Collection<? extends Feature> features = repository.getFeatures();
 
 		Map<Feature, Integer> introOrder = computeIntroOrder(repository, features);
@@ -124,6 +139,23 @@ public final class FeatureModelTree {
 				roots.add(feature);
 			}
 		}
+
+		Map<String, Feature> byName = new HashMap<>();
+		for (Feature feature : features)
+			byName.put(feature.getName(), feature);
+		java.util.Set<Feature> suggested = new java.util.HashSet<>();
+		for (Feature feature : byIntro) {
+			Feature parent = byName.get(suggestedParents.get(feature.getName()));
+			if (parent == null || parent.equals(feature) || isAncestor(feature, parent, parentOf))
+				continue;
+			Feature old = parentOf.put(feature, parent);
+			if (old != null)
+				childrenOf.get(old).remove(feature);
+			else
+				roots.remove(feature);
+			childrenOf.computeIfAbsent(parent, k -> new ArrayList<>()).add(feature);
+			suggested.add(feature);
+		}
 		roots.sort(Comparator.comparingInt(introOrder::get));
 
 		Map<Feature, Double> xPos = new HashMap<>();
@@ -139,9 +171,17 @@ public final class FeatureModelTree {
 		for (Feature feature : features) {
 			placements.add(new Placement(feature, parentOf.get(feature),
 					depthOf.getOrDefault(feature, 0), xPos.getOrDefault(feature, 0.0),
-					rootIndexOf.getOrDefault(feature, 0)));
+					rootIndexOf.getOrDefault(feature, 0), suggested.contains(feature)));
 		}
 		return placements;
+	}
+
+	/** Whether {@code ancestor} is {@code feature} or above it. */
+	private static boolean isAncestor(Feature ancestor, Feature feature, Map<Feature, Feature> parentOf) {
+		for (Feature f = feature; f != null; f = parentOf.get(f))
+			if (f.equals(ancestor))
+				return true;
+		return false;
 	}
 
 	/**

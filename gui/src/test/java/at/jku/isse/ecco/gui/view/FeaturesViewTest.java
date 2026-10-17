@@ -252,6 +252,65 @@ public class FeaturesViewTest {
         }
     }
 
+    /**
+     * Suggested subfeatures make the hierarchy: an import commits all features so far each time,
+     * which the heuristic alone turns into a chain BASE -> A -> B -> C. With A and B suggested
+     * under BASE and C under A, BASE branches; the suggested parents' edges have the suggestion's colour.
+     */
+    @Test
+    @Timeout(60)
+    public void suggestedSubfeaturesMakeTheHierarchy(@TempDir Path tmp) throws Exception {
+        String location = System.getProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY);
+        Path log = tmp.resolve("suggestions.jsonl");
+        System.setProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v0"), "BASE", Map.of("base.txt", "base\n"));
+            commit(service, tmp.resolve("v1"), "BASE, A", Map.of("a.txt", "a\n"));
+            commit(service, tmp.resolve("v2"), "BASE, A, B", Map.of("b.txt", "b\n"));
+            commit(service, tmp.resolve("v3"), "BASE, A, B, C", Map.of("c.txt", "c\n"));
+            assertEquals(Set.of("BASE->A", "A->B", "B->C"), FeatureModelTree.compute(service.getRepository()).stream().filter(p -> p.parent != null)
+                    .map(p -> p.parent.getName() + "->" + p.feature.getName()).collect(Collectors.toSet()), "the heuristic: a chain");
+            String repo = service.getRepositoryDir().toString().replace("\\", "\\\\");
+            java.nio.file.Files.write(log, List.of(
+                    entry(repo, "BASE", "BASE, A", "{\"A\":\"BASE\"}"),
+                    entry(repo, "BASE, A", "BASE, A, B", "{\"B\":\"BASE\"}"),
+                    entry(repo, "BASE, A, B", "BASE, A, B, C", "{\"C\":\"A\"}")));
+
+            FeaturesView view = loaded(service);
+
+            waitUntil("the suggested hierarchy", () -> edges(view, "suggested_subfeature").equals(Set.of("BASE->A", "BASE->B", "A->C")));
+            assertEquals(Set.of(), onFx(() -> edges(view, "tree")), "no other parents");
+            GraphicNode base = onFx(() -> node(view, "BASE")), a = onFx(() -> node(view, "A")), b = onFx(() -> node(view, "B"));
+            assertEquals(a.getY(), b.getY(), "A and B side by side");
+            assertTrue(a.getY() < base.getY(), "below BASE");
+        } finally {
+            if (location == null)
+                System.clearProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY);
+            else
+                System.setProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY, location);
+        }
+    }
+
+    /** A log line of an imported commit with the parents the LLM named. */
+    private static String entry(String eccoRepository, String before, String committed, String parents) {
+        return "{\"eccoRepository\":\"" + eccoRepository + "\",\"gitRepository\":\"/g\",\"before\":\"" + before + "\",\"committed\":\"" + committed
+                + "\",\"outcome\":\"auto\",\"parents\":" + parents + ",\"positions\":{}}";
+    }
+
+    /** One parent per feature: what the LLM and the code agree on, then the code's, then the LLM's - of equals the larger share. */
+    @Test
+    public void theStrongestSuggestionPlacesAFeature() {
+        var code = new at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion("A", "X", at.jku.isse.ecco.service.llm.ImportedFeatureTraces.Relation.SUBFEATURE, 0.3, 6, 0);
+        var llm = new at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion("A", "BASE", at.jku.isse.ecco.service.llm.ImportedFeatureTraces.Relation.SUBFEATURE, 0.9, 1, 0,
+                at.jku.isse.ecco.service.llm.ImportedFeatureTraces.Basis.LLM);
+        var both = new at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion("B", "Y", at.jku.isse.ecco.service.llm.ImportedFeatureTraces.Relation.SUBFEATURE, 0.2, 6, 0,
+                at.jku.isse.ecco.service.llm.ImportedFeatureTraces.Basis.LLM_AND_CODE);
+        var stronger = new at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion("B", "Z", at.jku.isse.ecco.service.llm.ImportedFeatureTraces.Relation.SUBFEATURE, 0.8, 9, 0);
+        var requires = new at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion("C", "X", at.jku.isse.ecco.service.llm.ImportedFeatureTraces.Relation.REQUIRES, 0.5, 9, 2);
+
+        assertEquals(Map.of("A", "X", "B", "Y"), FeaturesView.suggestedParents(List.of(llm, code, stronger, both, requires)));
+    }
+
     private static EccoService sample(Path tmp) throws Exception {
         EccoService service = repository(tmp.resolve("repo"));
         commit(service, tmp.resolve("v0"), "Base", Map.of("base.txt", "base\n"));
