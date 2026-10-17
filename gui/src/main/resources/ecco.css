@@ -95,8 +95,3 @@
     -fx-background-radius: 4;
 }
 
-/* an association whose condition is not minimized yet (Associations tab) */
-.table-cell.not-minimized {
-    -fx-text-fill: -color-fg-subtle;
-    -fx-font-style: italic;
-}

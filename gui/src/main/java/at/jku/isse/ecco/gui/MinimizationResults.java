@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The "Minimize Presence Conditions" run, shared across every GUI view that cares about it -- one
- * computation, started from the Associations and Artifacts tabs, which show its results (see
+ * computation, started from the Artifacts tab, which shows its results (see
  * {@link #newRunButton()}), and again whenever a review in the Feature Model tab changes the
  * accepted constraints - it had a button there, away from the results.
  *

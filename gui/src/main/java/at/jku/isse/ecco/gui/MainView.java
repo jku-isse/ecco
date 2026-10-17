@@ -47,7 +47,7 @@ import java.util.List;
  * <p>
  * "Action" actions (New, Open, Close, Commit, Import From Git, Checkout, Fetch, Pull, Push) behave
  * exactly as their old {@code MenuItem}s did, via {@link #openDialog}. "Content" actions (Variants,
- * Remotes, Feature Model, Commits, Associations, Artifacts, Charts, Knowledge Graph, Artifact
+ * Remotes, Feature Model, Commits, Artifacts, Charts, Knowledge Graph, Artifact
  * Graph, Dependency Graph) swap a single shared content area via {@link #switchTo} - the same "one
  * view visible at a time" model as before, just ribbon-driven instead of menu-driven. Status
  * (repository/base directory info) still has no tab/button of its own - it's simply the default
@@ -149,7 +149,6 @@ public class MainView extends BorderPane implements EccoListener {
 		FeaturesView featuresView = new FeaturesView(eccoService, minimizationResults);
 		RemotesView remotesView = new RemotesView(eccoService);
 		CommitsView commitsView = new CommitsView(eccoService);
-		AssociationsView associationsView = new AssociationsView(eccoService, minimizationResults);
 		ArtifactsView artifactsView = new ArtifactsView(eccoService, minimizationResults);
 		ChartsView chartsView = new ChartsView(eccoService);
 		VariantsView variantsView = new VariantsView(eccoService);
@@ -166,7 +165,7 @@ public class MainView extends BorderPane implements EccoListener {
 		// DependencyGraphView#tabVisible for the GraphStream crash that actually caused in practice
 		// (repeatedly tearing down/recreating a GraphStream viewer, invisibly, on every single commit
 		// of a multi-folder "Commit Multiple Versions" batch).
-		for (Region contentView : List.of(featuresView, remotesView, commitsView, associationsView, artifactsView,
+		for (Region contentView : List.of(featuresView, remotesView, commitsView, artifactsView,
 				chartsView, variantsView, artifactsGraphView, dependencyGraphView, knowledgeGraphView)) {
 			if (contentView instanceof TabVisibilityAware aware) {
 				aware.setTabVisible(false);
@@ -182,8 +181,6 @@ public class MainView extends BorderPane implements EccoListener {
 				() -> this.switchTo("Feature Model", featuresView), true);
 		RibbonAction commitsAction = new RibbonAction("Commits", Feather.LIST,
 				() -> this.switchTo("Commits", commitsView), true);
-		RibbonAction associationsAction = new RibbonAction("Associations", Feather.LINK_2,
-				() -> this.switchTo("Associations", associationsView), true);
 		RibbonAction artifactsAction = new RibbonAction("Artifacts", Feather.BOX,
 				() -> this.switchTo("Artifacts", artifactsView), true);
 		RibbonAction chartsAction = new RibbonAction("Charts", Feather.BAR_CHART_2,
@@ -209,7 +206,7 @@ public class MainView extends BorderPane implements EccoListener {
 				new RibbonGroup(List.of(fetchAction, pullAction, pushAction))));
 
 		RibbonTabSpec analysisTab = new RibbonTabSpec("View", Feather.SEARCH, List.of(
-				new RibbonGroup(List.of(featuresAction, commitsAction, associationsAction, artifactsAction, chartsAction))));
+				new RibbonGroup(List.of(featuresAction, commitsAction, artifactsAction, chartsAction))));
 
 		RibbonTabSpec visualizationTab = new RibbonTabSpec("Visualize", Feather.EYE, List.of(
 				new RibbonGroup(List.of(knowledgeGraphAction, artifactGraphAction, dependencyGraphAction))));

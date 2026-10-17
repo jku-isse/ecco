@@ -3,6 +3,7 @@ package at.jku.isse.ecco.gui.view.artifacts;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryVisitor;
+import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
 import javafx.scene.Parent;
@@ -27,9 +28,9 @@ import static at.jku.isse.ecco.gui.FxTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * What the Artifacts tab decides: which associations it lists (and which it hides), what selecting
+ * What the Artifacts tab decides: which associations it lists (and which it hides), what ticking
  * them does (colors, the composed artifact tree, the live feature toggles), the condition labels it
- * shows, and that a closed repository empties it.
+ * shows, the details of the selected one, and that a closed repository empties it.
  */
 public class ArtifactsViewTest {
 
@@ -55,6 +56,34 @@ public class ArtifactsViewTest {
             }
             assertNull(onFx(() -> treeTable(view).getRoot()), "no artifact tree before a compose");
             assertFalse(onFx(() -> view.isDisable()));
+        }
+    }
+
+    /** The details pane shows the selected row - selecting is not ticking: the tree stays as the ticks have it. */
+    @Test
+    @Timeout(60)
+    public void theSelectedRowIsShownInTheAssociationDetails(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFeatures(tmp)) {
+            ArtifactsView view = loaded(service, 2);
+            AssociationDetailView details = onFx(() -> (AssociationDetailView) find(view, n -> n instanceof AssociationDetailView));
+            Label hint = onFx(() -> (Label) find(view, n -> n instanceof Label l && l.getText().startsWith("Select an association")));
+            assertNull(onFx(() -> details.getCenter()), "nothing is selected yet");
+            assertTrue(onFx(() -> hint.isVisible()));
+
+            AssociationInfoImpl selected = onFx(() -> {
+                table(view).getSelectionModel().select(1);
+                return table(view).getItems().get(1);
+            });
+            assertNotNull(onFx(() -> details.getCenter()));
+            assertFalse(onFx(() -> hint.isVisible()));
+            TextField idField = onFx(() -> (TextField) find(details, n -> n instanceof TextField));
+            assertEquals(selected.getAssociation().getId(), onFx(() -> idField.getText()));
+            assertFalse(selected.isSelected(), "selecting a row does not tick it");
+            assertNull(onFx(() -> treeTable(view).getRoot()));
+
+            onFx(() -> table(view).getSelectionModel().clearSelection());
+            assertNull(onFx(() -> details.getCenter()));
+            assertTrue(onFx(() -> hint.isVisible()));
         }
     }
 
@@ -440,7 +469,9 @@ public class ArtifactsViewTest {
 
     @SuppressWarnings("unchecked")
     private static TableView<AssociationInfoImpl> table(ArtifactsView view) {
-        return (TableView<AssociationInfoImpl>) find(view, n -> n instanceof TableView);
+        // the association details hold a table too, of modules
+        return (TableView<AssociationInfoImpl>) find(view, n -> n instanceof TableView<?> t
+                && t.getColumns().stream().anyMatch(c -> "Condition".equals(c.getText())));
     }
 
     private static ArtifactTreeTableView treeTable(ArtifactsView view) {

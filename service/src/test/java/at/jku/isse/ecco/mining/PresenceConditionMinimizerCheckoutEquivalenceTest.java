@@ -79,7 +79,7 @@ public class PresenceConditionMinimizerCheckoutEquivalenceTest {
             // a real accept, exactly like a human reviewing `suggest-constraints` output would do
             service.acceptConstraint(Constraint.Kind.MANDATORY, "Core", null);
 
-            // same pipeline as MinimizePreviewCommand/AssociationsView's "Minimize Presence
+            // same pipeline as MinimizePreviewCommand/ArtifactsView's "Minimize Presence
             // Conditions" button: re-mine fresh, filter to accepted signatures, compile once.
             List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);

@@ -323,7 +323,7 @@ public class PreferencesView extends OperationView {
 		int minimizationRow = 0;
 
 		Label minimizationHelpLabel = new Label("Thresholds used to re-mine accepted constraints before \"Minimize Presence " +
-				"Conditions\" runs (Associations and Artifacts tabs). Lower thresholds catch more constraints but risk overfitting to a " +
+				"Conditions\" runs (Artifacts tab). Lower thresholds catch more constraints but risk overfitting to a " +
 				"small sample of configurations.");
 		minimizationHelpLabel.setWrapText(true);
 		minimizationGridPane.add(minimizationHelpLabel, 0, minimizationRow, 2, 1);

@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * real {@link Condition#holds}on every actually-committed configuration. This is what exercises
  * {@link ModuleConditionBridge} -- the one ECCO-coupled piece of the minimization feature that the
  * synthetic unit tests can't touch -- end to end, using the exact same pipeline as
- * {@code MinimizePreviewCommand}/{@code AssociationsView}'s minimize button.
+ * {@code MinimizePreviewCommand}/{@code ArtifactsView}'s minimize button.
  *
  * <p>This deliberately stops short of checkout/artifact-tree comparison: minimized conditions are
  * never wired into checkout (see CONSTRAINT_MINING_DESIGN.md's "Minimization" section -- that
@@ -74,7 +74,7 @@ public class PresenceConditionMinimizerRealRepoTest {
             // a real accept, exactly like a human reviewing `suggest-constraints` output would do
             service.acceptConstraint(Constraint.Kind.MANDATORY, "Core", null);
 
-            // same pipeline as MinimizePreviewCommand/AssociationsView's "Minimize Presence
+            // same pipeline as MinimizePreviewCommand/ArtifactsView's "Minimize Presence
             // Conditions" button: re-mine fresh, filter to accepted signatures, compile once.
             List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);

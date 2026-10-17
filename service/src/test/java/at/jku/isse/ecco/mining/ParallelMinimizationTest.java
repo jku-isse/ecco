@@ -79,7 +79,7 @@ public class ParallelMinimizationTest {
             List<Association> associations = new ArrayList<>(service.getRepository().getAssociations());
             assertTrue(associations.size() > 1, "sanity check: need more than one association for this to actually exercise concurrency");
 
-            // sequential baseline: exactly what MinimizePreviewCommand/AssociationsView did before
+            // sequential baseline: exactly what MinimizePreviewCommand/ArtifactsView did before
             // ParallelMinimization existed
             Formula featureModel = FeatureModelFormula.compile(acceptedSuggestions);
             Map<String, String> sequential = new HashMap<>();

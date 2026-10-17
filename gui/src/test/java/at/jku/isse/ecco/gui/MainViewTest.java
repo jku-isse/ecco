@@ -137,7 +137,6 @@ public class MainViewTest {
             expected.put(new String[]{"Collaborate", "Remotes"}, RemotesView.class);
             expected.put(new String[]{"View", "Feature Model"}, FeaturesView.class);
             expected.put(new String[]{"View", "Commits"}, CommitsView.class);
-            expected.put(new String[]{"View", "Associations"}, AssociationsView.class);
             expected.put(new String[]{"View", "Artifacts"}, ArtifactsView.class);
             expected.put(new String[]{"View", "Charts"}, ChartsView.class);
             expected.put(new String[]{"Visualize", "Knowledge Graph"}, KnowledgeGraphView.class);

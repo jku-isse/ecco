@@ -13,6 +13,7 @@ import at.jku.isse.ecco.gui.io.ConfigurationPickerDialog;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.gui.io.FeatureTogglePanel;
+import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
@@ -123,12 +124,25 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         artifactTreeView = new ArtifactTreeView(service);
 
+        // the details of the selected row (its id, condition, modules and artifacts) - they had a
+        // tab of their own, Associations, with the same table again; the ticks still pick the tree
+        AssociationDetailView associationDetailView = new AssociationDetailView(service);
+        Label noDetails = new Label("Select an association to see its condition, modules and artifacts.");
+        noDetails.setWrapText(true);
+        noDetails.getStyleClass().add("text-muted");
+        StackPane details = new StackPane(noDetails, associationDetailView);
+        associationsTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            associationDetailView.showAssociation(newValue == null ? null : newValue.getAssociation());
+            noDetails.setVisible(newValue == null);
+        });
+
         // split panes
         SplitPane horizontalSplitPane = new SplitPane();
         horizontalSplitPane.setOrientation(Orientation.VERTICAL);
         horizontalSplitPane.getItems().addAll(associationsTable, artifactTreeView);
 
-        this.setCenter(horizontalSplitPane);
+        SplitPane detailsSplitPane = new SplitPane(horizontalSplitPane, details);
+        this.setCenter(detailsSplitPane);
 
 
         this.wireToolBarActions(
@@ -143,6 +157,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         Platform.runLater(() -> {
             // the associations got a fifth of the height - one row at 1200x600
             horizontalSplitPane.setDividerPosition(0, 0.35);
+            detailsSplitPane.setDividerPosition(0, 0.65);
             // loaded here too, not only after the next change of the repository: there was a
             // Refresh button for that
             if (!service.isInitialized())
