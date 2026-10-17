@@ -4,14 +4,11 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.storage.ser.tree.TreePieces;
 import at.jku.isse.ecco.tree.Node;
 
-import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -20,12 +17,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
-import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
+import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.MAX_PACKS;
+import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.PACK_PREFIX;
+import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.PACK_SUFFIX;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.TMP_SUFFIX;
 
 /**
@@ -37,15 +34,12 @@ import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.TMP_SUFFIX;
  * refers to anymore (also one a crashed write left) is deleted after a committed write, once no
  * reader holds the previous core; one of which less than half is still referred to is compacted -
  * its pieces still referred to go into the new pack - and so are the smallest once there are more
- * than {@link #MAX_PACKS}.
+ * than {@link StorageFiles#MAX_PACKS}.
  */
 final class PieceStore {
 
-	private static final String PACK_PREFIX = "pack-";
-	private static final String PACK_SUFFIX = ".zip";
 	// every write adds a pack: once there are more, the smallest are merged into the new one (as the
 	// artifact and association packs are) - else every open reads a pack per commit ever made
-	private static final int MAX_PACKS = 20;
 
 	private final Path dir;
 	// the pack of each stored piece, by its digest
@@ -155,35 +149,19 @@ final class PieceStore {
 			int stillReferred = packReferenced.getOrDefault(pack.getKey(), 0);
 			if (stillReferred == 0)
 				continue; // nothing to keep: deleted once committed
-			if (stillReferred * 2 >= pack.getValue())
+			if (StorageFiles.keepsPack(stillReferred, pack.getValue()))
 				kept.add(pack.getKey()); // worth keeping
 			else
 				this.moveReferencedPieces(pack.getKey(), referenced, entries);
 		}
-		if (kept.size() + 1 > MAX_PACKS) {
-			kept.sort(java.util.Comparator.comparingInt(packReferenced::get));
-			for (String pack : kept.subList(0, kept.size() + 1 - MAX_PACKS / 2))
-				this.moveReferencedPieces(pack, referenced, entries);
-		}
+		for (String pack : StorageFiles.packsToMerge(kept, packReferenced::get))
+			this.moveReferencedPieces(pack, referenced, entries);
 		if (entries.isEmpty())
 			return;
 		Files.createDirectories(this.dir);
 		String packName = PACK_PREFIX + newId + PACK_SUFFIX;
 		Path pack = this.dir.resolve(packName);
-		Path tmpFile = pack.resolveSibling(packName + "." + UUID.randomUUID() + TMP_SUFFIX);
-		try {
-			try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpFile, StandardOpenOption.CREATE_NEW), 1 << 16))) {
-				zos.setLevel(Deflater.BEST_SPEED);
-				for (Map.Entry<String, byte[]> piece : entries.entrySet()) {
-					zos.putNextEntry(new ZipEntry(piece.getKey()));
-					zos.write(piece.getValue());
-					zos.closeEntry();
-				}
-			}
-			Files.move(tmpFile, pack, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-		} finally {
-			Files.deleteIfExists(tmpFile);
-		}
+		StorageFiles.writeZipEntries(pack, entries);
 		for (String digest : entries.keySet())
 			this.packOf.put(digest, packName);
 		this.staged.clear();

@@ -5,7 +5,6 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.storage.ser.repository.SerRepository;
 import at.jku.isse.ecco.storage.ser.tree.TreePieces;
 
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,13 +12,10 @@ import java.io.ObjectInputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -27,12 +23,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
-import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
+import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.PACK_PREFIX;
+import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.PACK_SUFFIX;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.TMP_SUFFIX;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.digest;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.serializeAssociation;
@@ -57,10 +52,7 @@ final class AssociationStore {
 	 */
 	static final boolean VERIFY_UNCHANGED_ASSOCIATIONS = Boolean.getBoolean("ecco.verifyUnchangedAssociations");
 
-	private static final String PACK_PREFIX = "pack-";
-	private static final String PACK_SUFFIX = ".zip";
 	/** Once a write would leave more packs than this, the smallest are merged down to half of it. */
-	private static final int MAX_PACKS = 20;
 
 	private final Path dir;
 	// the pieces of the associations' trees (see TreePieces)
@@ -187,18 +179,13 @@ final class AssociationStore {
 			int stillCurrent = pack.getValue().size();
 			if (stillCurrent == 0)
 				continue;
-			if (stillCurrent * 2 < this.packSizes.getOrDefault(pack.getKey(), stillCurrent))
-				compacted.add(pack.getKey());
-			else
+			if (StorageFiles.keepsPack(stillCurrent, this.packSizes.getOrDefault(pack.getKey(), stillCurrent)))
 				kept.add(pack.getKey());
+			else
+				compacted.add(pack.getKey());
 		}
 		// every write adds a pack: once there are too many, the smallest are merged into the new one
-		if (kept.size() + 1 > MAX_PACKS) {
-			kept.sort(Comparator.comparingInt(pack -> current.get(pack).size()));
-			List<String> merged = new ArrayList<>(kept.subList(0, kept.size() + 1 - MAX_PACKS / 2));
-			kept.removeAll(merged);
-			compacted.addAll(merged);
-		}
+		compacted.addAll(StorageFiles.packsToMerge(kept, pack -> current.get(pack).size()));
 		// an association with a file of its own the write leaves alone stays there: no need to move it
 		for (String pack : compacted)
 			this.moveInto(pack, current.get(pack), entries, digests);
@@ -273,20 +260,7 @@ final class AssociationStore {
 	}
 
 	private void writePack(Map<String, byte[]> entries, Path pack) throws IOException {
-		Path tmpFile = pack.resolveSibling(pack.getFileName() + "." + UUID.randomUUID() + TMP_SUFFIX);
-		try {
-			try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpFile, StandardOpenOption.CREATE_NEW), 1 << 16))) {
-				zos.setLevel(Deflater.BEST_SPEED);
-				for (Map.Entry<String, byte[]> entry : entries.entrySet()) {
-					zos.putNextEntry(new ZipEntry(entry.getKey()));
-					zos.write(entry.getValue());
-					zos.closeEntry();
-				}
-			}
-			Files.move(tmpFile, pack, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-		} finally {
-			Files.deleteIfExists(tmpFile);
-		}
+		StorageFiles.writeZipEntries(pack, entries);
 	}
 
 	/** See {@link #VERIFY_UNCHANGED_ASSOCIATIONS}: before anything is written, so a failure leaves the repository as it was. */

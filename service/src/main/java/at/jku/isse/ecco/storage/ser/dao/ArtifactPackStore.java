@@ -8,7 +8,6 @@ import at.jku.isse.ecco.storage.ser.repository.SerRepository;
 import at.jku.isse.ecco.tree.Node;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,24 +16,21 @@ import java.io.ObjectOutputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.logging.Logger;
-import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
+import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.MAX_PACKS;
+import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.PACK_PREFIX;
+import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.PACK_SUFFIX;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.TMP_SUFFIX;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.digest;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.serialize;
@@ -54,10 +50,7 @@ final class ArtifactPackStore {
 	 * (build.gradle); -Decco.verifyUnchangedArtifacts=true for a replay.
 	 */
 	static final boolean VERIFY_UNCHANGED_ARTIFACTS = Boolean.getBoolean("ecco.verifyUnchangedArtifacts");
-	private static final String PACK_PREFIX = "pack-";
-	private static final String PACK_SUFFIX = ".zip";
 	/** Once a write would leave more packs than this, the smallest are merged down to half of it. */
-	private static final int MAX_PACKS = 20;
 	private static final String PACK_ARTIFACTS_ENTRY = "artifacts";
 	private static final String PACK_DIGESTS_ENTRY = "digests";
 	private static final int ARTIFACT_DIGEST_LENGTH = 16;
@@ -172,7 +165,7 @@ final class ArtifactPackStore {
 	 * not change are not written (their digests: {@link #artifactDigests}). Packs of which less than
 	 * half of the artifacts are still current are compacted: their current artifacts go into the new
 	 * pack too, and the old pack is deleted once nothing references it; so are the smallest packs once
-	 * there are more than {@link #MAX_PACKS}.
+	 * there are more than {@link StorageFiles#MAX_PACKS}.
 	 */
 	void write(SerRepository repo, String newId, Map<String, byte[]> staged) throws IOException {
 		if (!repo.getDirtyArtifacts().isEmpty())
@@ -217,15 +210,12 @@ final class ArtifactPackStore {
 			int current = currentAfter.get(pack);
 			if (current <= 0)
 				continue;
-			if (current * 2 >= repo.getPackSizes().getOrDefault(pack, current) || !this.repack(repo, this.stillCurrent(repo, pack, entries), entries, staged))
+			if (StorageFiles.keepsPack(current, repo.getPackSizes().getOrDefault(pack, current)) || !this.repack(repo, this.stillCurrent(repo, pack, entries), entries, staged))
 				kept.add(pack);
 		}
 		// every write adds a pack: once there are too many, the smallest are merged into the new one
-		if (kept.size() + 1 > MAX_PACKS) {
-			kept.sort(Comparator.comparingInt(currentAfter::get));
-			for (String pack : kept.subList(0, kept.size() + 1 - MAX_PACKS / 2))
-				this.repack(repo, this.stillCurrent(repo, pack, entries), entries, staged);
-		}
+		for (String pack : StorageFiles.packsToMerge(kept, currentAfter::get))
+			this.repack(repo, this.stillCurrent(repo, pack, entries), entries, staged);
 
 		if (!entries.isEmpty()) {
 			String packName = PACK_PREFIX + newId + PACK_SUFFIX;
@@ -267,10 +257,7 @@ final class ArtifactPackStore {
 	 * instead; they are still read.
 	 */
 	private static void writePack(SerRepository repo, Map<String, byte[]> entries, Path pack) throws IOException {
-		Path tmpFile = pack.resolveSibling(pack.getFileName() + "." + UUID.randomUUID() + TMP_SUFFIX);
-		try {
-			try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpFile, StandardOpenOption.CREATE_NEW), 1 << 16))) {
-				zos.setLevel(Deflater.BEST_SPEED);
+		StorageFiles.writeZip(pack, zos -> {
 				zos.putNextEntry(new ZipEntry(PACK_ARTIFACTS_ENTRY));
 				// serialized straight into the compressed entry: it was serialized into memory first, a
 				// second copy of every artifact's bytes - of all of them when a repository was converted
@@ -294,12 +281,7 @@ final class ArtifactPackStore {
 				for (byte[] digest : entries.values())
 					zos.write(digest);
 				zos.closeEntry();
-			}
-			Files.move(tmpFile, pack, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-		} finally {
-			// a write that failed (e.g. out of memory or disk space) left it behind for good
-			Files.deleteIfExists(tmpFile);
-		}
+		});
 	}
 
 	/** A digest of an artifact's own serialization - the first half of its SHA-256, to keep packs small. */
