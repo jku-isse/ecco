@@ -94,6 +94,38 @@ public class OrderRegionsTest {
 		assertEquals(collapsed.edges().size(), collapsed.edges().stream().distinct().count(), "each edge once");
 	}
 
+	/**
+	 * The outline: the blocks shown in one column, in order, what only other variants have between
+	 * two of them folded into one block of kind OTHERS - a Git import's file holds every line it
+	 * ever had, and the lines shown were a thread through thousands of blocks of history.
+	 */
+	@Test
+	public void theOutlineFoldsWhatOnlyOtherVariantsHaveBetweenTheBlocksShown() {
+		SerPartialOrderGraph pog = new SerPartialOrderGraph();
+		pog.merge(artifacts(List.of("a1", "a2", "x1", "z1", "z2")));
+		pog.merge(artifacts(List.of("a1", "a2", "y1", "y2", "z1", "z2")));
+		pog.merge(artifacts(List.of("a1", "a2", "w1", "z1", "z2")));
+		// shown: the variant with y; x1 and w1 only other variants have
+		Set<PartialOrderGraph.Node> shown = all(pog);
+		shown.removeIf(n -> List.of("x1", "w1").contains(String.valueOf(n.getArtifact())));
+
+		OrderRegions.Collapsed outline = OrderRegions.outline(OrderRegions.collapse(pog, shown));
+
+		List<OrderRegions.Kind> kinds = outline.blocks().stream().map(OrderRegions.Block::kind).toList();
+		assertEquals(OrderRegions.Kind.START, kinds.get(0));
+		assertEquals(OrderRegions.Kind.END, kinds.get(kinds.size() - 1));
+		assertEquals(1, kinds.stream().filter(k -> k == OrderRegions.Kind.OTHERS).count(), "x1 and w1, between a and z, one block: " + kinds);
+		OrderRegions.Block others = outline.blocks().stream().filter(b -> b.kind() == OrderRegions.Kind.OTHERS).findFirst().orElseThrow();
+		assertEquals(Set.of("x1", "w1"), Set.copyOf(texts(others)));
+		assertFalse(others.shown());
+		assertEquals(List.of("a1", "a2"), texts(outline.blocks().get(1)));
+		assertTrue(outline.blocks().stream().allMatch(b -> b.column() == 0), "one column");
+		for (int i = 0; i < outline.blocks().size(); i++)
+			assertEquals(i, outline.blocks().get(i).layer(), "one after another");
+		assertEquals(outline.blocks().size() - 1, outline.edges().size());
+		assertTrue(outline.blocks().get(1).branch(), "the alternatives part after it still");
+	}
+
 	/** A run is split where it passes from the lines shown to lines of other variants only. */
 	@Test
 	public void aRunIsSplitWhereItLeavesTheShownLines() {

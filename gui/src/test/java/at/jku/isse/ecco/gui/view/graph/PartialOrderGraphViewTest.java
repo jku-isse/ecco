@@ -242,6 +242,39 @@ public class PartialOrderGraphViewTest {
         return null;
     }
 
+    /**
+     * When other variants have more blocks than what is shown - a Git import's file holds every line
+     * it ever had - they are folded between the blocks shown: "other variants (5)"; asked for, they
+     * are drawn as blocks of their own.
+     */
+    @Test
+    public void whatOnlyOtherVariantsHaveIsFoldedWhenItOutnumbersWhatIsShown() {
+        List<Artifact.Op<?>> a = artifacts(List.of("a")), z = artifacts(List.of("z"));
+        PartialOrderGraph.Op pog = new SerPartialOrderGraph();
+        for (int i = 1; i <= 5; i++) {
+            List<Artifact.Op<?>> variant = new ArrayList<>(a);
+            variant.addAll(artifacts(List.of("p" + i)));
+            variant.addAll(z);
+            pog.merge(variant);
+        }
+        List<Artifact.Op<?>> shownVariant = new ArrayList<>(a);
+        shownVariant.addAll(z);
+        pog.merge(shownVariant);
+        at.jku.isse.ecco.storage.ser.tree.SerNode file = new at.jku.isse.ecco.storage.ser.tree.SerNode(new SerArtifact<>(new Line("file")));
+        for (Artifact.Op<?> artifact : shownVariant)
+            file.addChild(new at.jku.isse.ecco.storage.ser.tree.SerNode(artifact));
+
+        PartialOrderGraphView.Snapshot folded = PartialOrderGraphView.blocksOf(pog, file, x -> "", null);
+        assertFalse(folded.withOtherVariants(), "5 blocks of other variants, 4 shown");
+        assertEquals(List.of("Start", "1  Line[text=a]", "other variants (5)", "2  Line[text=z]", "End"), folded.labels());
+        assertEquals("other", folded.classes().get(2));
+        assertTrue(folded.details().get(2).startsWith("5 elements only other variants have here, folded"), folded.details().get(2));
+
+        PartialOrderGraphView.Snapshot all = PartialOrderGraphView.blocksOf(pog, file, x -> "", true);
+        assertTrue(all.withOtherVariants());
+        assertEquals(5, all.labels().stream().filter(l -> l.startsWith("other  ")).count(), all.labels().toString());
+    }
+
     /** The id of the drawn block whose label starts with [prefix]. */
     private static String idOf(PartialOrderGraphView view, String prefix) {
         for (org.graphstream.graph.Node node : (Iterable<org.graphstream.graph.Node>) view.drawnGraph().nodes()::iterator)

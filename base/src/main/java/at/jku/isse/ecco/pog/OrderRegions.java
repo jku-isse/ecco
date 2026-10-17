@@ -53,7 +53,8 @@ public final class OrderRegions {
 		return ranges;
 	}
 
-	public enum Kind {START, END, NODES}
+	/** The start, the end, a run of nodes - and in an {@link #outline}, what only other variants have between two blocks shown. */
+	public enum Kind {START, END, NODES, OTHERS}
 
 	/**
 	 * Graph nodes drawn as one: the start, the end, or a straight run - each node of it the only next
@@ -150,6 +151,59 @@ public final class OrderRegions {
 			blocks.add(new Block(kinds.get(b), nodes, isShown(nodes, shown), branch, layers[b], columns[b]));
 		}
 		return new Collapsed(blocks, List.copyOf(edges));
+	}
+
+	/**
+	 * [collapsed] as an outline: its blocks of shown nodes, the start and the end, one after another
+	 * in one column, and the blocks only other variants have between two of them folded into one of
+	 * kind {@link Kind#OTHERS}. A Git import's file holds every line it ever had - tinycc's tcc.c,
+	 * once the whole compiler, 23,799 nodes for 161 children today - and the lines shown were a
+	 * thread through thousands of blocks of history. The kept blocks keep their order: collapse makes
+	 * them in the order of the graph, in which the nodes shown come as they are shown.
+	 */
+	public static Collapsed outline(Collapsed collapsed) {
+		List<Block> all = collapsed.blocks();
+		// each block of other variants goes before the first kept block it leads to: alternatives to a
+		// block shown come between it and the next one - the order of the graph alone put them on
+		// either side of it
+		List<List<Integer>> next = new ArrayList<>();
+		for (int b = 0; b < all.size(); b++)
+			next.add(new ArrayList<>());
+		for (Edge edge : collapsed.edges())
+			next.get(edge.from()).add(edge.to());
+		int[] leadsTo = new int[all.size()];
+		for (int b = all.size() - 1; b >= 0; b--) {
+			leadsTo[b] = Integer.MAX_VALUE;
+			for (int n : next.get(b))
+				leadsTo[b] = Math.min(leadsTo[b], kept(all.get(n)) ? n : leadsTo[n]);
+		}
+		Map<Integer, List<PartialOrderGraph.Node>> before = new java.util.HashMap<>();
+		List<PartialOrderGraph.Node> atTheEnd = new ArrayList<>();
+		for (int b = 0; b < all.size(); b++)
+			if (!kept(all.get(b)))
+				(leadsTo[b] == Integer.MAX_VALUE ? atTheEnd : before.computeIfAbsent(leadsTo[b], k -> new ArrayList<>())).addAll(all.get(b).nodes());
+
+		List<Block> blocks = new ArrayList<>();
+		for (int b = 0; b < all.size(); b++) {
+			Block block = all.get(b);
+			if (!kept(block))
+				continue;
+			List<PartialOrderGraph.Node> others = before.get(b);
+			if (others != null)
+				blocks.add(new Block(Kind.OTHERS, List.copyOf(others), false, false, blocks.size(), 0));
+			blocks.add(new Block(block.kind(), block.nodes(), block.shown(), block.branch(), blocks.size(), 0));
+		}
+		if (!atTheEnd.isEmpty())
+			blocks.add(new Block(Kind.OTHERS, List.copyOf(atTheEnd), false, false, blocks.size(), 0));
+		List<Edge> edges = new ArrayList<>();
+		for (int b = 1; b < blocks.size(); b++)
+			edges.add(new Edge(b - 1, b));
+		return new Collapsed(blocks, edges);
+	}
+
+	/** In an outline as it is: the start, the end and the blocks shown. */
+	private static boolean kept(Block block) {
+		return block.kind() != Kind.NODES || block.shown();
 	}
 
 	private static boolean isShown(List<PartialOrderGraph.Node> nodes, Set<PartialOrderGraph.Node> shown) {

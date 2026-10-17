@@ -51,6 +51,11 @@ public class PartialOrderGraphView extends BorderPane {
 	private volatile Map<String, double[]> placeById = Map.of();
 	private volatile double layers = 1;
 	private int branch = -1;
+	/** Whether the blocks only other variants have are shown as such (else folded, an outline); null: by itself, see {@link #blocksOf}. */
+	private volatile Boolean showOtherVariants;
+	private final javafx.scene.control.CheckBox otherVariants = new javafx.scene.control.CheckBox("Other variants");
+	/** Draws the graph shown last again - with other variants or not. */
+	private volatile Runnable redraw;
 	/** Told the element a chosen block begins with - the detail view shows it in the code. */
 	private java.util.function.Consumer<at.jku.isse.ecco.tree.Node> onBlockChosen = node -> { };
 
@@ -60,6 +65,8 @@ public class PartialOrderGraphView extends BorderPane {
 			+ "Click a block to see it in the code. Scroll to zoom, drag to move, double-click to see all.";
 	/** Layers on the screen at most for the labels to show: a graph of thousands of blocks shows them zoomed in. */
 	static final int LABELLED_LAYERS = 60;
+	/** Layers a graph too tall to read fitted shows at first: its top. */
+	static final int START_LAYERS = 40;
 
 	public PartialOrderGraphView() {
 		this.graph = new SingleGraph("PartialOrderGraph");
@@ -78,7 +85,17 @@ public class PartialOrderGraphView extends BorderPane {
 			if (view != null)
 				view.getCamera().resetView();
 		});
-		javafx.scene.layout.HBox bar = new javafx.scene.layout.HBox(8, next, fit);
+		// a Git import's file holds every line it ever had: the lines shown, an outline, with the rest folded
+		this.otherVariants.setTooltip(new javafx.scene.control.Tooltip("Show what only other variants have as blocks of their own; "
+				+ "else folded between the blocks shown. Off by itself when other variants have more blocks than what is shown."));
+		this.otherVariants.setOnAction(e -> {
+			this.showOtherVariants = this.otherVariants.isSelected();
+			Runnable redraw = this.redraw;
+			if (redraw != null)
+				redraw.run();
+		});
+		javafx.scene.layout.HBox bar = new javafx.scene.layout.HBox(8, next, fit, this.otherVariants);
+		bar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 		bar.setPadding(new Insets(0, 8, 4, 8));
 		this.setTop(new javafx.scene.layout.VBox(legend, bar));
 		this.details.setWrapText(true);
@@ -140,12 +157,14 @@ public class PartialOrderGraphView extends BorderPane {
 			initView();
 		}
 
+		this.redraw = () -> this.showGraph(pog, shownNode, repository, lock);
 		setCursor(Cursor.WAIT);
 		long request = this.requests.incrementAndGet();
+		Boolean others = this.showOtherVariants;
 		Thread th = new Thread(() -> {
 			Snapshot snapshot;
 			synchronized (lock) {
-				snapshot = repository == null ? blocksOf(pog, shownNode) : blocksOf(pog, shownNode, new ArtifactOrigins(repository)::describe);
+				snapshot = blocksOf(pog, shownNode, repository == null ? PartialOrderGraphView::conditionOrNotTraced : new ArtifactOrigins(repository)::describe, others);
 			}
 			// one rebuild at a time: selecting another node before the previous rebuild finished used
 			// to start a second thread clearing and filling the same (not thread-safe) graph
@@ -168,20 +187,32 @@ public class PartialOrderGraphView extends BorderPane {
 	 * between them, as indices into them.
 	 */
 	record Snapshot(List<String> labels, List<String> classes, List<double[]> places, List<String> details, List<int[]> edges,
-					List<at.jku.isse.ecco.tree.Node> firsts) {
+					List<at.jku.isse.ecco.tree.Node> firsts, boolean withOtherVariants) {
 	}
 
 	/** {@code pog} folded into blocks ({@link OrderRegions#collapse}), described by the children of {@code shownNode} (may be null). */
 	static Snapshot blocksOf(PartialOrderGraph pog, at.jku.isse.ecco.tree.Node shownNode) {
-		return blocksOf(pog, shownNode, association -> {
-			String condition = ArtifactOrigins.condition(association);
-			return condition != null ? condition : at.jku.isse.ecco.module.Condition.NOT_TRACED;
-		});
+		return blocksOf(pog, shownNode, PartialOrderGraphView::conditionOrNotTraced);
+	}
+
+	private static String conditionOrNotTraced(at.jku.isse.ecco.core.Association association) {
+		String condition = ArtifactOrigins.condition(association);
+		return condition != null ? condition : at.jku.isse.ecco.module.Condition.NOT_TRACED;
 	}
 
 	/** As above, [describe] telling where an association's elements come from - {@link ArtifactOrigins}. */
 	static Snapshot blocksOf(PartialOrderGraph pog, at.jku.isse.ecco.tree.Node shownNode,
 							 java.util.function.Function<at.jku.isse.ecco.core.Association, String> describe) {
+		return blocksOf(pog, shownNode, describe, true);
+	}
+
+	/**
+	 * As above; with [withOtherVariants] false the blocks only other variants have are folded between
+	 * those shown ({@link OrderRegions#outline}), with null so when they are more than those shown -
+	 * a Git import's file, which holds every line it ever had (tinycc's tcc.c: 9,036 of 9,082 blocks).
+	 */
+	static Snapshot blocksOf(PartialOrderGraph pog, at.jku.isse.ecco.tree.Node shownNode,
+							 java.util.function.Function<at.jku.isse.ecco.core.Association, String> describe, Boolean withOtherVariants) {
 		Map<PartialOrderGraph.Node, at.jku.isse.ecco.tree.Node> childOf = new IdentityHashMap<>();
 		Map<at.jku.isse.ecco.tree.Node, Integer> placeOf = new IdentityHashMap<>();
 		if (shownNode != null) {
@@ -197,6 +228,10 @@ public class PartialOrderGraphView extends BorderPane {
 			shown.addAll(pog.collectNodes());
 
 		OrderRegions.Collapsed collapsed = OrderRegions.collapse(pog, shown);
+		long otherBlocks = collapsed.blocks().stream().filter(b -> b.kind() == OrderRegions.Kind.NODES && !b.shown()).count();
+		boolean others = withOtherVariants != null ? withOtherVariants : otherBlocks <= collapsed.blocks().size() - otherBlocks;
+		if (!others)
+			collapsed = OrderRegions.outline(collapsed);
 		// the alternatives - what only other variants have, and what lies beside them in a layer - say
 		// which variants they come from; each association's condition once
 		Map<Integer, Integer> perLayer = new HashMap<>();
@@ -208,7 +243,8 @@ public class PartialOrderGraphView extends BorderPane {
 		List<at.jku.isse.ecco.tree.Node> firsts = new ArrayList<>();
 		for (OrderRegions.Block block : collapsed.blocks()) {
 			firsts.add(block.kind() == OrderRegions.Kind.NODES ? childOf.get(block.first()) : null);
-			List<String> origins = block.kind() == OrderRegions.Kind.NODES && (!block.shown() || perLayer.get(block.layer()) > 1)
+			List<String> origins = block.kind() == OrderRegions.Kind.OTHERS
+					|| block.kind() == OrderRegions.Kind.NODES && (!block.shown() || perLayer.get(block.layer()) > 1)
 					? origins(block, conditions, describe) : List.of();
 			String label = label(block, childOf, placeOf, shownNode != null);
 			if (!origins.isEmpty()) {
@@ -223,6 +259,7 @@ public class PartialOrderGraphView extends BorderPane {
 				case START -> "start";
 				case END -> "end";
 				case NODES -> !block.shown() ? "other" : block.branch() ? "branch" : null;
+				case OTHERS -> "other";
 			});
 			places.add(new double[]{block.column() * COLUMN_GAP, -block.layer() * LAYER_GAP});
 			String text = details(block, childOf, placeOf, shownNode != null);
@@ -233,7 +270,7 @@ public class PartialOrderGraphView extends BorderPane {
 		List<int[]> edges = new ArrayList<>();
 		for (OrderRegions.Edge edge : collapsed.edges())
 			edges.add(new int[]{edge.from(), edge.to()});
-		return new Snapshot(labels, classes, places, details, edges, firsts);
+		return new Snapshot(labels, classes, places, details, edges, firsts, others);
 	}
 
 	/** Characters of an alternative's condition in its label. */
@@ -274,6 +311,8 @@ public class PartialOrderGraphView extends BorderPane {
 		if (block.kind() == OrderRegions.Kind.END)
 			return "End";
 		int size = block.nodes().size();
+		if (block.kind() == OrderRegions.Kind.OTHERS)
+			return "other variants (" + size + ")";
 		String where = !block.shown() ? "other" : placed ? places(block, childOf, placeOf) : "";
 		String count = size > 1 ? " (" + size + ")" : "";
 		String text = size == 1 ? short_(firstText(block, childOf), 2 * LABEL_TEXT)
@@ -290,6 +329,13 @@ public class PartialOrderGraphView extends BorderPane {
 			return "End: what comes last leads here.";
 		int size = block.nodes().size();
 		StringBuilder text = new StringBuilder();
+		if (block.kind() == OrderRegions.Kind.OTHERS) {
+			text.append(size == 1 ? "1 element" : size + " elements").append(" only other variants have here, folded (Other variants shows them).")
+					.append("\nFirst: ").append(short_(firstText(block, childOf), 160));
+			if (size > 1)
+				text.append("\nLast: ").append(short_(lastText(block, childOf), 160));
+			return text.toString();
+		}
 		text.append(size == 1 ? "1 element" : size + " elements in this order");
 		if (!block.shown())
 			text.append(", only in other variants");
@@ -409,6 +455,14 @@ public class PartialOrderGraphView extends BorderPane {
 			// placed in layers: no layout runs (a spring layout coiled the runs and, for thousands of
 			// nodes, never settled - redrawing on every step)
 			view.getCamera().resetView();
+			// too tall to read fitted - thousands of layers were a grey smear: its top, readable
+			if (maxLayers > LABELLED_LAYERS) {
+				view.getCamera().setViewPercent(START_LAYERS / maxLayers);
+				// the start just inside the top, the column to the left of the middle: its labels go right
+				view.getCamera().setViewCenter(START_LAYERS / 4.0 * LAYER_GAP, -(START_LAYERS / 2.0 - 1) * LAYER_GAP, 0);
+			}
+			boolean withOthers = snapshot.withOtherVariants();
+			Platform.runLater(() -> this.otherVariants.setSelected(withOthers));
 
 		} finally {
 			Platform.runLater(() -> {
