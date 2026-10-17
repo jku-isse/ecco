@@ -181,10 +181,13 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 			}
 			newFileViews.put(fileName, fv);
 
-			boolean isSelected = fileNode.equals(selectedFileNode);
-			fv.showFile(fileNode, isSelected ? n : null);
-			if (isSelected) {
+			// only the file shown now, the others once their tab is selected: every file was, on
+			// every click - for a commit with many files the whole commit
+			if (fileNode.equals(selectedFileNode)) {
+				fv.showFile(fileNode, n);
 				selectedFileView = fv;
+			} else {
+				fv.showLater(fileNode);
 			}
 		}
 
@@ -198,7 +201,7 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 		if (currentFileViews.size() <= 1) {
 			ListView<NodeTextBlock[]> listView = currentFileViews.isEmpty()
 					? createListView(FXCollections.observableArrayList())
-					: currentFileViews.values().iterator().next().listView;
+					: currentFileViews.values().iterator().next().shown().listView;
 			splitPane.getItems().set(0, listView);
 			return;
 		}
@@ -217,6 +220,18 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 		if (tabToSelect != null) {
 			tabPane.getSelectionModel().select(tabToSelect);
 		}
+		// the tabs were added in the order of the views
+		Map<Tab, FileView> viewOfTab = new HashMap<>();
+		List<FileView> views = new ArrayList<>(currentFileViews.values());
+		for (int i = 0; i < tabPane.getTabs().size(); i++)
+			viewOfTab.put(tabPane.getTabs().get(i), views.get(i));
+		FileView shownView = viewOfTab.get(tabPane.getSelectionModel().getSelectedItem());
+		if (shownView != null)
+			shownView.shown();
+		tabPane.getSelectionModel().selectedItemProperty().addListener((o, was, tab) -> {
+			if (tab != null && viewOfTab.containsKey(tab))
+				viewOfTab.get(tab).shown();
+		});
 		splitPane.getItems().set(0, tabPane);
 	}
 
@@ -362,7 +377,23 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 		private Node root;
 		private volatile boolean isTreeInitialized = false;
 
+		/** The file to show once this view is shown - see {@link #showLater}. */
+		private Node pending;
+
+		/** Remembers [fileRoot] to show when this view is shown ({@link #shown}) - not built now. */
+		void showLater(Node fileRoot) {
+			this.pending = fileRoot;
+		}
+
+		/** Shows the file remembered by {@link #showLater}, if any; returns this. */
+		FileView shown() {
+			if (this.pending != null)
+				this.showFile(this.pending, null);
+			return this;
+		}
+
 		void showFile(Node fileRoot, Node nodeToHighlight) {
+			this.pending = null;
 			if (fileRoot != this.root) {
 				// a different underlying tree now maps to the same file path (e.g. viewing a
 				// different commit/composition) - the cached parse no longer applies, even

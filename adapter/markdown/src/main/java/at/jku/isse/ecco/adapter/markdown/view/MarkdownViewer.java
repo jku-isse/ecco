@@ -90,10 +90,13 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 			}
 			newFileViews.put(fileName, fv);
 
-			boolean isSelected = fileNode.equals(selectedFileNode);
-			fv.showFile(fileNode, isSelected ? node : null);
-			if (isSelected) {
+			// only the file shown now, the others once their tab is selected: every file was, on
+			// every click - for a commit with many files the whole commit
+			if (fileNode.equals(selectedFileNode)) {
+				fv.showFile(fileNode, node);
 				selectedFileView = fv;
+			} else {
+				fv.showLater(fileNode);
 			}
 		}
 
@@ -107,7 +110,7 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 		if (currentFileViews.size() <= 1) {
 			ListView<MarkdownLineRow> listView = currentFileViews.isEmpty()
 					? createListView(FXCollections.observableArrayList())
-					: currentFileViews.values().iterator().next().listView;
+					: currentFileViews.values().iterator().next().shown().listView;
 			this.setCenter(listView);
 			return;
 		}
@@ -126,6 +129,18 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 		if (tabToSelect != null) {
 			tabPane.getSelectionModel().select(tabToSelect);
 		}
+		// the tabs were added in the order of the views
+		Map<Tab, FileView> viewOfTab = new HashMap<>();
+		List<FileView> views = new ArrayList<>(currentFileViews.values());
+		for (int i = 0; i < tabPane.getTabs().size(); i++)
+			viewOfTab.put(tabPane.getTabs().get(i), views.get(i));
+		FileView shownView = viewOfTab.get(tabPane.getSelectionModel().getSelectedItem());
+		if (shownView != null)
+			shownView.shown();
+		tabPane.getSelectionModel().selectedItemProperty().addListener((o, was, tab) -> {
+			if (tab != null && viewOfTab.containsKey(tab))
+				viewOfTab.get(tab).shown();
+		});
 		this.setCenter(tabPane);
 	}
 
@@ -347,7 +362,23 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 		private final ObservableList<MarkdownLineRow> lines = FXCollections.observableArrayList();
 		private final ListView<MarkdownLineRow> listView = createListView(lines);
 
+		/** The file to show once this view is shown - see {@link #showLater}. */
+		private Node pending;
+
+		/** Remembers [fileRoot] to show when this view is shown ({@link #shown}) - not built now. */
+		void showLater(Node fileRoot) {
+			this.pending = fileRoot;
+		}
+
+		/** Shows the file remembered by {@link #showLater}, if any; returns this. */
+		FileView shown() {
+			if (this.pending != null)
+				this.showFile(this.pending, null);
+			return this;
+		}
+
 		void showFile(Node fileRoot, Node nodeToHighlight) {
+			this.pending = null;
 			List<MarkdownLineRow> collected = new ArrayList<>();
 			collectLines(fileRoot, RenderContext.ROOT, associationInfos, collected);
 			lines.setAll(collected);

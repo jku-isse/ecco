@@ -313,6 +313,39 @@ public class TextViewerTest {
     }
 
     /**
+     * Only the file shown is read into rows, the others when their tab is first selected: every file
+     * of the tree was, on every click - for a commit with many files the whole commit.
+     */
+    @Test
+    public void onlyTheFileShownIsBuiltTheOthersWhenSelected() throws Exception {
+        Map<String, String> files = new java.util.LinkedHashMap<>();
+        files.put("a.txt", "a1\n");
+        files.put("b.txt", "b1\nb2\n");
+        files.put("c.txt", "c1\n");
+        List<Node.Op> fileNodes = association("A", files);
+        Node.Op b1 = fileNodes.stream().filter(f -> f.getArtifact().getData().toString().contains("b.txt")).findFirst().orElseThrow().getChildren().get(0);
+        TextViewer viewer = onFx(() -> {
+            TextViewer v = new TextViewer();
+            v.showTree(b1);
+            return v;
+        });
+        TabPane tabs = (TabPane) viewer.getCenter();
+        assertEquals("b.txt", onFx(() -> tabs.getSelectionModel().getSelectedItem().getText()));
+        assertEquals(List.of("b1", "b2", "(final newline)", "(format: UTF-8, LF)"), texts(cells(viewer)));
+        Tab a = onFx(() -> tabs.getTabs().stream().filter(t -> t.getText().equals("a.txt")).findFirst().orElseThrow());
+        Tab c = onFx(() -> tabs.getTabs().stream().filter(t -> t.getText().equals("c.txt")).findFirst().orElseThrow());
+        assertEquals(0, onFx(() -> ((ListView<?>) a.getContent()).getItems().size()), "a.txt not built yet");
+        assertEquals(0, onFx(() -> ((ListView<?>) c.getContent()).getItems().size()), "c.txt not built yet");
+
+        onFx(() -> {
+            tabs.getSelectionModel().select(c);
+            return null;
+        });
+        assertEquals(List.of("c1", "(final newline)", "(format: UTF-8, LF)"), texts(cells(viewer)), "built when selected");
+        assertEquals(0, onFx(() -> ((ListView<?>) a.getContent()).getItems().size()), "a.txt still not");
+    }
+
+    /**
      * Files are keyed by file name (TextViewer.java:76), so two files of the same name in different
      * folders share one tab: only the last one is shown.
      */
