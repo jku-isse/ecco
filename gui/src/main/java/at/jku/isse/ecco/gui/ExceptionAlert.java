@@ -12,6 +12,7 @@ public class ExceptionAlert extends Alert {
 
 	public ExceptionAlert(Throwable ex) {
 		super(AlertType.ERROR);
+		Dialogs.ownByFocusedWindow(this);
 
 		this.setContentText(describe(ex));
 

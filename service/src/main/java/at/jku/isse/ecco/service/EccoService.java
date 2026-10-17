@@ -670,6 +670,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.remoteSyncService.fetch(remoteName);
     }
 
+    /** Fetches, cancellable at checkpoints before anything is written: see {@link RemoteSyncService#fetch(String, java.util.function.BooleanSupplier)}. */
+    public synchronized void fetch(String remoteName, java.util.function.BooleanSupplier cancelled) {
+        this.remoteSyncService.fetch(remoteName, cancelled);
+    }
+
     public synchronized void fork(String hostname, int port) {
         this.fork(hostname, port, "");
     }
@@ -892,6 +897,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.remoteSyncService.pull(remoteName, deselectedFeatureRevisionsString);
     }
 
+    /** Pulls, cancellable at checkpoints before anything is written: see {@link RemoteSyncService#pull(String, String, java.util.function.BooleanSupplier)}. */
+    public synchronized void pull(String remoteName, String deselectedFeatureRevisionsString, java.util.function.BooleanSupplier cancelled) {
+        this.remoteSyncService.pull(remoteName, deselectedFeatureRevisionsString, cancelled);
+    }
+
     public synchronized void push(String remoteName) {
         this.remoteSyncService.push(remoteName);
     }
@@ -904,6 +914,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      */
     public synchronized void push(String remoteName, String deselectedFeatureRevisionsString) {
         this.remoteSyncService.push(remoteName, deselectedFeatureRevisionsString);
+    }
+
+    /** Pushes, cancellable at checkpoints before anything is written: see {@link RemoteSyncService#push(String, String, java.util.function.BooleanSupplier)}. */
+    public synchronized void push(String remoteName, String deselectedFeatureRevisionsString, java.util.function.BooleanSupplier cancelled) {
+        this.remoteSyncService.push(remoteName, deselectedFeatureRevisionsString, cancelled);
     }
 
 

@@ -321,7 +321,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 			Path selectedPath = selectedDirectory.toPath();
 			if (!Files.exists(selectedPath.resolve(".git"))) {
-				Alert alert = new Alert(Alert.AlertType.WARNING, "Not a git repository (no .git found):\n" + selectedPath);
+				Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING, "Not a git repository (no .git found):\n" + selectedPath);
 				alert.showAndWait();
 				return;
 			}
@@ -390,7 +390,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 			boolean useLlm = suggestFeaturesCheckBox.isSelected();
 			if (useLlm && LlmPreferences.getModelName().isBlank()) {
-				Alert alert = new Alert(Alert.AlertType.WARNING,
+				Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING,
 						"No LLM model name is configured (Preferences → LLM), so feature suggestions " +
 								"would fail for every commit. Skipping suggestions - you can still fill in each " +
 								"commit's configuration by hand on the next screen.");
@@ -957,7 +957,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		importButton.setOnAction(event -> {
 			String warning = constraintWarningLabel.getText();
 			if (warning != null && !warning.isEmpty()) {
-				Alert alert = new Alert(Alert.AlertType.CONFIRMATION, warning + "\n\nDo you want to import anyway?");
+				Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION, warning + "\n\nDo you want to import anyway?");
 				alert.setHeaderText("Constraint violation");
 				Optional<ButtonType> result = alert.showAndWait();
 				if (result.isEmpty() || result.get() != ButtonType.OK) return;

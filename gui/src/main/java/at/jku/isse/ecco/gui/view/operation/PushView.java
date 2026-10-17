@@ -24,8 +24,8 @@ public class PushView extends TransferView {
 	}
 
 	@Override
-	protected void transfer(String remote, String deselection) {
-		this.service.push(remote, deselection);
+	protected void transfer(String remote, String deselection, java.util.function.BooleanSupplier cancelled) {
+		this.service.push(remote, deselection, cancelled);
 	}
 
 	/** This repository's own. */

@@ -62,8 +62,8 @@ public abstract class TransferView extends OperationView {
 	/** "from", "to". */
 	protected abstract String preposition();
 
-	/** Does it, off the FX thread: [deselection] left out. */
-	protected abstract void transfer(String remote, String deselection);
+	/** Does it, off the FX thread: [deselection] left out; asking [cancelled] at its checkpoints. */
+	protected abstract void transfer(String remote, String deselection, java.util.function.BooleanSupplier cancelled);
 
 	/** The features to choose from: the remote's (Pull) or this repository's (Push) - off the FX thread. */
 	protected abstract Collection<? extends Feature> features(String remote);
@@ -76,8 +76,11 @@ public abstract class TransferView extends OperationView {
 	/** The feature revisions the transfer adds where they go - read before and after it, off the FX thread. */
 	protected abstract Set<String> revisionsAtTarget(String remote);
 
+	/** Set by Cancel: the transfer stops at its next checkpoint, before anything is written. */
+	private final java.util.concurrent.atomic.AtomicBoolean cancelRequested = new java.util.concurrent.atomic.AtomicBoolean();
+
 	private void transfer() {
-		this.setDisable(true);
+		this.cancelRequested.set(false);
 		Remote remote = this.remoteComboBox.getValue();
 		// read on the FX thread, not in call()
 		String deselection = this.deselectionTextField.getText();
@@ -87,10 +90,10 @@ public abstract class TransferView extends OperationView {
 			public List<String> call() {
 				updateMessage("Fetching " + remote.getName() + "...");
 				updateProgress(-1, 1);
-				TransferView.this.service.fetch(remote.getName());
+				TransferView.this.service.fetch(remote.getName(), TransferView.this.cancelRequested::get);
 				Set<String> before = TransferView.this.revisionsAtTarget(remote.getName());
 				updateMessage(TransferView.this.verb() + "ing " + TransferView.this.preposition() + " " + remote.getName() + "...");
-				TransferView.this.transfer(remote.getName(), deselection);
+				TransferView.this.transfer(remote.getName(), deselection, TransferView.this.cancelRequested::get);
 				Set<String> after = TransferView.this.revisionsAtTarget(remote.getName());
 				after.removeAll(before);
 				return after.stream().sorted().toList();
@@ -99,21 +102,25 @@ public abstract class TransferView extends OperationView {
 			@Override
 			public void succeeded() {
 				super.succeeded();
-				TransferView.this.setDisable(false);
 				TransferView.this.stepSuccess(transferred(TransferView.this.verb(), TransferView.this.preposition(), remote.getName(), this.getValue()));
 			}
 
 			@Override
 			public void failed() {
 				super.failed();
-				TransferView.this.setDisable(false);
-				TransferView.this.stepError("Error during " + TransferView.this.verb().toLowerCase() + " operation.", this.getException());
+				TransferView.this.notRunning();
+				if (at.jku.isse.ecco.service.OperationCancelledException.isCause(this.getException()))
+					TransferView.this.showCancelledHeader("Cancelled - nothing was changed.");
+				else
+					TransferView.this.stepError("Error during " + TransferView.this.verb().toLowerCase() + " operation.", this.getException());
 			}
 		};
 		this.progressBar.progressProperty().bind(task.progressProperty());
 		this.progressLabel.textProperty().bind(task.messageProperty());
 		this.stepProgress();
+		// it can be stopped now: closing the window asks, and cancels
 		this.track(task, "The " + this.verb().toLowerCase());
+		this.running("the " + this.verb().toLowerCase(), "Nothing is changed.", () -> this.cancelRequested.set(true));
 		new Thread(task).start();
 	}
 
@@ -287,7 +294,15 @@ public abstract class TransferView extends OperationView {
 	}
 
 	private void stepProgress() {
-		this.leftButtons.getChildren().clear();
+		// it could not be stopped: it stops now at the next point before anything is written
+		Button cancelButton = new Button("Cancel");
+		cancelButton.setOnAction(event -> {
+			this.cancelRequested.set(true);
+			cancelButton.setDisable(true);
+			this.progressLabel.textProperty().unbind();
+			this.progressLabel.setText("Stopping before anything is written...");
+		});
+		this.leftButtons.getChildren().setAll(cancelButton);
 		this.headerLabel.setText(this.verb());
 		this.rightButtons.getChildren().clear();
 

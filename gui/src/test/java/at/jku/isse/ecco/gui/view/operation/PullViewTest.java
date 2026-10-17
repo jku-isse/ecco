@@ -187,6 +187,47 @@ public class PullViewTest {
         }
     }
 
+    /** A pull can be cancelled while it runs - it could not be stopped - and then changes nothing. */
+    @Test
+    @Timeout(60)
+    public void aCancelledPullChangesNothing(@TempDir Path tmp) throws Exception {
+        Path origin = origin(tmp);
+        try (EccoService service = target(tmp, origin)) {
+            java.util.concurrent.CountDownLatch started = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+            PullView view = onFx(() -> {
+                PullView v = new PullView(service) {
+                    @Override
+                    protected void transfer(String remote, String deselection, java.util.function.BooleanSupplier cancelled) {
+                        started.countDown();
+                        try {
+                            go.await();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                        super.transfer(remote, deselection, cancelled);
+                    }
+                };
+                stage = new Stage();
+                stage.setScene(new Scene(v));
+                stage.setX(-10_000);
+                stage.show();
+                return v;
+            });
+            onFx(() -> {
+                chooseRemote(view, "origin");
+                button(view, "Pull All").fire();
+            });
+            assertTrue(started.await(30, java.util.concurrent.TimeUnit.SECONDS));
+            onFx(() -> button(view, "Cancel").fire());
+            go.countDown();
+
+            waitUntil("cancelled", () -> "Cancelled - nothing was changed.".equals(view.headerLabel.getText()));
+            assertEquals(Set.of(), features(service), "nothing pulled");
+            assertTrue(onFx(stage::isShowing), "the dialog says so");
+        }
+    }
+
     @Test
     @Timeout(60)
     public void anUnknownRemoteIsReported(@TempDir Path tmp) throws Exception {

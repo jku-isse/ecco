@@ -506,10 +506,19 @@ public class RemoteSyncService {
 
 
     public void fetch(String remoteName) {
+        this.fetch(remoteName, () -> false);
+    }
+
+    /**
+     * Fetches, asking [cancelled] at checkpoints before anything is written - a cancelled fetch throws
+     * {@link OperationCancelledException} and changes nothing (its transaction is rolled back).
+     */
+    public void fetch(String remoteName, java.util.function.BooleanSupplier cancelled) {
         owner.checkInitialized();
 
         try {
             owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            OperationCancelledException.check(cancelled);
 
             // load remote
             Remote remote = owner.remoteDao.loadRemote(remoteName);
@@ -543,6 +552,7 @@ public class RemoteSyncService {
 
                         // copy it using this entity factory
                         Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(features, owner.entityFactory);
+                        OperationCancelledException.check(cancelled);
 
                         // store with remote
                         remote.getFeatures().clear();
@@ -569,12 +579,15 @@ public class RemoteSyncService {
                     copiedFeatures = EccoUtil.deepCopyFeatures(parentService.getRepository().getFeatures(), owner.entityFactory);
                 }
 
+                OperationCancelledException.check(cancelled);
                 // merge into this repository
                 remote.getFeatures().clear();
                 remote.getFeatures().addAll(copiedFeatures);
                 owner.remoteDao.storeRemote(remote);
             }
 
+            // the last chance: what follows writes
+            OperationCancelledException.check(cancelled);
             owner.transactionStrategy.end();
         } catch (Error e) {
             owner.rollbackIfTransactionActive();
@@ -731,12 +744,21 @@ public class RemoteSyncService {
      * @param deselectedFeatureRevisionsString A string enumerating the deselected feature revisions.
      */
     public void pull(String remoteName, String deselectedFeatureRevisionsString) {
+        this.pull(remoteName, deselectedFeatureRevisionsString, () -> false);
+    }
+
+    /**
+     * Pulls, asking [cancelled] at checkpoints before anything is written - a cancelled pull throws
+     * {@link OperationCancelledException} and changes nothing (its transaction is rolled back).
+     */
+    public void pull(String remoteName, String deselectedFeatureRevisionsString, java.util.function.BooleanSupplier cancelled) {
         owner.checkInitialized();
 
         // settings this repository takes over from the remote with its first files of a plugin
         Map<String, String> takeOver = Map.of();
         try {
             owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            OperationCancelledException.check(cancelled);
 
             // load remote
             Remote remote = owner.remoteDao.loadRemote(remoteName);
@@ -779,6 +801,7 @@ public class RemoteSyncService {
 
                         // copy it using this entity factory
                         Repository.Op copiedRepository = subsetRepository.copy(owner.entityFactory);
+                        OperationCancelledException.check(cancelled);
 
                         // merge into this repository - if both read the files the same way
                         Repository.Op repository = owner.repositoryDao.load();
@@ -823,6 +846,7 @@ public class RemoteSyncService {
                     }
                 }
 
+                OperationCancelledException.check(cancelled);
                 // merge into this repository - if both read the files the same way
                 Repository.Op repository = owner.repositoryDao.load();
                 takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(subsetParentRepository), parentSettings,
@@ -831,6 +855,8 @@ public class RemoteSyncService {
                 owner.repositoryDao.store(repository);
             }
 
+            // the last chance: what follows writes
+            OperationCancelledException.check(cancelled);
             owner.endTakingOverSettings(takeOver);
         } catch (Error e) {
             owner.rollbackIfTransactionActive();
@@ -854,10 +880,20 @@ public class RemoteSyncService {
      * @param deselectedFeatureRevisionsString A string enumerating the deselected feature revisions.
      */
     public void push(String remoteName, String deselectedFeatureRevisionsString) {
+        this.push(remoteName, deselectedFeatureRevisionsString, () -> false);
+    }
+
+    /**
+     * Pushes, asking [cancelled] at checkpoints before anything is written - a cancelled push throws
+     * {@link OperationCancelledException} and changes nothing. To an ECCO server only until it is
+     * sent: the server merges it.
+     */
+    public void push(String remoteName, String deselectedFeatureRevisionsString, java.util.function.BooleanSupplier cancelled) {
         owner.checkInitialized();
 
         try {
             owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+            OperationCancelledException.check(cancelled);
 
             // load remote
             Remote remote = owner.remoteDao.loadRemote(remoteName);
@@ -870,6 +906,8 @@ public class RemoteSyncService {
                 Repository.Op repository = owner.repositoryDao.load();
                 Repository.Op subsetRepository = repository.subset(owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), owner.entityFactory);
                 owner.transactionStrategy.end();
+                // the last chance: the server merges what it gets
+                OperationCancelledException.check(cancelled);
                 // the remote merges only files it reads the same way - asked before sending anything
                 this.mergeSettingsIntoRemote(remote, EccoService.pluginsWithFiles(subsetRepository));
 
@@ -891,6 +929,7 @@ public class RemoteSyncService {
                     // create subset repository
                     Repository.Op repository = owner.repositoryDao.load();
                     Repository.Op subsetRepository = repository.subset(owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), parentService.entityFactory);
+                    OperationCancelledException.check(cancelled);
 
                     // merge into parent repository - if both read the files the same way
                     try {
@@ -903,6 +942,8 @@ public class RemoteSyncService {
                         parentRepository.merge(subsetRepository);
                         parentService.repositoryDao.store(parentRepository);
 
+                        // the last chance: what follows writes the remote
+                        OperationCancelledException.check(cancelled);
                         parentService.endTakingOverSettings(takeOver);
                     } catch (Error e) {
                         parentService.rollbackIfTransactionActive();

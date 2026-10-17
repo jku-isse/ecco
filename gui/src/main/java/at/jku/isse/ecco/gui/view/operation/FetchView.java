@@ -73,7 +73,19 @@ public class FetchView extends OperationView {
 
 
 		fetchButton.setOnAction(event -> {
-			this.setDisable(true);
+			// the form only - the window was disabled, and a Cancel with it
+			gridPane.setDisable(true);
+			fetchButton.disableProperty().unbind();
+			fetchButton.setDisable(true);
+			java.util.concurrent.atomic.AtomicBoolean cancelRequested = new java.util.concurrent.atomic.AtomicBoolean();
+			Button stopButton = new Button("Cancel");
+			stopButton.setOnAction(e -> {
+				cancelRequested.set(true);
+				stopButton.setDisable(true);
+				this.headerLabel.setText("Stopping before anything is written...");
+			});
+			this.leftButtons.getChildren().setAll(stopButton);
+			this.headerLabel.setText("Fetching ...");
 
 			Remote remote = remoteComboBox.getValue();
 
@@ -82,7 +94,7 @@ public class FetchView extends OperationView {
 				public java.util.List<String> call() {
 					at.jku.isse.ecco.core.Remote known = FetchView.this.service.getRemote(remote.getName());
 					java.util.Set<String> before = known == null ? new java.util.HashSet<>() : TransferView.revisions(known.getFeatures());
-					FetchView.this.service.fetch(remote.getName());
+					FetchView.this.service.fetch(remote.getName(), cancelRequested::get);
 					java.util.Set<String> after = TransferView.revisions(FetchView.this.service.getRemote(remote.getName()).getFeatures());
 					after.removeAll(before);
 					return after.stream().sorted().toList();
@@ -93,24 +105,20 @@ public class FetchView extends OperationView {
 					super.succeeded();
 					// what came over - it said "Fetch operation was successful."
 					FetchView.this.stepSuccess(TransferView.transferred("Fetch", "from", remote.getName(), this.getValue()));
-					FetchView.this.setDisable(false);
-				}
-
-				@Override
-				public void cancelled() {
-					super.cancelled();
-					FetchView.this.stepError("Fetch operation was cancelled.", this.getException());
-					FetchView.this.setDisable(false);
 				}
 
 				@Override
 				public void failed() {
 					super.failed();
-					FetchView.this.stepError("Error during fetch operation.", this.getException());
-					FetchView.this.setDisable(false);
+					FetchView.this.notRunning();
+					if (at.jku.isse.ecco.service.OperationCancelledException.isCause(this.getException()))
+						FetchView.this.showCancelledHeader("Cancelled - nothing was changed.");
+					else
+						FetchView.this.stepError("Error during fetch operation.", this.getException());
 				}
 			};
 			this.track(fetchTask, "The fetch");
+			this.running("the fetch", "Nothing is changed.", () -> cancelRequested.set(true));
 			new Thread(fetchTask).start();
 		});
 

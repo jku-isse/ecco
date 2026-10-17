@@ -167,7 +167,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 						new ExceptionAlert(e).show();
 					}
 				} else {
-					Alert alert = new Alert(Alert.AlertType.ERROR);
+					Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.ERROR);
 					alert.setHeaderText("Unknown file extension.");
 					alert.setContentText("Unknown file extension.");
 					alert.show();

@@ -180,7 +180,7 @@ public class InitView extends OperationView {
 	 * for the user's answer).
 	 */
 	boolean confirm(String header, String text) {
-		Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, text, ButtonType.YES, ButtonType.CANCEL);
+		Alert confirm = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION, text, ButtonType.YES, ButtonType.CANCEL);
 		confirm.setHeaderText(header);
 		Optional<ButtonType> result = confirm.showAndWait();
 		return result.isPresent() && result.get() == ButtonType.YES;

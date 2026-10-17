@@ -278,6 +278,7 @@ public class CheckoutDetailView extends BorderPane {
 		grid.add(descriptionField, 1, 1);
 
 		Dialog<ButtonType> dialog = new Dialog<>();
+		at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(dialog);
 		dialog.setTitle("Save as Variant");
 		dialog.setHeaderText(null);
 		dialog.getDialogPane().setContent(grid);
@@ -339,6 +340,7 @@ public class CheckoutDetailView extends BorderPane {
 		textArea.setPrefRowCount(30);
 
 		Dialog<Void> dialog = new Dialog<>();
+		at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(dialog);
 		dialog.setTitle("Warnings");
 		dialog.setHeaderText("Full, unfiltered diagnostics -- " + warningsFile);
 		dialog.setResizable(true);
@@ -364,7 +366,7 @@ public class CheckoutDetailView extends BorderPane {
 				// defense-in-depth: only the eager (Node.Op) composition path used by this view's
 				// normal checkout flow is directly editable; the lazy LazyCompositionNode path
 				// belongs to a different view (ArtifactsView's "Compose Selected").
-				new Alert(Alert.AlertType.ERROR,
+				new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.ERROR,
 						"This order warning cannot be reordered directly here -- re-run checkout via the normal Checkout tab and try again.")
 						.showAndWait();
 				return;
@@ -424,7 +426,7 @@ public class CheckoutDetailView extends BorderPane {
 
 	/** Whether to commit a fix that violates [violations] anyway. Package-visible for testing. */
 	boolean confirmDespiteViolations(List<String> violations) {
-		Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+		Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION,
 				"The fix violates accepted constraint(s):\n" + String.join("\n", violations) + "\n\nCommit it anyway?");
 		alert.setHeaderText("Constraint violation");
 		return alert.showAndWait().filter(button -> button == ButtonType.OK).isPresent();
@@ -531,6 +533,7 @@ public class CheckoutDetailView extends BorderPane {
 		static final ButtonType COMMIT = new ButtonType("Commit and Re-check", ButtonBar.ButtonData.OK_DONE);
 
 		ApplyFixDialog(EccoService service, Path defaultDirectory, String suggestedConfigurationString) {
+			at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(this);
 			setTitle("Apply Fix");
 			setHeaderText("Commit the missing content from a variant folder under this configuration, then check out again to verify.");
 			getDialogPane().getButtonTypes().addAll(COMMIT, ButtonType.CANCEL);

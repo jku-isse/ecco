@@ -172,7 +172,7 @@ public class ServerView extends OperationView implements EccoListener {
 
 	/** The tooltip alone was easy to miss: opening the repository to the network needs an explicit yes. */
 	private boolean confirmAllInterfaces(int port) {
-		Alert confirm = new Alert(Alert.AlertType.WARNING,
+		Alert confirm = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING,
 				"Synchronization has no authentication. Anyone who can reach port " + port
 						+ " of this machine can read the whole repository and push into it.\n\n"
 						+ "Only do this on a network you trust.",

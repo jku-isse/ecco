@@ -34,6 +34,7 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 
 	/** Starting from [initial], the text of the field it was opened for. */
 	public ConfigurationPickerDialog(EccoService service, String initial) {
+		at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(this);
 		setTitle("Exact Configuration"); // named as the button that opens it
 		setHeaderText("Check a feature to include it below, or type/edit the configuration string directly - they stay in sync.");
 		setResizable(true);

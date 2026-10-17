@@ -459,7 +459,7 @@ public class MainView extends BorderPane implements EccoListener {
 	private void openBaseDirectory() {
 		java.nio.file.Path baseDir = this.eccoService.getBaseDir();
 		if (baseDir == null) {
-			new Alert(Alert.AlertType.WARNING, "No base directory is set.").showAndWait();
+			new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING, "No base directory is set.").showAndWait();
 			return;
 		}
 		try {

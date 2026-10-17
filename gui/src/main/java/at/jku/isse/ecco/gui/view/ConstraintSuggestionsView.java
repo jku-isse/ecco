@@ -337,7 +337,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
 
     /** Says why a decision was refused (a parent that would close a cycle). Package-visible for testing. */
     void refused(String why) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, why);
+        Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING, why);
         alert.setHeaderText("Not accepted");
         if (this.getScene() != null) alert.initOwner(this.getScene().getWindow());
         alert.showAndWait();

@@ -298,7 +298,7 @@ public class CommitView extends OperationView implements EccoListener {
 	void selectFoldersUnder(Path selectedPath) {
 		List<Path> subfolders = listSubfolders(selectedPath);
 		if (subfolders.isEmpty()) {
-			Alert alert = new Alert(Alert.AlertType.WARNING, "The selected folder has no subfolders:\n" + selectedPath);
+			Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING, "The selected folder has no subfolders:\n" + selectedPath);
 			alert.showAndWait();
 			return;
 		}
@@ -329,7 +329,7 @@ public class CommitView extends OperationView implements EccoListener {
 	private void wireCommitButton(Button commitButton) {
 		commitButton.setOnAction(event -> {
 			if (folderData.isEmpty()) {
-				Alert alert = new Alert(Alert.AlertType.WARNING, "Add at least one folder to commit.");
+				Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING, "Add at least one folder to commit.");
 				alert.showAndWait();
 				return;
 			}
@@ -453,6 +453,7 @@ public class CommitView extends OperationView implements EccoListener {
 	 */
 	List<Path> chooseSubfolders(Path parent, List<Path> subfolders) {
 		Dialog<List<Path>> dialog = new Dialog<>();
+		at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(dialog);
 		dialog.setTitle("Select Folders");
 		dialog.setHeaderText("Select which subfolders of\n" + parent + "\nto add:");
 		dialog.initOwner(this.getScene().getWindow());
@@ -739,7 +740,7 @@ public class CommitView extends OperationView implements EccoListener {
 	 * test stands in for the user's answer).
 	 */
 	boolean confirmCommitAnyway(String violations) {
-		Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+		Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION,
 				violations + "\n\nDo you want to commit anyway?");
 		alert.setHeaderText("Constraint violation");
 		Optional<ButtonType> result = alert.showAndWait();

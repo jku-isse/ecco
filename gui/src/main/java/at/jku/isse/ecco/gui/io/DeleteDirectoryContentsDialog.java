@@ -27,6 +27,7 @@ public class DeleteDirectoryContentsDialog extends Alert {
 	public DeleteDirectoryContentsDialog(Path directory) {
 		super(Alert.AlertType.WARNING, message(directory), DELETE, ButtonType.CANCEL);
 		this.directory = directory;
+		at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(this);
 		this.setTitle("Delete Contents");
 		this.setHeaderText("Delete the contents of " + directory.getFileName() + "?");
 		((Button) this.getDialogPane().lookupButton(DELETE)).setDefaultButton(false);

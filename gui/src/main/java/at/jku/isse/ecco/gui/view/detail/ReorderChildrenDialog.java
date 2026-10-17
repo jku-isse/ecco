@@ -102,6 +102,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 
 	/** @param suggester asked for an order by "Suggest order"; null disables it (no model chosen) */
 	public ReorderChildrenDialog(EccoService service, Node.Op node, OrderSuggester suggester) {
+		at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(this);
 		setTitle("Reorder Children");
 		setHeaderText("Choose the order for the children of: " + node.getArtifact());
 		setResizable(true);

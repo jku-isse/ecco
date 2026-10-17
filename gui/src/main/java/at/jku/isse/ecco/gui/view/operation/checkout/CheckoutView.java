@@ -327,7 +327,7 @@ public class CheckoutView extends OperationView implements EccoListener {
      * @return true if the user confirmed.
      */
     boolean askToProceedAnyway(String description, String actionVerb) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+        Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION,
                 description + "\n\nDo you want to " + actionVerb + " anyway?");
         alert.setHeaderText("Constraint violation");
         Optional<ButtonType> result = alert.showAndWait();

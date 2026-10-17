@@ -216,7 +216,7 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 	 * test stands in for the user's answer).
 	 */
 	boolean confirmCommitAnyway(String violations) {
-		Alert alert = new Alert(Alert.AlertType.CONFIRMATION, violations + "\n\nDo you want to commit anyway?");
+		Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION, violations + "\n\nDo you want to commit anyway?");
 		alert.setHeaderText("Constraint violation");
 		Optional<ButtonType> result = alert.showAndWait();
 		return result.isPresent() && result.get() == ButtonType.OK;

@@ -24,8 +24,8 @@ public class PullView extends TransferView {
 	}
 
 	@Override
-	protected void transfer(String remote, String deselection) {
-		this.service.pull(remote, deselection);
+	protected void transfer(String remote, String deselection, java.util.function.BooleanSupplier cancelled) {
+		this.service.pull(remote, deselection, cancelled);
 	}
 
 	/** The remote's as last fetched - shown while they are fetched again. */

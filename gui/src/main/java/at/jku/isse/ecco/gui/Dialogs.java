@@ -66,6 +66,21 @@ public final class Dialogs {
 	}
 
 	/**
+	 * Makes the focused window [dialog]'s owner, so it opens over the window it is about - message
+	 * boxes had none and opened in the middle of the main screen. No owner if no window has the focus.
+	 */
+	public static void ownByFocusedWindow(javafx.scene.control.Dialog<?> dialog) {
+		Window.getWindows().stream().filter(w -> w.isShowing() && w.isFocused()).findFirst()
+				.ifPresent(owner -> {
+					try {
+						dialog.initOwner(owner);
+					} catch (IllegalStateException alreadyShown) {
+						// shown before: it keeps where it is
+					}
+				});
+	}
+
+	/**
 	 * Cmd+Q quits the whole app - also while a dialog, not the main window, has the focus. Cmd+W closes
 	 * the window of [scene] - the main window replaces this (see {@code MainView}): closing it would quit.
 	 * Ctrl on Windows and Linux (SHORTCUT_DOWN is the platform's shortcut modifier).
