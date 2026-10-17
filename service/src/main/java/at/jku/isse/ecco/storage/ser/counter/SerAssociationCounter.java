@@ -103,9 +103,14 @@ public class SerAssociationCounter implements AssociationCounter {
 	 * own instances already
 	 */
 	public synchronized boolean resolveCompactChildren(SerRepository repository) {
+		return this.resolveCompactChildren(repository, new CompactCounters.Resolved(repository));
+	}
+
+	/** As {@link #resolveCompactChildren(SerRepository)}, with the module revisions [resolved] so far by this load. */
+	public synchronized boolean resolveCompactChildren(SerRepository repository, CompactCounters.Resolved resolved) {
 		if (this.unresolvedChildren == null)
 			return false;
-		this.children = CompactCounters.decode(this.unresolvedChildren, repository, this.association.getId());
+		this.children = CompactCounters.decode(this.unresolvedChildren, repository, this.association.getId(), resolved);
 		this.unresolvedChildren = null;
 		return true;
 	}

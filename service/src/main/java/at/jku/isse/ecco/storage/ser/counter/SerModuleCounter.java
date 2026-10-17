@@ -8,13 +8,18 @@ import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.storage.ser.module.SerModule;
 import at.jku.isse.ecco.storage.ser.module.SerModuleRevision;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectStreamField;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Synchronized on {@code this} for every read AND write of {@link #children}/{@link #count} - same
+ * Synchronized on {@code this} for every read AND write of the children/{@link #count} - same
  * live-shared-mutable-state race as SerAssociationCounter (see the unsynchronized-counter crash
  * and that class's javadoc); this counter is reached via
  * AssociationCounter#getChildren() and walked the same way by
@@ -31,7 +36,20 @@ public class SerModuleCounter implements ModuleCounter {
 
 	private SerModule module;
 	private int count;
-	private Collection<SerModuleRevisionCounter> children;
+	/**
+	 * The children: the first module revision counted, and any further ones. A module nearly always
+	 * has one revision counted - each of tinycc's 17.8 million module counters had - and a list of
+	 * its own for that one (an ArrayList and its array of ten) took 1.4 of 2.9 GB.
+	 */
+	private transient SerModuleRevisionCounter first;
+	private transient List<SerModuleRevisionCounter> more;
+
+	/** The serialized form is the one before - module, count and the children as a collection - see CounterStreamFormTest. */
+	private static final ObjectStreamField[] serialPersistentFields = {
+			new ObjectStreamField("module", SerModule.class),
+			new ObjectStreamField("count", int.class),
+			new ObjectStreamField("children", Collection.class)
+	};
 	//private Map<MemModuleRevision, MemModuleRevisionCounter> children;
 
 
@@ -39,9 +57,45 @@ public class SerModuleCounter implements ModuleCounter {
 		checkNotNull(module);
 		this.module = module;
 		this.count = 0;
-		this.children = new ArrayList<>();
-		//this.children = Maps.mutable.empty();
-		//this.children = HashObjObjMaps.newMutableMap();
+	}
+
+	private synchronized void writeObject(ObjectOutputStream out) throws IOException {
+		ObjectOutputStream.PutField fields = out.putFields();
+		fields.put("module", this.module);
+		fields.put("count", this.count);
+		fields.put("children", this.children());
+		out.writeFields();
+	}
+
+	@SuppressWarnings("unchecked")
+	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+		ObjectInputStream.GetField fields = in.readFields();
+		this.module = (SerModule) fields.get("module", null);
+		this.count = fields.get("count", 0);
+		Collection<SerModuleRevisionCounter> children = (Collection<SerModuleRevisionCounter>) fields.get("children", null);
+		if (children != null)
+			for (SerModuleRevisionCounter child : children)
+				this.add(child);
+	}
+
+	private void add(SerModuleRevisionCounter child) {
+		if (this.first == null)
+			this.first = child;
+		else {
+			if (this.more == null)
+				this.more = new ArrayList<>(2);
+			this.more.add(child);
+		}
+	}
+
+	/** A copy of the children, in the order added. */
+	private ArrayList<ModuleRevisionCounter> children() {
+		ArrayList<ModuleRevisionCounter> children = new ArrayList<>(this.first == null ? 0 : 1 + (this.more == null ? 0 : this.more.size()));
+		if (this.first != null)
+			children.add(this.first);
+		if (this.more != null)
+			children.addAll(this.more);
+		return children;
 	}
 
 	/**
@@ -89,27 +143,28 @@ public class SerModuleCounter implements ModuleCounter {
 		if (!(child instanceof SerModuleRevision))
 			throw new EccoException("Only a SerModuleRevision can be added as a child to a SerModuleCounter.");
 		SerModuleRevision memChild = (SerModuleRevision) child;
-		for (ModuleRevisionCounter moduleRevisionCounter : this.children) {
-			if (moduleRevisionCounter.getObject().equals(memChild))
-				return null;
-		}
+		if (this.getChild(memChild) != null)
+			return null;
 		SerModuleRevisionCounter moduleRevisionCounter = new SerModuleRevisionCounter(memChild);
-		this.children.add(moduleRevisionCounter);
+		this.add(moduleRevisionCounter);
 		return moduleRevisionCounter;
 	}
 
 	@Override
 	public synchronized ModuleRevisionCounter getChild(ModuleRevision child) {
-		for (ModuleRevisionCounter moduleRevisionCounter : this.children) {
-			if (moduleRevisionCounter.getObject().equals(child))
-				return moduleRevisionCounter;
-		}
+		if (this.first != null && this.first.getObject().equals(child))
+			return this.first;
+		if (this.more != null)
+			for (ModuleRevisionCounter moduleRevisionCounter : this.more) {
+				if (moduleRevisionCounter.getObject().equals(child))
+					return moduleRevisionCounter;
+			}
 		return null;
 	}
 
 	@Override
 	public synchronized Collection<ModuleRevisionCounter> getChildren() {
-		return new ArrayList<>(this.children);
+		return this.children();
 	}
 
 

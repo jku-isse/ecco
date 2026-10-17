@@ -174,11 +174,58 @@ public final class CompactCounters {
 	 * revisions. All of them must exist: the counters are what they were built from.
 	 */
 	static Map<Module, SerModuleCounter> decode(byte[] data, SerRepository repository, String associationId) {
+		return decode(data, repository, associationId, new Resolved(repository));
+	}
+
+	/**
+	 * The repository's own module revisions for the indices counters refer to, each looked up once:
+	 * it was looked up for every counter - 17.8 million times for 9,309 module revisions, most of the
+	 * 4.8 s decoding tinycc's counters took. For the decoding of one load; the repository does not
+	 * change meanwhile.
+	 */
+	public static final class Resolved {
+		private final SerRepository repository;
+		private SerModuleRevision[] revisions = new SerModuleRevision[0];
+		private SerModule[] modules = new SerModule[0];
+
+		public Resolved(SerRepository repository) {
+			this.repository = repository;
+		}
+
+		/** The repository's own module revision counted by [index]; null if it has none. */
+		private SerModuleRevision revision(int index) {
+			if (index < this.revisions.length && this.revisions[index] != null)
+				return this.revisions[index];
+			SerModuleRevision listed = this.repository.countedRevision(index);
+			if (listed == null)
+				return null;
+			// the repository's own instances (the list holds them, but resolve as version 1 does)
+			Module listedModule = listed.getModule();
+			SerModule module = this.repository.getModule(listedModule.getPos(), listedModule.getNeg());
+			SerModuleRevision moduleRevision = module == null ? null : module.getRevision(listed.getPos(), listed.getNeg());
+			if (moduleRevision == null)
+				return null;
+			if (index >= this.revisions.length) {
+				this.revisions = Arrays.copyOf(this.revisions, Math.max(index + 1, this.revisions.length * 2));
+				this.modules = Arrays.copyOf(this.modules, this.revisions.length);
+			}
+			this.revisions[index] = moduleRevision;
+			this.modules[index] = module;
+			return moduleRevision;
+		}
+
+		/** The repository's own module of {@link #revision}([index]), after that was found. */
+		private SerModule module(int index) {
+			return this.modules[index];
+		}
+	}
+
+	static Map<Module, SerModuleCounter> decode(byte[] data, SerRepository repository, String associationId, Resolved resolved) {
 		try {
 			DataInputStream in = new DataInputStream(new ByteArrayInputStream(data));
 			int version = readVarint(in);
 			if (version == VERSION_INDEXED)
-				return decodeIndexed(in, repository, associationId);
+				return decodeIndexed(in, resolved, associationId);
 			if (version != VERSION)
 				throw new EccoException("Association " + associationId + " has counters in an unknown format (version " + version + "), written by a newer version of ECCO.");
 
@@ -231,22 +278,17 @@ public final class CompactCounters {
 	}
 
 	/** Version 2 - see {@link #VERSION_INDEXED}. */
-	private static Map<Module, SerModuleCounter> decodeIndexed(DataInputStream in, SerRepository repository, String associationId) throws IOException {
+	private static Map<Module, SerModuleCounter> decodeIndexed(DataInputStream in, Resolved resolved, String associationId) throws IOException {
 		Map<Module, SerModuleCounter> children = Maps.mutable.empty();
 		int size = readVarint(in);
 		int index = -1;
 		for (int e = 0; e < size; e++) {
 			index += readVarint(in) + 1;
 			int count = readVarint(in), moduleCount = readVarint(in);
-			SerModuleRevision listed = repository.countedRevision(index);
-			if (listed == null)
-				throw damaged(associationId, "module revision #" + index);
-			// the repository's own instances (the list holds them, but resolve as version 1 does)
-			Module listedModule = listed.getModule();
-			SerModule module = repository.getModule(listedModule.getPos(), listedModule.getNeg());
-			SerModuleRevision moduleRevision = module == null ? null : module.getRevision(listed.getPos(), listed.getNeg());
+			SerModuleRevision moduleRevision = resolved.revision(index);
 			if (moduleRevision == null)
-				throw damaged(associationId, "module revision " + listed);
+				throw damaged(associationId, resolved.repository.countedRevision(index) == null ? "module revision #" + index : "module revision " + resolved.repository.countedRevision(index));
+			SerModule module = resolved.module(index);
 			SerModuleCounter moduleCounter = children.computeIfAbsent(module, m -> new SerModuleCounter(module));
 			if (moduleCount > 0)
 				moduleCounter.setCount(moduleCount - 1);

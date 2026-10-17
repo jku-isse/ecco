@@ -9,6 +9,7 @@ import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
+import at.jku.isse.ecco.storage.ser.counter.CompactCounters;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifactReference;
 import at.jku.isse.ecco.storage.ser.counter.SerAssociationCounter;
@@ -97,9 +98,10 @@ final class LoadResolver {
 	static void resolveModuleReferences(SerRepository repo) {
 		// counters read in compact form are built on the repository's modules right away; only
 		// those read in the old form hold copies to replace
+		CompactCounters.Resolved resolved = new CompactCounters.Resolved(repo);
 		for (Association.Op association : repo.getAssociations()) {
 			if (association.getCounter() instanceof SerAssociationCounter serAssociationCounter
-					&& serAssociationCounter.resolveCompactChildren(repo))
+					&& serAssociationCounter.resolveCompactChildren(repo, resolved))
 				continue;
 			for (ModuleCounter moduleCounter : association.getCounter().getChildren()) {
 				if (!(moduleCounter instanceof SerModuleCounter serModuleCounter)) continue;
