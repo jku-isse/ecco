@@ -26,7 +26,9 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         ToolBar toolBar = new ToolBar();
         this.setTop(toolBar);
 
-        CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Use Simplified Labels");
+        // what it does, as in the Dependency Graph: "A" for "A.1"
+        CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Hide Revisions");
+        useSimplifiedLabelsCheckBox.setTooltip(new Tooltip("Show the conditions without feature revisions: A instead of A.1"));
         toolBar.getItems().add(useSimplifiedLabelsCheckBox);
         useSimplifiedLabelsCheckBox.setSelected(true);
 

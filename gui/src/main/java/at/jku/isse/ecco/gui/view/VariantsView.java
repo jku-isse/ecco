@@ -140,7 +140,7 @@ public class VariantsView extends BorderPane implements EccoListener {
 
 
         toolBar.getItems().addAll(new Separator());
-        Button removeButton = new Button("Remove Variant Selected");
+        Button removeButton = new Button("Remove Selected Variant");
         toolBar.getItems().add(removeButton);
         removeButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override

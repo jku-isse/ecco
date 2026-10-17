@@ -89,6 +89,8 @@ public class RibbonBar extends VBox {
 	private Button buildButton(RibbonAction action) {
 		Button button = new Button(action.label(), new FontIcon(action.icon()));
 		button.setOnAction(event -> action.action().run());
+		if (action.tooltip() != null)
+			button.setTooltip(new javafx.scene.control.Tooltip(action.tooltip()));
 		buttonsByAction.put(action, button);
 		return button;
 	}

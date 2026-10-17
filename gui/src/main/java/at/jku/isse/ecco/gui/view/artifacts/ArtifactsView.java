@@ -96,10 +96,11 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         this.setBottom(minimizeProgressBar);
 
         // selection
-        MenuItem selectAllMenuItem = new MenuItem("Select All");
-        MenuItem unselectAllMenuItem = new MenuItem("Unselect All");
-        MenuButton selectionMenuButton = new MenuButton("Selection");
-        selectionMenuButton.getItems().addAll(selectAllMenuItem, unselectAllMenuItem);
+        // buttons: a "Selection" menu held just these two
+        Button selectAllButton = new Button("Select All");
+        selectAllButton.setTooltip(new Tooltip("Tick every association"));
+        Button unselectAllButton = new Button("Unselect All");
+        unselectAllButton.setTooltip(new Tooltip("Untick every association"));
 
         Button checkoutSelectedButton = new Button("Checkout Selected...");
         checkoutSelectedButton.setTooltip(new Tooltip("Checks out exactly the ticked associations, into a folder you choose"));
@@ -112,7 +113,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         // configuration are ticked from the Features pane (Selection > Select by Configuration did
         // the same in a dialog: the pane opens that dialog now, for exact revisions)
         toolBar.getItems().addAll(
-                featuresButton, selectionMenuButton, checkoutSelectedButton, new Separator(),
+                featuresButton, selectAllButton, unselectAllButton, checkoutSelectedButton, new Separator(),
                 useSimplifiedLabelsCheckBox, minimizationResults.newRunButton());
 
         TableView<AssociationInfoImpl> associationsTable = this.buildAssociationsTable(useSimplifiedLabelsCheckBox, this.associationsData);
@@ -141,7 +142,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         this.setCenter(detailsSplitPane);
 
 
-        this.wireToolBarActions(selectAllMenuItem, unselectAllMenuItem, checkoutSelectedButton);
+        this.wireToolBarActions(selectAllButton, unselectAllButton, checkoutSelectedButton);
 
         this.composeDelay.setOnFinished(e -> this.composeTicked());
         this.associationsData.addListener((javafx.collections.ListChangeListener<AssociationInfoImpl>) change -> this.composeDelay.playFromStart());
@@ -343,8 +344,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
      * same point in construction as before (after {@link #artifactTreeView} and the split panes
      * exist, since several of these handlers reference them).
      */
-    private void wireToolBarActions(MenuItem selectAllMenuItem, MenuItem unselectAllMenuItem, Button checkoutSelectedButton) {
-        selectAllMenuItem.setOnAction(new EventHandler<ActionEvent>() {
+    private void wireToolBarActions(Button selectAllButton, Button unselectAllButton, Button checkoutSelectedButton) {
+        selectAllButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent e) {
                 toolBar.setDisable(true);
@@ -353,7 +354,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             }
         });
 
-        unselectAllMenuItem.setOnAction(new EventHandler<ActionEvent>() {
+        unselectAllButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent e) {
                 toolBar.setDisable(true);

@@ -353,8 +353,7 @@ public class ArtifactsViewTest {
     public void theFeaturesPaneOpensTheConfigurationDialogForExactRevisions(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFeatures(tmp)) {
             ScriptedArtifactsView view = scripted(service, false);
-            assertFalse(onFx(() -> ((MenuButton) find(view, n -> n instanceof MenuButton)).getItems().stream()
-                    .anyMatch(i -> "Select by Configuration".equals(i.getText()))), "one route, not two");
+            assertNull(onFx(() -> find(view, n -> n instanceof MenuButton)), "one route, not two: no Selection menu with it");
             onFx(() -> featuresButton(view).fire());
             Parent pane = onFx(() -> (Parent) view.getLeft());
 
@@ -529,9 +528,8 @@ public class ArtifactsViewTest {
         return (CheckBox) find(view, n -> n instanceof CheckBox c && text.equals(c.getText()));
     }
 
-    private static MenuItem menuItem(ArtifactsView view, String text) {
-        MenuButton menu = (MenuButton) find(view, n -> n instanceof MenuButton);
-        return menu.getItems().stream().filter(i -> text.equals(i.getText())).findFirst().orElseThrow();
+    private static Button menuItem(ArtifactsView view, String text) {
+        return button(view, text);
     }
 
     @SuppressWarnings("unchecked")

@@ -119,7 +119,9 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		toolBar.getItems().add(new Separator());
 
 
-		CheckBox simplifyLabelsCheckbox = new CheckBox("Simplified Labels");
+		CheckBox simplifyLabelsCheckbox = new CheckBox("Hide Revisions");
+		// what it does: "A" for "A.1" - it said "Simplified Labels", the name of another option elsewhere
+		simplifyLabelsCheckbox.setTooltip(new Tooltip("Show the conditions without feature revisions: A instead of A.1"));
 		simplifyLabelsCheckbox.setSelected(this.simplifyLabels);
 		toolBar.getItems().add(simplifyLabelsCheckbox);
 		simplifyLabelsCheckbox.selectedProperty().addListener((ov, old_val, new_val) -> {

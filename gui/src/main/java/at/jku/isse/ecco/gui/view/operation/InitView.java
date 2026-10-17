@@ -45,7 +45,7 @@ public class InitView extends OperationView {
 
 		this.headerLabel.setText("Repository Directory");
 
-		Button initButton = new Button("Init");
+		Button initButton = new Button("Create");
 		initButton.setDefaultButton(true);
 		this.rightButtons.getChildren().setAll(initButton);
 

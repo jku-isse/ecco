@@ -374,7 +374,7 @@ Postcondition: The folders committed before the failure stay committed; the rema
 | Secondary actors | None |
 | Dependency | EXTENDED BY USE CASE Resolve ambiguous order; included by UC-15 |
 | Generalization | None |
-| Front ends | CLI `checkout -c <configuration> [--minimized]`; GUI Versions > Checkout, View > Variants, View > Artifacts (compose a selection) |
+| Front ends | CLI `checkout -c <configuration> [--minimized]`; GUI Versions > Checkout, Versions > Variants, Explore > Artifacts (Checkout Selected) |
 | Realizes | FR-K1 to FR-K10, FR-K12, FR-N9, FR-T2, AD-6, IF-C9 |
 
 **Basic flow**
@@ -501,7 +501,7 @@ Postcondition: As the basic flow, and the file is already in the new order; afte
 | Secondary actors | None |
 | Dependency | INCLUDE USE CASE Commit variant |
 | Generalization | None |
-| Front ends | CLI `traces [id]`, `dg`; GUI View > Artifacts (with the association details), association preview, Visualize > Dependency Graph |
+| Front ends | CLI `traces [id]`, `dg`; GUI Explore > Artifacts (with the association details), association preview, Explore > Dependency Graph |
 | Realizes | FR-M1, FR-T1, FR-T2, IF-C6, IF-G6, IF-G7, IF-G9 |
 
 **Basic flow**
@@ -548,7 +548,7 @@ Postcondition: The repository is unchanged.
 | Secondary actors | None |
 | Dependency | INCLUDE USE CASE Minimize presence conditions |
 | Generalization | None |
-| Front ends | GUI View > Feature Model; CLI `suggest-constraints`, `accept-constraint`, `reject-constraint` |
+| Front ends | GUI Explore > Feature Model; CLI `suggest-constraints`, `accept-constraint`, `reject-constraint` |
 | Realizes | FR-N1 to FR-N6, IF-C5, IF-G5 |
 
 **Basic flow**
@@ -656,7 +656,7 @@ Postcondition: The previously stored minimized conditions stay as they were.
 | Secondary actors | Git clone, LLM service |
 | Dependency | INCLUDE USE CASE Commit variant |
 | Generalization | None |
-| Front ends | GUI Versions > Import From Git |
+| Front ends | GUI Versions > Import from Git |
 | Realizes | FR-G1 to FR-G3, FR-G4, IF-G3, IF-G4 |
 
 **Basic flow**
@@ -1194,7 +1194,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 
 | ID | Requirement | Source |
 | --- | --- | --- |
-| IF-G1 | The GUI shall group its functions in a ribbon: Repositories (new, open, fork, close), Versions, Collaborate, View, Visualize; repository actions are disabled until a repository is open, and new, open and fork while one is. | Code `MainView`, `RibbonBar` |
+| IF-G1 | The GUI shall group its functions in a ribbon: Repositories (new, open, fork, close, status, base directory), Versions, Collaborate, Explore (the views, and the graphs); repository actions are disabled until a repository is open, and new, open and fork while one is; every button has a tooltip. | Code `MainView`, `RibbonBar` |
 | IF-G2 | Users shall be able to commit one variant folder or several at once, check out configurations, and manage named variants (add, remove, edit feature revisions, check out several into a base directory). | Code `CommitBaseDirView`, `CommitView`, `VariantsView` |
 | IF-G3 | Users shall be able to import a Git history commit by commit, oldest first, with Import, Skip and Stop per reviewed commit, auto-importing the commits between every N-th review (N 1-1000, default 1). | Code `ImportGitView` |
 | IF-G4 | Git import should suggest a configuration per commit from an LLM at any OpenAI-compatible endpoint, configured under Preferences (URL, model). | Code `PreferencesView`; Doc |

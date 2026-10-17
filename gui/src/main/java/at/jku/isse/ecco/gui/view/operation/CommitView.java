@@ -468,10 +468,10 @@ public class CommitView extends OperationView implements EccoListener {
 		Label hintLabel = new Label("Tip: click a checkbox to toggle a folder, or Cmd/Shift-click to highlight several rows and use the buttons below.");
 		hintLabel.setWrapText(true);
 
-		Button checkAllButton = new Button("Check All");
-		Button uncheckAllButton = new Button("Uncheck All");
-		Button checkHighlightedButton = new Button("Check Highlighted");
-		Button uncheckHighlightedButton = new Button("Uncheck Highlighted");
+		Button checkAllButton = new Button("Select All");
+		Button uncheckAllButton = new Button("Unselect All");
+		Button checkHighlightedButton = new Button("Select Highlighted");
+		Button uncheckHighlightedButton = new Button("Unselect Highlighted");
 		checkAllButton.setOnAction(e -> selected.values().forEach(p -> p.set(true)));
 		uncheckAllButton.setOnAction(e -> selected.values().forEach(p -> p.set(false)));
 		checkHighlightedButton.setOnAction(e -> listView.getSelectionModel().getSelectedItems().forEach(p -> selected.get(p).set(true)));

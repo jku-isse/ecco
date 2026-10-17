@@ -282,7 +282,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		});
 		this.filterToolBar.getItems().addAll(commitLimitLabel, commitLimitSpinner, new Separator());
 
-		CheckBox constraintsCheckbox = new CheckBox("Show constraints");
+		CheckBox constraintsCheckbox = new CheckBox("Show Constraints");
 		constraintsCheckbox.setSelected(this.includeConstraints);
 		constraintsCheckbox.selectedProperty().addListener((ov, oldVal, newVal) -> {
 			KnowledgeGraphView.this.includeConstraints = newVal;
@@ -290,7 +290,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		});
 		this.filterToolBar.getItems().add(constraintsCheckbox);
 
-		CheckBox computedEdgesCheckbox = new CheckBox("Show variant -> association edges (computed)");
+		CheckBox computedEdgesCheckbox = new CheckBox("Show Variant -> Association Edges (Computed)");
 		computedEdgesCheckbox.setSelected(false);
 		computedEdgesCheckbox.selectedProperty().addListener((ov, oldVal, newVal) -> {
 			KnowledgeGraphView.this.includeComputedVariantAssociationEdges = newVal;
@@ -315,7 +315,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		});
 		this.displayToolBar.getItems().addAll(new Separator(), layoutLabel, layoutChoice, new Separator());
 
-		CheckBox sizeAssociationsCheckbox = new CheckBox("Size associations by artifact count");
+		CheckBox sizeAssociationsCheckbox = new CheckBox("Size Associations by Artifact Count");
 		sizeAssociationsCheckbox.setSelected(this.sizeAssociationsByArtifactCount);
 		sizeAssociationsCheckbox.selectedProperty().addListener((ov, oldVal, newVal) -> {
 			KnowledgeGraphView.this.sizeAssociationsByArtifactCount = newVal;
@@ -323,7 +323,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		});
 		this.displayToolBar.getItems().add(sizeAssociationsCheckbox);
 
-		CheckBox sizeCommitsCheckbox = new CheckBox("Size commits by artifact count");
+		CheckBox sizeCommitsCheckbox = new CheckBox("Size Commits by Artifact Count");
 		sizeCommitsCheckbox.setSelected(this.sizeCommitsByArtifactCount);
 		sizeCommitsCheckbox.selectedProperty().addListener((ov, oldVal, newVal) -> {
 			KnowledgeGraphView.this.sizeCommitsByArtifactCount = newVal;

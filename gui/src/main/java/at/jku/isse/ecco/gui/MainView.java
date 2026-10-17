@@ -36,8 +36,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A {@link RibbonBar} (Repository / Local / Distributed / Analysis / Visualization, plus a
- * leftmost "ECCO" tab on non-macOS platforms) replaces the {@link MenuBar} this class used to
+ * A {@link RibbonBar} (Repositories / Versions / Collaborate / Explore, plus a last "ECCO" tab
+ * on non-macOS platforms) replaces the {@link MenuBar} this class used to
  * build - same organizing principle as before (grouped by workflow, not by "is this a dialog or a
  * tab"), different chrome: each former top-level {@code Menu} is now a ribbon tab, and each former
  * flat {@code MenuItem} list is now a "band" of buttons shown below the tab row once its tab is
@@ -45,13 +45,13 @@ import java.util.List;
  * action a {@code MenuItem} used to, and no content view's own internal toolbar (e.g. Knowledge
  * Graph's entity/layout controls) is touched by this change either way.
  * <p>
- * "Action" actions (New, Open, Close, Commit, Import From Git, Checkout, Fetch, Pull, Push) behave
- * exactly as their old {@code MenuItem}s did, via {@link #openDialog}. "Content" actions (Variants,
- * Remotes, Feature Model, Commits, Artifacts, Charts, Knowledge Graph, Artifact
- * Graph, Dependency Graph) swap a single shared content area via {@link #switchTo} - the same "one
- * view visible at a time" model as before, just ribbon-driven instead of menu-driven. Status
- * (repository/base directory info) still has no tab/button of its own - it's simply the default
- * view {@link #switchTo} lands on at startup, before anything else has been picked.
+ * "Action" actions (New, Open, Close Repository, Commit, Import from Git, Checkout, Fetch, Pull,
+ * Push) behave exactly as their old {@code MenuItem}s did, via {@link #openDialog}. "Content"
+ * actions (Status, Variants, Remotes, Feature Model, Commits, Artifacts, Charts, Knowledge Graph,
+ * Artifact Graph, Dependency Graph) swap a single shared content area via {@link #switchTo} - the
+ * same "one view visible at a time" model as before, just ribbon-driven instead of menu-driven.
+ * Status (repository/base directory info) is also the view shown at startup. A label ends in
+ * "..." when its button opens a dialog that asks for something; every button has a tooltip.
  * <p>
  * Settings (Plugins/LLM/Minimization/Lilypond/Server, all now one {@link PreferencesView} dialog)
  * is reached differently depending on platform: on macOS it's wired as a "Preferences…" item in
@@ -99,32 +99,36 @@ public class MainView extends BorderPane implements EccoListener {
 		boolean isMac = System.getProperty("os.name", "").startsWith("Mac") && !"Monocle".equalsIgnoreCase(System.getProperty("glass.platform"));
 
 		// "Action" actions - open a dialog or act directly, independent of any content view.
-		RibbonAction newAction = new RibbonAction("New", Feather.FILE_PLUS,
-				() -> this.openDialog("New", new InitView(eccoService)), false);
+		// a label ends in "..." when its button opens a dialog that asks for something
+		RibbonAction newAction = new RibbonAction("New...", Feather.FOLDER_PLUS,
+				() -> this.openDialog("New", new InitView(eccoService)), false, "Create a repository in a folder");
 		RibbonAction openAction = new RibbonAction("Open...", Feather.FOLDER,
-				() -> this.openDialog("Open", new OpenView(eccoService)), false);
+				() -> this.openDialog("Open", new OpenView(eccoService)), false, "Open a repository");
 		RibbonAction forkAction = new RibbonAction("Fork...", Feather.COPY,
-				() -> this.openDialog("Fork", new ForkView(eccoService)), false);
-		RibbonAction closeAction = new RibbonAction("Close", Feather.X,
-				() -> this.eccoService.close(), true);
+				() -> this.openDialog("Fork", new ForkView(eccoService)), false, "Copy a repository, or a part of it, into a new one");
+		// "Close" alone read like closing the window
+		RibbonAction closeAction = new RibbonAction("Close Repository", Feather.X,
+				() -> this.eccoService.close(), true, "Close the open repository");
 
-		RibbonAction commitAction = new RibbonAction("Commit", Feather.CHECK_CIRCLE,
-				() -> this.openDialog("Commit", new CommitBaseDirView(eccoService)), true);
+		RibbonAction commitAction = new RibbonAction("Commit...", Feather.CHECK_CIRCLE,
+				() -> this.openDialog("Commit", new CommitBaseDirView(eccoService)), true, "Commit a variant folder with its configuration");
 		RibbonAction commitMultipleAction = new RibbonAction("Commit Multiple Versions...", Feather.CHECK_SQUARE,
-				() -> this.openDialog("Commit Multiple Versions", new CommitView(eccoService)), true);
-		RibbonAction importGitAction = new RibbonAction("Import From Git...", Feather.DOWNLOAD,
-				() -> this.openDialog("Import from Git", new ImportGitView(eccoService), Modality.NONE), true);
+				() -> this.openDialog("Commit Multiple Versions", new CommitView(eccoService)), true, "Commit several variant folders, one commit each");
+		RibbonAction importGitAction = new RibbonAction("Import from Git...", Feather.LOG_IN,
+				() -> this.openDialog("Import from Git", new ImportGitView(eccoService), Modality.NONE), true,
+				"Import the commits of a Git repository, each as a variant");
 		RibbonAction checkoutAction = new RibbonAction("Checkout...", Feather.GIT_BRANCH,
-				() -> this.openDialog("Checkout", new CheckoutView(eccoService)), true);
-		RibbonAction openDirectoryAction = new RibbonAction("Open Directory...", Feather.EXTERNAL_LINK,
-				() -> this.openBaseDirectory(), true);
+				() -> this.openDialog("Checkout", new CheckoutView(eccoService)), true, "Compose and write the variant of a configuration");
+		// it shows the base directory in the file manager - "Open Directory..." read like opening a repository
+		RibbonAction showDirectoryAction = new RibbonAction(showDirectoryLabel(), Feather.EXTERNAL_LINK,
+				() -> this.openBaseDirectory(), true, "Show the base directory - where variants are committed from and checked out to");
 
 		RibbonAction fetchAction = new RibbonAction("Fetch...", Feather.ARROW_DOWN_CIRCLE,
-				() -> this.openDialog("Fetch", new FetchView(eccoService)), true);
+				() -> this.openDialog("Fetch", new FetchView(eccoService)), true, "Get what a remote has that this repository has not, without merging it");
 		RibbonAction pullAction = new RibbonAction("Pull...", Feather.DOWNLOAD_CLOUD,
-				() -> this.openDialog("Pull", new PullView(eccoService)), true);
+				() -> this.openDialog("Pull", new PullView(eccoService)), true, "Fetch from a remote and merge it");
 		RibbonAction pushAction = new RibbonAction("Push...", Feather.UPLOAD_CLOUD,
-				() -> this.openDialog("Push", new PushView(eccoService)), true);
+				() -> this.openDialog("Push", new PushView(eccoService)), true, "Send this repository's features to a remote");
 
 		// Preferences/Quit - only built as ribbon actions on non-mac platforms; on macOS these are
 		// reached via the native app menu instead (see the isMac block below), and preferencesAction
@@ -134,8 +138,8 @@ public class MainView extends BorderPane implements EccoListener {
 		RibbonAction quitAction = null;
 		if (!isMac) {
 			preferencesAction = new RibbonAction("Preferences...", Feather.SETTINGS,
-					() -> this.openDialog("Settings", new PreferencesView(eccoService)), false);
-			quitAction = new RibbonAction("Quit ECCO", Feather.LOG_OUT, Platform::exit, false);
+					() -> this.openDialog("Preferences", new PreferencesView(eccoService)), false, "Adapters, LLM, minimization, LilyPond and the server");
+			quitAction = new RibbonAction("Quit ECCO", Feather.LOG_OUT, Platform::exit, false, "Close the window and end ECCO");
 		}
 
 		// one shared "Minimize Presence Conditions" run, started from the views that display a
@@ -173,52 +177,54 @@ public class MainView extends BorderPane implements EccoListener {
 		}
 
 		// "Content" actions - swap the shared content area to a pre-built view via switchTo.
+		// it could not be reached again once another view was shown
+		RibbonAction statusAction = new RibbonAction("Status", Feather.INFO,
+				() -> this.switchTo("Status", statusView), false, "Which repository is open, and its folders");
 		RibbonAction variantsAction = new RibbonAction("Variants", Feather.LAYERS,
-				() -> this.switchTo("Variants", variantsView), true);
+				() -> this.switchTo("Variants", variantsView), true, "The saved variants: configurations to check out by name");
 		RibbonAction remotesAction = new RibbonAction("Remotes", Feather.SERVER,
-				() -> this.switchTo("Remotes", remotesView), true);
+				() -> this.switchTo("Remotes", remotesView), true, "The remotes this repository fetches from and pushes to");
 		RibbonAction featuresAction = new RibbonAction("Feature Model", Feather.GIT_MERGE,
-				() -> this.switchTo("Feature Model", featuresView), true);
+				() -> this.switchTo("Feature Model", featuresView), true, "The features as a tree, with the constraints mined from the commits");
 		RibbonAction commitsAction = new RibbonAction("Commits", Feather.LIST,
-				() -> this.switchTo("Commits", commitsView), true);
+				() -> this.switchTo("Commits", commitsView), true, "The commits, their artifacts, and a comparison of two");
 		RibbonAction artifactsAction = new RibbonAction("Artifacts", Feather.BOX,
-				() -> this.switchTo("Artifacts", artifactsView), true);
+				() -> this.switchTo("Artifacts", artifactsView), true, "The associations with their conditions, and the artifacts of those you tick");
 		RibbonAction chartsAction = new RibbonAction("Charts", Feather.BAR_CHART_2,
-				() -> this.switchTo("Charts", chartsView), true);
+				() -> this.switchTo("Charts", chartsView), true, "Artifacts per association and depth, revisions per feature");
 		RibbonAction knowledgeGraphAction = new RibbonAction("Knowledge Graph", Feather.SHARE_2,
-				() -> this.switchTo("Knowledge Graph", knowledgeGraphView), true);
+				() -> this.switchTo("Knowledge Graph", knowledgeGraphView), true, "Features, commits and associations, and how they connect");
 		RibbonAction artifactGraphAction = new RibbonAction("Artifact Graph", Feather.GIT_COMMIT,
-				() -> this.switchTo("Artifact Graph", artifactsGraphView), true);
+				() -> this.switchTo("Artifact Graph", artifactsGraphView), true, "The artifact tree as a graph, coloured by association");
 		RibbonAction dependencyGraphAction = new RibbonAction("Dependency Graph", Feather.CODEPEN,
-				() -> this.switchTo("Dependency Graph", dependencyGraphView), true);
+				() -> this.switchTo("Dependency Graph", dependencyGraphView), true, "Which associations' artifacts depend on which others'");
 
-		RibbonTabSpec repositoryTab = new RibbonTabSpec("Repositories", Feather.FOLDER, List.of(
-				new RibbonGroup(List.of(newAction, openAction, forkAction, closeAction))));
+		RibbonTabSpec repositoryTab = new RibbonTabSpec("Repositories", Feather.DATABASE, List.of(
+				new RibbonGroup(List.of(newAction, openAction, forkAction, closeAction)),
+				new RibbonGroup(List.of(statusAction, showDirectoryAction))));
 
 		RibbonTabSpec localTab = new RibbonTabSpec("Versions", Feather.HARD_DRIVE, List.of(
-				new RibbonGroup(List.of(commitAction, commitMultipleAction, checkoutAction)),
-				new RibbonGroup(List.of(variantsAction)),
-				new RibbonGroup(List.of(importGitAction)),
-				new RibbonGroup(List.of(openDirectoryAction))));
+				new RibbonGroup(List.of(commitAction, commitMultipleAction, importGitAction)),
+				new RibbonGroup(List.of(checkoutAction, variantsAction))));
 
 		RibbonTabSpec distributedTab = new RibbonTabSpec("Collaborate", Feather.GLOBE, List.of(
 				new RibbonGroup(List.of(remotesAction)),
 				new RibbonGroup(List.of(fetchAction, pullAction, pushAction))));
 
-		RibbonTabSpec analysisTab = new RibbonTabSpec("View", Feather.SEARCH, List.of(
-				new RibbonGroup(List.of(featuresAction, commitsAction, artifactsAction, chartsAction))));
-
-		RibbonTabSpec visualizationTab = new RibbonTabSpec("Visualize", Feather.EYE, List.of(
+		// one tab for everything to look at: View and Visualize were two tabs of views, and which
+		// one a view was under could not be guessed - the graphs are a group of their own
+		RibbonTabSpec exploreTab = new RibbonTabSpec("Explore", Feather.COMPASS, List.of(
+				new RibbonGroup(List.of(featuresAction, commitsAction, artifactsAction, chartsAction)),
 				new RibbonGroup(List.of(knowledgeGraphAction, artifactGraphAction, dependencyGraphAction))));
 
-		List<RibbonTabSpec> tabSpecs = new ArrayList<>();
+		List<RibbonTabSpec> tabSpecs = new ArrayList<>(List.of(repositoryTab, localTab, distributedTab, exploreTab));
 		if (!isMac) {
-			// leftmost, mirroring where macOS's native app menu always sits - see isMac block below.
-			tabSpecs.add(new RibbonTabSpec("ECCO", Feather.SETTINGS, List.of(
+			// last: the first tab is the one shown at start, and that was Preferences/Quit instead
+			// of New/Open (macOS has these in its native app menu - see the isMac block below)
+			tabSpecs.add(new RibbonTabSpec("ECCO", Feather.MENU, List.of(
 					new RibbonGroup(List.of(preferencesAction)),
 					new RibbonGroup(List.of(quitAction)))));
 		}
-		tabSpecs.addAll(List.of(repositoryTab, localTab, distributedTab, analysisTab, visualizationTab));
 
 		RibbonBar ribbonBar = new RibbonBar(tabSpecs);
 		this.setTop(ribbonBar);
@@ -250,6 +256,19 @@ public class MainView extends BorderPane implements EccoListener {
 				// shortcut modifier).
 				newScene.getAccelerators().put(new KeyCodeCombination(KeyCode.O, KeyCombination.SHORTCUT_DOWN),
 						openAction.action());
+				// fired through their buttons, so they do nothing while the button is disabled
+				newScene.getAccelerators().put(new KeyCodeCombination(KeyCode.N, KeyCombination.SHORTCUT_DOWN),
+						() -> ribbonBar.getButton(newAction).fire());
+				newScene.getAccelerators().put(new KeyCodeCombination(KeyCode.K, KeyCombination.SHORTCUT_DOWN),
+						() -> ribbonBar.getButton(commitAction).fire());
+				// the views in the order of the Explore tab: Cmd/Ctrl+1 to 7
+				List<RibbonAction> views = List.of(featuresAction, commitsAction, artifactsAction, chartsAction,
+						knowledgeGraphAction, artifactGraphAction, dependencyGraphAction);
+				for (int i = 0; i < views.size(); i++) {
+					RibbonAction view = views.get(i);
+					newScene.getAccelerators().put(new KeyCodeCombination(KeyCode.getKeyCode(String.valueOf(i + 1)), KeyCombination.SHORTCUT_DOWN),
+							() -> ribbonBar.getButton(view).fire());
+				}
 
 				if (finalPreferencesAction != null) {
 					// Ctrl+, - not a strong platform convention outside macOS (which never
@@ -299,7 +318,7 @@ public class MainView extends BorderPane implements EccoListener {
 				MenuToolkit tk = MenuToolkit.toolkit();
 
 				MenuItem preferencesItem = new MenuItem("Preferences…");
-				preferencesItem.setOnAction(event -> this.openDialog("Settings", new PreferencesView(eccoService)));
+				preferencesItem.setOnAction(event -> this.openDialog("Preferences", new PreferencesView(eccoService)));
 				preferencesItem.setAccelerator(new KeyCodeCombination(KeyCode.COMMA, KeyCombination.META_DOWN));
 
 				// No About item: tk.createNativeAboutMenuItem() is explicitly @Beta in NSMenuFX's
@@ -333,6 +352,12 @@ public class MainView extends BorderPane implements EccoListener {
 		this.updateView();
 	}
 
+
+	/** "Show in Finder" on macOS, "Show in Explorer" on Windows, "Show in File Manager" elsewhere. */
+	static String showDirectoryLabel() {
+		String os = System.getProperty("os.name", "");
+		return os.startsWith("Mac") ? "Show in Finder" : os.startsWith("Windows") ? "Show in Explorer" : "Show in File Manager";
+	}
 
 	/**
 	 * Swaps the shared content area to {@code view}, updating {@link #headerLabel} to

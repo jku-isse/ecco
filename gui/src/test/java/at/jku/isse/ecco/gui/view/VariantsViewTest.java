@@ -86,7 +86,7 @@ public class VariantsViewTest {
             onFx(() -> {
                 select(view, "B.1");
                 select(view, "C.1");
-                button(view, "Remove Variant Selected").fire();
+                button(view, "Remove Selected Variant").fire();
             });
             waitUntil("the list shows what is left", () -> view.variantsDataSelected.size() == 1);
 
@@ -114,7 +114,7 @@ public class VariantsViewTest {
             RuntimeException thrown = onFx(() -> {
                 select(view, "A.1");
                 try {
-                    button(view, "Remove Variant Selected").fire();
+                    button(view, "Remove Selected Variant").fire();
                     return null;
                 } catch (RuntimeException e) {
                     return e;

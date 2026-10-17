@@ -239,7 +239,7 @@ public class InitViewTest {
     private static void init(CommitViewTest.Shown<AnsweredInitView> shown, String repositoryDir) throws Exception {
         onFx(() -> {
             field(shown.view()).setText(repositoryDir);
-            button(shown.view(), "Init").fire();
+            button(shown.view(), "Create").fire();
         });
     }
 

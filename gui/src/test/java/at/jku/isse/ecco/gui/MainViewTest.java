@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * (following open/close events), which content view each content button shows, that Close, the
  * Cmd+W accelerator and the window's close control close the repository rather than the app, and
  * which operation dialogs open (and how modal they are). Paths that end in a modal Alert or the
- * system file manager (Open Directory...) are not driven.
+ * system file manager (Show in Finder) are not driven.
  */
 public class MainViewTest {
 
@@ -78,24 +78,24 @@ public class MainViewTest {
     }
 
     private static final List<String[]> NEEDS_REPOSITORY = List.of(
-            new String[]{"Repositories", "Close"},
-            new String[]{"Versions", "Commit"},
+            new String[]{"Repositories", "Close Repository"},
+            new String[]{"Versions", "Commit..."},
             new String[]{"Versions", "Commit Multiple Versions..."},
             new String[]{"Versions", "Checkout..."},
             new String[]{"Versions", "Variants"},
-            new String[]{"Versions", "Import From Git..."},
-            new String[]{"Versions", "Open Directory..."},
+            new String[]{"Versions", "Import from Git..."},
+            new String[]{"Repositories", MainView.showDirectoryLabel()},
             new String[]{"Collaborate", "Remotes"},
             new String[]{"Collaborate", "Fetch..."},
             new String[]{"Collaborate", "Pull..."},
             new String[]{"Collaborate", "Push..."},
-            new String[]{"View", "Feature Model"},
-            new String[]{"View", "Charts"},
-            new String[]{"Visualize", "Knowledge Graph"},
-            new String[]{"Visualize", "Dependency Graph"});
+            new String[]{"Explore", "Feature Model"},
+            new String[]{"Explore", "Charts"},
+            new String[]{"Explore", "Knowledge Graph"},
+            new String[]{"Explore", "Dependency Graph"});
 
     private static void assertRepositoryButtons(MainView view, boolean open) {
-        for (String label : List.of("New", "Open...", "Fork..."))
+        for (String label : List.of("New...", "Open...", "Fork..."))
             assertEquals(open, ribbonButton(view, "Repositories", label).isDisable(), label + " is only usable without an open repository");
         for (String[] button : NEEDS_REPOSITORY)
             assertEquals(!open, ribbonButton(view, button[0], button[1]).isDisable(), button[1] + " needs an open repository");
@@ -115,12 +115,12 @@ public class MainViewTest {
             });
 
             service.open();
-            waitUntil("the open repository's buttons", () -> !ribbonButton(view, "Repositories", "Close").isDisable());
+            waitUntil("the open repository's buttons", () -> !ribbonButton(view, "Repositories", "Close Repository").isDisable());
             onFx(() -> assertRepositoryButtons(view, true));
 
-            onFx(() -> ribbonButton(view, "Repositories", "Close").fire());
+            onFx(() -> ribbonButton(view, "Repositories", "Close Repository").fire());
             assertFalse(service.isInitialized(), "Close closes the repository");
-            waitUntil("the closed repository's buttons", () -> ribbonButton(view, "Repositories", "Close").isDisable());
+            waitUntil("the closed repository's buttons", () -> ribbonButton(view, "Repositories", "Close Repository").isDisable());
             onFx(() -> assertRepositoryButtons(view, false));
         }
     }
@@ -133,15 +133,16 @@ public class MainViewTest {
             commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
             MainView view = onFx(() -> new MainView(service));
             Map<String[], Class<?>> expected = new LinkedHashMap<>();
+            expected.put(new String[]{"Repositories", "Status"}, SettingsView.class);
             expected.put(new String[]{"Versions", "Variants"}, VariantsView.class);
             expected.put(new String[]{"Collaborate", "Remotes"}, RemotesView.class);
-            expected.put(new String[]{"View", "Feature Model"}, FeaturesView.class);
-            expected.put(new String[]{"View", "Commits"}, CommitsView.class);
-            expected.put(new String[]{"View", "Artifacts"}, ArtifactsView.class);
-            expected.put(new String[]{"View", "Charts"}, ChartsView.class);
-            expected.put(new String[]{"Visualize", "Knowledge Graph"}, KnowledgeGraphView.class);
-            expected.put(new String[]{"Visualize", "Artifact Graph"}, ArtifactGraphView.class);
-            expected.put(new String[]{"Visualize", "Dependency Graph"}, DependencyGraphView.class);
+            expected.put(new String[]{"Explore", "Feature Model"}, FeaturesView.class);
+            expected.put(new String[]{"Explore", "Commits"}, CommitsView.class);
+            expected.put(new String[]{"Explore", "Artifacts"}, ArtifactsView.class);
+            expected.put(new String[]{"Explore", "Charts"}, ChartsView.class);
+            expected.put(new String[]{"Explore", "Knowledge Graph"}, KnowledgeGraphView.class);
+            expected.put(new String[]{"Explore", "Artifact Graph"}, ArtifactGraphView.class);
+            expected.put(new String[]{"Explore", "Dependency Graph"}, DependencyGraphView.class);
 
             Map<Class<?>, Node> shown = new LinkedHashMap<>();
             for (Map.Entry<String[], Class<?>> entry : expected.entrySet()) {
@@ -163,6 +164,62 @@ public class MainViewTest {
             onFx(() -> { });
             javax.swing.SwingUtilities.invokeAndWait(() -> { });
         }
+    }
+
+    /**
+     * The tabs: Repositories first - the tab shown at start - and the ECCO tab (Preferences, Quit;
+     * macOS has them in its app menu) last; the views in one Explore tab. Every button has a tooltip.
+     */
+    @Test
+    @Timeout(120)
+    public void theTabsStartWithRepositoriesAndEveryButtonExplainsItself(@TempDir Path tmp) throws Exception {
+        try (EccoService service = closedRepository(tmp)) {
+            MainView view = onFx(() -> new MainView(service));
+            assertEquals(List.of("Repositories", "Versions", "Collaborate", "Explore", "ECCO"),
+                    onFx(() -> tabLine(view).getTabs().stream().map(Tab::getText).toList()));
+            assertEquals("Repositories", onFx(() -> tabLine(view).getSelectionModel().getSelectedItem().getText()), "shown at start");
+            for (String tab : List.of("Repositories", "Versions", "Collaborate", "Explore", "ECCO"))
+                onFx(() -> {
+                    firstLabel(view, tab); // shows the tab's band
+                    for (Node node : findAll(view.getTop(), n -> n instanceof Button))
+                        assertNotNull(((Button) node).getTooltip(), tab + ": " + ((Button) node).getText());
+                });
+        }
+    }
+
+    /** Cmd/Ctrl+N is New, Cmd/Ctrl+K Commit, Cmd/Ctrl+1 to 7 the views - each only while its button is usable. */
+    @Test
+    @Timeout(120)
+    public void shortcutsFireTheirButtons(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
+            MainView view = onFx(() -> new MainView(service));
+            Stage stage = onFx(() -> {
+                Stage s = new Stage();
+                s.setScene(new Scene(view));
+                return s;
+            });
+            Map<KeyCombination, Runnable> accelerators = onFx(() -> Map.copyOf(stage.getScene().getAccelerators()));
+            List<String> views = List.of("Feature Model", "Commits", "Artifacts", "Charts", "Knowledge Graph", "Artifact Graph", "Dependency Graph");
+            for (int i = 0; i < views.size(); i++) {
+                Runnable shortcut = accelerators.get(new KeyCodeCombination(KeyCode.getKeyCode(String.valueOf(i + 1)), KeyCombination.SHORTCUT_DOWN));
+                onFx(shortcut::run);
+                assertEquals(views.get(i), onFx(() -> header(view)));
+            }
+            assertTrue(accelerators.containsKey(new KeyCodeCombination(KeyCode.K, KeyCombination.SHORTCUT_DOWN)));
+            // a repository is open: New is disabled, and so is its shortcut
+            List<Window> before = onFx(() -> List.copyOf(Window.getWindows()));
+            onFx(() -> accelerators.get(new KeyCodeCombination(KeyCode.N, KeyCombination.SHORTCUT_DOWN)).run());
+            assertEquals(before, onFx(() -> List.copyOf(Window.getWindows())), "no New dialog");
+            onFx(() -> { });
+            javax.swing.SwingUtilities.invokeAndWait(() -> { });
+        }
+    }
+
+    private static String firstLabel(MainView view, String tab) {
+        TabLine tabs = tabLine(view);
+        tabs.getSelectionModel().select(tabs.getTabs().stream().filter(t -> tab.equals(t.getText())).findFirst().orElseThrow());
+        return ((Button) find(view.getTop(), n -> n instanceof Button)).getText();
     }
 
     /**
@@ -222,8 +279,8 @@ public class MainViewTest {
                 assertFalse(onFx(open::isShowing), "Cmd+W closes a dialog");
 
                 service.open();
-                waitUntil("the open repository's buttons", () -> !ribbonButton(view, "Versions", "Import From Git...").isDisable());
-                Stage importGit = onFx(() -> opened(view, "Versions", "Import From Git..."));
+                waitUntil("the open repository's buttons", () -> !ribbonButton(view, "Versions", "Import from Git...").isDisable());
+                Stage importGit = onFx(() -> opened(view, "Versions", "Import from Git..."));
                 try {
                     assertEquals("Import from Git", importGit.getTitle());
                     assertInstanceOf(ImportGitView.class, importGit.getScene().getRoot());

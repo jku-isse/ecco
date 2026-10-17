@@ -68,10 +68,10 @@ import java.util.Set;
 public class PreferencesView extends OperationView {
 
 	public enum Section {
-		PLUGINS("Plugins"),
+		PLUGINS("Adapters"),
 		LLM("LLM"),
 		MINIMIZATION("Minimization"),
-		LILYPOND("Lilypond"),
+		LILYPOND("LilyPond"),
 		SERVER("Server");
 
 		private final String title;
@@ -95,7 +95,7 @@ public class PreferencesView extends OperationView {
 	public PreferencesView(EccoService eccoService, Section initialSection) {
 		super();
 
-		this.headerLabel.setText("Settings");
+		this.headerLabel.setText("Preferences");
 		this.setMinWidth(700);
 		this.setMinHeight(420);
 
