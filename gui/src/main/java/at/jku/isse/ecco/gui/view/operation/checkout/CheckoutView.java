@@ -93,11 +93,9 @@ public class CheckoutView extends OperationView implements EccoListener {
         splitPane.getItems().add(logTable);
 
 
-        // default to the directory the repository lives in, not whatever service.getBaseDir()
-        // happens to still be set to from a previous, possibly unrelated operation (e.g. a Commit
-        // or Fork done from a different folder) -- still freely editable below before the actual
-        // checkout.
-        this.step1(service.getRepositoryHomeDir().toString(), "");
+        // no folder to begin with: it was the repository's own one - with the user's files in it -
+        // and service.getBaseDir() before that, wherever a previous operation had left it
+        this.step1("", "");
     }
 
 
@@ -139,10 +137,14 @@ public class CheckoutView extends OperationView implements EccoListener {
 
         TextField baseDirTextField = new TextField(initialBaseDir);
         baseDirTextField.setDisable(false);
+        // empty, not the repository's folder: that held the user's own files, and a checkout into
+        // it deleted them after one Enter (see DeleteDirectoryContentsDialog)
+        baseDirTextField.setPromptText("The folder to write the variant into - best an empty one");
         baseDirLabel.setLabelFor(baseDirTextField);
         gridPane.add(baseDirTextField, 1, row, 1, 1);
+        checkoutButton.disableProperty().bind(baseDirTextField.textProperty().isEmpty());
 
-        Button selectBaseDirectoryButton = new Button("...");
+        Button selectBaseDirectoryButton = new Button("Browse...");
         gridPane.add(selectBaseDirectoryButton, 2, row, 1, 1);
         row++;
 
@@ -152,6 +154,7 @@ public class CheckoutView extends OperationView implements EccoListener {
 
         TextField configurationStringTextField = new TextField(initialConfiguration);
         configurationStringTextField.setDisable(false);
+        configurationStringTextField.setPromptText(at.jku.isse.ecco.gui.view.operation.OperationView.CONFIGURATION_HINT);
         configurationStringLabel.setLabelFor(configurationStringTextField);
         gridPane.add(configurationStringTextField, 1, row, 2, 1);
         row++;
@@ -362,8 +365,8 @@ public class CheckoutView extends OperationView implements EccoListener {
      * Log table and success or error.
      */
     private void step2() {
-        Button cancelButton = new Button("Cancel");
-        this.leftButtons.getChildren().setAll(cancelButton);
+        // nothing to cancel with: a checkout cannot be stopped - its "Cancel" button did nothing
+        this.leftButtons.getChildren().clear();
 
         this.headerLabel.setText("Checking out ...");
 

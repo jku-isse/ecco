@@ -158,13 +158,10 @@ public class CommitView extends OperationView implements EccoListener {
 		row++;
 
 
-		// Commit, bottom right -- a single global "Commit Message" field made no sense once each
-		// folder has its own editable message (defaulted from its configuration) in the table above.
+		// in the toolbar, where every other dialog has its main button (it was below the table); a
+		// single global "Commit Message" field made no sense once each folder has its own message
 		Button commitButton = new Button("Commit");
-		HBox commitButtonBox = new HBox(commitButton);
-		commitButtonBox.setAlignment(Pos.CENTER_RIGHT);
-		gridPane.add(commitButtonBox, 0, row, 2, 1);
-		row++;
+		this.rightButtons.getChildren().setAll(commitButton);
 
 		this.wireCommitButton(commitButton);
 
@@ -419,11 +416,29 @@ public class CommitView extends OperationView implements EccoListener {
 		});
 	}
 
+	/** By name, the numbers in it by value: "v2" before "v10". Package-visible for testing. */
+	static int compareNaturally(Path a, Path b) {
+		java.util.regex.Matcher x = NUMBER_OR_TEXT.matcher(a.getFileName().toString());
+		java.util.regex.Matcher y = NUMBER_OR_TEXT.matcher(b.getFileName().toString());
+		while (x.find() && y.find()) {
+			String p = x.group(), q = y.group();
+			int c = Character.isDigit(p.charAt(0)) && Character.isDigit(q.charAt(0))
+					? new java.math.BigInteger(p).compareTo(new java.math.BigInteger(q))
+					: p.compareToIgnoreCase(q);
+			if (c != 0)
+				return c;
+		}
+		return a.getFileName().toString().compareTo(b.getFileName().toString());
+	}
+
+	private static final java.util.regex.Pattern NUMBER_OR_TEXT = java.util.regex.Pattern.compile("\\d+|\\D+");
+
 	private static List<Path> listSubfolders(Path parent) {
 		try (Stream<Path> stream = Files.list(parent)) {
 			return stream.filter(Files::isDirectory)
 					.filter(p -> !p.getFileName().toString().startsWith("."))
-					.sorted()
+					// v2 before v10: sorted as text, v10 was committed before v2
+					.sorted(CommitView::compareNaturally)
 					.collect(Collectors.toList());
 		} catch (IOException e) {
 			return List.of();

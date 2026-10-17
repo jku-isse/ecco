@@ -347,4 +347,12 @@ public class CommitViewTest {
             return new Shown<>(view, stage);
         });
     }
+
+    /** Folders are committed in their names' order, numbers by value: v10 came before v2. */
+    @Test
+    public void foldersAreOrderedWithTheirNumbersByValue() {
+        List<String> names = java.util.stream.Stream.of("v10", "v2", "v1", "base", "v2b", "V3")
+                .map(java.nio.file.Path::of).sorted(CommitView::compareNaturally).map(java.nio.file.Path::toString).toList();
+        assertEquals(List.of("base", "v1", "v2", "v2b", "V3", "v10"), names);
+    }
 }

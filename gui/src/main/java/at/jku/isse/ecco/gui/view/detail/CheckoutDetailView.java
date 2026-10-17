@@ -528,13 +528,14 @@ public class CheckoutDetailView extends BorderPane {
 			gridPane.add(directoryLabel, 0, row, 1, 1);
 			TextField directoryField = new TextField(defaultDirectory == null ? "" : defaultDirectory.toString());
 			gridPane.add(directoryField, 1, row, 1, 1);
-			Button browseButton = new Button("...");
+			Button browseButton = new Button("Browse...");
 			gridPane.add(browseButton, 2, row, 1, 1);
 			row++;
 
 			Label configurationLabel = new Label("Configuration: ");
 			gridPane.add(configurationLabel, 0, row, 1, 1);
 			TextField configurationField = new TextField(suggestedConfigurationString);
+			configurationField.setPromptText(at.jku.isse.ecco.gui.view.operation.OperationView.COMMIT_CONFIGURATION_HINT);
 			gridPane.add(configurationField, 1, row, 2, 1);
 			row++;
 

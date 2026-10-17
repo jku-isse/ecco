@@ -35,6 +35,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.SplitPane;
@@ -166,7 +167,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 	// repainting a screen the user has already left. FX-thread-only (Task callbacks run there),
 	// so no synchronization needed - see navButtons(), finishImport(), reportImportFailure().
 	private boolean runEnded;
-	// set true the first time step1()'s brief post-open "Choose..." disable finishes - see there.
+	// set true the first time step1()'s brief post-open "Browse..." disable finishes - see there.
 	// step1() re-runs on every "Back" navigation within the SAME already-open, already-settled dialog
 	// Stage, which doesn't need (or want) that one-time settling wait repeated each time.
 	private boolean chooseRepoButtonSettled = false;
@@ -236,7 +237,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		repoPathField.setEditable(false);
 		gridPane.add(repoPathField, 1, row, 1, 1);
 
-		Button chooseRepoButton = new Button("Choose...");
+		Button chooseRepoButton = new Button("Browse...");
 		ProgressIndicator repoLoadingIndicator = new ProgressIndicator();
 		repoLoadingIndicator.setMaxSize(20, 20);
 		repoLoadingIndicator.setVisible(false);
@@ -246,7 +247,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		row++;
 
 		// this dialog's own Stage can still be settling into becoming the OS's key window right after
-		// it's first shown - clicking "Choose..." during that window was observed (via a live native
+		// it's first shown - clicking "Browse..." during that window was observed (via a live native
 		// sample, not guessed) to race macOS's own NSOpenPanel init against that settling process and
 		// hang the ENTIRE app inside AppKit's native code (-[NSSavePanel _initBridgeAndStuff] stuck in
 		// -[HIRunLoopSemaphore wait:], unrecoverable, well before this class's own code regains
@@ -281,7 +282,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		suggestFeaturesCheckBox.setDisable(!llmConfigured);
 		if (!llmConfigured) {
 			suggestFeaturesCheckBox.setTooltip(new javafx.scene.control.Tooltip(
-					"Configure a model in Preferences → LLM Settings to enable this."));
+					"Configure a model in Preferences → LLM to enable this."));
 		}
 		gridPane.add(suggestFeaturesCheckBox, 0, row, 3, 1);
 		row++;
@@ -386,7 +387,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 			boolean useLlm = suggestFeaturesCheckBox.isSelected();
 			if (useLlm && LlmPreferences.getModelName().isBlank()) {
 				Alert alert = new Alert(Alert.AlertType.WARNING,
-						"No LLM model name is configured (Preferences → LLM Settings), so feature suggestions " +
+						"No LLM model name is configured (Preferences → LLM), so feature suggestions " +
 								"would fail for every commit. Skipping suggestions - you can still fill in each " +
 								"commit's configuration by hand on the next screen.");
 				alert.showAndWait();
@@ -858,6 +859,9 @@ public class ImportGitView extends OperationView implements EccoListener {
 		row++;
 
 		TextField configField = new TextField(defaultConfig == null ? "" : defaultConfig);
+		configField.setPromptText(COMMIT_CONFIGURATION_HINT + BLANK_READS_CONFIG_FILE);
+		configField.setTooltip(new Tooltip(COMMIT_CONFIGURATION_HINT + BLANK_READS_CONFIG_FILE));
+		focusWhenShown(configField);
 		gridPane.add(configField, 0, row, 1, 1);
 		row++;
 

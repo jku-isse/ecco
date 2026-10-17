@@ -52,7 +52,7 @@ import java.util.Set;
  * switching categories never loses an edit made in a section you're not currently looking at, and
  * Save persists every section together, not just the one on screen.
  * <ul>
- *     <li>Plugins - activate/deactivate the discovered {@link ArtifactPlugin}s (e.g. Lilypond,
+ *     <li>Adapters - activate/deactivate the discovered {@link ArtifactPlugin}s (e.g. Lilypond,
  *     Java, C, C++). Deactivated adapters are skipped by
  *     {@link at.jku.isse.ecco.service.EccoService} the next time a repository is opened or
  *     initialized; it does not affect an already-open repository.</li>
@@ -60,7 +60,7 @@ import java.util.Set;
  *     calls to suggest a feature configuration per imported commit.</li>
  *     <li>Minimization Settings - the min-witness/confidence thresholds used to re-mine accepted
  *     constraints before {@code MinimizationResults} runs.</li>
- *     <li>Lilypond Settings - where to find the Lilypond executable, if not found automatically.</li>
+ *     <li>LilyPond - where to find the LilyPond executable, if not found automatically.</li>
  * </ul>
  */
 public class PreferencesView extends OperationView {
@@ -381,7 +381,7 @@ public class PreferencesView extends OperationView {
 
 		int lilypondRow = 0;
 
-		Label lilypondHelpLabel = new Label("Only needed if Lilypond isn't found automatically. Used to render .ly artifacts " +
+		Label lilypondHelpLabel = new Label("Only needed if LilyPond isn't found automatically. Used to render .ly artifacts " +
 				"as notation images. Leave blank to use the bundled default.");
 		lilypondHelpLabel.setWrapText(true);
 		lilypondGridPane.add(lilypondHelpLabel, 0, lilypondRow, 2, 1);
@@ -394,7 +394,7 @@ public class PreferencesView extends OperationView {
 		Button browseExecutableButton = new Button("Browse...");
 		browseExecutableButton.setOnAction(event -> {
 			FileChooser fileChooser = new FileChooser();
-			fileChooser.setTitle("Select Lilypond Executable");
+			fileChooser.setTitle("Select LilyPond Executable");
 			preselectExistingParent(lilypondExecutableField.getText())
 					.ifPresent(dir -> fileChooser.setInitialDirectory(dir.toFile()));
 			File selected = fileChooser.showOpenDialog(browseExecutableButton.getScene().getWindow());
@@ -413,7 +413,7 @@ public class PreferencesView extends OperationView {
 		Button browseSearchPathButton = new Button("Add...");
 		browseSearchPathButton.setOnAction(event -> {
 			DirectoryChooser directoryChooser = new DirectoryChooser();
-			directoryChooser.setTitle("Add Lilypond Search Path");
+			directoryChooser.setTitle("Add LilyPond Search Path");
 			File selected = directoryChooser.showDialog(browseSearchPathButton.getScene().getWindow());
 			if (selected != null) {
 				String existing = lilypondSearchPathsField.getText();
@@ -427,7 +427,7 @@ public class PreferencesView extends OperationView {
 		lilypondGridPane.add(searchPathsBox, 1, lilypondRow, 1, 1);
 		lilypondRow++;
 
-		Label searchPathsNoteLabel = new Label("Multiple paths are separated by \"|\" (used for Lilypond's -I \\include search path).");
+		Label searchPathsNoteLabel = new Label("Multiple paths are separated by \"|\" (used for LilyPond's -I \\include search path).");
 		searchPathsNoteLabel.setWrapText(true);
 		lilypondGridPane.add(searchPathsNoteLabel, 0, lilypondRow, 2, 1);
 		lilypondRow++;

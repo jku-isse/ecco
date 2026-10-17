@@ -392,11 +392,25 @@ public class MainView extends BorderPane implements EccoListener {
 		shortcuts.put("Cmd/Ctrl+,", "Preferences...");
 		shortcuts.put("F1", "Help");
 		shortcuts.put("Cmd/Ctrl+Q", "Quit ECCO");
-		this.openDialog("ECCO Help", new HelpView(this.tabSpecs, shortcuts, () -> browse(AboutView.PROJECT_URL + "#readme")), Modality.NONE);
+		this.openDialog("ECCO Help", withCloseButton(new HelpView(this.tabSpecs, shortcuts, () -> browse(AboutView.PROJECT_URL + "#readme"))), Modality.NONE);
 	}
 
 	private void openAbout() {
-		this.openDialog("About ECCO", new AboutView(() -> browse(AboutView.PROJECT_URL)));
+		this.openDialog("About ECCO", withCloseButton(new AboutView(() -> browse(AboutView.PROJECT_URL))));
+	}
+
+	/** [content] above a Close button - Enter and Esc close it too; there was only Cmd+W. */
+	private static Parent withCloseButton(Parent content) {
+		javafx.scene.control.Button close = new javafx.scene.control.Button("Close");
+		close.setDefaultButton(true);
+		close.setCancelButton(true);
+		close.setOnAction(event -> close.getScene().getWindow().hide());
+		javafx.scene.layout.HBox bar = new javafx.scene.layout.HBox(close);
+		bar.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+		bar.setPadding(new Insets(8, 12, 10, 12));
+		BorderPane pane = new BorderPane(content);
+		pane.setBottom(bar);
+		return pane;
 	}
 
 	/** Opens [url] in the browser, or says why it could not. */

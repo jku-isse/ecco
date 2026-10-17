@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class ConfigurationPickerDialog extends Dialog<Configuration> {
 
 	public ConfigurationPickerDialog(EccoService service) {
-		setTitle("Compose Configuration");
+		setTitle("Exact Configuration"); // named as the button that opens it
 		setHeaderText("Check a feature to include it below, or type/edit the configuration string directly - they stay in sync.");
 		setResizable(true);
 

@@ -42,10 +42,11 @@ public class ServerView extends OperationView implements EccoListener {
 		super();
 		this.service = service;
 
-		this.portTextField = new Spinner<>(0, Integer.MAX_VALUE, 3770);
+		// the ports there are: 0 or above 65535 made the start fail
+		this.portTextField = new Spinner<>(1, 65535, 3770);
 
 		service.addListener(this);
-		// a new ServerView is created every time Preferences opens - don't leak one listener per open
+		// a new ServerView is created every time Collaborate > Server... opens - don't leak one listener per open
 		EccoListenerLifecycle.removeWhenWindowHidden(this, service, this);
 
 		if (service.serverRunning())
@@ -91,7 +92,8 @@ public class ServerView extends OperationView implements EccoListener {
 	private void stepStart() {
 		this.stopStep = false;
 
-		Button cancelButton = new Button("Cancel");
+		// a window of its own now: Close, not Cancel - there is nothing to cancel
+		Button cancelButton = new Button("Close");
 		cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
 		leftButtons.getChildren().setAll(cancelButton);
 

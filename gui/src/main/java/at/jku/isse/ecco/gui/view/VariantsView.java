@@ -174,7 +174,7 @@ public class VariantsView extends BorderPane implements EccoListener {
         TextField baseDirTextField = new TextField(service.getRepositoryHomeDir().toString());
         baseDirTextField.setDisable(false);
         baseDirLabel.setLabelFor(baseDirTextField);
-        Button selectBaseDirectoryButton = new Button("...");
+        Button selectBaseDirectoryButton = new Button("Browse...");
         toolBar.getItems().addAll(baseDirLabel, baseDirTextField, selectBaseDirectoryButton);
 
         selectBaseDirectoryButton.setOnAction(event -> {

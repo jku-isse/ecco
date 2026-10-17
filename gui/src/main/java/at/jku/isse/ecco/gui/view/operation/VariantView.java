@@ -14,6 +14,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
@@ -67,6 +68,9 @@ public class VariantView extends OperationView implements EccoListener {
 
         TextField configField = new TextField();
         configField.setDisable(false);
+        configField.setPromptText(CONFIGURATION_HINT);
+        configField.setTooltip(new Tooltip(CONFIGURATION_HINT));
+        focusWhenShown(configField);
         configLabel.setLabelFor(configField);
         gridPane.add(configField, 1, row, 1, 1);
 

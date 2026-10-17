@@ -37,7 +37,7 @@ public class PullView extends OperationView {
 		super();
 		this.service = service;
 
-		this.pullButton = new Button("Pull |");
+		this.pullButton = new Button("Pull All");
 		this.remoteComboBox = new ComboBox<>();
 		this.deselectionTextField = new TextField();
 		this.progressBar = new ProgressBar();
@@ -87,10 +87,7 @@ public class PullView extends OperationView {
 		pullButton.disableProperty().bind(remoteComboBox.getSelectionModel().selectedItemProperty().isNull());
 
 		// filled once here, not in stepRemote(): going back to that step appended every remote again
-		this.remoteComboBox.getItems().add(null);
-		for (Remote remote : this.service.getRemotes()) {
-			this.remoteComboBox.getItems().add(remote);
-		}
+		fillRemotes(this.remoteComboBox, this.service.getRemotes());
 
 		this.stepRemote();
 	}
@@ -103,10 +100,13 @@ public class PullView extends OperationView {
 
 		this.headerLabel.setText("Remote");
 
-		Button selectButton = new Button("Select >");
+		Button selectButton = new Button("Choose Features...");
+		selectButton.setTooltip(new Tooltip("Leave features out of the pull"));
 		selectButton.setOnAction(event -> {
 			this.stepDeselect();
 		});
+		// everything, or (after choosing) what is left: it said "Pull |"
+		this.pullButton.setText("Pull All");
 		this.rightButtons.getChildren().setAll(selectButton, pullButton);
 
 
@@ -145,12 +145,13 @@ public class PullView extends OperationView {
 
 
 	private void stepDeselect() {
-		Button remoteButton = new Button("< Remote");
+		Button remoteButton = new Button("Back");
 		remoteButton.setOnAction(event -> this.stepRemote());
 		this.leftButtons.getChildren().setAll(remoteButton);
 
 		this.headerLabel.setText("Selection");
 
+		this.pullButton.setText("Pull");
 		this.rightButtons.getChildren().setAll(pullButton);
 
 

@@ -19,9 +19,9 @@ import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.converter.DefaultStringConverter;
 
+import java.util.List;
 import java.util.Stack;
 
-// TODO: forward, backward, enter, escape, etc.
 
 public abstract class OperationView extends BorderPane {
 
@@ -96,6 +96,11 @@ public abstract class OperationView extends BorderPane {
 		rightButtons.setAlignment(Pos.CENTER_RIGHT);
 		rightButtons.setSpacing(10);
 
+		// Enter presses the rightmost button - the step's main action - and Esc a Cancel or Close at
+		// the left: only a few dialogs set them, so Enter did nothing in Commit, Checkout, Fetch, ...
+		rightButtons.getChildren().addListener((javafx.collections.ListChangeListener<javafx.scene.Node>) change -> this.markDefaultButton());
+		leftButtons.getChildren().addListener((javafx.collections.ListChangeListener<javafx.scene.Node>) change -> this.markCancelButton());
+
 		leftButtons.minWidthProperty().bind(rightButtons.widthProperty());
 		rightButtons.minWidthProperty().bind(leftButtons.widthProperty());
 		toolBar.getItems().setAll(leftButtons, spacerLeft, headerLabel, spacerRight, rightButtons);
@@ -108,6 +113,51 @@ public abstract class OperationView extends BorderPane {
 //		this.setBottom(toolBarBottom);
 	}
 
+
+	/** The prompt of a configuration field to check out or save - nothing said how to write one. */
+	public static final String CONFIGURATION_HINT = "Features, comma-separated: A (its latest revision), A.3f2a9c1 (that revision)";
+	/** The prompt of a configuration field to commit with. */
+	public static final String COMMIT_CONFIGURATION_HINT = "Features, comma-separated: A, A.3f2a9c1 (that revision), A' (a new revision of A)";
+	/** Added to {@link #COMMIT_CONFIGURATION_HINT} where a blank field reads the folder's .config file. */
+	public static final String BLANK_READS_CONFIG_FILE = "; blank: the folder's .config file";
+
+	/** The rightmost button of the toolbar's right side is the default one, no other. */
+	private void markDefaultButton() {
+		List<javafx.scene.Node> buttons = this.rightButtons.getChildren();
+		Button last = null;
+		for (javafx.scene.Node node : buttons)
+			if (node instanceof Button button)
+				last = button;
+		for (javafx.scene.Node node : buttons)
+			if (node instanceof Button button)
+				button.setDefaultButton(button == last);
+	}
+
+	/** A Cancel or Close button at the toolbar's left is the cancel button. */
+	private void markCancelButton() {
+		for (javafx.scene.Node node : this.leftButtons.getChildren())
+			if (node instanceof Button button)
+				button.setCancelButton("Cancel".equals(button.getText()) || "Close".equals(button.getText()));
+	}
+
+	/**
+	 * Fills [comboBox] with the repository's remotes - no empty entry - and selects the only one,
+	 * or else "origin" if there is one: Fetch, Pull and Push started on an empty choice.
+	 */
+	protected static void fillRemotes(javafx.scene.control.ComboBox<at.jku.isse.ecco.core.Remote> comboBox,
+									  java.util.Collection<? extends at.jku.isse.ecco.core.Remote> remotes) {
+		comboBox.getItems().setAll(remotes);
+		if (comboBox.getItems().size() == 1)
+			comboBox.getSelectionModel().select(0);
+		else
+			comboBox.getItems().stream().filter(r -> "origin".equals(r.getName())).findFirst()
+					.ifPresent(r -> comboBox.getSelectionModel().select(r));
+	}
+
+	/** Puts the keyboard focus on [node] once it is shown - the first field of a step. */
+	protected static void focusWhenShown(javafx.scene.Node node) {
+		Platform.runLater(node::requestFocus);
+	}
 
 	protected void fit() {
 		// no autosize() first: it set this view to its preferred size, and where the window then

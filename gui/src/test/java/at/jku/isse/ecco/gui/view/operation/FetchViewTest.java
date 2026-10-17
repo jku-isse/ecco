@@ -49,14 +49,17 @@ public class FetchViewTest {
             service.addRemote("other", tmp.resolve("other").toString(), Remote.Type.LOCAL);
             FetchView view = show(service);
             ComboBox<Remote> remotes = onFx(() -> remoteBox(view));
-            assertEquals(List.of("-", "origin", "other"), onFx(() -> sortedNames(remotes)));
+            assertEquals(List.of("origin", "other"), onFx(() -> sortedNames(remotes)), "no empty choice");
             assertEquals("Remote", onFx(() -> view.headerLabel.getText()));
-            assertTrue(onFx(() -> button(view, "Fetch").isDisable()));
-
-            onFx(() -> chooseRemote(view, "origin"));
+            assertEquals("origin", onFx(() -> remotes.getValue().getName()), "origin is chosen to begin with");
             assertFalse(onFx(() -> button(view, "Fetch").isDisable()));
-            onFx(() -> remotes.getSelectionModel().select(0));
-            assertTrue(onFx(() -> button(view, "Fetch").isDisable()), "the empty choice again");
+            assertTrue(onFx(() -> button(view, "Fetch").isDefaultButton()), "Enter fetches");
+            assertTrue(onFx(() -> button(view, "Cancel").isCancelButton()), "Esc cancels");
+
+            onFx(() -> remotes.getSelectionModel().clearSelection());
+            assertTrue(onFx(() -> button(view, "Fetch").isDisable()), "nothing chosen: nothing to fetch");
+            onFx(() -> chooseRemote(view, "other"));
+            assertFalse(onFx(() -> button(view, "Fetch").isDisable()));
         }
     }
 

@@ -76,12 +76,13 @@ public class ForkView extends OperationView {
 		gridPane.add(remoteLabel, 0, row, 1, 1);
 
 		TextField remoteTextField = new TextField();
+		focusWhenShown(remoteTextField);
 		remoteTextField.setPromptText("repository directory, or host:port of an ECCO server");
 		remoteTextField.setPrefWidth(360);
 		remoteLabel.setLabelFor(remoteTextField);
 		gridPane.add(remoteTextField, 1, row, 1, 1);
 
-		Button selectRemoteButton = new Button("...");
+		Button selectRemoteButton = new Button("Browse...");
 		gridPane.add(selectRemoteButton, 2, row, 1, 1);
 		row++;
 
@@ -92,7 +93,7 @@ public class ForkView extends OperationView {
 		repositoryDirLabel.setLabelFor(repositoryDirTextField);
 		gridPane.add(repositoryDirTextField, 1, row, 1, 1);
 
-		Button selectRepositoryDirectoryButton = new Button("...");
+		Button selectRepositoryDirectoryButton = new Button("Browse...");
 		gridPane.add(selectRepositoryDirectoryButton, 2, row, 1, 1);
 		row++;
 

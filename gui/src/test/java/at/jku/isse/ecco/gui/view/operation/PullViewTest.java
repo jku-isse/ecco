@@ -58,7 +58,7 @@ public class PullViewTest {
             PullView view = show(service);
             onFx(() -> {
                 chooseRemote(view, "origin");
-                button(view, "Pull |").fire();
+                button(view, "Pull All").fire();
             });
             waitUntil("the pull succeeded (the dialog closed)", () -> !stage.isShowing());
 
@@ -80,9 +80,9 @@ public class PullViewTest {
             PullView view = show(service);
             onFx(() -> {
                 chooseRemote(view, "origin");
-                button(view, "Select >").fire();
+                button(view, "Choose Features...").fire();
                 deselectionField(view).setText(b);
-                button(view, "Pull |").fire();
+                button(view, "Pull").fire();
             });
             waitUntil("the pull succeeded (the dialog closed)", () -> !stage.isShowing());
 
@@ -101,7 +101,7 @@ public class PullViewTest {
             PullView view = show(service);
             onFx(() -> {
                 chooseRemote(view, "origin");
-                button(view, "Select >").fire();
+                button(view, "Choose Features...").fire();
             });
             assertEquals("Selection", onFx(() -> view.headerLabel.getText()));
             assertEquals(Set.of("A", "B"), onFx(() -> treeFeatures(view)));
@@ -114,7 +114,7 @@ public class PullViewTest {
             onFx(() -> tick(view, "A"));
             assertEquals(b, onFx(() -> deselectionField(view).getText()), "ticked again: pulled again");
 
-            onFx(() -> button(view, "Pull |").fire());
+            onFx(() -> button(view, "Pull").fire());
             waitUntil("the pull succeeded (the dialog closed)", () -> !stage.isShowing());
             assertEquals(Set.of("A"), features(service));
         }
@@ -129,7 +129,7 @@ public class PullViewTest {
             PullView view = show(service);
             onFx(() -> {
                 chooseRemote(view, "origin");
-                button(view, "Select >").fire();
+                button(view, "Choose Features...").fire();
                 // typed before the fetch completes: unticked once the tree is filled
                 deselectionField(view).setText(b);
             });
@@ -148,16 +148,19 @@ public class PullViewTest {
             service.addRemote("other", tmp.resolve("other").toString(), Remote.Type.LOCAL);
             PullView view = show(service);
             ComboBox<Remote> remotes = onFx(() -> remoteBox(view));
-            assertEquals(List.of("-", "origin", "other"), onFx(() -> sortedNames(remotes)));
-            assertTrue(onFx(() -> button(view, "Pull |").isDisable() && button(view, "Select >").isDisable()));
+            // origin is chosen to begin with - there was an empty choice, chosen
+            assertEquals(List.of("origin", "other"), onFx(() -> sortedNames(remotes)));
+            assertEquals("origin", onFx(() -> remotes.getValue().getName()));
+            onFx(() -> remotes.getSelectionModel().clearSelection());
+            assertTrue(onFx(() -> button(view, "Pull All").isDisable() && button(view, "Choose Features...").isDisable()));
 
             onFx(() -> chooseRemote(view, "origin"));
-            assertFalse(onFx(() -> button(view, "Pull |").isDisable() || button(view, "Select >").isDisable()));
+            assertFalse(onFx(() -> button(view, "Pull All").isDisable() || button(view, "Choose Features...").isDisable()));
 
             // back from the selection step: the same remotes, the chosen one still chosen
-            onFx(() -> button(view, "Select >").fire());
-            onFx(() -> button(view, "< Remote").fire());
-            assertEquals(List.of("-", "origin", "other"), onFx(() -> sortedNames(remotes)));
+            onFx(() -> button(view, "Choose Features...").fire());
+            onFx(() -> button(view, "Back").fire());
+            assertEquals(List.of("origin", "other"), onFx(() -> sortedNames(remotes)));
             assertEquals("origin", onFx(() -> remotes.getValue().getName()));
         }
     }
@@ -170,9 +173,9 @@ public class PullViewTest {
             PullView view = show(service);
             onFx(() -> {
                 chooseRemote(view, "origin");
-                button(view, "Select >").fire();
+                button(view, "Choose Features...").fire();
                 deselectionField(view).setText("Nope.1");
-                button(view, "Pull |").fire();
+                button(view, "Pull").fire();
             });
             waitUntil("the error", () -> errorText(view) != null);
 
@@ -195,7 +198,7 @@ public class PullViewTest {
             service.removeRemote("origin");
             onFx(() -> {
                 chooseRemote(view, "origin");
-                button(view, "Pull |").fire();
+                button(view, "Pull All").fire();
             });
             waitUntil("the error", () -> errorText(view) != null);
 
@@ -267,7 +270,7 @@ public class PullViewTest {
     /** the empty choice first, the remotes in any order */
     static List<String> sortedNames(ComboBox<Remote> box) {
         List<String> names = new ArrayList<>(names(box));
-        names.subList(1, names.size()).sort(null);
+        names.sort(null);
         return names;
     }
 

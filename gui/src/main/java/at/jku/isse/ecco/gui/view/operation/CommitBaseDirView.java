@@ -109,6 +109,11 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 		Label configurationLabel = new Label("Configuration: ");
 		gridPane.add(configurationLabel, 0, row, 1, 1);
 		TextField configurationField = new TextField(this.lastCommitConfigurationString());
+		configurationField.setPromptText(COMMIT_CONFIGURATION_HINT + BLANK_READS_CONFIG_FILE);
+		// it was filled in without a word: check it is this variant's
+		configurationField.setTooltip(new Tooltip("Filled with the previous commit's configuration - make it this variant's.\n"
+				+ COMMIT_CONFIGURATION_HINT + BLANK_READS_CONFIG_FILE));
+		configurationLabel.setLabelFor(configurationField);
 		gridPane.add(configurationField, 1, row, 1, 1);
 		row++;
 

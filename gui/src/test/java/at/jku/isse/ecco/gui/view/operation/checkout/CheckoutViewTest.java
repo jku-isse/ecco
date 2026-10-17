@@ -57,7 +57,9 @@ public class CheckoutViewTest {
     public void checksOutTheConfigurationIntoANewDirectoryAndLogsIt(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoVariants(tmp)) {
             ScriptedCheckoutView view = show(service);
-            assertEquals(service.getRepositoryHomeDir().toString(), onFx(() -> view.baseDir().getText()), "defaults to the repository's directory");
+            // no folder to begin with: the repository's own folder - the user's files - was the default
+            assertEquals("", onFx(() -> view.baseDir().getText()));
+            assertTrue(onFx(() -> view.button("Checkout").isDisable()), "nothing to check out into yet");
             assertEquals(STEP1, onFx(() -> view.header()));
 
             Path out = tmp.resolve("out").resolve("nested");

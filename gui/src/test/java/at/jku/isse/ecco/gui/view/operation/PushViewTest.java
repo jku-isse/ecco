@@ -51,7 +51,7 @@ public class PushViewTest {
             PushView view = show(service);
             onFx(() -> {
                 chooseRemote(view, "parent");
-                button(view, "Push |").fire();
+                button(view, "Push All").fire();
             });
             waitUntil("the push succeeded (the dialog closed)", () -> !stage.isShowing());
             assertFalse(onFx(view::isDisable));
@@ -69,7 +69,7 @@ public class PushViewTest {
             PushView view = show(service);
             onFx(() -> {
                 chooseRemote(view, "parent");
-                button(view, "Select >").fire();
+                button(view, "Choose Features...").fire();
             });
             // this repository's own features, no fetch needed
             assertEquals(Set.of("A", "B"), onFx(() -> treeFeatures(view)));
@@ -77,7 +77,7 @@ public class PushViewTest {
 
             onFx(() -> untick(view, "B"));
             assertEquals(b, onFx(() -> deselectionField(view).getText()));
-            onFx(() -> button(view, "Push |").fire());
+            onFx(() -> button(view, "Push").fire());
             waitUntil("the push succeeded (the dialog closed)", () -> !stage.isShowing());
         }
         assertEquals(Set.of("A"), parentFeatures(parent));
@@ -91,16 +91,17 @@ public class PushViewTest {
             service.addRemote("other", tmp.resolve("other").toString(), Remote.Type.LOCAL);
             PushView view = show(service);
             ComboBox<Remote> remotes = onFx(() -> remoteBox(view));
-            assertEquals(List.of("-", "other", "parent"), onFx(() -> sortedNames(remotes)));
-            assertTrue(onFx(() -> button(view, "Push |").isDisable() && button(view, "Select >").isDisable()));
+            // no origin and two remotes: none is chosen - there was an empty choice
+            assertEquals(List.of("other", "parent"), onFx(() -> sortedNames(remotes)));
+            assertTrue(onFx(() -> button(view, "Push All").isDisable() && button(view, "Choose Features...").isDisable()));
 
             onFx(() -> chooseRemote(view, "parent"));
-            assertFalse(onFx(() -> button(view, "Push |").isDisable() || button(view, "Select >").isDisable()));
+            assertFalse(onFx(() -> button(view, "Push All").isDisable() || button(view, "Choose Features...").isDisable()));
 
             // back from the selection step: the same remotes, the chosen one still chosen
-            onFx(() -> button(view, "Select >").fire());
-            onFx(() -> button(view, "< Remote").fire());
-            assertEquals(List.of("-", "other", "parent"), onFx(() -> sortedNames(remotes)));
+            onFx(() -> button(view, "Choose Features...").fire());
+            onFx(() -> button(view, "Back").fire());
+            assertEquals(List.of("other", "parent"), onFx(() -> sortedNames(remotes)));
             assertEquals("parent", onFx(() -> remotes.getValue().getName()));
         }
     }
@@ -113,9 +114,9 @@ public class PushViewTest {
             PushView view = show(service);
             onFx(() -> {
                 chooseRemote(view, "parent");
-                button(view, "Select >").fire();
+                button(view, "Choose Features...").fire();
                 deselectionField(view).setText("B");
-                button(view, "Push |").fire();
+                button(view, "Push").fire();
             });
             waitUntil("the error", () -> errorText(view) != null);
 
@@ -137,7 +138,7 @@ public class PushViewTest {
             service.removeRemote("parent");
             onFx(() -> {
                 chooseRemote(view, "parent");
-                button(view, "Push |").fire();
+                button(view, "Push All").fire();
             });
             waitUntil("the error", () -> errorText(view) != null);
 

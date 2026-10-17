@@ -65,10 +65,8 @@ public class FetchView extends OperationView {
 		row++;
 
 
-		remoteComboBox.getItems().add(null);
-		for (Remote remote : this.service.getRemotes()) {
-			remoteComboBox.getItems().add(remote);
-		}
+		fillRemotes(remoteComboBox, this.service.getRemotes());
+		focusWhenShown(remoteComboBox);
 
 
 		fetchButton.disableProperty().bind(remoteComboBox.getSelectionModel().selectedItemProperty().isNull());

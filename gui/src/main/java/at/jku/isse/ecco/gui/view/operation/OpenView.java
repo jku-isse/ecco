@@ -92,7 +92,7 @@ public class OpenView extends OperationView {
 		repositoryDirLabel.setLabelFor(repositoryDirTextField);
 		gridPane.add(repositoryDirTextField, 1, row, 1, 1);
 
-		Button selectRepositoryDirectoryButton = new Button("...");
+		Button selectRepositoryDirectoryButton = new Button("Browse...");
 		gridPane.add(selectRepositoryDirectoryButton, 2, row, 1, 1);
 		row++;
 

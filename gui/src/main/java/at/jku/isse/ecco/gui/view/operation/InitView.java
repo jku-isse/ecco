@@ -71,11 +71,12 @@ public class InitView extends OperationView {
 		gridPane.add(repositoryDirLabel, 0, row, 1, 1);
 
 		TextField repositoryDirTextField = new TextField(service.getRepositoryDir().toString());
+		focusWhenShown(repositoryDirTextField);
 		repositoryDirTextField.setDisable(false);
 		repositoryDirLabel.setLabelFor(repositoryDirTextField);
 		gridPane.add(repositoryDirTextField, 1, row, 1, 1);
 
-		Button selectRepositoryDirectoryButton = new Button("...");
+		Button selectRepositoryDirectoryButton = new Button("Browse...");
 		gridPane.add(selectRepositoryDirectoryButton, 2, row, 1, 1);
 		row++;
 		final ProgressBar pb = new ProgressBar();
