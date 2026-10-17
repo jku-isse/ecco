@@ -46,9 +46,8 @@ public class ArtifactTreeView extends BorderPane {
 		this.artifactTreeTableView.setRootNode(rootNode);
 
 		// auto-show a sensible default node's code instead of requiring a manual click on a tree
-		// row first - findNodeWithArtifactViewerRec() walks the whole (sub)tree looking for the
-		// first node with a registered viewer, but setRootNode() above already unavoidably does a
-		// full tree walk of its own via expandAll(), so this doesn't introduce a new class of cost.
+		// row first - findNodeWithArtifactViewerRec() walks the (sub)tree down to the first node
+		// with a registered viewer.
 		// Falls back to the root node itself if nothing has a registered viewer (e.g. an adapter
 		// with no dedicated viewer plugin) - showTree() still populates the Info tab for any
 		// non-null node, so this is a strictly better default than showing nothing at all.

@@ -9,7 +9,6 @@ import at.jku.isse.ecco.tree.Node;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -159,48 +158,6 @@ final class ArtifactPackStore {
 		int end = (index + 1) * ARTIFACT_DIGEST_LENGTH;
 		if (end <= digests.length)
 			this.artifactDigests.put(id, Arrays.copyOfRange(digests, end - ARTIFACT_DIGEST_LENGTH, end));
-	}
-
-	/** Reads the given artifacts from a pack (see {@link #writePack}), recording their digests. */
-	private void readPack(Path pack, List<String> artifactIds, Map<String, Artifact.Op<?>> loadedById) throws IOException, ClassNotFoundException {
-		if (!Files.exists(pack))
-			throw new EccoException("The artifact pack " + pack.getFileName() + " is missing - the repository is damaged.");
-		Set<String> wanted = new HashSet<>(artifactIds);
-		try (ZipFile zip = new ZipFile(pack.toFile())) {
-			ZipEntry artifactsEntry = zip.getEntry(PACK_ARTIFACTS_ENTRY);
-			if (artifactsEntry != null) {
-				byte[] digests = packDigests(zip, pack.getFileName().toString());
-				try (ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(zip.getInputStream(artifactsEntry), 1 << 16))) {
-					int count = ois.readInt();
-					for (int i = 0; i < count; i++) {
-						SerArtifact<?> artifact = (SerArtifact<?>) ois.readObject();
-						String id = artifact.getStorageId();
-						if (!wanted.contains(id))
-							continue; // superseded by a later pack
-						loadedById.put(id, artifact);
-						this.recordDigest(id, digests, i);
-					}
-				}
-			} else {
-				// the first packs: one entry per artifact
-				for (String id : artifactIds) {
-					ZipEntry entry = zip.getEntry(id);
-					if (entry == null)
-						continue;
-					byte[] bytes;
-					try (InputStream in = zip.getInputStream(entry)) {
-						bytes = in.readAllBytes();
-					}
-					this.artifactDigests.put(id, artifactDigest(bytes));
-					try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
-						loadedById.put(id, (Artifact.Op<?>) ois.readObject());
-					}
-				}
-			}
-		}
-		for (String id : artifactIds)
-			if (!loadedById.containsKey(id))
-				throw new EccoException("Artifact " + id + " is missing from " + pack.getFileName() + " - the repository is damaged.");
 	}
 
 	/**

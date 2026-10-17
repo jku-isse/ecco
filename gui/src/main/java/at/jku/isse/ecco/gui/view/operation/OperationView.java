@@ -66,7 +66,6 @@ public abstract class OperationView extends BorderPane {
 
 	public OperationView() {
 		super();
-		//Scene scene = this.getScene();
 		// Esc, and the window's close control, ask first while an operation runs (see mayClose)
 		this.setOnKeyPressed(event -> {
 			if (event.getCode() == KeyCode.ESCAPE) {
@@ -81,7 +80,6 @@ public abstract class OperationView extends BorderPane {
 		});
 
 		this.setMinWidth(600);
-		//this.setMinHeight(200);
 
 
 		// toolbar top
@@ -120,9 +118,6 @@ public abstract class OperationView extends BorderPane {
 		this.setTop(new VBox(toolBar, this.inputErrorLabel));
 
 
-//		// toolbar bottom
-//		ToolBar toolBarBottom = new ToolBar();
-//		this.setBottom(toolBarBottom);
 	}
 
 
@@ -425,25 +420,7 @@ public abstract class OperationView extends BorderPane {
 	protected void stepError(String text, Throwable ex) {
 		this.notRunning();
 		this.clearInputError();
-//		this.clearSteps();
 
-//		// toolbar top
-//		ToolBar toolBar = new ToolBar();
-//		toolBar.setStyle("-fx-base: #ff6666;");
-//		toolBar.getStyleClass().add("error");
-//		final Pane spacerLeft = new Pane();
-//		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-//		final Pane spacerRight = new Pane();
-//		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
-//
-//		Button finishButton = new Button("Done");
-//		finishButton.getStyleClass().add("error");
-//
-//		finishButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
-//
-//		toolBar.getItems().setAll(spacerLeft, finishButton);
-//
-//		this.setTop(toolBar);
 
 		this.showErrorHeader();
 
@@ -459,21 +436,6 @@ public abstract class OperationView extends BorderPane {
 		gridPane.add(label, 0, 0);
 
 		if (ex != null) {
-//			StringWriter sw = new StringWriter();
-//			PrintWriter pw = new PrintWriter(sw);
-//			ex.printStackTrace(pw);
-//			String exceptionText = sw.toString();
-//
-//			TextArea textArea = new TextArea(exceptionText);
-//			textArea.setEditable(false);
-//			textArea.setWrapText(true);
-//			textArea.setMaxWidth(Double.MAX_VALUE);
-//			textArea.setMaxHeight(Double.MAX_VALUE);
-//
-//			GridPane.setVgrow(textArea, Priority.ALWAYS);
-//			GridPane.setHgrow(textArea, Priority.ALWAYS);
-//
-//			gridPane.add(textArea, 0, 1);
 			gridPane.add(new at.jku.isse.ecco.gui.ErrorDetails(ex), 0, 1);
 		}
 

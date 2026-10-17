@@ -54,11 +54,6 @@ public class ServerView extends OperationView implements EccoListener {
 		else
 			this.stepStart();
 
-//		this.setOnKeyPressed(event -> {
-//			if (event.getCode() == KeyCode.ESCAPE && !this.stopStep) {
-//				((Stage) this.getScene().getWindow()).close();
-//			}
-//		});
 	}
 
 
@@ -212,7 +207,6 @@ public class ServerView extends OperationView implements EccoListener {
 		// progress bar
 		ProgressBar progressBar = new ProgressBar();
 		progressBar.setMaxWidth(Double.MAX_VALUE);
-		//progressBar.setPrefWidth(Double.MAX_VALUE);
 		progressBar.prefWidthProperty().bind(gridPane.widthProperty().subtract(20));
 		progressBar.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
 		gridPane.add(progressBar, 0, row, 1, 1);

@@ -306,12 +306,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		}
 
 		// the swap above committed the transaction: whatever fails from here on must not report it as
-		// failed - the user would retry, and a retried commit is a second commit. The next load
-		// finishes what is left (loadDatabase() rolls pending files forward).
+		// failed - the user would retry, and a retried commit is a second commit. What finishing
+		// leaves - superseded packs, unreferenced pieces - a later write deletes.
 		try {
 			this.finishCommitted(repo, newId, staged, stagedArtifacts, oldCoreReleased);
 		} catch (IOException | RuntimeException e) {
-			LOGGER.log(Level.WARNING, "The write to " + this.repositoryDir + " is committed, but finishing it failed; the next read of the repository finishes it.", e);
+			LOGGER.log(Level.WARNING, "The write to " + this.repositoryDir + " is committed, but finishing it failed; a later write deletes the files it left.", e);
 			// nothing held in memory is trusted: the next transaction reads the repository again
 			this.reset();
 			return;

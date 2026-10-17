@@ -84,9 +84,8 @@ public interface Constraint extends Persistable {
 	 * separator by a caller splitting the id back apart, or (for a "," specifically) corrupt a
 	 * caller that joins multiple ids with "," (e.g. {@code ConstraintSuggestionPreferences}).
 	 *
-	 * @param kindName Kind#name(), passed as a plain string so this isn't tied to any one Kind enum
-	 *                 (service's {@code Constraint.Kind} has the identical constant names but
-	 *                 is a distinct type from this interface's own {@link Kind}).
+	 * @param kindName {@link Kind#name()}, as a plain string: callers build ids from stored or
+	 *                 suggested kinds by name.
 	 */
 	static String buildId(String kindName, String featureA, String featureB) {
 		return kindName + "|" + URLEncoder.encode(featureA, StandardCharsets.UTF_8) + "|"

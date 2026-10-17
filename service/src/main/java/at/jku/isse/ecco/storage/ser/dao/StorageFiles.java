@@ -41,10 +41,6 @@ final class StorageFiles {
 	private StorageFiles() {
 	}
 
-	/** An object read from a file, and the digest of its serialized bytes. */
-	record Read(Object object, byte[] digest) {
-	}
-
 	/**
 	 * Serializes object as the single zip entry of file, compressed at the fastest level (see
 	 * writeStoredBytes()).
@@ -140,19 +136,4 @@ final class StorageFiles {
 		}
 	}
 
-	/** Reads the object of a zip file's single entry, with the digest of its bytes. */
-	static Read readZipped(Path file) throws IOException, ClassNotFoundException {
-		try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(Files.newInputStream(file)))) {
-			ZipEntry e;
-			while ((e = zis.getNextEntry()) != null) {
-				if (e.getName().equals(ZIP_ENTRY_NAME)) {
-					byte[] bytes = zis.readAllBytes();
-					try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
-						return new Read(ois.readObject(), digest(bytes));
-					}
-				}
-			}
-		}
-		throw new EccoException("No " + ZIP_ENTRY_NAME + " entry found in " + file);
-	}
 }

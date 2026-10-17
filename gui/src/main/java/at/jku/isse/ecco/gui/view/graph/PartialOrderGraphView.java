@@ -591,16 +591,6 @@ public class PartialOrderGraphView extends BorderPane {
 		return this.detailsById;
 	}
 
-	/**
-	 * Stops a layout - none runs since the blocks are placed in layers; kept for callers that stop
-	 * the graph when it is no longer shown.
-	 */
-	public void stopLayout() {
-		FxViewer viewer = this.viewer;
-		if (viewer != null)
-			viewer.disableAutoLayout();
-	}
-
 	public void closeGraph() {
 		setCenter(null);
 		this.requests.incrementAndGet(); // a graph still being read is not drawn

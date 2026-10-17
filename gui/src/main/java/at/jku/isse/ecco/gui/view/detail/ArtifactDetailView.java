@@ -59,8 +59,6 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 				return;
 			if (tab == pogTab)
 				drawPartialOrderGraph();
-			else if (was == pogTab && partialOrderGraphView != null)
-				partialOrderGraphView.stopLayout();
 		});
 	}
 
@@ -229,8 +227,6 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 
 		} else if (openDetailsTabs.containsKey("pog")) {
 			pogNode = null;
-			if (partialOrderGraphView != null)
-				partialOrderGraphView.stopLayout();
 			detailsTabPane.getTabs().remove(openDetailsTabs.get("pog"));
 			openDetailsTabs.remove("pog");
 		}
