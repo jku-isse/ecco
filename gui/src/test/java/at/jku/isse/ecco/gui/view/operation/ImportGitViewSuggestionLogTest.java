@@ -96,18 +96,20 @@ public class ImportGitViewSuggestionLogTest {
         assertEquals(List.of("first", "second", "third", "fourth"), entries.stream().map(e -> field(e, "message")).toList());
         assertEquals(List.of("auto", "reviewed", "auto", "skipped"), entries.stream().map(e -> field(e, "outcome")).toList());
         assertEquals(List.of("", "BASE", "BASE, SECOND, EXTRA", "BASE, SECOND, EXTRA, THIRD"), entries.stream().map(e -> field(e, "before")).toList());
-        assertEquals(List.of("BASE", "SECOND", "THIRD", "FOURTH"), entries.stream().map(e -> field(e, "suggestion")).toList());
+        // the first commit into an empty repository is BASE, the LLM is not asked
+        assertEquals(List.of("null", "SECOND", "THIRD", "FOURTH"), entries.stream().map(e -> field(e, "suggestion")).toList());
         assertEquals(List.of("BASE", "BASE, SECOND", "BASE, SECOND, EXTRA, THIRD", "BASE, SECOND, EXTRA, THIRD, FOURTH"),
                 entries.stream().map(e -> field(e, "proposed")).toList());
         assertEquals(List.of("BASE", "BASE, SECOND, EXTRA", "BASE, SECOND, EXTRA, THIRD", "null"),
                 entries.stream().map(e -> field(e, "committed")).toList());
-        String first = entries.get(0);
-        assertEquals("stub", field(first, "model"));
-        assertEquals("7", field(first, "diffLines"));
-        assertEquals("100", field(first, "promptTokens"));
-        assertEquals("42", field(first, "millis"));
-        assertEquals(clone.toString(), field(first, "gitRepository"));
-        assertEquals(service.getRepositoryDir().toString(), field(first, "eccoRepository"));
+        assertEquals("null", field(entries.get(0), "model"));
+        String second = entries.get(1);
+        assertEquals("stub", field(second, "model"));
+        assertEquals("7", field(second, "diffLines"));
+        assertEquals("100", field(second, "promptTokens"));
+        assertEquals("42", field(second, "millis"));
+        assertEquals(clone.toString(), field(second, "gitRepository"));
+        assertEquals(service.getRepositoryDir().toString(), field(second, "eccoRepository"));
 
         // a later import run knows which files each feature's commits changed: a commit's
         // labels are the features it added and the suggested ones kept - a skipped one has none
@@ -115,6 +117,50 @@ public class ImportGitViewSuggestionLogTest {
                 ImportedFeatureTraces.fromLog(log, service.getRepositoryDir().toString(), clone, new GitHistoryReader(), null).files());
         assertEquals(Map.of(), ImportedFeatureTraces.fromLog(log, "/another/.ecco", clone, new GitHistoryReader(), null).files(),
                 "only the commits imported into this repository");
+    }
+
+    /**
+     * The first commit into an empty repository is BASE, without asking the LLM; the parents the
+     * LLM names for new features are logged, and a later suggestion is told them as the known
+     * features' parents - not the tree's, which puts every feature of an import under the one before.
+     */
+    @Test
+    @Timeout(60)
+    public void theFirstCommitIsBaseAndTheNamedParentsAreLoggedAndTold(@TempDir Path tmp) throws Exception {
+        Path log = tmp.resolve("suggestions.jsonl");
+        System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
+        Path clone = gitHistory(tmp.resolve("clone"), "first", "second", "third", "fourth");
+        EccoService service = repository(tmp.resolve("repo"));
+        List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
+        Collections.reverse(oldestFirst);
+        List<String> asked = java.util.Collections.synchronizedList(new ArrayList<>());
+        ImportGitView view = onFx(() -> {
+            ImportGitView v = new ImportGitView(service);
+            new Scene(v);
+            v.suggester = commit -> {
+                asked.add(commit.getMessage());
+                String feature = commit.getMessage().toUpperCase();
+                return new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(List.of(feature), null, List.of(),
+                        List.of(Map.of(feature, "BASE"))), "stub", 1);
+            };
+            // reviews every 4th commit: the first three are imported unattended
+            v.startImport(clone, oldestFirst, true, 4);
+            return v;
+        });
+
+        waitFor(view, "Review Commit (4 of 4)");
+        assertEquals(List.of("second", "third", "fourth"), asked, "not asked for the first commit");
+        List<String> entries = Files.readAllLines(log);
+        assertEquals(List.of("BASE", "BASE, SECOND", "BASE, SECOND, THIRD"), entries.stream().map(e -> field(e, "committed")).toList());
+        assertTrue(entries.get(1).contains("\"parents\":{\"SECOND\":\"BASE\"}"), entries.get(1));
+
+        Map<String, String> told = new java.util.TreeMap<>();
+        for (LlmFeatureSuggestionClient.KnownFeature known : view.suggestionInput(oldestFirst.get(3)).knownFeatures())
+            told.put(known.name(), String.valueOf(known.parentName()));
+        assertEquals(Map.of("BASE", "null", "SECOND", "BASE", "THIRD", "BASE"), told, "THIRD is not under SECOND");
+        clickButton(view, "Skip");
+        waitFor(view, FINISHED);
+        service.close();
     }
 
     /** An unattended commit whose suggestion is uncertain stops for review, and says why; without the option it is imported. */

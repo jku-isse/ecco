@@ -29,6 +29,13 @@ public class ConstraintSuggestionsCodeEvidenceTest {
 		assertEquals("requires (26%, 1 own file)", ConstraintSuggestionsView.codeEvidence(relations, aes));
 		ConstraintMiner.Suggestion excludes = mined.stream().filter(s -> s.kind == Constraint.Kind.EXCLUDES).findFirst().orElseThrow();
 		assertEquals("", ConstraintSuggestionsView.codeEvidence(relations, excludes), "only REQUIRES");
+
+		// the LLM named the parent: with the code's share, if any
+		Map<String, ImportedFeatureTraces.RelationSuggestion> named = Map.of(
+				"zip-slip-fix\0extract-files", new ImportedFeatureTraces.RelationSuggestion("zip-slip-fix", "extract-files", ImportedFeatureTraces.Relation.SUBFEATURE, 0.12, 2, 0, ImportedFeatureTraces.Basis.LLM),
+				"aes\0store", new ImportedFeatureTraces.RelationSuggestion("aes", "store", ImportedFeatureTraces.Relation.SUBFEATURE, 0, 0, 0, ImportedFeatureTraces.Basis.LLM));
+		assertEquals("subfeature (LLM, 12%)", ConstraintSuggestionsView.codeEvidence(named, slip));
+		assertEquals("subfeature (LLM)", ConstraintSuggestionsView.codeEvidence(named, aes));
 	}
 
 	private static ConstraintMiner.Suggestion find(List<ConstraintMiner.Suggestion> mined, String a, String b) {

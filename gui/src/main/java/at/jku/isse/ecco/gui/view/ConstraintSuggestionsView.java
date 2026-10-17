@@ -448,7 +448,8 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
 
     /**
      * For a REQUIRES the code backs up: "subfeature (67%)" or "requires (26%, 1 own file)" - what
-     * share of A's changes lie in code B created, and as which relation; empty otherwise.
+     * share of A's changes lie in code B created, and as which relation - or the LLM named B as A's
+     * parent: "subfeature (LLM, 12%)"; empty otherwise.
      * Package-visible for testing.
      */
     static String codeEvidence(Map<String, at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion> relations, ConstraintMiner.Suggestion suggestion) {
@@ -457,10 +458,15 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         at.jku.isse.ecco.service.llm.ImportedFeatureTraces.RelationSuggestion relation = relations.get(suggestion.a + "\0" + suggestion.b);
         if (relation == null)
             return "";
-        String share = Math.round(relation.share() * 100) + "%";
-        return relation.relation() == at.jku.isse.ecco.service.llm.ImportedFeatureTraces.Relation.SUBFEATURE
-                ? "subfeature (" + share + ")"
-                : "requires (" + share + ", " + relation.ownSources() + " own file" + (relation.ownSources() == 1 ? "" : "s") + ")";
+        List<String> evidence = new ArrayList<>();
+        if (relation.basis().llm())
+            evidence.add("LLM");
+        if (relation.share() > 0)
+            evidence.add(Math.round(relation.share() * 100) + "%");
+        if (relation.relation() == at.jku.isse.ecco.service.llm.ImportedFeatureTraces.Relation.SUBFEATURE)
+            return "subfeature (" + String.join(", ", evidence) + ")";
+        evidence.add(relation.ownSources() + " own file" + (relation.ownSources() == 1 ? "" : "s"));
+        return "requires (" + String.join(", ", evidence) + ")";
     }
 
     /** Called by {@link FeaturesView} whenever the containing tab is selected/deselected. */

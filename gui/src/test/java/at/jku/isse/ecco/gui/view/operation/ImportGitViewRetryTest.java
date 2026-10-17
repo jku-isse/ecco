@@ -56,7 +56,12 @@ public class ImportGitViewRetryTest {
         ImportGitView view = startImport(service, clone, 1);
 
         waitFor(view, "Review Commit (1 of 2)");
+        assertEquals("BASE", onFx(() -> findField(view).getText()), "the first commit into an empty repository is BASE");
         // a blank configuration falls back to the tree's .config, and there is none: refused
+        onFx(() -> {
+            findField(view).setText("");
+            return null;
+        });
         clickButton(view, "Import");
         waitFor(view, "Review Commit (1 of 2)", true);
         assertTrue(onFx(() -> failureText(view)).contains("A commit needs at least one feature"), onFx(() -> failureText(view)));
@@ -82,11 +87,16 @@ public class ImportGitViewRetryTest {
     public void failedAutoImportStopsForReviewInsteadOfEndingTheRun(@TempDir Path tmp) throws Exception {
         Path clone = gitHistory(tmp.resolve("clone"));
         EccoService service = repository(tmp.resolve("repo"));
+        // not empty: the first commit imported is not BASE, and without a configuration it fails
+        Path earlier = Files.createDirectories(tmp.resolve("earlier"));
+        Files.writeString(earlier.resolve("z.txt"), "z\n");
+        service.setBaseDir(earlier);
+        service.commit("earlier", "BASE");
         // reviews every 2nd commit: the first one is imported unattended
         ImportGitView view = startImport(service, clone, 2);
 
         waitFor(view, "Review Commit (1 of 2)", true);
-        assertEquals(0, service.getCommits().size());
+        assertEquals(1, service.getCommits().size());
 
         clickButton(view, "Skip");
         waitFor(view, "Review Commit (2 of 2)");
@@ -96,7 +106,7 @@ public class ImportGitViewRetryTest {
         });
         clickButton(view, "Import");
         waitFor(view, FINISHED);
-        assertEquals(1, service.getCommits().size());
+        assertEquals(2, service.getCommits().size());
         service.close();
     }
 

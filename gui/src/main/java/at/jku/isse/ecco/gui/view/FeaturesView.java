@@ -665,13 +665,13 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	}
 
 	/**
-	 * "Suggested subfeatures: B of A (26% of its changes in code A created). Suggested REQUIRES: C
-	 * requires D (...; 2 source files of its own)". Package-visible for testing.
+	 * "Suggested subfeatures: B of A (26% of its changes in code A created); E of BASE (named by the
+	 * LLM). Suggested REQUIRES: C requires D (...; 2 source files of its own)". Package-visible for testing.
 	 */
 	static String refinementsText(List<ImportedFeatureTraces.RelationSuggestion> refinements) {
 		List<String> parts = new ArrayList<>();
 		String subfeatures = refinements.stream().filter(r -> r.relation() == ImportedFeatureTraces.Relation.SUBFEATURE)
-				.map(r -> r.feature() + " of " + r.other() + " (" + Math.round(r.share() * 100) + "% of its changes in code " + r.other() + " created)")
+				.map(r -> r.feature() + " of " + r.other() + " (" + String.join("; ", subfeatureEvidence(r)) + ")")
 				.collect(java.util.stream.Collectors.joining("; "));
 		if (!subfeatures.isEmpty())
 			parts.add("Suggested subfeatures: " + subfeatures + ".");
@@ -682,6 +682,16 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		if (!requires.isEmpty())
 			parts.add("Suggested REQUIRES: " + requires + ".");
 		return String.join(" ", parts);
+	}
+
+	/** What backs a suggested subfeature: the LLM naming it, the share of its changes in the parent's code - the latter only if there are any. */
+	private static List<String> subfeatureEvidence(ImportedFeatureTraces.RelationSuggestion r) {
+		List<String> evidence = new ArrayList<>();
+		if (r.basis().llm())
+			evidence.add("named by the LLM");
+		if (r.share() > 0)
+			evidence.add(Math.round(r.share() * 100) + "% of its changes in code " + r.other() + " created");
+		return evidence;
 	}
 
 	private static final class FeatureNodeSnapshot {
@@ -765,12 +775,13 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	}
 
 	/**
-	 * The subfeatures and REQUIRES the features' imported commits suggest (see
-	 * {@link ImportedFeatureTraces#relationSuggestions}) that the committed configurations agree with.
+	 * The subfeatures and REQUIRES the features' imported commits suggest, and the parents the LLM
+	 * named for them (see {@link ImportedFeatureTraces#allRelationSuggestions}), that the committed
+	 * configurations agree with.
 	 */
 	static List<ImportedFeatureTraces.RelationSuggestion> relationSuggestions(EccoService service) {
 		return ImportedFeatureTraces.consistentWith(
-				ImportedFeatureTraces.fromLog(FeatureSuggestionLog.location(), String.valueOf(service.getRepositoryDir())).relationSuggestions(),
+				ImportedFeatureTraces.fromLog(FeatureSuggestionLog.location(), String.valueOf(service.getRepositoryDir())).allRelationSuggestions(),
 				at.jku.isse.ecco.mining.ConfigurationBridge.readConfigurations(service));
 	}
 

@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -50,27 +51,40 @@ public final class FeatureSuggestionLog {
 	 * the commit changed things (null if not known). {@code changes} are the files the commit changed with the
 	 * positions in them, the files it added and those it renamed (see
 	 * {@link at.jku.isse.ecco.service.git.GitHistoryReader#getChangedPositions}), null if not known.
+	 * {@code parents} are the parents the reply named for the new features it suggested - the known
+	 * feature each refines, or BASE (see {@link LlmFeatureSuggestionClient#parentsOf}).
 	 */
 	public record Entry(String eccoRepository, String gitRepository, String commitId, String message, int diffLines, String model,
 						String before, String suggestion, String proposed, String failure,
-						LlmFeatureSuggestionClient.Usage usage, SuggestionConfidence confidence, Outcome outcome, String committed, ImportedFeatureTraces.Changes changes) {
+						LlmFeatureSuggestionClient.Usage usage, SuggestionConfidence confidence, Outcome outcome, String committed, ImportedFeatureTraces.Changes changes,
+						Map<String, String> parents) {
+
+		public Entry {
+			parents = parents == null ? Map.of() : Map.copyOf(parents);
+		}
+
+		public Entry(String eccoRepository, String gitRepository, String commitId, String message, int diffLines, String model,
+					 String before, String suggestion, String proposed, String failure,
+					 LlmFeatureSuggestionClient.Usage usage, SuggestionConfidence confidence, Outcome outcome, String committed, ImportedFeatureTraces.Changes changes) {
+			this(eccoRepository, gitRepository, commitId, message, diffLines, model, before, suggestion, proposed, failure, usage, confidence, outcome, committed, changes, Map.of());
+		}
 
 		/** This entry with {@code committed} as the configuration it was committed with. */
 		public Entry committedAs(String committed) {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, committed, this.changes);
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, committed, this.changes, this.parents);
 		}
 
 		/** This entry with what its commit changed. */
 		public Entry withChanges(ImportedFeatureTraces.Changes changes) {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, this.committed, changes);
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, this.committed, changes, this.parents);
 		}
 
 		/** This entry for a skipped commit. */
 		public Entry skipped() {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, Outcome.SKIPPED, null, this.changes);
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, Outcome.SKIPPED, null, this.changes, this.parents);
 		}
 	}
 
@@ -121,6 +135,11 @@ public final class FeatureSuggestionLog {
 		}
 		line.put("outcome", entry.outcome().name().toLowerCase());
 		line.put("committed", entry.committed());
+		if (!entry.parents().isEmpty()) {
+			// sorted, so a line reads the same however the reply ordered them
+			ObjectNode parents = line.putObject("parents");
+			new java.util.TreeMap<>(entry.parents()).forEach(parents::put);
+		}
 		if (entry.changes() != null) {
 			ObjectNode positions = line.putObject("positions");
 			entry.changes().positions().forEach((path, names) -> {

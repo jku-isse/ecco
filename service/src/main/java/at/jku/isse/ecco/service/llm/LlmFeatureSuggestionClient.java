@@ -136,16 +136,27 @@ public final class LlmFeatureSuggestionClient {
 			whole, "misc" for anything else (build or CI setup, version bumps and releases, dependency \
 			updates, license files).
 
-			Respond with ONLY a JSON object shaped exactly like the example below - always exactly \
-			the one key "configuration" (a single string, never an object or array) - and nothing \
-			else: no prose, no markdown code fences, no explanation, no questions back to the user, \
+			BASE, when known, is the code base as it was first imported - everything no more specific \
+			feature has been found in yet. It is never a name for a change: never list it in \
+			"configuration".
+
+			For every NEW feature name in "configuration" - one not among the known features - say in \
+			"parents" which feature it refines: the known feature whose capability it narrows or extends \
+			and whose code it mostly changes, or BASE when it refines none of them but extends the code \
+			base as a whole. Use only a known feature's name, BASE, or another new name of the same \
+			"configuration". Leave known features and removals out of "parents".
+
+			Respond with ONLY a JSON object shaped exactly like the examples below - always the key \
+			"configuration" (a single string, never an object or array), and "parents" (an object from \
+			each new feature name to its parent's name) when "configuration" names a new feature - and \
+			nothing else: no prose, no markdown code fences, no explanation, no questions back to the user, \
 			no analysis report, no table. "configuration" is a comma-separated list of feature names \
 			to ADD, each optionally prefixed with "-" for a feature to REMOVE (see above) - leave it \
 			an empty string "" if this commit neither adds nor removes anything a human should notice \
 			(rare - almost every commit belongs to at least "documentation" or "misc" if nothing more \
 			specific fits). Never reformat or repeat the commit's "id", "summary" or "change" back as \
-			JSON fields of your own - your only job is to output a "configuration" guess, nothing \
-			about the commit itself.
+			JSON fields of your own - your only job is to output a "configuration" guess and its \
+			"parents", nothing about the commit itself.
 
 			Each known feature may be shown with the files and positions (classes, methods, sections, \
 			...) its earlier commits changed, and the commit with evidence computed from the repository, \
@@ -160,7 +171,7 @@ public final class LlmFeatureSuggestionClient {
 
 			Example input:
 			Known feature names, each with the more general feature it was built on top of, when known:
-			(none yet)
+			- BASE
 
 			Commit:
 			id: a1b2c3d
@@ -170,11 +181,12 @@ public final class LlmFeatureSuggestionClient {
 			+def login(username, password): ...
 
 			Example output:
-			{"configuration": "login"}
+			{"configuration": "login", "parents": {"login": "BASE"}}
 
 			Example input (later commit, "login" now known):
 			Known feature names, each with the more general feature it was built on top of, when known:
-			- login
+			- BASE
+			- login (built on: BASE)
 
 			Commit:
 			id: e4f5a6b
@@ -184,11 +196,12 @@ public final class LlmFeatureSuggestionClient {
 			+def reset_password(token, new_password): ...
 
 			Example output:
-			{"configuration": "password-reset"}
+			{"configuration": "password-reset", "parents": {"password-reset": "login"}}
 
 			Example input (later commit, "login" and "password-reset" both known):
 			Known feature names, each with the more general feature it was built on top of, when known:
-			- login
+			- BASE
+			- login (built on: BASE)
 			- password-reset (built on: login)
 
 			Commit:
@@ -323,10 +336,19 @@ public final class LlmFeatureSuggestionClient {
 	 * to the model legitimately leaving a commit blank - so a caller can tell those two very
 	 * different situations apart instead of guessing from a blank entry alone.
 	 */
-	public record SuggestionBatch(List<String> configurations, String failureReason, List<Usage> usages) {
+	public record SuggestionBatch(List<String> configurations, String failureReason, List<Usage> usages, List<Map<String, String>> parents) {
 
 		public SuggestionBatch(List<String> configurations, String failureReason) {
 			this(configurations, failureReason, List.of());
+		}
+
+		public SuggestionBatch(List<String> configurations, String failureReason, List<Usage> usages) {
+			this(configurations, failureReason, usages, List.of());
+		}
+
+		/** The parents the reply named for the new features of the commit at {@code index} (see {@link #parentsOf}), empty if none. */
+		public Map<String, String> parentsAt(int index) {
+			return index < this.parents.size() ? this.parents.get(index) : Map.of();
 		}
 	}
 
@@ -363,6 +385,7 @@ public final class LlmFeatureSuggestionClient {
 	public SuggestionBatch suggestConfigurations(List<CommitForSuggestion> commitsOldestFirst, Collection<KnownFeature> knownFeatures, ProgressListener onProgress) {
 		List<String> configurations = new ArrayList<>(commitsOldestFirst.size());
 		List<Usage> usages = new ArrayList<>(commitsOldestFirst.size());
+		List<Map<String, String>> parents = new ArrayList<>(commitsOldestFirst.size());
 		List<String> failedCommitIds = new ArrayList<>();
 		String lastFailureReason = null;
 
@@ -375,6 +398,7 @@ public final class LlmFeatureSuggestionClient {
 			OneResult result = suggestOneConfiguration(commit, knownFeatures);
 			configurations.add(result.configuration() == null ? "" : result.configuration());
 			usages.add(result.usage());
+			parents.add(result.configuration() == null ? Map.of() : parentsOf(result.configuration(), result.parents(), knownFeatures));
 			if (result.failureReason() != null) {
 				failedCommitIds.add(commit.commitId());
 				lastFailureReason = result.failureReason();
@@ -385,10 +409,39 @@ public final class LlmFeatureSuggestionClient {
 		String overallFailureReason = failedCommitIds.isEmpty() ? null :
 				failedCommitIds.size() + " of " + commitsOldestFirst.size() + " commit(s) could not be classified (" +
 						String.join(", ", failedCommitIds) + "). Last error: " + lastFailureReason;
-		return new SuggestionBatch(configurations, overallFailureReason, usages);
+		return new SuggestionBatch(configurations, overallFailureReason, usages, parents);
 	}
 
-	private record OneResult(String configuration, String failureReason, Usage usage) {
+	private record OneResult(String configuration, String failureReason, Usage usage, Map<String, String> parents) {
+
+		OneResult(String configuration, String failureReason, Usage usage) {
+			this(configuration, failureReason, usage, Map.of());
+		}
+	}
+
+	/** The root of a Git import's feature model: the code base as first imported (see {@code ImportGitView}). */
+	public static final String BASE = "BASE";
+
+	/**
+	 * The parents a reply named that make sense: for each feature {@code configuration} adds that
+	 * is not known, a known feature, {@link #BASE}, or another new feature of the configuration -
+	 * never itself. Package-visible for testing.
+	 */
+	static Map<String, String> parentsOf(String configuration, Map<String, String> named, Collection<KnownFeature> knownFeatures) {
+		Set<String> known = knownFeatures.stream().map(KnownFeature::name).collect(Collectors.toSet());
+		Set<String> added = new java.util.LinkedHashSet<>();
+		for (String token : at.jku.isse.ecco.feature.ConfigurationText.tokens(configuration))
+			if (!token.startsWith("-"))
+				added.add(token);
+		Map<String, String> parents = new LinkedHashMap<>();
+		for (String feature : added) {
+			String parent = named.get(feature);
+			if (known.contains(feature) || parent == null || parent.equals(feature))
+				continue;
+			if (known.contains(parent) || parent.equals(BASE) || added.contains(parent))
+				parents.put(feature, parent);
+		}
+		return parents;
 	}
 
 	private OneResult suggestOneConfiguration(CommitForSuggestion commit, Collection<KnownFeature> knownFeatures) {
@@ -414,7 +467,7 @@ public final class LlmFeatureSuggestionClient {
 						"expected JSON shape. Raw reply: " + reply.body();
 				return new OneResult(null, reason, usage);
 			}
-			return new OneResult(configuration, null, usage);
+			return new OneResult(configuration, null, usage, parseParents(reply.body()));
 		} catch (IOException | InterruptedException | RuntimeException e) {
 			if (e instanceof InterruptedException) {
 				Thread.currentThread().interrupt();
@@ -581,6 +634,29 @@ public final class LlmFeatureSuggestionClient {
 	}
 
 	/**
+	 * Pure, network-free: the "parents" object of one chat-completions response body, feature name
+	 * to parent name - empty if there is none or it is not an object of strings. Package-visible for testing.
+	 */
+	static Map<String, String> parseParents(String responseBody) {
+		Map<String, String> parents = new LinkedHashMap<>();
+		try {
+			JsonNode choices = MAPPER.readTree(responseBody).path("choices");
+			if (!choices.isArray() || choices.isEmpty())
+				return parents;
+			JsonNode reply = replyObject(choices.get(0).path("message").path("content").asText(""));
+			if (reply == null || !reply.path("parents").isObject())
+				return parents;
+			reply.path("parents").fields().forEachRemaining(entry -> {
+				if (entry.getValue().isTextual() && !entry.getValue().asText().isBlank())
+					parents.put(entry.getKey().trim(), entry.getValue().asText().trim());
+			});
+		} catch (IOException e) {
+			// no parents, then
+		}
+		return parents;
+	}
+
+	/**
 	 * Local models don't always follow formatting instructions perfectly even with
 	 * {@code response_format: json_object} requested (markdown fences, a leading/trailing
 	 * sentence, ...), so this tries the whole reply as JSON first, then falls back to the
@@ -588,11 +664,17 @@ public final class LlmFeatureSuggestionClient {
 	 * yields a usable "configuration" string.
 	 */
 	private static String extractConfiguration(String content) {
+		JsonNode reply = replyObject(content);
+		return reply == null ? null : reply.path("configuration").asText();
+	}
+
+	/** The reply's JSON object with a "configuration" string: the whole reply, or the outermost {@code {...}} in it; null if neither. */
+	private static JsonNode replyObject(String content) {
 		String trimmed = content.trim();
 		try {
 			JsonNode whole = MAPPER.readTree(trimmed);
 			if (whole.isObject() && whole.path("configuration").isTextual()) {
-				return whole.path("configuration").asText();
+				return whole;
 			}
 		} catch (IOException ignored) {
 			// fall through to the more forgiving extraction below
@@ -604,7 +686,7 @@ public final class LlmFeatureSuggestionClient {
 			try {
 				JsonNode obj = MAPPER.readTree(content.substring(objStart, objEnd + 1));
 				if (obj.isObject() && obj.path("configuration").isTextual()) {
-					return obj.path("configuration").asText();
+					return obj;
 				}
 			} catch (IOException ignored) {
 				// nothing usable anywhere in the reply

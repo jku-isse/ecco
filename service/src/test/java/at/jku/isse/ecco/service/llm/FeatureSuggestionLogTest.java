@@ -40,6 +40,19 @@ public class FeatureSuggestionLogTest {
 			System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, this.location);
 	}
 
+	/** The parents the reply named for its new features are recorded, sorted; an entry without any has none. */
+	@Test
+	public void theParentsOfNewFeaturesAreRecorded() throws Exception {
+		FeatureSuggestionLog.Entry entry = new FeatureSuggestionLog.Entry(
+				"/ecco/repo/.ecco", "/git/repo", "abc123", "Add reset link", 812, "m", "BASE, login", "password-reset, email", "BASE, login, password-reset, email",
+				null, null, null, FeatureSuggestionLog.Outcome.AUTO, null, null, java.util.Map.of("password-reset", "login", "email", "BASE"));
+
+		JsonNode line = MAPPER.readTree(FeatureSuggestionLog.toJson(entry.committedAs("BASE, login, password-reset, email")));
+		assertEquals("{\"email\":\"BASE\",\"password-reset\":\"login\"}", line.path("parents").toString());
+		assertEquals(entry.parents(), entry.skipped().parents(), "kept through the outcome");
+		assertTrue(MAPPER.readTree(FeatureSuggestionLog.toJson(ENTRY)).path("parents").isMissingNode());
+	}
+
 	@Test
 	public void entriesAreAppendedOneJsonObjectPerLine(@TempDir Path tmp) throws Exception {
 		Path log = tmp.resolve("sub").resolve("suggestions.jsonl");

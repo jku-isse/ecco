@@ -168,6 +168,56 @@ public class ImportedFeatureTracesTest {
 		assertEquals(6.0, suggestions.get(0).lift(), 1e-9);
 	}
 
+	/** A named parent counts only if the commit kept the feature and the parent (or it is BASE). */
+	@Test
+	public void keptParentsAreThoseOfFeaturesTheCommitKept() {
+		assertEquals(Map.of("aes", "encryption", "zip64", "BASE"), ImportedFeatureTraces.keptParents(
+				Map.of("aes", "encryption", "zip64", "BASE", "split", "gone", "replaced", "BASE"), "BASE, encryption, aes, zip64, split"));
+	}
+
+	/**
+	 * The parents the LLM named are suggested subfeatures: once with the code's suggestion when
+	 * both agree, else with what the code says about them - and the first named for a feature stays.
+	 */
+	@Test
+	public void theParentsTheLlmNamedAreSuggestedSubfeatures() {
+		ImportedFeatureTraces traces = new ImportedFeatureTraces();
+		traces.record("g", List.of("BASE"), changed("Zip.java", List.of("Zip.add", "Zip.extract"), true));
+		traces.record("g", List.of("EXTRACT"), changed("Extract.java", List.of("Extract.run", "Extract.check"), true));
+		for (int i = 0; i < 12; i++)
+			traces.record("g", List.of("SLIP"), changed("Extract.java", List.of("Extract.check"), false));
+		for (int i = 0; i < 60; i++)
+			traces.record("g", List.of("SPREAD"), changed("Zip.java", List.of("Zip.add"), false));
+		traces.recordParents(Map.of("SLIP", "EXTRACT", "SPREAD", "BASE", "EXTRACT", "BASE"));
+		traces.recordParents(Map.of("SPREAD", "EXTRACT"));
+
+		assertEquals(Map.of("SLIP", "EXTRACT", "SPREAD", "BASE", "EXTRACT", "BASE"), traces.llmParents(), "the first named stays");
+		Map<String, ImportedFeatureTraces.RelationSuggestion> byFeature = traces.allRelationSuggestions().stream()
+				.collect(java.util.stream.Collectors.toMap(ImportedFeatureTraces.RelationSuggestion::feature, r -> r));
+		assertEquals(Set.of("SLIP", "SPREAD", "EXTRACT"), byFeature.keySet());
+		assertEquals(ImportedFeatureTraces.Basis.LLM_AND_CODE, byFeature.get("SLIP").basis());
+		assertEquals(6.0, byFeature.get("SLIP").lift(), 1e-9);
+		// all of SPREAD's changes lie in code BASE created, as most changes do: a lift of 1
+		ImportedFeatureTraces.RelationSuggestion spread = byFeature.get("SPREAD");
+		assertEquals(List.of("BASE", ImportedFeatureTraces.Relation.SUBFEATURE, ImportedFeatureTraces.Basis.LLM, 1.0),
+				List.of(spread.other(), spread.relation(), spread.basis(), spread.share()));
+		assertEquals(72 / 60.0, spread.lift(), 1e-9);
+		// EXTRACT changed nothing another feature created: the LLM alone says so
+		assertEquals(0.0, byFeature.get("EXTRACT").share());
+	}
+
+	/** A later run reads the parents back from the log, of what the commits kept. */
+	@Test
+	public void fromLogReadsTheNamedParents(@TempDir Path tmp) throws Exception {
+		Path log = tmp.resolve("log.jsonl");
+		Files.write(log, List.of(
+				"{\"eccoRepository\":\"/r/.ecco\",\"gitRepository\":\"/g\",\"before\":\"\",\"committed\":\"BASE\",\"outcome\":\"auto\",\"positions\":{\"a.txt\":[]},\"added\":[\"a.txt\"]}",
+				"{\"eccoRepository\":\"/r/.ecco\",\"gitRepository\":\"/g\",\"before\":\"BASE\",\"suggestion\":\"aes, gcm\",\"committed\":\"BASE, aes\",\"outcome\":\"reviewed\","
+						+ "\"parents\":{\"aes\":\"BASE\",\"gcm\":\"aes\"},\"positions\":{\"b.txt\":[]},\"added\":[\"b.txt\"]}"));
+
+		assertEquals(Map.of("aes", "BASE"), ImportedFeatureTraces.fromLog(log, "/r/.ecco").llmParents(), "gcm was not kept");
+	}
+
 	/** A restructuring commit that moves a file creates nothing: the file keeps its owner. */
 	@Test
 	public void aRenamedFileKeepsItsOwner() {

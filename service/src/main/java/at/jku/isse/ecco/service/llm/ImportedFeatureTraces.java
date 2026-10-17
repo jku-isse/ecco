@@ -81,6 +81,8 @@ public final class ImportedFeatureTraces {
 	private final Map<String, Set<String>> directoryOwners = new HashMap<>();
 	/** Per feature, the source files its commits created, "source\0path". */
 	private final Map<String, Set<String>> createdSources = new HashMap<>();
+	/** Per new feature, the parent the LLM named when it suggested it (see {@link #recordParents}). */
+	private final Map<String, String> llmParents = new TreeMap<>();
 
 	/**
 	 * What a commit changed: per file, the positions it changed in it; the files it added; and
@@ -177,13 +179,92 @@ public final class ImportedFeatureTraces {
 		REQUIRES
 	}
 
+	/** What suggests a relation: where the features' changes lie, the LLM naming a parent, or both. */
+	public enum Basis {
+		CODE, LLM, LLM_AND_CODE;
+
+		public boolean llm() {
+			return this != CODE;
+		}
+	}
+
 	/**
 	 * A suggested relation in the feature model: {@code share} of the feature's changes in places
 	 * other features own lie in places {@code other} owns, {@code lift} times as often as all
 	 * features' changes do; {@code ownSources} source files the feature created outside the other's
-	 * directories - none makes it a subfeature, any a REQUIRES.
+	 * directories - none makes it a subfeature, any a REQUIRES. For a parent only the LLM named,
+	 * share and lift are what the changes say, 0 if they say nothing.
 	 */
-	public record RelationSuggestion(String feature, String other, Relation relation, double share, double lift, int ownSources) {
+	public record RelationSuggestion(String feature, String other, Relation relation, double share, double lift, int ownSources, Basis basis) {
+
+		public RelationSuggestion(String feature, String other, Relation relation, double share, double lift, int ownSources) {
+			this(feature, other, relation, share, lift, ownSources, Basis.CODE);
+		}
+	}
+
+	/**
+	 * Records the parents the LLM named for new features it suggested, of those the commit kept -
+	 * the first named for a feature stays: it was named when the feature was new.
+	 */
+	public synchronized void recordParents(Map<String, String> parents) {
+		parents.forEach(this.llmParents::putIfAbsent);
+	}
+
+	/** Feature name to the parent the LLM named for it - a copy. */
+	public synchronized Map<String, String> llmParents() {
+		return new TreeMap<>(this.llmParents);
+	}
+
+	/**
+	 * Of the parents an entry's reply named, those of features {@code committed} kept, whose parent
+	 * it kept too or is BASE - a parent named for a feature the reviewer replaced says nothing.
+	 */
+	public static Map<String, String> keptParents(Map<String, String> parents, String committed) {
+		Set<String> kept = ConfigurationText.tokens(committed);
+		Map<String, String> result = new TreeMap<>();
+		parents.forEach((feature, parent) -> {
+			if (kept.contains(feature) && (kept.contains(parent) || parent.equals(LlmFeatureSuggestionClient.BASE)))
+				result.put(feature, parent);
+		});
+		return result;
+	}
+
+	/**
+	 * {@link #relationSuggestions} and the parents the LLM named, as subfeatures: one both suggest
+	 * is suggested once, {@link Basis#LLM_AND_CODE}; one only the LLM named has the share and lift
+	 * its changes have.
+	 */
+	public synchronized List<RelationSuggestion> allRelationSuggestions() {
+		List<RelationSuggestion> all = new ArrayList<>();
+		Set<String> fromCode = new HashSet<>();
+		for (RelationSuggestion suggestion : this.relationSuggestions()) {
+			boolean named = suggestion.other().equals(this.llmParents.get(suggestion.feature()));
+			all.add(named ? new RelationSuggestion(suggestion.feature(), suggestion.other(), suggestion.relation(), suggestion.share(), suggestion.lift(),
+					suggestion.ownSources(), Basis.LLM_AND_CODE) : suggestion);
+			fromCode.add(suggestion.feature() + "\0" + suggestion.other());
+		}
+		Map<String, Double> received = this.votesReceived();
+		double grand = received.values().stream().mapToDouble(Double::doubleValue).sum();
+		this.llmParents.forEach((feature, parent) -> {
+			if (fromCode.contains(feature + "\0" + parent))
+				return;
+			Map<String, Double> votes = this.votes.getOrDefault(feature, Map.of());
+			double total = votes.entrySet().stream().filter(e -> !e.getKey().equals(feature)).mapToDouble(Map.Entry::getValue).sum();
+			double share = total == 0 ? 0 : votes.getOrDefault(parent, 0.0) / total;
+			double lift = share == 0 ? 0 : share / (received.get(parent) / grand);
+			all.add(new RelationSuggestion(feature, parent, Relation.SUBFEATURE, share, lift, this.ownSources(feature, parent), Basis.LLM));
+		});
+		return all;
+	}
+
+	/** Per owner, the votes of all other features for its places. */
+	private Map<String, Double> votesReceived() {
+		Map<String, Double> all = new HashMap<>();
+		for (Map.Entry<String, Map<String, Double>> feature : this.votes.entrySet())
+			for (Map.Entry<String, Double> owner : feature.getValue().entrySet())
+				if (!owner.getKey().equals(feature.getKey()))
+					all.merge(owner.getKey(), owner.getValue(), Double::sum);
+		return all;
 	}
 
 	/**
@@ -193,14 +274,8 @@ public final class ImportedFeatureTraces {
 	 * which everything nests in.
 	 */
 	public synchronized List<RelationSuggestion> relationSuggestions() {
-		Map<String, Double> all = new HashMap<>();
-		double grand = 0;
-		for (Map.Entry<String, Map<String, Double>> feature : this.votes.entrySet())
-			for (Map.Entry<String, Double> owner : feature.getValue().entrySet())
-				if (!owner.getKey().equals(feature.getKey())) {
-					all.merge(owner.getKey(), owner.getValue(), Double::sum);
-					grand += owner.getValue();
-				}
+		Map<String, Double> all = this.votesReceived();
+		double grand = all.values().stream().mapToDouble(Double::doubleValue).sum();
 		List<RelationSuggestion> suggestions = new ArrayList<>();
 		for (Map.Entry<String, Map<String, Double>> feature : this.votes.entrySet()) {
 			if (this.base != null && this.base.contains(feature.getKey()))
@@ -403,6 +478,7 @@ public final class ImportedFeatureTraces {
 				Set<String> labels = labels(before, suggestion, committed);
 				if (!labels.isEmpty())
 					imported.record(gitRepository.toString(), labels, relationLabels(before, suggestion, committed), changes(entry, gitRepository, reader, dispatchReader));
+				imported.recordParents(keptParents(parents(entry), committed));
 			} catch (IOException | RuntimeException e) {
 				LOGGER.log(Level.FINE, "Passed over a suggestion log line: " + line, e);
 			}
@@ -430,6 +506,7 @@ public final class ImportedFeatureTraces {
 					Set<String> labels = labels(before, suggestion, committed);
 					if (!labels.isEmpty())
 						imported.record(entry.path("gitRepository").asText(""), labels, relationLabels(before, suggestion, committed), logged(entry));
+					imported.recordParents(keptParents(parents(entry), committed));
 				} catch (IOException | RuntimeException e) {
 					LOGGER.log(Level.FINE, "Passed over a suggestion log line: " + line, e);
 				}
@@ -450,6 +527,13 @@ public final class ImportedFeatureTraces {
 		for (String path : reader.getChangedFiles(gitRepository, commit))
 			changed.put(path, List.of());
 		return new Changes(changed, Set.of(), Map.of());
+	}
+
+	/** The parents an entry's reply named, feature to parent. */
+	private static Map<String, String> parents(JsonNode entry) {
+		Map<String, String> parents = new LinkedHashMap<>();
+		entry.path("parents").fields().forEachRemaining(e -> parents.put(e.getKey(), e.getValue().asText()));
+		return parents;
 	}
 
 	/** The changes an entry recorded: positions, and - in entries written since they are recorded - the files added and renamed. */

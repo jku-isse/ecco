@@ -84,6 +84,10 @@ import java.util.stream.Collectors;
  *     {@link #processNextCommit(List, int, boolean, int)}, that for each commit in turn either
  *     shows it for review (see {@link #isReviewCommit}) or auto-imports it unattended:
  *     <ul>
+ *         <li>the first commit into an empty repository is BASE - the root of the feature model,
+ *         the code base as first imported - without asking the LLM; later features are told apart
+ *         in it, each with the parent the LLM names for it when it is new (logged, see
+ *         {@link FeatureSuggestionLog.Entry#parents}, and shown in the Feature Model tab).</li>
  *         <li>{@link #suggestOneCommit(List, int, boolean, int)} - on a review commit, if
  *         suggestions weren't opted out of, asks a local LLM (via {@link LlmFeatureSuggestionClient},
  *         configured through {@link LlmPreferences}) for JUST that one commit's suggested
@@ -473,6 +477,21 @@ public class ImportGitView extends OperationView implements EccoListener {
 			this.finishImport(commitsOldestFirst.size(), false);
 			return;
 		}
+		if (this.service.getCommits().isEmpty()) {
+			// the root of the feature model: the code base as first imported, all of it, before any
+			// feature is told apart in it - the LLM named three features for a first snapshot, which
+			// then owned all of its code alike and could not be told apart
+			String config = LlmFeatureSuggestionClient.BASE;
+			GitCommitInfo commit = commitsOldestFirst.get(index);
+			if (isReviewCommit(index, reviewInterval)) {
+				this.pendingSuggestion = this.suggestionEntry(commit, null, null, config, FeatureSuggestionLog.Outcome.REVIEWED);
+				this.showCommitReview(commitsOldestFirst, index, useLlm, reviewInterval, config, null, null);
+			} else {
+				this.pendingSuggestion = this.suggestionEntry(commit, null, null, config, FeatureSuggestionLog.Outcome.AUTO);
+				this.importOneCommit(commitsOldestFirst, index, useLlm, reviewInterval, config);
+			}
+			return;
+		}
 		if (!isReviewCommit(index, reviewInterval)) {
 			this.autoImportOneCommit(commitsOldestFirst, index, useLlm, reviewInterval);
 		} else if (useLlm) {
@@ -684,10 +703,13 @@ public class ImportGitView extends OperationView implements EccoListener {
 		// one's imported commits changed
 		java.util.Map<String, java.util.Set<String>> featureFiles = traces.files();
 		java.util.Map<String, java.util.Set<String>> featurePositions = traces.positions();
+		// the parent the LLM named when a feature was new, where there is one: in an import every
+		// configuration has all features so far, and the tree made each the child of the one before
+		java.util.Map<String, String> llmParents = traces.llmParents();
 		List<LlmFeatureSuggestionClient.KnownFeature> knownFeatures = FeatureModelTree.compute(this.service.getRepository()).stream()
 				.map(placement -> new LlmFeatureSuggestionClient.KnownFeature(
 						placement.feature.getName(),
-						placement.parent == null ? null : placement.parent.getName(),
+						llmParents.getOrDefault(placement.feature.getName(), placement.parent == null ? null : placement.parent.getName()),
 						featureFiles.getOrDefault(placement.feature.getName(), java.util.Set.of()),
 						featurePositions.getOrDefault(placement.feature.getName(), java.util.Set.<String>of()).stream()
 								.map(position -> position.substring(position.indexOf('#') + 1))
@@ -736,7 +758,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 				batch == null || batch.configurations().isEmpty() ? null : batch.configurations().get(0),
 				proposed, failure,
 				batch == null || batch.usages().isEmpty() ? null : batch.usages().get(0),
-				suggested == null ? null : suggested.confidence(), outcome, null, null);
+				suggested == null ? null : suggested.confidence(), outcome, null, null,
+				batch == null ? java.util.Map.of() : batch.parentsAt(0));
 	}
 
 	/**
@@ -799,6 +822,15 @@ public class ImportGitView extends OperationView implements EccoListener {
 			warningLabel.setWrapText(true);
 			warningLabel.setStyle("-fx-text-fill: #cc6600;");
 			gridPane.add(warningLabel, 0, row, 1, 1);
+			row++;
+		}
+
+		if (this.service.getCommits().isEmpty() && importFailure == null) {
+			Label baseLabel = new Label("The first commit is " + LlmFeatureSuggestionClient.BASE + ": the code base as first imported, the root "
+					+ "of the feature model. Later commits tell features apart in it - the LLM is not asked about this one.");
+			baseLabel.setWrapText(true);
+			baseLabel.setStyle("-fx-text-fill: #666666;");
+			gridPane.add(baseLabel, 0, row, 1, 1);
 			row++;
 		}
 
@@ -883,6 +915,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		String suggested = suggestion != null && suggestion.commitId().equals(commit.getId()) ? suggestion.suggestion() : null;
 		java.util.Set<String> labels = ImportedFeatureTraces.labels(before, suggested, configurationText);
 		java.util.Set<String> relationLabels = ImportedFeatureTraces.relationLabels(before, suggested, configurationText);
+		java.util.Map<String, String> parents = suggestion != null && suggestion.commitId().equals(commit.getId()) ? suggestion.parents() : java.util.Map.of();
 
 		this.leftButtons.getChildren().clear();
 		this.rightButtons.getChildren().clear();
@@ -923,8 +956,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 						commitChanges.set(changes);
 						// if they are not read yet, this commit is logged before they are, and read from there
 						ImportedFeatureTraces traces = ImportGitView.this.importedTraces;
-						if (traces != null)
+						if (traces != null) {
 							traces.record(String.valueOf(ImportGitView.this.repoDir), labels, relationLabels, changes);
+							traces.recordParents(ImportedFeatureTraces.keptParents(parents, configurationText));
+						}
 					} catch (RuntimeException e) {
 						// the commit is in; only its trace is lost
 						LOGGER.log(java.util.logging.Level.WARNING, "Could not locate the changes of " + commit.getShortId(), e);

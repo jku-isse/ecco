@@ -144,6 +144,40 @@ public class LlmFeatureSuggestionClientTest {
 		assertEquals("setup", LlmFeatureSuggestionClient.parseResponse(response));
 	}
 
+	/** The reply names a parent for each new feature: read leniently, as the configuration is. */
+	@Test
+	public void parseParents_readsTheParentsObject() {
+		String response = chatCompletionsResponse("Sure! {\"configuration\": \"aes, zip64\", \"parents\": {\"aes\": \"encryption\", \"zip64\": \"BASE\", \"x\": 3}}");
+
+		assertEquals("aes, zip64", LlmFeatureSuggestionClient.parseResponse(response));
+		assertEquals(java.util.Map.of("aes", "encryption", "zip64", "BASE"), LlmFeatureSuggestionClient.parseParents(response), "a parent that is no name is left out");
+		assertEquals(java.util.Map.of(), LlmFeatureSuggestionClient.parseParents(chatCompletionsResponse("{\"configuration\": \"aes\"}")));
+		assertEquals(java.util.Map.of(), LlmFeatureSuggestionClient.parseParents(chatCompletionsResponse("{\"configuration\": \"aes\", \"parents\": \"encryption\"}")));
+	}
+
+	/** Only a new feature's parent counts, and only one that is known, BASE, or new in the same configuration. */
+	@Test
+	public void parentsOf_keepsTheParentsOfNewFeaturesThatMakeSense() {
+		List<LlmFeatureSuggestionClient.KnownFeature> known = List.of(
+				new LlmFeatureSuggestionClient.KnownFeature("BASE", null), new LlmFeatureSuggestionClient.KnownFeature("encryption", "BASE"));
+		java.util.Map<String, String> named = java.util.Map.of(
+				"aes", "encryption", "aes-gcm", "aes", "zip64", "BASE", "split", "nowhere", "self", "self", "encryption", "BASE");
+
+		assertEquals(java.util.Map.of("aes", "encryption", "aes-gcm", "aes", "zip64", "BASE"),
+				LlmFeatureSuggestionClient.parentsOf("aes, aes-gcm, zip64, split, self, encryption, -old", named, known));
+	}
+
+	/** The prompt tells what BASE is and asks for the parents of new features. */
+	@Test
+	public void buildRequestBody_asksForTheParentsOfNewFeatures() throws Exception {
+		JsonNode body = MAPPER.readTree(LlmFeatureSuggestionClient.buildRequestBody(
+				new LlmFeatureSuggestionClient.CommitForSuggestion("abc", "Add AES", "+aes"), List.of(new LlmFeatureSuggestionClient.KnownFeature("BASE", null)), "m"));
+		String system = body.path("messages").get(0).path("content").asText();
+		assertTrue(system.contains("\"parents\""), system);
+		assertTrue(system.contains("BASE, when known, is the code base as it was first imported"), system);
+		assertTrue(system.contains("{\"configuration\": \"password-reset\", \"parents\": {\"password-reset\": \"login\"}}"), system);
+	}
+
 	@Test
 	public void parseUsage_readsTheReportedTokenCounts() {
 		String response = "{\"choices\":[],\"usage\":{\"prompt_tokens\":7670,\"completion_tokens\":12,\"total_tokens\":7682}}";

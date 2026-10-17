@@ -18,4 +18,14 @@ public class FeaturesViewRefinementsTest {
 						new ImportedFeatureTraces.RelationSuggestion("zip-slip-fix", "extract-files", ImportedFeatureTraces.Relation.SUBFEATURE, 0.47, 24.1, 0),
 						new ImportedFeatureTraces.RelationSuggestion("aes", "store", ImportedFeatureTraces.Relation.REQUIRES, 0.26, 5.4, 1))));
 	}
+
+	/** A parent the LLM named says so - with what the code says, if it says anything. */
+	@Test
+	public void subfeaturesTheLlmNamed() {
+		assertEquals("Suggested subfeatures: zip-slip-fix of extract-files (named by the LLM; 47% of its changes in code extract-files created); "
+						+ "zip64 of BASE (named by the LLM).",
+				FeaturesView.refinementsText(List.of(
+						new ImportedFeatureTraces.RelationSuggestion("zip-slip-fix", "extract-files", ImportedFeatureTraces.Relation.SUBFEATURE, 0.47, 24.1, 0, ImportedFeatureTraces.Basis.LLM_AND_CODE),
+						new ImportedFeatureTraces.RelationSuggestion("zip64", "BASE", ImportedFeatureTraces.Relation.SUBFEATURE, 0, 0, 0, ImportedFeatureTraces.Basis.LLM))));
+	}
 }
