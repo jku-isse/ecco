@@ -880,8 +880,9 @@ public class ImportGitView extends OperationView implements EccoListener {
 		GitCommitInfo commit = commitsOldestFirst.get(index);
 		String before = String.join(", ", this.runningFeatures);
 		FeatureSuggestionLog.Entry suggestion = this.pendingSuggestion;
-		java.util.Set<String> labels = ImportedFeatureTraces.labels(before,
-				suggestion != null && suggestion.commitId().equals(commit.getId()) ? suggestion.suggestion() : null, configurationText);
+		String suggested = suggestion != null && suggestion.commitId().equals(commit.getId()) ? suggestion.suggestion() : null;
+		java.util.Set<String> labels = ImportedFeatureTraces.labels(before, suggested, configurationText);
+		java.util.Set<String> relationLabels = ImportedFeatureTraces.relationLabels(before, suggested, configurationText);
 
 		this.leftButtons.getChildren().clear();
 		this.rightButtons.getChildren().clear();
@@ -923,7 +924,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 						// if they are not read yet, this commit is logged before they are, and read from there
 						ImportedFeatureTraces traces = ImportGitView.this.importedTraces;
 						if (traces != null)
-							traces.record(String.valueOf(ImportGitView.this.repoDir), labels, changes);
+							traces.record(String.valueOf(ImportGitView.this.repoDir), labels, relationLabels, changes);
 					} catch (RuntimeException e) {
 						// the commit is in; only its trace is lost
 						LOGGER.log(java.util.logging.Level.WARNING, "Could not locate the changes of " + commit.getShortId(), e);

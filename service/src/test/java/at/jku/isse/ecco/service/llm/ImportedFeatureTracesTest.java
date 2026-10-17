@@ -116,6 +116,58 @@ public class ImportedFeatureTracesTest {
 		assertEquals(6.0, suggestions.get(0).lift(), 1e-9, "12 of 72 votes go to EXTRACT; all of SLIP's");
 	}
 
+	/** In the feature model a commit counts for the features it added - not for the known ones the LLM named again. */
+	@Test
+	public void relationLabelsAreTheAddedFeaturesUnlessThereAreNone() {
+		assertEquals(Set.of("B"), ImportedFeatureTraces.relationLabels("A", "B, A", "A, B"));
+		assertEquals(Set.of("B", "A"), ImportedFeatureTraces.labels("A", "B, A", "A, B"), "while its trace has both");
+		// nothing added: the kept suggestion says which feature it continued
+		assertEquals(Set.of("A"), ImportedFeatureTraces.relationLabels("A, B", "A", "A, B"));
+		// the first commit adds all it has
+		assertEquals(Set.of("A", "B"), ImportedFeatureTraces.relationLabels("", null, "A, B"));
+		assertEquals(Set.of("A", "B"), ImportedFeatureTraces.relationLabels(null, null, "A, B"));
+	}
+
+	/**
+	 * A known feature named again with a new one neither owns what the commit created nor votes:
+	 * BASE named with every commit used to own EXTRACT's file too and take half of SLIP's votes -
+	 * SLIP's lift for EXTRACT fell from 6 to 2, below the threshold.
+	 */
+	@Test
+	public void aKnownFeatureNamedAgainNeitherOwnsNorVotes() {
+		ImportedFeatureTraces traces = new ImportedFeatureTraces();
+		traces.record("g", List.of("BASE"), changed("Zip.java", List.of("Zip.add", "Zip.extract"), true));
+		traces.record("g", List.of("EXTRACT", "BASE"), List.of("EXTRACT"), changed("Extract.java", List.of("Extract.run", "Extract.check"), true));
+		for (int i = 0; i < 12; i++)
+			traces.record("g", List.of("SLIP", "BASE"), List.of("SLIP"), changed("Extract.java", List.of("Extract.check"), false));
+		for (int i = 0; i < 60; i++)
+			traces.record("g", List.of("SPREAD"), changed("Zip.java", List.of("Zip.add"), false));
+
+		List<ImportedFeatureTraces.RelationSuggestion> suggestions = traces.relationSuggestions();
+		assertEquals(List.of("SLIP -> EXTRACT"), suggestions.stream().map(r -> r.feature() + " -> " + r.other()).toList());
+		assertEquals(6.0, suggestions.get(0).lift(), 1e-9);
+		// the traces the LLM is shown still have every label
+		assertEquals(Set.of("Extract.java"), traces.files().get("BASE").stream().filter(f -> f.startsWith("Extract")).collect(java.util.stream.Collectors.toSet()));
+	}
+
+	/** A change in a place two features own counts half for each: a place many own says little about each of them. */
+	@Test
+	public void aChangeInAPlaceOfTwoOwnersCountsHalfForEach() {
+		ImportedFeatureTraces traces = new ImportedFeatureTraces();
+		traces.record("g", List.of("BASE"), changed("Zip.java", List.of("Zip.add"), true));
+		traces.record("g", List.of("X", "Y"), changed("Pair.java", List.of("Pair.run"), true));
+		for (int i = 0; i < 12; i++)
+			traces.record("g", List.of("F"), changed("Pair.java", List.of("Pair.run"), false));
+		for (int i = 0; i < 60; i++)
+			traces.record("g", List.of("SPREAD"), changed("Zip.java", List.of("Zip.add"), false));
+
+		List<ImportedFeatureTraces.RelationSuggestion> suggestions = traces.relationSuggestions();
+		assertEquals(List.of("F -> X"), suggestions.stream().map(r -> r.feature() + " -> " + r.other()).toList());
+		assertEquals(0.5, suggestions.get(0).share(), 1e-9);
+		// 6 of 72 votes go to X - counted whole, 12 of 84, a lift of 3.5
+		assertEquals(6.0, suggestions.get(0).lift(), 1e-9);
+	}
+
 	/** A restructuring commit that moves a file creates nothing: the file keeps its owner. */
 	@Test
 	public void aRenamedFileKeepsItsOwner() {

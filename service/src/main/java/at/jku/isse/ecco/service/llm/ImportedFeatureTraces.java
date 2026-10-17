@@ -44,7 +44,8 @@ import java.util.logging.Logger;
  * a place - a file, or a class, method or section in it - is owned by the features of the commit
  * that created the file (inside a new file every place is first changed by its creator), and
  * later by those that first changed it; each later change votes for the owners of the nearest
- * place around it. A feature whose changes lie far more often than others' in the places one
+ * place around it, a share each. Owners and voters are the features a commit added
+ * ({@link #relationLabels}), not every feature the LLM named again. A feature whose changes lie far more often than others' in the places one
  * feature created likely depends on that feature (experiments/llm-feature-suggestion/nesting.py):
  * as a subfeature if it has no code of its own - no source file it created outside the other
  * feature's directories - and as a cross-tree REQUIRES if it has.
@@ -72,8 +73,8 @@ public final class ImportedFeatureTraces {
 	private final Map<String, Set<String>> owners = new HashMap<>();
 	/** Files created within the recorded history, "source\0path". */
 	private final Set<String> created = new HashSet<>();
-	/** Per feature, per owner, how many of its changes lie in that owner's places. */
-	private final Map<String, Map<String, Integer>> votes = new TreeMap<>();
+	/** Per feature, per owner, how many of its changes lie in that owner's places - a change in a place of n owners counts 1/n for each. */
+	private final Map<String, Map<String, Double>> votes = new TreeMap<>();
 	/** The features of the first commit that created files: everything nests in them. */
 	private Set<String> base;
 	/** Owners of directories, "source\0directory": the features of the commit that added the first file to it. */
@@ -105,14 +106,23 @@ public final class ImportedFeatureTraces {
 
 	/**
 	 * Records an imported commit of {@code source} (a Git clone): its changes go to the traces of
-	 * its labels, and to the ownership and votes {@link #parentSuggestions} is computed from.
+	 * its labels, and to the ownership and votes {@link #relationSuggestions} is computed from.
 	 * Commits must come in their order.
 	 */
 	public synchronized void record(String source, Collection<String> labels, Changes changes) {
-		if (labels.isEmpty())
+		this.record(source, labels, labels, changes);
+	}
+
+	/**
+	 * As {@link #record(String, Collection, Changes)}, with the features the commit's changes count
+	 * for in the feature model - {@link #relationLabels}, narrower than its {@code labels}.
+	 */
+	public synchronized void record(String source, Collection<String> labels, Collection<String> relationLabels, Changes changes) {
+		if (!labels.isEmpty())
+			this.add(labels, changes.positions());
+		if (relationLabels.isEmpty())
 			return;
-		this.add(labels, changes.positions());
-		Set<String> labelSet = new LinkedHashSet<>(labels);
+		Set<String> labelSet = new LinkedHashSet<>(relationLabels);
 		if (!changes.added().isEmpty() && this.base == null)
 			this.base = labelSet;
 		for (String path : changes.added()) {
@@ -144,10 +154,11 @@ public final class ImportedFeatureTraces {
 						owner = this.owners.get(file + area);
 					if (owner == null)
 						owner = this.owners.get(file);
+					// split among the owners: a place many features own says little about each
 					if (owner != null)
 						for (String label : labelSet)
 							for (String o : owner)
-								this.votes.computeIfAbsent(label, l -> new TreeMap<>()).merge(o, 1, Integer::sum);
+								this.votes.computeIfAbsent(label, l -> new TreeMap<>()).merge(o, 1.0 / owner.size(), Double::sum);
 				}
 			}
 			// then it owns what it changed first
@@ -182,29 +193,29 @@ public final class ImportedFeatureTraces {
 	 * which everything nests in.
 	 */
 	public synchronized List<RelationSuggestion> relationSuggestions() {
-		Map<String, Integer> all = new HashMap<>();
-		int grand = 0;
-		for (Map.Entry<String, Map<String, Integer>> feature : this.votes.entrySet())
-			for (Map.Entry<String, Integer> owner : feature.getValue().entrySet())
+		Map<String, Double> all = new HashMap<>();
+		double grand = 0;
+		for (Map.Entry<String, Map<String, Double>> feature : this.votes.entrySet())
+			for (Map.Entry<String, Double> owner : feature.getValue().entrySet())
 				if (!owner.getKey().equals(feature.getKey())) {
-					all.merge(owner.getKey(), owner.getValue(), Integer::sum);
+					all.merge(owner.getKey(), owner.getValue(), Double::sum);
 					grand += owner.getValue();
 				}
 		List<RelationSuggestion> suggestions = new ArrayList<>();
-		for (Map.Entry<String, Map<String, Integer>> feature : this.votes.entrySet()) {
+		for (Map.Entry<String, Map<String, Double>> feature : this.votes.entrySet()) {
 			if (this.base != null && this.base.contains(feature.getKey()))
 				continue;
-			int total = feature.getValue().entrySet().stream().filter(e -> !e.getKey().equals(feature.getKey())).mapToInt(Map.Entry::getValue).sum();
+			double total = feature.getValue().entrySet().stream().filter(e -> !e.getKey().equals(feature.getKey())).mapToDouble(Map.Entry::getValue).sum();
 			if (total < MIN_VOTES)
 				continue;
 			// of the strong candidates, the one with most of the feature's changes: a high lift alone
 			// can come from a few changes in a catch-all feature's code
 			RelationSuggestion best = null;
-			for (Map.Entry<String, Integer> owner : feature.getValue().entrySet()) {
+			for (Map.Entry<String, Double> owner : feature.getValue().entrySet()) {
 				if (owner.getKey().equals(feature.getKey()) || owner.getValue() < 3)
 					continue;
-				double share = owner.getValue() / (double) total;
-				double lift = share / (all.get(owner.getKey()) / (double) grand);
+				double share = owner.getValue() / total;
+				double lift = share / (all.get(owner.getKey()) / grand);
 				if (lift >= MIN_LIFT && share >= MIN_SHARE && (best == null || share > best.share())) {
 					int ownSources = this.ownSources(feature.getKey(), owner.getKey());
 					best = new RelationSuggestion(feature.getKey(), owner.getKey(), ownSources == 0 ? Relation.SUBFEATURE : Relation.REQUIRES, share, lift, ownSources);
@@ -229,6 +240,19 @@ public final class ImportedFeatureTraces {
 			if (!token.startsWith("-") && committedFeatures.contains(token))
 				labels.add(token);
 		return labels;
+	}
+
+	/**
+	 * The features an imported commit's changes count for in the feature model: the features it
+	 * added, if it added any after the first commit - else its {@link #labels}. The LLM names known
+	 * features again (a zip4j import labelled 13 commits with 5 to 9 features), and each became an
+	 * owner of what the commit created and a voter for what it changed: the three features of the
+	 * first commit took 77% of the votes, and no feature stood out from them.
+	 */
+	public static Set<String> relationLabels(String before, String suggestion, String committed) {
+		Set<String> added = new LinkedHashSet<>(ConfigurationText.tokens(committed));
+		added.removeAll(ConfigurationText.tokens(before));
+		return added.isEmpty() || ConfigurationText.tokens(before).isEmpty() ? labels(before, suggestion, committed) : added;
 	}
 
 	/** Adds a commit's changes, {@code changed} (file to its changed positions), to each of its labels. */
@@ -375,9 +399,10 @@ public final class ImportedFeatureTraces {
 						|| !gitRepository.toString().equals(entry.path("gitRepository").asText(null))
 						|| "skipped".equals(entry.path("outcome").asText()))
 					continue;
-				Set<String> labels = labels(entry.path("before").asText(null), entry.path("suggestion").asText(null), entry.path("committed").asText(null));
+				String before = entry.path("before").asText(null), suggestion = entry.path("suggestion").asText(null), committed = entry.path("committed").asText(null);
+				Set<String> labels = labels(before, suggestion, committed);
 				if (!labels.isEmpty())
-					imported.record(gitRepository.toString(), labels, changes(entry, gitRepository, reader, dispatchReader));
+					imported.record(gitRepository.toString(), labels, relationLabels(before, suggestion, committed), changes(entry, gitRepository, reader, dispatchReader));
 			} catch (IOException | RuntimeException e) {
 				LOGGER.log(Level.FINE, "Passed over a suggestion log line: " + line, e);
 			}
@@ -401,9 +426,10 @@ public final class ImportedFeatureTraces {
 					if (!eccoRepository.equals(entry.path("eccoRepository").asText(null)) || "skipped".equals(entry.path("outcome").asText())
 							|| !entry.path("positions").isObject())
 						continue;
-					Set<String> labels = labels(entry.path("before").asText(null), entry.path("suggestion").asText(null), entry.path("committed").asText(null));
+					String before = entry.path("before").asText(null), suggestion = entry.path("suggestion").asText(null), committed = entry.path("committed").asText(null);
+					Set<String> labels = labels(before, suggestion, committed);
 					if (!labels.isEmpty())
-						imported.record(entry.path("gitRepository").asText(""), labels, logged(entry));
+						imported.record(entry.path("gitRepository").asText(""), labels, relationLabels(before, suggestion, committed), logged(entry));
 				} catch (IOException | RuntimeException e) {
 					LOGGER.log(Level.FINE, "Passed over a suggestion log line: " + line, e);
 				}
