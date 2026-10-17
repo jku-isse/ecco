@@ -121,10 +121,10 @@ The GUI (`./gradlew :ecco-gui:run`) organizes its functions in a ribbon:
 
 * **Repositories**: create, open, fork (see [Distributed Operations](#distributed-operations)), and close repositories; the open repository's status, and its base directory in the file manager.
 * **Versions**: commit a variant or several variant folders at once, and **import a Git history** commit by commit - with feature suggestions for each commit from an optional LLM (any OpenAI-compatible chat completions endpoint, e.g. a local Ollama; set up under Preferences); check out configurations, and manage named *variants*.
-* **Collaborate**: remotes (add, remove, change a remote's name, address and type, fetch it), fetch, pull, and push.
+* **Collaborate**: remotes (add, remove, change a remote's name, address and type, fetch it), fetch, pull, push, and a server other ECCO instances can sync with.
 * **Explore**: the feature model derived from the commits (with mined constraints to accept or reject), commits (including a comparison of two), the associations with their presence conditions (and minimized conditions) and the artifact tree of any selection of them, and charts; as graphs: a knowledge graph of features, commits, variants, and associations, the artifact graph, and the dependency graph.
 
-Every ribbon button has a tooltip. Shortcuts: Cmd/Ctrl+N new, Cmd/Ctrl+O open, Cmd/Ctrl+W close the repository, Cmd/Ctrl+K commit, Cmd/Ctrl+1 to 7 the views of Explore.
+Every ribbon button has a tooltip, and Help (F1; on macOS in the ECCO menu, on Windows and Linux in the ribbon's ECCO tab, with About ECCO) lists them all with the shortcuts: Cmd/Ctrl+N new, Cmd/Ctrl+O open, Cmd/Ctrl+W close the repository, Cmd/Ctrl+K commit, Cmd/Ctrl+1 to 7 the views of Explore.
 
 Wherever associations are listed, an *association preview* shows the artifacts of an association in their files, colored by association - for text, markdown, Java, C, LilyPond, TypeScript, Python, JSON, Jupyter notebooks, and images.
 
@@ -140,7 +140,7 @@ Repositories exchange features, not whole histories: every distributed operation
 
 ![Distributed Operations](doc/distributed_operations.png "Distributed Operations")
 
-A *remote* is either a local path - the repository's directory or its `.ecco` directory - or `host:port` of an ECCO server. The server is started from the GUI (Preferences, Server); it only accepts connections from the local machine unless it is started for all network interfaces. Remote synchronization is not authenticated, so only serve repositories on networks you trust; the GUI asks for confirmation before accepting connections from other machines.
+A *remote* is either a local path - the repository's directory or its `.ecco` directory - or `host:port` of an ECCO server. The server is started from the GUI (Collaborate, Server); it only accepts connections from the local machine unless it is started for all network interfaces. Remote synchronization is not authenticated, so only serve repositories on networks you trust; the GUI asks for confirmation before accepting connections from other machines.
 
 
 ## REST API

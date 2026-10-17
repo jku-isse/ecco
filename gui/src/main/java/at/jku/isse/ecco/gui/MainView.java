@@ -33,7 +33,9 @@ import org.kordamp.ikonli.feather.Feather;
 
 import java.awt.Desktop;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A {@link RibbonBar} (Repositories / Versions / Collaborate / Explore, plus a last "ECCO" tab
@@ -117,7 +119,7 @@ public class MainView extends BorderPane implements EccoListener {
 		RibbonAction importGitAction = new RibbonAction("Import from Git...", Feather.LOG_IN,
 				() -> this.openDialog("Import from Git", new ImportGitView(eccoService), Modality.NONE), true,
 				"Import the commits of a Git repository, each as a variant");
-		RibbonAction checkoutAction = new RibbonAction("Checkout...", Feather.GIT_BRANCH,
+		RibbonAction checkoutAction = new RibbonAction("Checkout...", Feather.PACKAGE,
 				() -> this.openDialog("Checkout", new CheckoutView(eccoService)), true, "Compose and write the variant of a configuration");
 		// it shows the base directory in the file manager - "Open Directory..." read like opening a repository
 		RibbonAction showDirectoryAction = new RibbonAction(showDirectoryLabel(), Feather.EXTERNAL_LINK,
@@ -129,6 +131,10 @@ public class MainView extends BorderPane implements EccoListener {
 				() -> this.openDialog("Pull", new PullView(eccoService)), true, "Fetch from a remote and merge it");
 		RibbonAction pushAction = new RibbonAction("Push...", Feather.UPLOAD_CLOUD,
 				() -> this.openDialog("Push", new PushView(eccoService)), true, "Send this repository's features to a remote");
+		// an operation, not a preference: it was a section of Preferences; not modal - it runs, and logs, while you work
+		RibbonAction serverAction = new RibbonAction("Server...", Feather.RADIO,
+				() -> this.openDialog("Server", new ServerView(eccoService), Modality.NONE), true,
+				"Serve this repository to other ECCO instances: start, stop, and its log");
 
 		// Preferences/Quit - only built as ribbon actions on non-mac platforms; on macOS these are
 		// reached via the native app menu instead (see the isMac block below), and preferencesAction
@@ -138,9 +144,14 @@ public class MainView extends BorderPane implements EccoListener {
 		RibbonAction quitAction = null;
 		if (!isMac) {
 			preferencesAction = new RibbonAction("Preferences...", Feather.SETTINGS,
-					() -> this.openDialog("Preferences", new PreferencesView(eccoService)), false, "Adapters, LLM, minimization, LilyPond and the server");
+					() -> this.openDialog("Preferences", new PreferencesView(eccoService)), false, "Adapters, the LLM, minimization and LilyPond");
 			quitAction = new RibbonAction("Quit ECCO", Feather.LOG_OUT, Platform::exit, false, "Close the window and end ECCO");
 		}
+		// there was no help; on macOS both are in the app menu (see the isMac block below)
+		RibbonAction aboutAction = new RibbonAction("About ECCO", Feather.INFO,
+				this::openAbout, false, "The version, and where the project is");
+		RibbonAction helpAction = new RibbonAction("Help", Feather.HELP_CIRCLE,
+				this::openHelp, false, "What each button does, the shortcuts, and the documentation");
 
 		// one shared "Minimize Presence Conditions" run, started from the views that display a
 		// minimized condition and after every review in the Feature Model view
@@ -184,17 +195,17 @@ public class MainView extends BorderPane implements EccoListener {
 				() -> this.switchTo("Variants", variantsView), true, "The saved variants: configurations to check out by name");
 		RibbonAction remotesAction = new RibbonAction("Remotes", Feather.SERVER,
 				() -> this.switchTo("Remotes", remotesView), true, "The remotes this repository fetches from and pushes to");
-		RibbonAction featuresAction = new RibbonAction("Feature Model", Feather.GIT_MERGE,
+		RibbonAction featuresAction = new RibbonAction("Feature Model", Feather.TOGGLE_RIGHT,
 				() -> this.switchTo("Feature Model", featuresView), true, "The features as a tree, with the constraints mined from the commits");
 		RibbonAction commitsAction = new RibbonAction("Commits", Feather.LIST,
 				() -> this.switchTo("Commits", commitsView), true, "The commits, their artifacts, and a comparison of two");
-		RibbonAction artifactsAction = new RibbonAction("Artifacts", Feather.BOX,
+		RibbonAction artifactsAction = new RibbonAction("Artifacts", Feather.FILE_TEXT,
 				() -> this.switchTo("Artifacts", artifactsView), true, "The associations with their conditions, and the artifacts of those you tick");
 		RibbonAction chartsAction = new RibbonAction("Charts", Feather.BAR_CHART_2,
 				() -> this.switchTo("Charts", chartsView), true, "Artifacts per association and depth, revisions per feature");
 		RibbonAction knowledgeGraphAction = new RibbonAction("Knowledge Graph", Feather.SHARE_2,
 				() -> this.switchTo("Knowledge Graph", knowledgeGraphView), true, "Features, commits and associations, and how they connect");
-		RibbonAction artifactGraphAction = new RibbonAction("Artifact Graph", Feather.GIT_COMMIT,
+		RibbonAction artifactGraphAction = new RibbonAction("Artifact Graph", Feather.GRID,
 				() -> this.switchTo("Artifact Graph", artifactsGraphView), true, "The artifact tree as a graph, coloured by association");
 		RibbonAction dependencyGraphAction = new RibbonAction("Dependency Graph", Feather.CODEPEN,
 				() -> this.switchTo("Dependency Graph", dependencyGraphView), true, "Which associations' artifacts depend on which others'");
@@ -209,7 +220,8 @@ public class MainView extends BorderPane implements EccoListener {
 
 		RibbonTabSpec distributedTab = new RibbonTabSpec("Collaborate", Feather.GLOBE, List.of(
 				new RibbonGroup(List.of(remotesAction)),
-				new RibbonGroup(List.of(fetchAction, pullAction, pushAction))));
+				new RibbonGroup(List.of(fetchAction, pullAction, pushAction)),
+				new RibbonGroup(List.of(serverAction))));
 
 		// one tab for everything to look at: View and Visualize were two tabs of views, and which
 		// one a view was under could not be guessed - the graphs are a group of their own
@@ -223,8 +235,10 @@ public class MainView extends BorderPane implements EccoListener {
 			// of New/Open (macOS has these in its native app menu - see the isMac block below)
 			tabSpecs.add(new RibbonTabSpec("ECCO", Feather.MENU, List.of(
 					new RibbonGroup(List.of(preferencesAction)),
+					new RibbonGroup(List.of(helpAction, aboutAction)),
 					new RibbonGroup(List.of(quitAction)))));
 		}
+		this.tabSpecs = List.copyOf(tabSpecs);
 
 		RibbonBar ribbonBar = new RibbonBar(tabSpecs);
 		this.setTop(ribbonBar);
@@ -256,6 +270,7 @@ public class MainView extends BorderPane implements EccoListener {
 				// shortcut modifier).
 				newScene.getAccelerators().put(new KeyCodeCombination(KeyCode.O, KeyCombination.SHORTCUT_DOWN),
 						openAction.action());
+				newScene.getAccelerators().put(new KeyCodeCombination(KeyCode.F1), this::openHelp);
 				// fired through their buttons, so they do nothing while the button is disabled
 				newScene.getAccelerators().put(new KeyCodeCombination(KeyCode.N, KeyCombination.SHORTCUT_DOWN),
 						() -> ribbonBar.getButton(newAction).fire());
@@ -326,8 +341,18 @@ public class MainView extends BorderPane implements EccoListener {
 				// (a crash no Java try/catch can guard against) when clicked. Nothing here asked
 				// for an About item anyway, so it's simplest to leave it out rather than swap in
 				// the non-Beta custom-Stage alternative (tk.createAboutMenuItem) untested.
+				// our own windows, not the native About (above)
+				MenuItem aboutItem = new MenuItem("About ECCO");
+				aboutItem.setOnAction(event -> this.openAbout());
+				MenuItem helpItem = new MenuItem("ECCO Help");
+				helpItem.setOnAction(event -> this.openHelp());
+				helpItem.setAccelerator(new KeyCodeCombination(KeyCode.SLASH, KeyCombination.META_DOWN, KeyCombination.SHIFT_DOWN));
+
 				Menu appMenu = new Menu("ECCO");
 				appMenu.getItems().setAll(
+						aboutItem,
+						helpItem,
+						new SeparatorMenuItem(),
 						preferencesItem,
 						new SeparatorMenuItem(),
 						tk.createHideMenuItem("ECCO"),
@@ -352,6 +377,38 @@ public class MainView extends BorderPane implements EccoListener {
 		this.updateView();
 	}
 
+
+	/** The ribbon's tabs, for the help. */
+	private List<RibbonTabSpec> tabSpecs = List.of();
+
+	/** What each button does, read from the ribbon, with the shortcuts - not modal: read it while you work. */
+	private void openHelp() {
+		Map<String, String> shortcuts = new LinkedHashMap<>();
+		shortcuts.put("Cmd/Ctrl+N", "New...");
+		shortcuts.put("Cmd/Ctrl+O", "Open...");
+		shortcuts.put("Cmd/Ctrl+W", "Close Repository (in a dialog: close it)");
+		shortcuts.put("Cmd/Ctrl+K", "Commit...");
+		shortcuts.put("Cmd/Ctrl+1 to 7", "Feature Model, Commits, Artifacts, Charts, Knowledge Graph, Artifact Graph, Dependency Graph");
+		shortcuts.put("Cmd/Ctrl+,", "Preferences...");
+		shortcuts.put("F1", "Help");
+		shortcuts.put("Cmd/Ctrl+Q", "Quit ECCO");
+		this.openDialog("ECCO Help", new HelpView(this.tabSpecs, shortcuts, () -> browse(AboutView.PROJECT_URL + "#readme")), Modality.NONE);
+	}
+
+	private void openAbout() {
+		this.openDialog("About ECCO", new AboutView(() -> browse(AboutView.PROJECT_URL)));
+	}
+
+	/** Opens [url] in the browser, or says why it could not. */
+	private static void browse(String url) {
+		try {
+			if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE))
+				throw new UnsupportedOperationException("Opening a web page is not supported on this platform: " + url);
+			Desktop.getDesktop().browse(java.net.URI.create(url));
+		} catch (Exception e) {
+			new ExceptionAlert(e).showAndWait();
+		}
+	}
 
 	/** "Show in Finder" on macOS, "Show in Explorer" on Windows, "Show in File Manager" elsewhere. */
 	static String showDirectoryLabel() {

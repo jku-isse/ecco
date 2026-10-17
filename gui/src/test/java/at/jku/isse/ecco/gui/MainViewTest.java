@@ -89,6 +89,7 @@ public class MainViewTest {
             new String[]{"Collaborate", "Fetch..."},
             new String[]{"Collaborate", "Pull..."},
             new String[]{"Collaborate", "Push..."},
+            new String[]{"Collaborate", "Server..."},
             new String[]{"Explore", "Feature Model"},
             new String[]{"Explore", "Charts"},
             new String[]{"Explore", "Knowledge Graph"},
@@ -184,6 +185,50 @@ public class MainViewTest {
                     for (Node node : findAll(view.getTop(), n -> n instanceof Button))
                         assertNotNull(((Button) node).getTooltip(), tab + ": " + ((Button) node).getText());
                 });
+        }
+    }
+
+    /**
+     * The server is Collaborate > Server..., a window of its own that does not block the main one
+     * (it was a section of Preferences); Help lists what each button does, from the ribbon; About
+     * says which version runs.
+     */
+    @Test
+    @Timeout(120)
+    public void serverHelpAndAboutOpenTheirWindows(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            MainView view = onFx(() -> new MainView(service));
+            Stage main = onFx(() -> {
+                Stage s = new Stage();
+                s.setScene(new Scene(view));
+                s.show();
+                return s;
+            });
+            try {
+                Stage server = onFx(() -> opened(view, "Collaborate", "Server..."));
+                assertInstanceOf(at.jku.isse.ecco.gui.view.operation.ServerView.class, server.getScene().getRoot());
+                assertEquals(Modality.NONE, server.getModality());
+                onFx(server::hide);
+
+                Stage help = onFx(() -> opened(view, "ECCO", "Help"));
+                assertEquals("ECCO Help", help.getTitle());
+                assertEquals(Modality.NONE, help.getModality());
+                List<String> texts = onFx(() -> findAll(help.getScene().getRoot(), n -> n instanceof Label).stream().map(n -> ((Label) n).getText()).toList());
+                assertTrue(texts.contains("Explore") && texts.contains("Server...")
+                        && texts.contains("Serve this repository to other ECCO instances: start, stop, and its log"), texts.toString());
+                assertTrue(texts.contains("Cmd/Ctrl+1 to 7"), texts.toString());
+                onFx(help::hide);
+
+                Stage about = onFx(() -> opened(view, "ECCO", "About ECCO"));
+                List<String> aboutTexts = onFx(() -> findAll(about.getScene().getRoot(), n -> n instanceof Label).stream().map(n -> ((Label) n).getText()).toList());
+                assertTrue(aboutTexts.contains("Development build"), "run from the classes: no manifest - " + aboutTexts);
+                onFx(about::hide);
+                assertTrue(onFx(() -> main.getScene().getAccelerators().containsKey(new KeyCodeCombination(KeyCode.F1))));
+            } finally {
+                onFx(main::hide);
+                onFx(() -> { });
+                javax.swing.SwingUtilities.invokeAndWait(() -> { });
+            }
         }
     }
 

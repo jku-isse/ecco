@@ -50,8 +50,7 @@ import java.util.Set;
  * {@link Section}), the selected category's form on the right, and one Save/Cancel pair for the
  * whole dialog. Every section's UI is built eagerly up front (see {@link #sectionsById}) so
  * switching categories never loses an edit made in a section you're not currently looking at, and
- * Save persists every field-based section together, not just the one on screen (Server is the one
- * exception - see {@link #buildServerSection}).
+ * Save persists every section together, not just the one on screen.
  * <ul>
  *     <li>Plugins - activate/deactivate the discovered {@link ArtifactPlugin}s (e.g. Lilypond,
  *     Java, C, C++). Deactivated adapters are skipped by
@@ -62,7 +61,6 @@ import java.util.Set;
  *     <li>Minimization Settings - the min-witness/confidence thresholds used to re-mine accepted
  *     constraints before {@code MinimizationResults} runs.</li>
  *     <li>Lilypond Settings - where to find the Lilypond executable, if not found automatically.</li>
- *     <li>Server - start/stop the ECCO server and watch its log; embeds {@link ServerView} as-is.</li>
  * </ul>
  */
 public class PreferencesView extends OperationView {
@@ -71,8 +69,8 @@ public class PreferencesView extends OperationView {
 		PLUGINS("Adapters"),
 		LLM("LLM"),
 		MINIMIZATION("Minimization"),
-		LILYPOND("LilyPond"),
-		SERVER("Server");
+		LILYPOND("LilyPond");
+		// the server is Collaborate > Server... - an operation, not a preference
 
 		private final String title;
 
@@ -111,7 +109,6 @@ public class PreferencesView extends OperationView {
 		this.sectionsById.put(Section.LLM, buildLlmSection());
 		this.sectionsById.put(Section.MINIMIZATION, buildMinimizationSection(eccoService));
 		this.sectionsById.put(Section.LILYPOND, buildLilypondSection());
-		this.sectionsById.put(Section.SERVER, buildServerSection(eccoService));
 
 		ScrollPane contentScrollPane = new ScrollPane();
 		contentScrollPane.setFitToWidth(true);
@@ -490,16 +487,6 @@ public class PreferencesView extends OperationView {
 		};
 
 		return new SectionUi(lilypondGridPane, save);
-	}
-
-	/**
-	 * Unlike the other sections, {@link ServerView} is a live control (start/stop, a running log),
-	 * not a set of fields to persist - reused as-is, with a no-op save, since Start/Stop already
-	 * take effect immediately via its own buttons rather than waiting on this dialog's Save.
-	 */
-	private static SectionUi buildServerSection(EccoService eccoService) {
-		return new SectionUi(new ServerView(eccoService), () -> {
-		});
 	}
 
 	/** Best-effort existing parent directory of a possibly-blank/invalid path, for pre-populating a chooser dialog. */

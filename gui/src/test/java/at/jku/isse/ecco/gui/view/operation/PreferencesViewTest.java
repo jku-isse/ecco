@@ -109,9 +109,6 @@ public class PreferencesViewTest {
             assertEquals(PreferencesView.Section.LILYPOND, onFx(() -> categories(view).getSelectionModel().getSelectedItem()));
             assertTrue(onFx(() -> labelled(view, "Executable Path: ")));
 
-            onFx(() -> categories(view).getSelectionModel().select(PreferencesView.Section.SERVER));
-            assertTrue(onFx(() -> content(view) instanceof ServerView));
-
             onFx(() -> categories(view).getSelectionModel().select(PreferencesView.Section.PLUGINS));
             assertTrue(onFx(() -> labelled(view, "Python adapter's Python: ")));
             assertEquals(List.of(PreferencesView.Section.values()), onFx(() -> List.copyOf(categories(view).getItems())));
@@ -223,7 +220,7 @@ public class PreferencesViewTest {
                 fields.get(2).setText(" /opt/py ");
                 fields.get(3).setText(" /opt/lymodel ");
             });
-            select(view, PreferencesView.Section.SERVER);
+            select(view, PreferencesView.Section.PLUGINS);
             onFx(() -> button(view, "Save").fire());
 
             assertEquals("http://127.0.0.1:9999", LlmPreferences.getEndpointUrl());
