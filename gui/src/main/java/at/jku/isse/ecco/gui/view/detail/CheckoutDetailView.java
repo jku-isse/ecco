@@ -206,17 +206,18 @@ public class CheckoutDetailView extends BorderPane {
 			// present in one composition - PartialOrderGraph#hasUnresolvedOrder narrows that down to
 			// whether THIS node's actually-present children still have a real decision left, so a
 			// warning that stems entirely from unrelated history doesn't show up here as if it did.
-			for (Node orderWarningNode : ArtifactDiagnostics.actionableOrderWarnings(checkout.getOrderWarnings())) {
+			for (ArtifactDiagnostics.OrderWarning warning : ArtifactDiagnostics.describeOrderWarnings(checkout.getOrderWarnings())) {
+				Node orderWarningNode = warning.node();
 				String suggestedConfigurationString = checkout.getConfiguration() != null
 						? ModuleRevisions.suggestedConfigurationString(null, checkout.getConfiguration())
 						: null;
 				// where the order is undecided, a range per line - it listed every child, for a large
 				// file thousands of lines in one cell
-				String undecided = String.join(System.lineSeparator(), ArtifactDiagnostics.describeUndecided(orderWarningNode));
+				String undecided = String.join(System.lineSeparator(), warning.undecided());
 				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("ORDER",
 						orderWarningNode.getArtifact() + " (undecided):" + System.lineSeparator() + undecided,
 						ArtifactDiagnostics.describePath(orderWarningNode),
-						ArtifactDiagnostics.suggestOrderFix(orderWarningNode),
+						warning.suggestedFix(),
 						suggestedConfigurationString,
 						orderWarningNode));
 			}

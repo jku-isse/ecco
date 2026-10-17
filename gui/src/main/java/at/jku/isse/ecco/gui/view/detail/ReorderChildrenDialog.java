@@ -178,22 +178,40 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		CheckBox undecidedOnly = new CheckBox("Undecided only (and " + SUGGESTION_CONTEXT_ROWS + " rows around)");
 		undecidedOnly.setSelected(rowData.size() > LARGE_FILE_ROWS);
 		FilteredList<ChildEntry> shownRows = new FilteredList<>(rowData);
+		// rows [from, to] checked against the graph again - two searches each
+		java.util.function.BiConsumer<Integer, Integer> checkRows = (from, to) -> {
+			for (int i = Math.max(0, from); i <= Math.min(rowData.size() - 1, to); i++) {
+				fixedRows.put(rowData.get(i), isRowFixed(i, rowData, pogNodesByChild));
+				placeOf.put(rowData.get(i), i);
+			}
+		};
+		// the rows shown, from what is known of each - no search
+		Runnable showRows = () -> {
+			nearUndecided.clear();
+			for (int i = 0; i < rowData.size(); i++)
+				if (!fixedRows.getOrDefault(rowData.get(i), false))
+					for (int j = Math.max(0, i - SUGGESTION_CONTEXT_ROWS); j <= Math.min(rowData.size() - 1, i + SUGGESTION_CONTEXT_ROWS); j++)
+						nearUndecided.add(rowData.get(j));
+			shownRows.setPredicate(undecidedOnly.isSelected() ? row -> nearUndecided.contains(row) : null);
+		};
 		Runnable refreshRows = () -> {
 			fixedRows.clear();
 			placeOf.clear();
-			nearUndecided.clear();
-			for (int i = 0; i < rowData.size(); i++) {
-				boolean fixed = isRowFixed(i, rowData, pogNodesByChild);
-				fixedRows.put(rowData.get(i), fixed);
-				placeOf.put(rowData.get(i), i);
-				if (!fixed)
-					for (int j = Math.max(0, i - SUGGESTION_CONTEXT_ROWS); j <= Math.min(rowData.size() - 1, i + SUGGESTION_CONTEXT_ROWS); j++)
-						nearUndecided.add(rowData.get(j));
-			}
-			shownRows.setPredicate(undecidedOnly.isSelected() ? row -> nearUndecided.contains(row) : null);
+			checkRows.accept(0, rowData.size() - 1);
+			showRows.run();
 		};
 		refreshRows.run();
-		rowData.addListener((javafx.collections.ListChangeListener<ChildEntry>) change -> refreshRows.run());
+		// a move swaps rows i and i+1: only rows i-1 to i+2 can change - all rows were checked again,
+		// twice (a swap is two changes of the list)
+		int[] swapAt = {-1};
+		rowData.addListener((javafx.collections.ListChangeListener<ChildEntry>) change -> {
+			if (swapAt[0] >= 0) {
+				checkRows.accept(swapAt[0] - 1, swapAt[0] + 2);
+				showRows.run();
+			} else {
+				refreshRows.run();
+			}
+		});
 		undecidedOnly.selectedProperty().addListener((o, was, only) -> refreshRows.run());
 
 		TableView<ChildEntry> table = new TableView<>();
@@ -300,7 +318,12 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			ChildEntry moved = table.getSelectionModel().getSelectedItem();
 			int idx = rowData.indexOf(moved);
 			if (idx > 0 && !swapBlocked(rowData.get(idx - 1), rowData.get(idx), pogNodesByChild)) {
-				Collections.swap(rowData, idx, idx - 1);
+				swapAt[0] = idx - 1;
+				try {
+					Collections.swap(rowData, idx, idx - 1);
+				} finally {
+					swapAt[0] = -1;
+				}
 				table.getSelectionModel().select(moved);
 				updateButtonStates.run();
 				// a swap can change whether a row further out is now fixed/movable (e.g. the row that
@@ -317,7 +340,12 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			ChildEntry moved = table.getSelectionModel().getSelectedItem();
 			int idx = rowData.indexOf(moved);
 			if (idx >= 0 && idx < rowData.size() - 1 && !swapBlocked(rowData.get(idx), rowData.get(idx + 1), pogNodesByChild)) {
-				Collections.swap(rowData, idx, idx + 1);
+				swapAt[0] = idx;
+				try {
+					Collections.swap(rowData, idx, idx + 1);
+				} finally {
+					swapAt[0] = -1;
+				}
 				table.getSelectionModel().select(moved);
 				updateButtonStates.run();
 				table.refresh();

@@ -12,6 +12,7 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -53,18 +54,28 @@ public class RecentRepositoriesTest {
 		assertEquals(List.of(existingDir), recent);
 	}
 
+	/**
+	 * A repository missing for a while - an unmounted drive, an iCloud folder not downloaded yet - is
+	 * not shown, and shown again once it is there: it was taken off the list for good; Remove from
+	 * List takes it off.
+	 */
 	@Test
-	public void getRecentRepositories_prunesStaleEntriesFromPersistedList() throws IOException {
+	public void getRecentRepositories_keepsAMissingEntryUntilItIsBack() throws IOException {
 		Path existingDir = Files.createTempDirectory("recent-repo-exists");
-		Path deletedDir = Files.createTempDirectory("recent-repo-deleted");
-		Files.delete(deletedDir);
+		Path missingDir = Files.createTempDirectory("recent-repo-missing");
+		Files.delete(missingDir);
 
-		prefs().put(RECENT_REPOS_KEY, deletedDir + "\n" + existingDir + "\n");
+		prefs().put(RECENT_REPOS_KEY, missingDir + "\n" + existingDir + "\n");
 
-		RecentRepositories.getRecentRepositories();
+		assertEquals(List.of(existingDir), RecentRepositories.getRecentRepositories());
+		assertTrue(prefs().get(RECENT_REPOS_KEY, "").contains(missingDir.toString()), "kept");
 
-		assertTrue(prefs().get(RECENT_REPOS_KEY, "").contains(existingDir.toString()));
-		assertTrue(!prefs().get(RECENT_REPOS_KEY, "").contains(deletedDir.toString()));
+		Files.createDirectories(missingDir);
+		assertEquals(List.of(missingDir, existingDir), RecentRepositories.getRecentRepositories(), "back again");
+
+		RecentRepositories.removeRecentRepository(missingDir);
+		assertFalse(prefs().get(RECENT_REPOS_KEY, "").contains(missingDir.toString()), "removed when asked");
+		Files.delete(missingDir);
 	}
 
 	@Test

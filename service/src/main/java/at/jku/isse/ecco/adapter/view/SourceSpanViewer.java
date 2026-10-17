@@ -61,43 +61,58 @@ public abstract class SourceSpanViewer extends BorderPane implements Association
 		Node selectedFileNode = this.fileNodeOf(node);
 
 		this.listViews.clear();
+		if (fileNodes.size() <= 1) {
+			this.setCenter(fileNodes.isEmpty() ? this.createListView(new ArrayList<>()) : this.renderView(fileNodes.get(0), node, selectedFileNode));
+			return;
+		}
+		// the file shown now, the others when their tab is first selected: every file was rendered,
+		// on every click - for TypeScript a writer's run each
+		Node shownFile = selectedFileNode != null && fileNodes.contains(selectedFileNode) ? selectedFileNode : fileNodes.get(0);
 		TabPane tabPane = new TabPane();
-		ListView<List<RenderedSource.Segment>> selectedView = null;
+		Map<Tab, Node> notRendered = new HashMap<>();
+		Tab shownTab = null;
 		for (Node fileNode : fileNodes) {
-			List<List<RenderedSource.Segment>> lines;
-			int scrollTo = -1;
-			try {
-				RenderedSource source = this.render(fileNode);
-				Node selected = fileNode == selectedFileNode ? node : null;
-				lines = source.lines(selected);
-				scrollTo = selected == null ? -1 : source.lineOf(selected);
-			} catch (Exception e) {
-				lines = new ArrayList<>();
-				String message = e.getMessage() != null ? e.getMessage() : e.toString();
-				for (String line : ("Cannot show this file: " + message).split("\n"))
-					lines.add(List.of(new RenderedSource.Segment(line, null, false)));
-			}
-			ListView<List<RenderedSource.Segment>> listView = this.createListView(lines);
-			this.listViews.add(listView);
-			if (scrollTo >= 0) {
-				int index = scrollTo;
-				Platform.runLater(() -> listView.scrollTo(index));
-			}
-			Tab tab = new Tab(((PluginArtifactData) fileNode.getArtifact().getData()).getPath().toString(), listView);
+			Tab tab = new Tab(((PluginArtifactData) fileNode.getArtifact().getData()).getPath().toString());
 			tab.setClosable(false);
 			tabPane.getTabs().add(tab);
-			if (fileNode == selectedFileNode) {
-				tabPane.getSelectionModel().select(tab);
-				selectedView = listView;
+			if (fileNode == shownFile) {
+				tab.setContent(this.renderView(fileNode, node, selectedFileNode));
+				shownTab = tab;
+			} else {
+				notRendered.put(tab, fileNode);
 			}
 		}
+		tabPane.getSelectionModel().select(shownTab);
+		tabPane.getSelectionModel().selectedItemProperty().addListener((o, was, tab) -> {
+			Node fileNode = tab == null ? null : notRendered.remove(tab);
+			if (fileNode != null)
+				tab.setContent(this.renderView(fileNode, node, selectedFileNode));
+		});
+		this.setCenter(tabPane);
+	}
 
-		if (this.listViews.size() == 1)
-			this.setCenter(this.listViews.get(0));
-		else if (this.listViews.isEmpty())
-			this.setCenter(this.createListView(new ArrayList<>()));
-		else
-			this.setCenter(tabPane);
+	/** [fileNode] rendered, [node] marked if it is in it - or why it cannot be shown. */
+	private ListView<List<RenderedSource.Segment>> renderView(Node fileNode, Node node, Node selectedFileNode) {
+		List<List<RenderedSource.Segment>> lines;
+		int scrollTo = -1;
+		try {
+			RenderedSource source = this.render(fileNode);
+			Node selected = fileNode == selectedFileNode ? node : null;
+			lines = source.lines(selected);
+			scrollTo = selected == null ? -1 : source.lineOf(selected);
+		} catch (Exception e) {
+			lines = new ArrayList<>();
+			String message = e.getMessage() != null ? e.getMessage() : e.toString();
+			for (String line : ("Cannot show this file: " + message).split("\n"))
+				lines.add(List.of(new RenderedSource.Segment(line, null, false)));
+		}
+		ListView<List<RenderedSource.Segment>> listView = this.createListView(lines);
+		this.listViews.add(listView);
+		if (scrollTo >= 0) {
+			int index = scrollTo;
+			Platform.runLater(() -> listView.scrollTo(index));
+		}
+		return listView;
 	}
 
 	/** The text of each node's span in its file as rendered (each file rendered once); null if it has none. */

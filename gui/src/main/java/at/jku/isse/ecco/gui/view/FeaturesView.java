@@ -855,8 +855,37 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	 */
 	static List<ImportedFeatureTraces.RelationSuggestion> relationSuggestions(EccoService service) {
 		return ImportedFeatureTraces.consistentWith(
-				ImportedFeatureTraces.fromLog(FeatureSuggestionLog.location(), String.valueOf(service.getRepositoryDir())).allRelationSuggestions(),
+				loggedRelationSuggestions(FeatureSuggestionLog.location(), String.valueOf(service.getRepositoryDir())),
 				at.jku.isse.ecco.mining.ConfigurationBridge.readConfigurations(service));
+	}
+
+	/** What the suggestion log was read to, by log, repository, and the log's size and time - see {@link #loggedRelationSuggestions}. */
+	private record LogRead(java.nio.file.Path log, String repository, long size, long modified) {
+	}
+
+	private static LogRead lastLogRead;
+	private static List<ImportedFeatureTraces.RelationSuggestion> lastLogSuggestions;
+
+	/**
+	 * The relations the suggestion log suggests for [repository], read again only when the log changed:
+	 * it is shared by all repositories and only grows (3.6 MB), and was read for every refresh of the
+	 * Feature Model, twice - the tree and the suggestions - also on the FX thread (171 ms).
+	 */
+	static synchronized List<ImportedFeatureTraces.RelationSuggestion> loggedRelationSuggestions(java.nio.file.Path log, String repository) {
+		LogRead read;
+		try {
+			read = java.nio.file.Files.isRegularFile(log)
+					? new LogRead(log, repository, java.nio.file.Files.size(log), java.nio.file.Files.getLastModifiedTime(log).toMillis())
+					: new LogRead(log, repository, -1, -1);
+		} catch (java.io.IOException e) {
+			read = null;
+		}
+		if (read != null && read.equals(lastLogRead))
+			return lastLogSuggestions;
+		List<ImportedFeatureTraces.RelationSuggestion> suggestions = ImportedFeatureTraces.fromLog(log, repository).allRelationSuggestions();
+		lastLogRead = read;
+		lastLogSuggestions = suggestions;
+		return suggestions;
 	}
 
 	/**

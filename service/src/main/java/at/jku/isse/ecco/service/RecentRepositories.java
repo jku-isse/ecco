@@ -23,39 +23,31 @@ public final class RecentRepositories {
 	}
 
 	/**
-	 * @return the persisted recent repository directories that still exist on disk. Entries whose
-	 * directory has since been deleted or moved are dropped and the persisted list is pruned to
-	 * match, so they don't keep reappearing on every call.
+	 * @return the recent repository directories that exist now. One missing - an unmounted drive, an
+	 * iCloud folder not downloaded yet - is kept on the list and shown again once it is there: it was
+	 * taken off for good; {@link #removeRecentRepository} takes it off.
 	 */
 	public static List<Path> getRecentRepositories() {
-		String stored = prefs().get(RECENT_REPOS_KEY, "");
-		if (stored.isEmpty()) {
-			return new ArrayList<>();
-		}
-
 		List<Path> paths = new ArrayList<>();
-		boolean allExist = true;
-		for (String s : stored.split(SEPARATOR)) {
-			if (!s.isEmpty()) {
-				Path path = Paths.get(s);
-				if (Files.exists(path)) {
-					paths.add(path);
-				} else {
-					allExist = false;
-				}
-			}
-		}
+		for (Path path : stored())
+			if (Files.exists(path))
+				paths.add(path);
+		return paths;
+	}
 
-		if (!allExist) {
-			store(paths);
-		}
+	/** Every directory on the list, also those missing now. */
+	private static List<Path> stored() {
+		List<Path> paths = new ArrayList<>();
+		for (String s : prefs().get(RECENT_REPOS_KEY, "").split(SEPARATOR))
+			if (!s.isEmpty())
+				paths.add(Paths.get(s));
 		return paths;
 	}
 
 	public static void addRecentRepository(Path repositoryDir) {
 		LinkedHashSet<Path> paths = new LinkedHashSet<>();
 		paths.add(repositoryDir);
-		paths.addAll(getRecentRepositories());
+		paths.addAll(stored());
 
 		List<Path> trimmed = new ArrayList<>(paths);
 		if (trimmed.size() > MAX_ENTRIES) {
@@ -67,7 +59,7 @@ public final class RecentRepositories {
 
 	/** Takes [repositoryDir] off the list - the repository stays as it is. */
 	public static void removeRecentRepository(Path repositoryDir) {
-		List<Path> paths = new ArrayList<>(getRecentRepositories());
+		List<Path> paths = new ArrayList<>(stored());
 		paths.remove(repositoryDir);
 		store(paths);
 	}

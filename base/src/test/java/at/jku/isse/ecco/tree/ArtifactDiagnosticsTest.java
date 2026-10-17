@@ -237,6 +237,12 @@ public class ArtifactDiagnosticsTest {
 		decided.addChild(new SerNode(childY));
 		assertEquals(java.util.List.of(), ArtifactDiagnostics.describeUndecided(decided));
 		assertEquals(java.util.List.of(parent), ArtifactDiagnostics.actionableOrderWarnings(java.util.List.of(parent, decided)));
+		// all at once, the ranges found once: the warnings with a decision left, where, and what to do
+		java.util.List<ArtifactDiagnostics.OrderWarning> warnings = ArtifactDiagnostics.describeOrderWarnings(java.util.List.of(parent, decided));
+		assertEquals(1, warnings.size());
+		assertEquals(parent, warnings.get(0).node());
+		assertEquals(ArtifactDiagnostics.describeUndecided(parent), warnings.get(0).undecided());
+		assertEquals(ArtifactDiagnostics.suggestOrderFix(parent), warnings.get(0).suggestedFix());
 
 		// without a graph all of it is undecided
 		SerNode noGraph = new SerNode(new SerArtifact<>(new TestArtifactData("P")));

@@ -219,4 +219,42 @@ public class SourceSpanViewerTest {
         Files.createDirectories(path.getParent());
         ImageIO.write(buffered, "png", path.toFile());
     }
+
+    /**
+     * Only the file shown is rendered, another when its tab is first selected: every file was, on
+     * every click - for TypeScript a writer's run each.
+     */
+    @Test
+    public void onlyTheFileShownIsRenderedTheOthersWhenSelected() throws Exception {
+        at.jku.isse.ecco.storage.ser.dao.SerEntityFactory factory = new at.jku.isse.ecco.storage.ser.dao.SerEntityFactory();
+        at.jku.isse.ecco.tree.Node.Op root = factory.createRootNode();
+        List<at.jku.isse.ecco.tree.Node.Op> files = new java.util.ArrayList<>();
+        for (String name : List.of("a.ts", "b.ts", "c.ts")) {
+            at.jku.isse.ecco.tree.Node.Op file = factory.createNode(new at.jku.isse.ecco.adapter.dispatch.PluginArtifactData("test.plugin", java.nio.file.Path.of(name)));
+            root.addChild(file);
+            files.add(file);
+        }
+        List<String> rendered = new java.util.concurrent.CopyOnWriteArrayList<>();
+        at.jku.isse.ecco.adapter.view.SourceSpanViewer viewer = at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> new at.jku.isse.ecco.adapter.view.SourceSpanViewer() {
+            @Override
+            protected at.jku.isse.ecco.adapter.view.RenderedSource render(at.jku.isse.ecco.tree.Node fileNode) {
+                String name = String.valueOf(((at.jku.isse.ecco.adapter.dispatch.PluginArtifactData) fileNode.getArtifact().getData()).getPath());
+                rendered.add(name);
+                return new at.jku.isse.ecco.adapter.view.RenderedSource("text of " + name + "\n", List.of());
+            }
+
+            @Override
+            public String getPluginId() {
+                return "test.plugin";
+            }
+        });
+        at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> viewer.showTree(files.get(1)));
+        assertEquals(List.of("b.ts"), rendered, "the file shown only");
+
+        javafx.scene.control.TabPane tabs = (javafx.scene.control.TabPane) viewer.getCenter();
+        at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> tabs.getSelectionModel().select(tabs.getTabs().stream().filter(t -> t.getText().equals("c.ts")).findFirst().orElseThrow()));
+        assertEquals(List.of("b.ts", "c.ts"), rendered, "c.ts when selected");
+        at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> tabs.getSelectionModel().select(tabs.getTabs().stream().filter(t -> t.getText().equals("b.ts")).findFirst().orElseThrow()));
+        assertEquals(List.of("b.ts", "c.ts"), rendered, "once each");
+    }
 }

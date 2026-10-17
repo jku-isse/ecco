@@ -34,6 +34,12 @@ public interface PartialOrderGraph extends Persistable {
 	 */
 	default Map<at.jku.isse.ecco.tree.Node, PartialOrderGraph.Node> matchChildren(at.jku.isse.ecco.tree.Node treeNode) {
 		Map<at.jku.isse.ecco.tree.Node, PartialOrderGraph.Node> matched = new HashMap<>();
+		// each graph node's child by its artifact, the first of equal ones - each graph node compared
+		// with every child: 46 million comparisons for a file of 23,000 nodes and 2,000 children
+		Map<Object, at.jku.isse.ecco.tree.Node> childByArtifact = new HashMap<>();
+		for (at.jku.isse.ecco.tree.Node childNode : treeNode.getChildren())
+			if (childNode.getArtifact() != null)
+				childByArtifact.putIfAbsent(childNode.getArtifact(), childNode);
 
 		Map<PartialOrderGraph.Node, Integer> counters = new HashMap<>();
 		Stack<PartialOrderGraph.Node> stack = new Stack<>();
@@ -42,12 +48,9 @@ public interface PartialOrderGraph extends Persistable {
 		while (!stack.isEmpty()) {
 			PartialOrderGraph.Node pogNode = stack.pop();
 
-			for (at.jku.isse.ecco.tree.Node childNode : treeNode.getChildren()) {
-				if (childNode.getArtifact() != null && childNode.getArtifact().equals(pogNode.getArtifact())) {
-					matched.put(childNode, pogNode);
-					break;
-				}
-			}
+			at.jku.isse.ecco.tree.Node childNode = pogNode.getArtifact() == null ? null : childByArtifact.get(pogNode.getArtifact());
+			if (childNode != null)
+				matched.put(childNode, pogNode);
 
 			for (PartialOrderGraph.Node child : pogNode.getNext()) {
 				counters.putIfAbsent(child, 0);

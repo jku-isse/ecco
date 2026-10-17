@@ -416,12 +416,19 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 			return;
 		}
 
-		Condition c = a.computeCondition();
-		taInfo.setText(a.getId().concat(" (").concat(c.toDisplayString(false)).concat(")\n").concat(c.toDisplayString()));
+		// once per association: computed again for every line the mouse crossed, on the FX thread
+		taInfo.setText(hoverTexts.computeIfAbsent(a, association -> {
+			Condition c = association.computeCondition();
+			return association.getId().concat(" (").concat(c.toDisplayString(false)).concat(")\n").concat(c.toDisplayString());
+		}));
 	}
+
+	/** The details shown when the mouse is over an association's line - see {@link #showAssociationInfo}; cleared when the associations are set anew. */
+	private final java.util.Map<Association, String> hoverTexts = new java.util.IdentityHashMap<>();
 
 	@Override
 	public void setAssociationInfos(Collection<AssociationInfo> associationInfos) {
+		this.hoverTexts.clear();
 		// remove listeners
 		for (Map.Entry<String, AssociationInfo> entry : this.associationInfos.entrySet()) {
 			entry.getValue().removePropertyChangeListener(associationListeners.get(entry.getKey()));

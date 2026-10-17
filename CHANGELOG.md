@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+  * **Smaller review items**:
+    - Python and TypeScript files render the file shown and another when its tab is first selected - every file was rendered on every click, for TypeScript a writer's run each (`SourceSpanViewerTest`).
+    - The code viewers compute the details shown for a line's association once, not for every line the mouse crosses.
+    - Reorder checks only the rows around a move against the order graph - every row was checked, twice per move; ORDER warnings find their undecided ranges once (three times before), and children are matched to the order graph by their artifact instead of each graph node compared with every child (`ArtifactDiagnosticsTest`).
+    - Pull's "Choose Features": a fetch of the features overtaken - Back, Choose again - is cancelled and its late result not shown: it replaced the tree shown, and what was unticked there was pulled after all; closing the window cancels it too (`PullViewTest`).
+    - A recent repository missing for a while (an unmounted drive, an iCloud folder not downloaded yet) is kept on the start page's list and shown again once it is there - it was taken off for good (`RecentRepositoriesTest`).
+    - The suggestion log (shared by all repositories, 3.6 MB) is read again only when it changed - it was read twice for every refresh of the Feature Model; the order graph sets its camera on the FX thread.
+
   * **No freezes while a commit runs, one refresh at a time** (from the code review of 2026-10-17):
     - **A shared refresher** (`LatestRefresh`) for the views that read the repository after every change - Artifacts, Charts, Feature Model, constraint suggestions, Dependency Graph: one refresh at a time, asks meanwhile merged into one more (each started its own, and an import of a thousand commits piled them up); hidden, noted and caught up with when shown (Artifacts refreshed while another tab was shown: 1.3 s of conditions for tinycc per commit); read holding the service's lock, so not while a commit changes the counters (an error dialog, or a crash), and applied on the FX thread (`LatestRefreshTest`). The Dependency Graph computes its dependencies and conditions in the background (on the Swing thread, 2.5 s for tinycc) and keeps its viewer instead of making one per commit.
     - **Nothing on the FX thread waits for a running commit**, which holds the service's lock for its whole run: the order graph gets the repository in the background, the Knowledge Graph's hover and click look entities up in its snapshot instead of the repository, Fetch, Pull and Push read the remotes in the background, Commit checks the constraints in the background; association details compute their condition once.

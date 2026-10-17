@@ -187,6 +187,61 @@ public class PullViewTest {
         }
     }
 
+    /**
+     * Choosing the features again while the first fetch of them still runs: the first is cancelled
+     * and its late result not shown - it replaced the tree shown, and what was unticked there was
+     * pulled after all.
+     */
+    @Test
+    @Timeout(60)
+    public void aFetchOfTheFeaturesOvertakenIsCancelledAndNotShown(@TempDir Path tmp) throws Exception {
+        Path origin = origin(tmp);
+        try (EccoService service = target(tmp, origin)) {
+            java.util.concurrent.CountDownLatch firstStarted = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch releaseFirst = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
+            java.util.concurrent.atomic.AtomicReference<java.util.function.BooleanSupplier> firstCancelled = new java.util.concurrent.atomic.AtomicReference<>();
+            PullView view = onFx(() -> {
+                PullView v = new PullView(service) {
+                    @Override
+                    protected java.util.Collection<? extends at.jku.isse.ecco.feature.Feature> features(String remote, java.util.function.BooleanSupplier cancelled) {
+                        if (calls.incrementAndGet() == 1) {
+                            firstCancelled.set(cancelled);
+                            firstStarted.countDown();
+                            try {
+                                releaseFirst.await();
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                            return List.of(); // what it read is out of date
+                        }
+                        return super.features(remote, cancelled);
+                    }
+                };
+                stage = new Stage();
+                stage.setScene(new Scene(v));
+                stage.setX(-10_000);
+                stage.show();
+                return v;
+            });
+            onFx(() -> {
+                chooseRemote(view, "origin");
+                button(view, "Choose Features...").fire();
+            });
+            assertTrue(firstStarted.await(30, java.util.concurrent.TimeUnit.SECONDS));
+            onFx(() -> {
+                button(view, "Back").fire();
+                button(view, "Choose Features...").fire();
+            });
+            waitUntil("the second fetch's features", () -> treeFeatures(view).equals(Set.of("A", "B")));
+            assertTrue(firstCancelled.get().getAsBoolean(), "the first was told to stop");
+
+            releaseFirst.countDown();
+            Thread.sleep(300);
+            assertEquals(Set.of("A", "B"), onFx(() -> treeFeatures(view)), "the overtaken one is not shown");
+        }
+    }
+
     /** A pull can be cancelled while it runs - it could not be stopped - and then changes nothing. */
     @Test
     @Timeout(60)

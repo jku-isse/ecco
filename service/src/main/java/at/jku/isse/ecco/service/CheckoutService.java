@@ -152,10 +152,10 @@ class CheckoutService {
                     for (String line : surplus)
                         sb.append(line).append(System.lineSeparator());
                     // those with a decision left, as the GUI shows them; where it is - every child was listed
-                    for (Node orderNode : ArtifactDiagnostics.actionableOrderWarnings(checkout.getOrderWarnings())) {
-                        sb.append("ORDER: ").append(ArtifactDiagnostics.describePath(orderNode))
-                                .append(" (undecided: ").append(String.join("; ", ArtifactDiagnostics.describeUndecided(orderNode))).append(")")
-                                .append(" -- suggested fix: ").append(ArtifactDiagnostics.suggestOrderFix(orderNode))
+                    for (ArtifactDiagnostics.OrderWarning warning : ArtifactDiagnostics.describeOrderWarnings(checkout.getOrderWarnings())) {
+                        sb.append("ORDER: ").append(ArtifactDiagnostics.describePath(warning.node()))
+                                .append(" (undecided: ").append(String.join("; ", warning.undecided())).append(")")
+                                .append(" -- suggested fix: ").append(warning.suggestedFix())
                                 .append(System.lineSeparator());
                     }
                     for (String conflict : checkout.getConflicts()) {

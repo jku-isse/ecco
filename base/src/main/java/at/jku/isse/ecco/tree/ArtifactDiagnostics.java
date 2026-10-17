@@ -147,6 +147,25 @@ public final class ArtifactDiagnostics {
 		return actionable;
 	}
 
+	/** An ORDER warning with a decision left: its node, where the order is undecided, and what to do. */
+	public record OrderWarning(Node node, List<String> undecided, String suggestedFix) {
+	}
+
+	/**
+	 * The ORDER warnings of [orderWarnings] with a decision left, each with its undecided ranges
+	 * ({@link #describeUndecided}) and suggested fix - the ranges found once: they were found three
+	 * times for each warning, by the filter, the description and the fix.
+	 */
+	public static List<OrderWarning> describeOrderWarnings(java.util.Collection<? extends Node> orderWarnings) {
+		List<OrderWarning> warnings = new java.util.ArrayList<>();
+		for (Node node : orderWarnings) {
+			List<at.jku.isse.ecco.pog.OrderRegions.Range> ranges = undecidedRanges(node);
+			if (!ranges.isEmpty())
+				warnings.add(new OrderWarning(node, describeUndecided(node, ranges), ACTIONABLE_ORDER_FIX));
+		}
+		return warnings;
+	}
+
 	/** Characters of a child's text in {@link #describeUndecided}. */
 	static final int UNDECIDED_TEXT = 40;
 
@@ -159,11 +178,21 @@ public final class ArtifactDiagnostics {
 	 * checked out: in a file whose order is undecided they are not where the lines are.
 	 */
 	public static List<String> describeUndecided(Node node) {
+		return describeUndecided(node, undecidedRanges(node));
+	}
+
+	/** The undecided ranges of [node]'s children - all of them without an order graph. */
+	private static List<at.jku.isse.ecco.pog.OrderRegions.Range> undecidedRanges(Node node) {
 		List<? extends Node> children = node.getChildren();
 		PartialOrderGraph graph = node.getArtifact() != null ? node.getArtifact().getPartialOrderGraph() : null;
-		List<at.jku.isse.ecco.pog.OrderRegions.Range> ranges = graph != null
+		return graph != null
 				? at.jku.isse.ecco.pog.OrderRegions.undecided(graph, node)
 				: children.size() > 1 ? List.of(new at.jku.isse.ecco.pog.OrderRegions.Range(0, children.size() - 1)) : List.of();
+	}
+
+	/** As above, for [ranges] found already. */
+	private static List<String> describeUndecided(Node node, List<at.jku.isse.ecco.pog.OrderRegions.Range> ranges) {
+		List<? extends Node> children = node.getChildren();
 		// lines: every child with lines recorded is one (a text file's markers, last, have none)
 		boolean lines = false;
 		for (Node child : children) {
@@ -204,10 +233,13 @@ public final class ArtifactDiagnostics {
 			return "no action needed -- these children's order is already fully determined by prior commits "
 					+ "(this warning comes from other content elsewhere in the version history that isn't part of this composition)";
 		}
-		return "the order of these children could not be determined from commit history -- "
-				+ "put them in order in the checked-out file and run `ecco order <file>`, or use Reorder... in the "
-				+ "GUI's checkout details; both record the order without a commit (committing the reordered checkout "
-				+ "records it too, but also records this configuration as a variant)";
+		return ACTIONABLE_ORDER_FIX;
 	}
+
+	/** What to do about an ORDER warning with a decision left. */
+	static final String ACTIONABLE_ORDER_FIX = "the order of these children could not be determined from commit history -- "
+			+ "put them in order in the checked-out file and run `ecco order <file>`, or use Reorder... in the "
+			+ "GUI's checkout details; both record the order without a commit (committing the reordered checkout "
+			+ "records it too, but also records this configuration as a variant)";
 
 }

@@ -36,8 +36,8 @@ public class PullView extends TransferView {
 
 	/** The remote's, fetched first: a remote that was never fetched has none yet. */
 	@Override
-	protected Collection<? extends Feature> features(String remote) {
-		this.service.fetch(remote);
+	protected Collection<? extends Feature> features(String remote, java.util.function.BooleanSupplier cancelled) {
+		this.service.fetch(remote, cancelled);
 		return this.service.getRemote(remote).getFeatures();
 	}
 

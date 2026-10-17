@@ -62,7 +62,7 @@ public class PartialOrderGraphView extends BorderPane {
 	static final String HOVER_HINT = "Point at a block to see what it holds.";
 	static final String LEGEND = "Top to bottom, in order. Green: start, red: end, orange: where alternatives part or meet, "
 			+ "grey: only in other variants. Numbers: lines (or places) in what is shown, (n): how many a block holds. "
-			+ "Click a block to see it in the code. Scroll to zoom, drag to move, double-click to see all.";
+			+ "Click a block to see it in the code. Scroll to zoom, drag to move, double-click the background (or Fit) to see all.";
 	/** Layers on the screen at most for the labels to show: a graph of thousands of blocks shows them zoomed in. */
 	static final int LABELLED_LAYERS = 60;
 	/** Layers a graph too tall to read fitted shows at first: its top. */
@@ -463,15 +463,19 @@ public class PartialOrderGraphView extends BorderPane {
 
 			// placed in layers: no layout runs (a spring layout coiled the runs and, for thousands of
 			// nodes, never settled - redrawing on every step)
-			view.getCamera().resetView();
-			// too tall to read fitted - thousands of layers were a grey smear: its top, readable
-			if (maxLayers > LABELLED_LAYERS) {
-				view.getCamera().setViewPercent(START_LAYERS / maxLayers);
-				// the start just inside the top, the column to the left of the middle: its labels go right
-				view.getCamera().setViewCenter(START_LAYERS / 4.0 * LAYER_GAP, -(START_LAYERS / 2.0 - 1) * LAYER_GAP, 0);
-			}
+			// the camera on the FX thread, which draws with it - it was set from this one
+			double layersDrawn = maxLayers;
 			boolean withOthers = snapshot.withOtherVariants();
-			Platform.runLater(() -> this.otherVariants.setSelected(withOthers));
+			Platform.runLater(() -> {
+				view.getCamera().resetView();
+				// too tall to read fitted - thousands of layers were a grey smear: its top, readable
+				if (layersDrawn > LABELLED_LAYERS) {
+					view.getCamera().setViewPercent(START_LAYERS / layersDrawn);
+					// the start just inside the top, the column to the left of the middle: its labels go right
+					view.getCamera().setViewCenter(START_LAYERS / 4.0 * LAYER_GAP, -(START_LAYERS / 2.0 - 1) * LAYER_GAP, 0);
+				}
+				this.otherVariants.setSelected(withOthers);
+			});
 
 		} finally {
 			Platform.runLater(() -> {

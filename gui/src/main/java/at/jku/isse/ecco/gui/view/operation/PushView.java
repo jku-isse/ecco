@@ -30,7 +30,7 @@ public class PushView extends TransferView {
 
 	/** This repository's own. */
 	@Override
-	protected Collection<? extends Feature> features(String remote) {
+	protected Collection<? extends Feature> features(String remote, java.util.function.BooleanSupplier cancelled) {
 		return this.service.getRepository().getFeatures();
 	}
 

@@ -65,8 +65,22 @@ public abstract class TransferView extends OperationView {
 	/** Does it, off the FX thread: [deselection] left out; asking [cancelled] at its checkpoints. */
 	protected abstract void transfer(String remote, String deselection, java.util.function.BooleanSupplier cancelled);
 
-	/** The features to choose from: the remote's (Pull) or this repository's (Push) - off the FX thread. */
-	protected abstract Collection<? extends Feature> features(String remote);
+	/**
+	 * The features to choose from: the remote's (Pull) or this repository's (Push) - off the FX
+	 * thread; asking [cancelled] at its checkpoints (Pull's fetch).
+	 */
+	protected abstract Collection<? extends Feature> features(String remote, java.util.function.BooleanSupplier cancelled);
+
+	/** Counts the reads of the features to choose from: one overtaken shows nothing - see {@link #featuresCancelled}. */
+	private int featuresRead;
+	/** Set when the features' read is overtaken by another, or the window is closed: Pull's fetch stops. */
+	private java.util.concurrent.atomic.AtomicBoolean featuresCancelled = new java.util.concurrent.atomic.AtomicBoolean();
+
+	@Override
+	protected void closed() {
+		super.closed();
+		this.featuresCancelled.set(true);
+	}
 
 	/** The features to show at once, while {@link #features} reads them: Pull's remote as last fetched. */
 	protected Collection<? extends Feature> featuresNow(String remote) {
@@ -208,15 +222,23 @@ public abstract class TransferView extends OperationView {
 		String title = titledPane.getText();
 		this.fillTree(tree, this.featuresNow(remote.getName()));
 		titledPane.setText(title + " (reading ...)");
+		// a read still running for an earlier visit of this step is overtaken: it stops, and shows
+		// nothing - finishing later, it replaced the tree shown, and what was unticked there was transferred
+		this.featuresCancelled.set(true);
+		java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean();
+		this.featuresCancelled = cancelled;
+		int read = ++this.featuresRead;
 		Task<Collection<? extends Feature>> featuresTask = new Task<>() {
 			@Override
 			public Collection<? extends Feature> call() {
-				return TransferView.this.features(remote.getName());
+				return TransferView.this.features(remote.getName(), cancelled::get);
 			}
 
 			@Override
 			public void succeeded() {
 				super.succeeded();
+				if (read != TransferView.this.featuresRead)
+					return;
 				titledPane.setText(title);
 				TransferView.this.fillTree(tree, this.getValue());
 			}
@@ -224,6 +246,8 @@ public abstract class TransferView extends OperationView {
 			@Override
 			public void failed() {
 				super.failed();
+				if (read != TransferView.this.featuresRead || this.getException() instanceof at.jku.isse.ecco.service.OperationCancelledException)
+					return;
 				titledPane.setText(title + " (could not be read: " + this.getException().getMessage() + ")");
 			}
 		};
