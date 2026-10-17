@@ -98,23 +98,19 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         // selection
         MenuItem selectAllMenuItem = new MenuItem("Select All");
         MenuItem unselectAllMenuItem = new MenuItem("Unselect All");
-        MenuItem selectByConfigurationMenuItem = new MenuItem("Select by Configuration");
         MenuButton selectionMenuButton = new MenuButton("Selection");
-        selectionMenuButton.getItems().addAll(
-                selectAllMenuItem,
-                selectByConfigurationMenuItem,
-                new SeparatorMenuItem(),
-                unselectAllMenuItem
-        );
+        selectionMenuButton.getItems().addAll(selectAllMenuItem, unselectAllMenuItem);
 
         Button checkoutSelectedButton = new Button("Checkout Selected...");
         checkoutSelectedButton.setTooltip(new Tooltip("Checks out exactly the ticked associations, into a folder you choose"));
         featuresButton.setTooltip(new Tooltip("Tick features: the associations a checkout of them takes are ticked"));
 
-        CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Use Simplified Labels");
+        CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Show Minimized Conditions");
+        useSimplifiedLabelsCheckBox.setTooltip(new Tooltip("Where Minimize Presence Conditions has simplified a condition, show that instead of the full one"));
 
         // the tree follows the ticks - there is no Compose button any more; the associations of a
-        // configuration are ticked from the Features pane or Selection > Select by Configuration
+        // configuration are ticked from the Features pane (Selection > Select by Configuration did
+        // the same in a dialog: the pane opens that dialog now, for exact revisions)
         toolBar.getItems().addAll(
                 featuresButton, selectionMenuButton, checkoutSelectedButton, new Separator(),
                 useSimplifiedLabelsCheckBox, minimizationResults.newRunButton());
@@ -145,8 +141,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         this.setCenter(detailsSplitPane);
 
 
-        this.wireToolBarActions(
-                selectAllMenuItem, unselectAllMenuItem, selectByConfigurationMenuItem, checkoutSelectedButton);
+        this.wireToolBarActions(selectAllMenuItem, unselectAllMenuItem, checkoutSelectedButton);
 
         this.composeDelay.setOnFinished(e -> this.composeTicked());
         this.associationsData.addListener((javafx.collections.ListChangeListener<AssociationInfoImpl>) change -> this.composeDelay.playFromStart());
@@ -190,7 +185,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         TableColumn<AssociationInfoImpl, Color> highlightedAssocationCol = new TableColumn<>("Colour");
 
-        associationsTable.getColumns().setAll(List.of(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol, highlightedAssocationCol));
+        // the ticks first: they are what this table is for - picking what the tree and a checkout take
+        associationsTable.getColumns().setAll(List.of(selectedAssocationCol, idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, highlightedAssocationCol));
 
         idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
         // "then" is a live property (see MinimizationResults/AssociationInfoImpl), not a one-shot
@@ -274,7 +270,9 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 this.getStyleClass().add("color-picker-table-cell");
 
                 this.cp = new ColorPicker();
-                // the swatch only: its colour's name ("#c0392b") was cut off at the column's edge
+                // the swatch only, as a plain button: its colour's name ("#c0392b") was cut off at
+                // the column's edge, and a combo box with an arrow on every row was heavy
+                this.cp.getStyleClass().add(ColorPicker.STYLE_CLASS_BUTTON);
                 this.cp.setStyle("-fx-color-label-visible: false;");
 
                 this.cp.editableProperty().bind(column.editableProperty());
@@ -309,7 +307,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                     setGraphic(null);
                 } else {
                     this.cp.setValue(item);
-                    this.setGraphic(this.cp);
+                    // an association never ticked has no colour - an empty swatch on every such row was noise
+                    this.setGraphic(Color.TRANSPARENT.equals(item) ? null : this.cp);
                 }
             }
         }
@@ -339,13 +338,12 @@ public class ArtifactsView extends BorderPane implements EccoListener {
     }
 
     /**
-     * Wires the Select All/Unselect All/Select by Configuration/Checkout Selected handlers. Split out of the constructor purely for
+     * Wires the Select All/Unselect All/Checkout Selected handlers. Split out of the constructor purely for
      * readability -- no behavior change from the previous single-constructor version; called at the
      * same point in construction as before (after {@link #artifactTreeView} and the split panes
      * exist, since several of these handlers reference them).
      */
-    private void wireToolBarActions(MenuItem selectAllMenuItem, MenuItem unselectAllMenuItem,
-                                     MenuItem selectByConfigurationMenuItem, Button checkoutSelectedButton) {
+    private void wireToolBarActions(MenuItem selectAllMenuItem, MenuItem unselectAllMenuItem, Button checkoutSelectedButton) {
         selectAllMenuItem.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent e) {
@@ -361,23 +359,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 toolBar.setDisable(true);
                 setAllAssociationsSelected(false);
                 toolBar.setDisable(false);
-            }
-        });
-
-        selectByConfigurationMenuItem.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent actionEvent) {
-                toolBar.setDisable(true);
-
-                ConfigurationPickerDialog dialog = new ConfigurationPickerDialog(service);
-                Optional<Configuration> result = dialog.showAndWait();
-
-                if (result.isEmpty()) {
-                    toolBar.setDisable(false);
-                    return;
-                }
-                toolBar.setDisable(false);
-                ArtifactsView.this.selectConfiguration(result.get());
             }
         });
 
@@ -458,7 +439,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
     /**
      * Ticks the associations a checkout of [configuration] takes (EccoService#getAssociations: the
      * whole compose pipeline, also its surplus suppression) - from the Features pane on every toggle,
-     * and from Select by Configuration. The pane used the certain conditions instead, and the two
+     * and from its Exact Configuration dialog. The pane used the certain conditions instead, and the two
      * could tick different associations for the same configuration. In the background (the service
      * may be busy); a later configuration's result supersedes an earlier one's.
      */
@@ -520,12 +501,32 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             this.setLeft(null);
             return;
         }
-        if (this.featureTogglePanel == null)
+        if (this.featureTogglePanel == null) {
             this.featureTogglePanel = new FeatureTogglePanel(service, this::selectConfiguration);
-        else
+            Button exactButton = new Button("Exact Configuration...");
+            exactButton.setTooltip(new Tooltip("Pick features with their revisions, or type a configuration - the pane takes the latest revisions"));
+            exactButton.setMaxWidth(Double.MAX_VALUE);
+            exactButton.setOnAction(e -> this.pickExactConfiguration());
+            this.featureTogglePanel.getChildren().add(exactButton);
+        } else
             this.featureTogglePanel.reloadConstraints();
         this.featureTogglePanel.setPrefWidth(240);
         this.setLeft(this.featureTogglePanel);
+    }
+
+    /** The configuration dialog (exact revisions, or typed): ticks its associations and its features in the pane. Package-visible for testing. */
+    void pickExactConfiguration() {
+        Optional<Configuration> result = this.askConfiguration();
+        if (result.isEmpty())
+            return;
+        if (this.featureTogglePanel != null)
+            this.featureTogglePanel.showConfiguration(result.get());
+        this.selectConfiguration(result.get());
+    }
+
+    /** Package-visible so tests can answer the dialog. */
+    Optional<Configuration> askConfiguration() {
+        return new ConfigurationPickerDialog(service).showAndWait();
     }
 
     private void setAllAssociationsSelected(boolean flag) {

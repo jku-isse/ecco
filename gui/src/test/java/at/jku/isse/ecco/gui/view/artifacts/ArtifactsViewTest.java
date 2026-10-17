@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.gui.view.artifacts;
 
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryVisitor;
 import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
@@ -55,6 +56,8 @@ public class ArtifactsViewTest {
                 assertEquals(Color.TRANSPARENT, row.colorProperty().get(), "no highlight before a selection");
             }
             assertNull(onFx(() -> treeTable(view).getRoot()), "no artifact tree before a compose");
+            assertEquals(List.of("Selected", "Id", "Condition", "Artifacts", "Colour"),
+                    onFx(() -> table(view).getColumns().stream().map(TableColumn::getText).toList()), "the ticks first");
             assertFalse(onFx(() -> view.isDisable()));
         }
     }
@@ -247,7 +250,7 @@ public class ArtifactsViewTest {
             assertEquals("A", row.getMinimizedCondition());
             assertEquals("A", onFx(() -> conditionColumn(view).getCellObservableValue(row).getValue()), "simplified labels are on by default");
 
-            onFx(() -> checkBox(view, "Use Simplified Labels").setSelected(false));
+            onFx(() -> checkBox(view, "Show Minimized Conditions").setSelected(false));
             assertEquals(row.getAssociation().computeCondition().toDisplayString(),
                     onFx(() -> conditionColumn(view).getCellObservableValue(row).getValue()));
 
@@ -264,7 +267,7 @@ public class ArtifactsViewTest {
             ArtifactsView view = loaded(service, 2, new MinimizationResults(service));
             AssociationInfoImpl row = onFx(() -> row(view, "a.txt"));
 
-            assertTrue(onFx(() -> checkBox(view, "Use Simplified Labels").isSelected()));
+            assertTrue(onFx(() -> checkBox(view, "Show Minimized Conditions").isSelected()));
             String shown = onFx(() -> conditionColumn(view).getCellObservableValue(row).getValue());
             assertEquals(row.getAssociation().computeCondition().toDisplayString(), shown);
             assertFalse(shown.isEmpty());
@@ -277,10 +280,17 @@ public class ArtifactsViewTest {
     public void renderedRowsShowTheArtifactCountsAndTheHighlightColor(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFeatures(tmp)) {
             ArtifactsView view = loaded(service, 2);
-            onFx(() -> menuItem(view, "Select All").fire());
-
             onFx(() -> {
                 new Scene(view, 1000, 700);
+                view.applyCss();
+                view.layout();
+            });
+            assertTrue(onFx(() -> table(view).lookupAll(".table-cell").stream()
+                    .noneMatch(n -> n instanceof TableCell<?, ?> c && !c.isEmpty() && "Colour".equals(c.getTableColumn().getText()) && c.getGraphic() != null)),
+                    "no swatch before an association is ticked");
+
+            onFx(() -> {
+                menuItem(view, "Select All").fire();
                 view.applyCss();
                 view.layout();
             });
@@ -301,7 +311,7 @@ public class ArtifactsViewTest {
 
     /**
      * The Features pane, docked at the left: toggling a feature ticks the associations a checkout of
-     * the configuration takes - as Select by Configuration does - and the tree follows. It was a
+     * the configuration takes - as its Exact Configuration dialog does - and the tree follows. It was a
      * window of its own, and took the associations whose certain condition holds.
      */
     @Test
@@ -331,6 +341,32 @@ public class ArtifactsViewTest {
 
             service.close();
             waitUntil("the pane goes with the repository", () -> view.getLeft() == null && !featuresButton(view).isSelected());
+        }
+    }
+
+    /**
+     * The configuration dialog for exact revisions is in the Features pane - it was a second route,
+     * Selection > Select by Configuration: it ticks the configuration's associations and its features.
+     */
+    @Test
+    @Timeout(60)
+    public void theFeaturesPaneOpensTheConfigurationDialogForExactRevisions(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFeatures(tmp)) {
+            ScriptedArtifactsView view = scripted(service, false);
+            assertFalse(onFx(() -> ((MenuButton) find(view, n -> n instanceof MenuButton)).getItems().stream()
+                    .anyMatch(i -> "Select by Configuration".equals(i.getText()))), "one route, not two");
+            onFx(() -> featuresButton(view).fire());
+            Parent pane = onFx(() -> (Parent) view.getLeft());
+
+            onFx(() -> button(pane, "Exact Configuration...").fire()); // cancelled
+            assertTrue(onFx(() -> table(view).getItems().stream().noneMatch(AssociationInfoImpl::isSelected)));
+
+            view.picked = service.parseConfigurationString("A.1, B.1");
+            onFx(() -> button(pane, "Exact Configuration...").fire());
+            Set<Association> taken = service.getAssociations("A.1, B.1");
+            waitUntil("its associations are ticked", () -> table(view).getItems().stream().filter(AssociationInfoImpl::isSelected)
+                    .map(AssociationInfoImpl::getAssociation).collect(Collectors.toSet()).equals(taken));
+            assertTrue(onFx(() -> featureToggle(pane, "A").isSelected() && featureToggle(pane, "B").isSelected()), "and its features");
         }
     }
 
@@ -429,11 +465,18 @@ public class ArtifactsViewTest {
         // the folder "chosen" for Checkout Selected - the repository's own, unless a test says otherwise
         Path chosen;
         int foldersAsked;
+        // the configuration "picked" in the configuration dialog; null cancels it
+        Configuration picked;
 
         ScriptedArtifactsView(EccoService service, boolean clearAnswer) {
             super(service, new MinimizationResults(service));
             this.clearAnswer = clearAnswer;
             this.chosen = service.getRepositoryHomeDir();
+        }
+
+        @Override
+        Optional<Configuration> askConfiguration() {
+            return Optional.ofNullable(this.picked);
         }
 
         @Override

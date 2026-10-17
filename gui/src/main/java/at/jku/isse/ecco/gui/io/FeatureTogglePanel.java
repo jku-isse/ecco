@@ -125,6 +125,16 @@ public class FeatureTogglePanel extends VBox {
 		setPadding(new Insets(10));
 	}
 
+	/** Ticks exactly the features of [configuration] - one picked with its revisions in the configuration dialog. */
+	public void showConfiguration(Configuration configuration) {
+		Set<String> names = new HashSet<>();
+		for (FeatureRevision revision : configuration.getFeatureRevisions())
+			names.add(revision.getFeature().getName());
+		for (Map.Entry<Feature, CheckBox> entry : this.checkBoxesByFeature.entrySet())
+			if (!entry.getValue().isDisable()) // a mandatory feature stays ticked
+				entry.getValue().setSelected(names.contains(entry.getKey().getName()));
+	}
+
 	/** Picks up constraint changes made elsewhere (e.g. accepted in the Feature Model tab) - called when the panel is shown again. */
 	public void reloadConstraints() {
 		this.acceptedSuggestions = this.service.acceptedSuggestions(this.service.getRepository());
