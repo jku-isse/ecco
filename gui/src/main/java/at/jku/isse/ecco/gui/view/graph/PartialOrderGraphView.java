@@ -596,16 +596,7 @@ public class PartialOrderGraphView extends BorderPane {
 		this.requests.incrementAndGet(); // a graph still being read is not drawn
 
 		if (null != viewer) {
-			try {
-				viewer.close();
-			} catch (Exception ignored) {
-				// GraphStream's FxGraphRenderer can NPE while tearing down a view that was
-				// created but never rendered yet - harmless here since the viewer/view are
-				// discarded immediately after anyway.
-			}
-			// the closed viewer's pipe stays registered with the graph and queues every later change
-			// of it - a viewer made for each commit piled them up (GraphLayoutStopsTest)
-			this.graph.clearSinks();
+			at.jku.isse.ecco.gui.GraphViews.closeViewer(viewer, this.graph);
 			view = null;
 			viewer = null;
 		}

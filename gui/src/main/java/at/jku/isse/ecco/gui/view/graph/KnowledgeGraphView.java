@@ -23,7 +23,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
@@ -41,14 +40,11 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import org.graphstream.graph.Graph;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.MultiGraph;
-import org.graphstream.stream.file.FileSink;
-import org.graphstream.stream.file.FileSinkFactory;
 import org.graphstream.ui.fx_viewer.FxViewPanel;
 import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.geom.Point3;
@@ -64,8 +60,6 @@ import org.graphstream.ui.view.util.InteractiveElement;
 import org.graphstream.ui.view.util.MouseManager;
 
 import javax.swing.SwingUtilities;
-import java.io.File;
-import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.EnumMap;
@@ -196,20 +190,8 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		// deliberately no layout sink/enableAutoLayout(): node positions come straight from
 		// KnowledgeGraphLayout.compute(), same as FeaturesView.
 
-		this.setOnScroll(event -> {
-			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
-						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
-				this.syncScrollBarsFromCamera();
-			}
-		});
-		this.setOnZoom(event -> {
-			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
-						view.getCamera().getViewPercent() / event.getZoomFactor())));
-				this.syncScrollBarsFromCamera();
-			}
-		});
+		at.jku.isse.ecco.gui.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
+		at.jku.isse.ecco.gui.GraphViews.zoomOnPinch(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
 
 		showLabelsCheckbox.setSelected(this.showLabels);
 
@@ -351,43 +333,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		this.displayToolBar.getItems().add(new Separator());
 		this.displayToolBar.getItems().addAll(GraphCameraControls.build(() -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera));
 
-		Button exportButton = new Button("Export");
-		exportButton.setOnAction(ae -> {
-			this.setToolBarsDisabled(true);
-
-			FileChooser fileChooser = new FileChooser();
-			// FileSinkFactory.sinkFor() picks a writer purely off the file extension and returns
-			// null (see the "Unknown file extension" branch below) for anything it doesn't
-			// recognize - the save dialog has no extension of its own to fall back on otherwise,
-			// so list the formats GraphStream actually supports and default to one that opens
-			// cleanly in most external tools.
-			fileChooser.getExtensionFilters().addAll(
-					new FileChooser.ExtensionFilter("GraphML (*.graphml)", "*.graphml"),
-					new FileChooser.ExtensionFilter("GEXF (*.gexf)", "*.gexf"),
-					new FileChooser.ExtensionFilter("DOT (*.dot)", "*.dot"),
-					new FileChooser.ExtensionFilter("DGS (*.dgs)", "*.dgs"));
-			fileChooser.setInitialFileName("knowledge-graph.graphml");
-			File selectedFile = fileChooser.showSaveDialog(KnowledgeGraphView.this.getScene().getWindow());
-
-			if (selectedFile != null) {
-				FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
-				if (out != null) {
-					try {
-						out.writeAll(KnowledgeGraphView.this.graph, selectedFile.toString());
-						out.flush();
-					} catch (IOException e) {
-						new ExceptionAlert(e).show();
-					}
-				} else {
-					Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.ERROR);
-					alert.setHeaderText("Unknown file extension.");
-					alert.setContentText("Unknown file extension.");
-					alert.show();
-				}
-			}
-
-			this.setToolBarsDisabled(false);
-		});
+		Button exportButton = at.jku.isse.ecco.gui.GraphViews.exportButton(() -> KnowledgeGraphView.this.graph, "knowledge-graph.graphml", this::setToolBarsDisabled);
 		this.displayToolBar.getItems().addAll(new Separator(), exportButton);
 
 		return showLabelsCheckbox;
@@ -502,14 +448,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		}
 
 		this.graphContainer.setCenter(new Pane());
-		try {
-			viewer.close();
-		} catch (Exception ignored) {
-			// see ArtifactGraphView.closeView() for why this is safely ignorable
-		}
-		// the closed viewer's pipe stays registered with the graph and queues every later change
-		// of it - a viewer made for each commit piled them up (GraphLayoutStopsTest)
-		this.graph.clearSinks();
+		at.jku.isse.ecco.gui.GraphViews.closeViewer(viewer, this.graph);
 		view = null;
 		viewer = null;
 	}

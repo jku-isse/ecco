@@ -14,7 +14,6 @@ import javafx.application.Platform;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
@@ -28,12 +27,9 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.stage.FileChooser;
 import org.graphstream.graph.Graph;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.MultiGraph;
-import org.graphstream.stream.file.FileSink;
-import org.graphstream.stream.file.FileSinkFactory;
 import org.graphstream.ui.fx_viewer.FxViewPanel;
 import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.geom.Point3;
@@ -48,7 +44,6 @@ import org.graphstream.ui.view.util.InteractiveElement;
 import org.graphstream.ui.view.util.MouseManager;
 
 import javax.swing.SwingUtilities;
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -143,42 +138,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		this.toolBar = new ToolBar();
 		this.setTop(toolBar);
 
-		Button exportButton = new Button("Export");
-		exportButton.setOnAction(ae -> {
-			toolBar.setDisable(true);
-
-			FileChooser fileChooser = new FileChooser();
-			// FileSinkFactory.sinkFor() picks a writer purely off the file extension and returns
-			// null (see the "Unknown file extension" branch below) for anything it doesn't
-			// recognize - list the formats GraphStream actually supports so the save dialog
-			// doesn't let that happen by default.
-			fileChooser.getExtensionFilters().addAll(
-					new FileChooser.ExtensionFilter("GraphML (*.graphml)", "*.graphml"),
-					new FileChooser.ExtensionFilter("GEXF (*.gexf)", "*.gexf"),
-					new FileChooser.ExtensionFilter("DOT (*.dot)", "*.dot"),
-					new FileChooser.ExtensionFilter("DGS (*.dgs)", "*.dgs"));
-			fileChooser.setInitialFileName("feature-model.graphml");
-			File selectedFile = fileChooser.showSaveDialog(FeaturesView.this.getScene().getWindow());
-
-			if (selectedFile != null) {
-				FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
-				if (out != null) {
-					try {
-						out.writeAll(FeaturesView.this.graph, selectedFile.toString());
-						out.flush();
-					} catch (IOException e) {
-						new ExceptionAlert(e).show();
-					}
-				} else {
-					Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.ERROR);
-					alert.setHeaderText("Unknown file extension.");
-					alert.setContentText("Unknown file extension.");
-					alert.show();
-				}
-			}
-
-			toolBar.setDisable(false);
-		});
+		Button exportButton = at.jku.isse.ecco.gui.GraphViews.exportButton(() -> FeaturesView.this.graph, "feature-model.graphml", toolBar::setDisable);
 
 		CheckBox showLabelsCheckbox = new CheckBox("Show Labels");
 		showLabelsCheckbox.selectedProperty().addListener((ov, oldVal, newVal) -> {
@@ -212,21 +172,9 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		// guarantee, not an emergent property of a force simulation - unlike the other graph tabs,
 		// this one is a static tree, not a physics-driven graph.
 
-		this.setOnScroll(event -> {
-			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
-						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
-				this.syncScrollBarsFromCamera();
-			}
-		});
+		at.jku.isse.ecco.gui.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
 		// trackpad pinch: a separate gesture from two-finger scroll, so it needs its own handler.
-		this.setOnZoom(event -> {
-			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
-						view.getCamera().getViewPercent() / event.getZoomFactor())));
-				this.syncScrollBarsFromCamera();
-			}
-		});
+		at.jku.isse.ecco.gui.GraphViews.zoomOnPinch(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
 
 		showLabelsCheckbox.setSelected(this.showLabels);
 
@@ -332,14 +280,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		}
 
 		this.graphContainer.setCenter(new Pane());
-		try {
-			viewer.close();
-		} catch (Exception ignored) {
-			// see ArtifactGraphView.closeView() for why this is safely ignorable
-		}
-		// the closed viewer's pipe stays registered with the graph and queues every later change
-		// of it - a viewer made for each commit piled them up (GraphLayoutStopsTest)
-		this.graph.clearSinks();
+		at.jku.isse.ecco.gui.GraphViews.closeViewer(viewer, this.graph);
 		view = null;
 		viewer = null;
 	}

@@ -18,13 +18,10 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.stage.FileChooser;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.SingleGraph;
-import org.graphstream.stream.file.FileSink;
-import org.graphstream.stream.file.FileSinkFactory;
 import org.graphstream.ui.geom.Point3;
 import org.graphstream.ui.graphicGraph.GraphicElement;
 import org.graphstream.ui.javafx.FxGraphRenderer;
@@ -37,8 +34,6 @@ import org.graphstream.ui.view.Viewer;
 import org.graphstream.ui.view.util.InteractiveElement;
 
 import javax.swing.*;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -125,12 +120,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 
 		this.layout = new SpringBox(false);
 
-		this.setOnScroll(event -> {
-			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
-						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
-			}
-		});
+		at.jku.isse.ecco.gui.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, null);
 
 		// must run after `graph` is constructed above: setSelected(true) (DEFAULT_SHOW_LABELS)
 		// changes the checkbox away from its own JavaFX default of false, which synchronously fires
@@ -166,42 +156,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 			ArtifactGraphView.this.refreshGraph();
 		});
 
-		Button exportButton = new Button("Export");
-		exportButton.setOnAction(ae -> {
-			toolBar.setDisable(true);
-
-			FileChooser fileChooser = new FileChooser();
-			// FileSinkFactory.sinkFor() picks a writer purely off the file extension and returns
-			// null (see the "Unknown file extension" branch below) for anything it doesn't
-			// recognize - list the formats GraphStream actually supports so the save dialog
-			// doesn't let that happen by default.
-			fileChooser.getExtensionFilters().addAll(
-					new FileChooser.ExtensionFilter("GraphML (*.graphml)", "*.graphml"),
-					new FileChooser.ExtensionFilter("GEXF (*.gexf)", "*.gexf"),
-					new FileChooser.ExtensionFilter("DOT (*.dot)", "*.dot"),
-					new FileChooser.ExtensionFilter("DGS (*.dgs)", "*.dgs"));
-			fileChooser.setInitialFileName("artifact-graph.graphml");
-			File selectedFile = fileChooser.showSaveDialog(ArtifactGraphView.this.getScene().getWindow());
-
-			if (selectedFile != null) {
-				FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
-				if (out != null) {
-					try {
-						out.writeAll(ArtifactGraphView.this.graph, selectedFile.toString());
-						out.flush();
-					} catch (IOException e) {
-						new ExceptionAlert(e).show();
-					}
-				} else {
-					Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.ERROR);
-					alert.setHeaderText("Unknown file extension.");
-					alert.setContentText("Unknown file extension.");
-					alert.show();
-				}
-			}
-
-			toolBar.setDisable(false);
-		});
+		Button exportButton = at.jku.isse.ecco.gui.GraphViews.exportButton(() -> ArtifactGraphView.this.graph, "artifact-graph.graphml", toolBar::setDisable);
 
 		CheckBox showLabelsCheckbox = new CheckBox("Show Labels");
 		showLabelsCheckbox.selectedProperty().addListener((ov, old_val, new_val) -> {
@@ -316,17 +271,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 		}
 
 		setCenter(null);
-		try {
-			viewer.close();
-		} catch (Exception ignored) {
-			// GraphStream's FxGraphRenderer can NPE while tearing down a view that was
-			// created but never rendered yet (e.g. closed again in quick succession by
-			// back-to-back status-changed events during a batch commit) - harmless here
-			// since the viewer/view are discarded immediately after anyway.
-		}
-		// the closed viewer's pipe stays registered with the graph and queues every later change
-		// of it - a viewer made for each commit piled them up (GraphLayoutStopsTest)
-		this.graph.clearSinks();
+		at.jku.isse.ecco.gui.GraphViews.closeViewer(viewer, this.graph);
 		view = null;
 		viewer = null;
 	}

@@ -11,13 +11,8 @@ import at.jku.isse.ecco.module.Condition;
 import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
-import javafx.stage.FileChooser;
-import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
-import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.SingleGraph;
-import org.graphstream.stream.file.FileSink;
-import org.graphstream.stream.file.FileSinkFactory;
 import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.springbox.implementations.SpringBox;
@@ -26,8 +21,6 @@ import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.view.Viewer;
 
 import javax.swing.*;
-import java.io.File;
-import java.io.IOException;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,43 +69,8 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
 
-		Button exportButton = new Button("Export");
+		Button exportButton = at.jku.isse.ecco.gui.GraphViews.exportButton(() -> DependencyGraphView.this.graph, "dependency-graph.graphml", toolBar::setDisable);
 		toolBar.getItems().add(exportButton);
-		exportButton.setOnAction(ae -> {
-			toolBar.setDisable(true);
-
-			FileChooser fileChooser = new FileChooser();
-			// FileSinkFactory.sinkFor() picks a writer purely off the file extension and returns
-			// null (see the "Unknown file extension" branch below) for anything it doesn't
-			// recognize - list the formats GraphStream actually supports so the save dialog
-			// doesn't let that happen by default.
-			fileChooser.getExtensionFilters().addAll(
-					new FileChooser.ExtensionFilter("GraphML (*.graphml)", "*.graphml"),
-					new FileChooser.ExtensionFilter("GEXF (*.gexf)", "*.gexf"),
-					new FileChooser.ExtensionFilter("DOT (*.dot)", "*.dot"),
-					new FileChooser.ExtensionFilter("DGS (*.dgs)", "*.dgs"));
-			fileChooser.setInitialFileName("dependency-graph.graphml");
-			File selectedFile = fileChooser.showSaveDialog(DependencyGraphView.this.getScene().getWindow());
-
-			if (selectedFile != null) {
-				FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
-				if (out != null) {
-					try {
-						out.writeAll(DependencyGraphView.this.graph, selectedFile.toString());
-						out.flush();
-					} catch (IOException e) {
-						new ExceptionAlert(e).show();
-					}
-				} else {
-					Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.ERROR);
-					alert.setHeaderText("Unknown file extension.");
-					alert.setContentText("Unknown file extension.");
-					alert.show();
-				}
-			}
-
-			toolBar.setDisable(false);
-		});
 		toolBar.getItems().add(new Separator());
 
 
@@ -168,12 +126,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 
 		this.layout = new SpringBox(false);
 
-		this.setOnScroll(event -> {
-			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
-						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
-			}
-		});
+		at.jku.isse.ecco.gui.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, null);
 
 		showLabelsCheckbox.setSelected(this.showLabels);
 
@@ -206,17 +159,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		}
 
 		setCenter(null);
-		try {
-			viewer.close();
-		} catch (Exception ignored) {
-			// GraphStream's FxGraphRenderer can NPE while tearing down a view that was
-			// created but never rendered yet (e.g. closed again in quick succession by
-			// back-to-back status-changed events during a batch commit) - harmless here
-			// since the viewer/view are discarded immediately after anyway.
-		}
-		// the closed viewer's pipe stays registered with the graph and queues every later change
-		// of it - a viewer made for each commit piled them up (GraphLayoutStopsTest)
-		this.graph.clearSinks();
+		at.jku.isse.ecco.gui.GraphViews.closeViewer(viewer, this.graph);
 		view = null;
 		viewer = null;
 	}
