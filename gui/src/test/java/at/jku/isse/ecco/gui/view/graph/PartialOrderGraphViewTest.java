@@ -174,6 +174,74 @@ public class PartialOrderGraphViewTest {
         assertTrue(at.jku.isse.ecco.gui.FxTestSupport.onFx(() -> button(view, "Next branch") != null && button(view, "Fit") != null));
     }
 
+    /**
+     * The alternatives say which variants they come from - the condition of their lines' association:
+     * two variants add a line each after "a", b with A and c with B; shown as committed with A, b's
+     * condition names A and c's - only in the other variant - B. What every variant has is not marked.
+     */
+    @Test
+    @Timeout(60)
+    public void theAlternativesSayWhichVariantsTheyComeFrom(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        try (at.jku.isse.ecco.service.EccoService service = at.jku.isse.ecco.gui.FxTestSupport.repository(tmp.resolve("repo"))) {
+            at.jku.isse.ecco.gui.FxTestSupport.commit(service, tmp.resolve("v1"), "BASE, A", java.util.Map.of("f.txt", "a\nb\n"));
+            at.jku.isse.ecco.gui.FxTestSupport.commit(service, tmp.resolve("v2"), "BASE, B", java.util.Map.of("f.txt", "a\nc\n"));
+            at.jku.isse.ecco.core.Commit withA = service.getCommits().stream().filter(c -> c.getConfiguration().toString().contains("A.")).findFirst().orElseThrow();
+            at.jku.isse.ecco.composition.LazyCompositionRootNode root = new at.jku.isse.ecco.composition.LazyCompositionRootNode();
+            for (at.jku.isse.ecco.core.Association association : withA.getAssociations())
+                root.addOrigNode(association.getRootNode());
+            at.jku.isse.ecco.tree.Node file = find(root, "f.txt");
+
+            PartialOrderGraphView.Snapshot snapshot = PartialOrderGraphView.blocksOf(file.getArtifact().getPartialOrderGraph(), file);
+
+            String b = snapshot.labels().stream().filter(l -> l.contains("Line") ? false : l.contains(" b")).findFirst().orElseThrow(() -> new AssertionError(snapshot.labels().toString()));
+            String c = snapshot.labels().stream().filter(l -> l.startsWith("other") && l.contains(" c")).findFirst().orElseThrow(() -> new AssertionError(snapshot.labels().toString()));
+            // the conditions as two commits leave them, e.g. "A | BASE & !B": with A, b; with B, c
+            assertTrue(b.matches(".*\\[[^\\]]*\\bA\\b[^\\]]*\\]"), b);
+            assertTrue(c.matches(".*\\[[^\\]]*\\bB\\b[^\\]]*\\]"), c);
+            String a = snapshot.labels().stream().filter(l -> l.contains(" a")).findFirst().orElseThrow();
+            assertFalse(a.contains("["), "what every variant has is not marked: " + a);
+            String cDetails = snapshot.details().get(snapshot.labels().indexOf(c));
+            assertTrue(cDetails.contains("\nFrom: ") && cDetails.contains(" (association "), cDetails);
+        }
+    }
+
+    /**
+     * A line no feature explains - there with A in one commit, gone with A in the next - says which
+     * commit had it: its condition is empty, which showed as "false", as if it had never been there.
+     */
+    @Test
+    @Timeout(60)
+    public void aLineNoFeatureExplainsSaysWhichCommitsHadIt(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        try (at.jku.isse.ecco.service.EccoService service = at.jku.isse.ecco.gui.FxTestSupport.repository(tmp.resolve("repo"))) {
+            at.jku.isse.ecco.gui.FxTestSupport.commit(service, tmp.resolve("v1"), "BASE, A", java.util.Map.of("f.txt", "a\nold\nz\n"));
+            at.jku.isse.ecco.gui.FxTestSupport.commit(service, tmp.resolve("v2"), "BASE, A", java.util.Map.of("f.txt", "a\nz\n"));
+            at.jku.isse.ecco.core.Commit latest = service.getCommits().stream().max(java.util.Comparator.comparing(at.jku.isse.ecco.core.Commit::getDate)).orElseThrow();
+            at.jku.isse.ecco.composition.LazyCompositionRootNode root = new at.jku.isse.ecco.composition.LazyCompositionRootNode();
+            for (at.jku.isse.ecco.core.Association association : latest.getAssociations())
+                root.addOrigNode(association.getRootNode());
+            at.jku.isse.ecco.tree.Node file = find(root, "f.txt");
+
+            PartialOrderGraphView.Snapshot snapshot = PartialOrderGraphView.blocksOf(file.getArtifact().getPartialOrderGraph(), file,
+                    new ArtifactOrigins(service.getRepository())::describe);
+
+            int old = snapshot.labels().indexOf(snapshot.labels().stream().filter(l -> l.startsWith("other") && l.contains("old")).findFirst().orElseThrow(() -> new AssertionError(snapshot.labels().toString())));
+            assertFalse(snapshot.labels().get(old).contains("false"), snapshot.labels().get(old));
+            assertTrue(snapshot.labels().get(old).contains("[in no feature; 1 commit"), snapshot.labels().get(old));
+            assertTrue(snapshot.details().get(old).contains("in no feature; 1 commit") && snapshot.details().get(old).contains("'commit BASE, A'"), snapshot.details().get(old));
+        }
+    }
+
+    private static at.jku.isse.ecco.tree.Node find(at.jku.isse.ecco.tree.Node node, String name) {
+        if (node.getArtifact() != null && String.valueOf(node.getArtifact()).startsWith(name))
+            return node;
+        for (at.jku.isse.ecco.tree.Node child : node.getChildren()) {
+            at.jku.isse.ecco.tree.Node found = find(child, name);
+            if (found != null)
+                return found;
+        }
+        return null;
+    }
+
     /** The id of the drawn block whose label starts with [prefix]. */
     private static String idOf(PartialOrderGraphView view, String prefix) {
         for (org.graphstream.graph.Node node : (Iterable<org.graphstream.graph.Node>) view.drawnGraph().nodes()::iterator)

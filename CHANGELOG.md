@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+  * **Order graph: where the alternatives come from**: a block only other variants have, and those beside it, say which variants they come from - the condition of their lines' association, "[A | BASE & !B]", in the label and in full in the details, with the association; for lines no feature explains (their condition is empty, shown as "false" elsewhere) the commits that had them: "[in no feature; 37 commits, the last 2009-05-11 'Fix …']". Each association once, with the graph, in the background (all 268 files of a tinycc commit: 0.8 s) (`PartialOrderGraphViewTest`).
+
   * **Order graph to code**: clicking a block in the Order graph shows it in the code - the code tab selected, at the block's first line (the order graph's tab stays, for the next block); a block only other variants have says so. "Next branch" goes through the places where variants order things differently, top to bottom and round, centring each and showing what it holds; "Fit" shows the whole graph (`PartialOrderGraphViewTest`, `ArtifactDetailViewTest`).
 
   * **Order graphs readable, ORDER warnings to the point** (from a review of every place order graphs reach the user):

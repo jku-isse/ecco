@@ -128,6 +128,14 @@ public class PartialOrderGraphView extends BorderPane {
 	 * (ConcurrentModificationException).
 	 */
 	public void showGraph(PartialOrderGraph pog, at.jku.isse.ecco.tree.Node shownNode, Object lock) {
+		this.showGraph(pog, shownNode, null, lock);
+	}
+
+	/**
+	 * As above, with the [repository] whose commits tell where the alternatives' lines come from
+	 * when no feature does (may be null: then the conditions only).
+	 */
+	public void showGraph(PartialOrderGraph pog, at.jku.isse.ecco.tree.Node shownNode, at.jku.isse.ecco.repository.Repository repository, Object lock) {
 		if (null == viewer) {
 			initView();
 		}
@@ -137,7 +145,7 @@ public class PartialOrderGraphView extends BorderPane {
 		Thread th = new Thread(() -> {
 			Snapshot snapshot;
 			synchronized (lock) {
-				snapshot = blocksOf(pog, shownNode);
+				snapshot = repository == null ? blocksOf(pog, shownNode) : blocksOf(pog, shownNode, new ArtifactOrigins(repository)::describe);
 			}
 			// one rebuild at a time: selecting another node before the previous rebuild finished used
 			// to start a second thread clearing and filling the same (not thread-safe) graph
@@ -165,6 +173,15 @@ public class PartialOrderGraphView extends BorderPane {
 
 	/** {@code pog} folded into blocks ({@link OrderRegions#collapse}), described by the children of {@code shownNode} (may be null). */
 	static Snapshot blocksOf(PartialOrderGraph pog, at.jku.isse.ecco.tree.Node shownNode) {
+		return blocksOf(pog, shownNode, association -> {
+			String condition = ArtifactOrigins.condition(association);
+			return condition != null ? condition : "in no feature";
+		});
+	}
+
+	/** As above, [describe] telling where an association's elements come from - {@link ArtifactOrigins}. */
+	static Snapshot blocksOf(PartialOrderGraph pog, at.jku.isse.ecco.tree.Node shownNode,
+							 java.util.function.Function<at.jku.isse.ecco.core.Association, String> describe) {
 		Map<PartialOrderGraph.Node, at.jku.isse.ecco.tree.Node> childOf = new IdentityHashMap<>();
 		Map<at.jku.isse.ecco.tree.Node, Integer> placeOf = new IdentityHashMap<>();
 		if (shownNode != null) {
@@ -180,24 +197,70 @@ public class PartialOrderGraphView extends BorderPane {
 			shown.addAll(pog.collectNodes());
 
 		OrderRegions.Collapsed collapsed = OrderRegions.collapse(pog, shown);
+		// the alternatives - what only other variants have, and what lies beside them in a layer - say
+		// which variants they come from; each association's condition once
+		Map<Integer, Integer> perLayer = new HashMap<>();
+		for (OrderRegions.Block block : collapsed.blocks())
+			perLayer.merge(block.layer(), 1, Integer::sum);
+		Map<at.jku.isse.ecco.core.Association, String> conditions = new IdentityHashMap<>();
 		List<String> labels = new ArrayList<>(), classes = new ArrayList<>(), details = new ArrayList<>();
 		List<double[]> places = new ArrayList<>();
 		List<at.jku.isse.ecco.tree.Node> firsts = new ArrayList<>();
 		for (OrderRegions.Block block : collapsed.blocks()) {
 			firsts.add(block.kind() == OrderRegions.Kind.NODES ? childOf.get(block.first()) : null);
-			labels.add(label(block, childOf, placeOf, shownNode != null));
+			List<String> origins = block.kind() == OrderRegions.Kind.NODES && (!block.shown() || perLayer.get(block.layer()) > 1)
+					? origins(block, conditions, describe) : List.of();
+			String label = label(block, childOf, placeOf, shownNode != null);
+			if (!origins.isEmpty()) {
+				String condition = origins.get(0).substring(0, origins.get(0).lastIndexOf(" (association "));
+				label += "  [" + short_(condition, ORIGIN_TEXT) + (origins.size() > 1 ? "; +" + (origins.size() - 1) : "") + "]";
+			}
+			labels.add(label);
 			classes.add(switch (block.kind()) {
 				case START -> "start";
 				case END -> "end";
 				case NODES -> !block.shown() ? "other" : block.branch() ? "branch" : null;
 			});
 			places.add(new double[]{block.column() * COLUMN_GAP, -block.layer() * LAYER_GAP});
-			details.add(details(block, childOf, placeOf, shownNode != null));
+			String text = details(block, childOf, placeOf, shownNode != null);
+			for (int o = 0; o < origins.size(); o++)
+				text += (o == 0 ? "\nFrom: " : "\n      ") + origins.get(o);
+			details.add(text);
 		}
 		List<int[]> edges = new ArrayList<>();
 		for (OrderRegions.Edge edge : collapsed.edges())
 			edges.add(new int[]{edge.from(), edge.to()});
 		return new Snapshot(labels, classes, places, details, edges, firsts);
+	}
+
+	/** Characters of an alternative's condition in its label. */
+	static final int ORIGIN_TEXT = 30;
+	/** Associations an alternative's details name at most. */
+	static final int ORIGINS = 3;
+
+	/**
+	 * The variants [block]'s elements come from: for each association they are in, what [describe]
+	 * says - its condition, or the commits with it ({@link ArtifactOrigins}) - "B (association
+	 * 3f2a1c0d)", at most {@link #ORIGINS} and how many more.
+	 */
+	static List<String> origins(OrderRegions.Block block, Map<at.jku.isse.ecco.core.Association, String> conditions,
+								java.util.function.Function<at.jku.isse.ecco.core.Association, String> describe) {
+		Set<at.jku.isse.ecco.core.Association> associations = Collections.newSetFromMap(new IdentityHashMap<>());
+		List<at.jku.isse.ecco.core.Association> ordered = new ArrayList<>();
+		for (PartialOrderGraph.Node node : block.nodes()) {
+			at.jku.isse.ecco.artifact.Artifact<?> artifact = node.getArtifact();
+			at.jku.isse.ecco.core.Association association = artifact == null || artifact.getContainingNode() == null ? null
+					: artifact.getContainingNode().getContainingAssociation();
+			if (association != null && associations.add(association))
+				ordered.add(association);
+		}
+		List<String> origins = new ArrayList<>();
+		for (at.jku.isse.ecco.core.Association association : ordered.subList(0, Math.min(ORIGINS, ordered.size())))
+			origins.add(conditions.computeIfAbsent(association, describe)
+					+ " (association " + at.jku.isse.ecco.gui.TableColumns.shortIds(association.getId()) + ")");
+		if (ordered.size() > ORIGINS)
+			origins.add("and " + (ordered.size() - ORIGINS) + " more associations");
+		return origins;
 	}
 
 	/** "12-340 (329)  first ... last", "other (3)  first ... last", "Start", "End". */
