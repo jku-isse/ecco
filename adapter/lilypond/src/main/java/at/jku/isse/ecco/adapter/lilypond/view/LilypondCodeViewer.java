@@ -6,9 +6,10 @@ import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
 import at.jku.isse.ecco.adapter.lilypond.data.context.BaseContextArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
+import at.jku.isse.ecco.adapter.view.AssociationColors;
 import at.jku.isse.ecco.artifact.ArtifactData;
+import at.jku.isse.ecco.adapter.view.FileTabs;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.tree.Node;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -21,7 +22,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.util.Callback;
 
-import java.beans.PropertyChangeListener;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.*;
@@ -36,8 +36,7 @@ import java.util.*;
  */
 public class LilypondCodeViewer extends BorderPane implements AssociationInfoArtifactViewer {
 
-	private final HashMap<String, AssociationInfo> associationInfos;
-	private final HashMap<String, PropertyChangeListener> associationListeners;
+	private final AssociationColors colors = new AssociationColors(this::recolor);
 	private final Map<Path, FileView> fileViews = new LinkedHashMap<>();
 	private boolean highlightSelection = true;
 	private final Callback<ListView<NodeTextBlock[]>, ListCell<NodeTextBlock[]>> cellFactory;
@@ -46,9 +45,6 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 	private final String style;
 
 	public LilypondCodeViewer() {
-		associationInfos = new HashMap<>();
-		associationListeners = new HashMap<>();
-
 		URL url = ClassLoader.getSystemResource("styles/LilypondCodeViewer.css");
 		style = url != null ? url.toExternalForm() : null;
 
@@ -158,15 +154,8 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 	@Override
 	public void showTree(Node node) {
 		final Node n = node.getNode(); // in case of a wrapped node
-		Node treeRoot = n;
-		while (treeRoot.getParent() != null) {
-			treeRoot = treeRoot.getParent();
-		}
-
-		List<Node> fileNodes = new ArrayList<>();
-		collectFileNodes(treeRoot, fileNodes);
-
-		Node selectedFileNode = getPluginNode(n);
+		List<Node> fileNodes = FileTabs.files(n, getPluginId());
+		Node selectedFileNode = FileTabs.fileOf(n, getPluginId());
 
 		Map<Path, FileView> newFileViews = new LinkedHashMap<>();
 		FileView selectedFileView = null;
@@ -178,7 +167,7 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 
 			FileView fv = fileViews.get(fileName);
 			if (fv == null) {
-				fv = new FileView();
+				fv = new FileView(fileName);
 			}
 			newFileViews.put(fileName, fv);
 
@@ -195,45 +184,9 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 		fileViews.clear();
 		fileViews.putAll(newFileViews);
 
-		rebuildView(newFileViews, selectedFileView);
-	}
-
-	private void rebuildView(Map<Path, FileView> currentFileViews, FileView selectedFileView) {
-		if (currentFileViews.size() <= 1) {
-			ListView<NodeTextBlock[]> listView = currentFileViews.isEmpty()
-					? createListView(FXCollections.observableArrayList())
-					: currentFileViews.values().iterator().next().shown().listView;
-			splitPane.getItems().set(0, listView);
-			return;
-		}
-
-		TabPane tabPane = new TabPane();
-		Tab tabToSelect = null;
-		for (Map.Entry<Path, FileView> entry : currentFileViews.entrySet()) {
-			FileView fv = entry.getValue();
-			Tab tab = new Tab(entry.getKey().toString(), fv.listView);
-			tab.setClosable(false);
-			tabPane.getTabs().add(tab);
-			if (fv == selectedFileView) {
-				tabToSelect = tab;
-			}
-		}
-		if (tabToSelect != null) {
-			tabPane.getSelectionModel().select(tabToSelect);
-		}
-		// the tabs were added in the order of the views
-		Map<Tab, FileView> viewOfTab = new HashMap<>();
-		List<FileView> views = new ArrayList<>(currentFileViews.values());
-		for (int i = 0; i < tabPane.getTabs().size(); i++)
-			viewOfTab.put(tabPane.getTabs().get(i), views.get(i));
-		FileView shownView = viewOfTab.get(tabPane.getSelectionModel().getSelectedItem());
-		if (shownView != null)
-			shownView.shown();
-		tabPane.getSelectionModel().selectedItemProperty().addListener((o, was, tab) -> {
-			if (tab != null && viewOfTab.containsKey(tab))
-				viewOfTab.get(tab).shown();
-		});
-		splitPane.getItems().set(0, tabPane);
+		// a view's lines are built once its tab is shown
+		splitPane.getItems().set(0, FileTabs.show(new ArrayList<>(newFileViews.values()), selectedFileView, fv -> fv.path.toString(),
+				fv -> fv.shown().listView, () -> createListView(FXCollections.observableArrayList())));
 	}
 
 	@Override
@@ -253,28 +206,6 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 		return LilypondPlugin.class.getName();
 	}
 
-	private Node getPluginNode(Node n) {
-		while (n != null && !(n.getArtifact().getData() instanceof PluginArtifactData)) {
-			n = n.getParent();
-		}
-		return n;
-	}
-
-	private void collectFileNodes(Node n, List<Node> result) {
-		// composition root/container nodes have no artifact of their own
-		if (n.getArtifact() != null) {
-			ArtifactData d = n.getArtifact().getData();
-			if (d instanceof PluginArtifactData pad && getPluginId().equals(pad.getPluginId())) {
-				result.add(n);
-				// no file in a file: its lines were walked too, building every node of a lazy composition
-				return;
-			}
-		}
-		for (Node child : n.getChildren()) {
-			collectFileNodes(child, result);
-		}
-	}
-
 	private static String toCssRgb(Color color) {
 		return String.format("rgb(%d,%d,%d)",
 				(int) Math.round(color.getRed() * 255),
@@ -285,15 +216,8 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 	private void showAssociationInfo(Association a) {
 		if (taInfo == null || a == null) return;
 
-		// once per association: computed again for every line the mouse crossed, on the FX thread
-		taInfo.setText(hoverTexts.computeIfAbsent(a, association -> {
-			Condition c = association.computeCondition();
-			return association.getId().concat(" (").concat(c.toDisplayString(false)).concat(")\n").concat(c.toDisplayString());
-		}));
+		taInfo.setText(colors.hoverText(a));
 	}
-
-	/** The details shown when the mouse is over an association's line - see {@link #showAssociationInfo}; cleared when the associations are set anew. */
-	private final java.util.Map<Association, String> hoverTexts = new java.util.IdentityHashMap<>();
 
 	@Override
 	public void setHighlightSelection(boolean highlight) {
@@ -302,26 +226,7 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 
 	@Override
 	public void setAssociationInfos(Collection<AssociationInfo> associationInfos) {
-		this.hoverTexts.clear();
-		// remove listeners
-		for (Map.Entry<String, AssociationInfo> entry : this.associationInfos.entrySet()) {
-			entry.getValue().removePropertyChangeListener(associationListeners.get(entry.getKey()));
-		}
-
-		this.associationInfos.clear();
-		associationListeners.clear();
-		if (associationInfos != null) {
-			for (AssociationInfo ai : associationInfos) {
-				this.associationInfos.put(ai.getAssociation().getId(), ai);
-			}
-
-			// add listeners
-			for (AssociationInfo ai : this.associationInfos.values()) {
-				final PropertyChangeListener pcl = getColorPropertyListener();
-				ai.addPropertyChangeListener(pcl);
-				associationListeners.put(ai.getAssociation().getId(), pcl);
-			}
-		}
+		colors.set(associationInfos);
 
 		// re-color already-built file views from the new associationInfos instead of discarding
 		// them - a full re-parse (the (potentially expensive, py4j-backed) thing FileView's cache
@@ -332,42 +237,18 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 		}
 	}
 
-	/** Shared with {@link FileView#buildCodeLinesRec} (initial build) and
-	 * {@link FileView#refreshColors} (re-coloring already-built content) so both always agree on
-	 * what a token's background color should be for the current {@link #associationInfos}. */
-	private Color colorFor(Association ass) {
-		if (ass != null) {
-			AssociationInfo ai = associationInfos.get(ass.getId());
-			if (ai != null && Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
-				Object val = ai.getPropertyValue("color");
-				if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
-					return col;
-				}
-			}
-		}
-		return Color.WHITE;
-	}
-
-	private PropertyChangeListener getColorPropertyListener() {
-		return evt -> {
-			if (evt.getPropertyName().equals("color")) {
-				AssociationInfo ai = (AssociationInfo) evt.getSource();
-				if (!Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
-					return;
-				}
-				String aId = ai.getAssociation().getId();
-				for (FileView fv : fileViews.values()) {
-					for (NodeTextBlock[] blocks : fv.codeLines) {
-						for (NodeTextBlock ntb : blocks) {
-							if (ntb.getAssociation() != null && aId.equals(ntb.getAssociation().getId())) {
-								ntb.backgroundColor().set((Color) evt.getNewValue());
-							}
-						}
+	/** Colours the blocks of association [id] [color]: its colour changed. */
+	private void recolor(String id, Color color) {
+		for (FileView fv : fileViews.values()) {
+			for (NodeTextBlock[] blocks : fv.codeLines) {
+				for (NodeTextBlock ntb : blocks) {
+					if (ntb.getAssociation() != null && id.equals(ntb.getAssociation().getId())) {
+						ntb.backgroundColor().set(color);
 					}
-					fv.listView.refresh();
 				}
 			}
-		};
+			fv.listView.refresh();
+		}
 	}
 
 	/**
@@ -378,6 +259,8 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 	 */
 	private class FileView {
 
+		private final Path path;
+
 		private final ObservableList<NodeTextBlock[]> codeLines = FXCollections.observableArrayList();
 		private final ListView<NodeTextBlock[]> listView = createListView(codeLines);
 		/** Set on the FX thread only, built whole by a parse - two parses wrote one map from their threads. */
@@ -387,6 +270,10 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 		private final List<NodeTextBlock> currentlyHighlighted = new ArrayList<>();
 		private Node root;
 		private volatile boolean isTreeInitialized = false;
+
+		FileView(Path path) {
+			this.path = path;
+		}
 
 		/** The file to show once this view is shown - see {@link #showLater}. */
 		private Node pending;
@@ -464,12 +351,12 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 			}
 		}
 
-		/** Re-colors already-built blocks from the current {@link #associationInfos} without
+		/** Re-colors already-built blocks from the current {@link #colors} without
 		 * re-parsing - called by {@link #setAssociationInfos} instead of discarding this FileView. */
 		void refreshColors() {
 			for (NodeTextBlock[] blocks : codeLines) {
 				for (NodeTextBlock ntb : blocks) {
-					ntb.backgroundColor().set(colorFor(ntb.getAssociation()));
+					ntb.backgroundColor().set(colors.colorFor(ntb.getAssociation()));
 				}
 			}
 			listView.refresh();
@@ -535,11 +422,9 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 				}
 
 			} else if (d instanceof DefaultTokenArtifactData) {
-				Association ass = n.getArtifact().getContainingNode() != null
-						? n.getArtifact().getContainingNode().getContainingAssociation()
-						: null;
+				Association ass = AssociationColors.associationOf(n);
 
-				NodeTextBlock ntb = new NodeTextBlock(n, colorFor(ass));
+				NodeTextBlock ntb = new NodeTextBlock(n, colors.colorFor(ass));
 
 				line.add(ntb);
 				pos[1]++;

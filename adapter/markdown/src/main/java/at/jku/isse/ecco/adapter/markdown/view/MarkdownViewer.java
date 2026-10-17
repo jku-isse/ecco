@@ -14,6 +14,8 @@ import at.jku.isse.ecco.adapter.markdown.data.SectionArtifactData;
 import at.jku.isse.ecco.adapter.markdown.data.TableRowArtifactData;
 import at.jku.isse.ecco.adapter.markdown.data.ThematicBreakArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactData;
+import at.jku.isse.ecco.adapter.view.AssociationColors;
+import at.jku.isse.ecco.adapter.view.FileTabs;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
 import javafx.beans.property.BooleanProperty;
@@ -25,18 +27,14 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 
-import java.beans.PropertyChangeListener;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,8 +54,7 @@ import java.util.Map;
  */
 public class MarkdownViewer extends BorderPane implements AssociationInfoArtifactViewer {
 
-	private final Map<String, AssociationInfo> associationInfos = new HashMap<>();
-	private final Map<String, PropertyChangeListener> associationListeners = new HashMap<>();
+	private final AssociationColors colors = new AssociationColors(this::recolor);
 	private final Map<Path, FileView> fileViews = new LinkedHashMap<>();
 	private boolean highlightSelection = true;
 
@@ -67,15 +64,8 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 
 	@Override
 	public void showTree(Node node) {
-		Node treeRoot = node;
-		while (treeRoot.getParent() != null) {
-			treeRoot = treeRoot.getParent();
-		}
-
-		List<Node> fileNodes = new ArrayList<>();
-		collectFileNodes(treeRoot, fileNodes);
-
-		Node selectedFileNode = getPluginNode(node);
+		List<Node> fileNodes = FileTabs.files(node, getPluginId());
+		Node selectedFileNode = FileTabs.fileOf(node, getPluginId());
 
 		Map<Path, FileView> newFileViews = new LinkedHashMap<>();
 		FileView selectedFileView = null;
@@ -87,7 +77,7 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 
 			FileView fv = fileViews.get(fileName);
 			if (fv == null) {
-				fv = new FileView();
+				fv = new FileView(fileName);
 			}
 			newFileViews.put(fileName, fv);
 
@@ -104,45 +94,9 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 		fileViews.clear();
 		fileViews.putAll(newFileViews);
 
-		rebuildView(newFileViews, selectedFileView);
-	}
-
-	private void rebuildView(Map<Path, FileView> currentFileViews, FileView selectedFileView) {
-		if (currentFileViews.size() <= 1) {
-			ListView<MarkdownLineRow> listView = currentFileViews.isEmpty()
-					? createListView(FXCollections.observableArrayList())
-					: currentFileViews.values().iterator().next().shown().listView;
-			this.setCenter(listView);
-			return;
-		}
-
-		TabPane tabPane = new TabPane();
-		Tab tabToSelect = null;
-		for (Map.Entry<Path, FileView> entry : currentFileViews.entrySet()) {
-			FileView fv = entry.getValue();
-			Tab tab = new Tab(entry.getKey().toString(), fv.listView);
-			tab.setClosable(false);
-			tabPane.getTabs().add(tab);
-			if (fv == selectedFileView) {
-				tabToSelect = tab;
-			}
-		}
-		if (tabToSelect != null) {
-			tabPane.getSelectionModel().select(tabToSelect);
-		}
-		// the tabs were added in the order of the views
-		Map<Tab, FileView> viewOfTab = new HashMap<>();
-		List<FileView> views = new ArrayList<>(currentFileViews.values());
-		for (int i = 0; i < tabPane.getTabs().size(); i++)
-			viewOfTab.put(tabPane.getTabs().get(i), views.get(i));
-		FileView shownView = viewOfTab.get(tabPane.getSelectionModel().getSelectedItem());
-		if (shownView != null)
-			shownView.shown();
-		tabPane.getSelectionModel().selectedItemProperty().addListener((o, was, tab) -> {
-			if (tab != null && viewOfTab.containsKey(tab))
-				viewOfTab.get(tab).shown();
-		});
-		this.setCenter(tabPane);
+		// a view's lines are built once its tab is shown
+		this.setCenter(FileTabs.show(new ArrayList<>(newFileViews.values()), selectedFileView, fv -> fv.path.toString(),
+				fv -> fv.shown().listView, () -> createListView(FXCollections.observableArrayList())));
 	}
 
 	@Override
@@ -150,37 +104,15 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 		return MarkdownPlugin.class.getName();
 	}
 
-	private Node getPluginNode(Node n) {
-		while (n != null && !(n.getArtifact().getData() instanceof PluginArtifactData)) {
-			n = n.getParent();
-		}
-		return n;
-	}
-
-	private void collectFileNodes(Node n, List<Node> result) {
-		// composition root/container nodes have no artifact of their own
-		if (n.getArtifact() != null) {
-			ArtifactData d = n.getArtifact().getData();
-			if (d instanceof PluginArtifactData pad && getPluginId().equals(pad.getPluginId())) {
-				result.add(n);
-				// no file in a file: its lines were walked too, building every node of a lazy composition
-				return;
-			}
-		}
-		for (Node child : n.getChildren()) {
-			collectFileNodes(child, result);
-		}
-	}
-
 	/** Recursively collects one {@link MarkdownLineRow} per {@link LineArtifactData} leaf beneath
 	 * {@code node}, threading a {@link RenderContext} that accumulates style hints from each
 	 * container ancestor's {@code ArtifactData} type - mirrors {@code MarkdownTreeBuilder.translateBlock}'s
-	 * build-time dispatch, in reverse. Static (association lookup passed explicitly) so it's testable
+	 * build-time dispatch, in reverse. Static (association colours passed explicitly) so it's testable
 	 * without constructing a {@code MarkdownViewer} (a JavaFX {@code Control}) at all. */
-	static void collectLines(Node node, RenderContext context, Map<String, AssociationInfo> associationInfos, List<MarkdownLineRow> out) {
+	static void collectLines(Node node, RenderContext context, AssociationColors colors, List<MarkdownLineRow> out) {
 		if (node.getArtifact() == null) {
 			for (Node child : node.getChildren()) {
-				collectLines(child, context, associationInfos, out);
+				collectLines(child, context, colors, out);
 			}
 			return;
 		}
@@ -188,7 +120,7 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 		ArtifactData data = node.getArtifact().getData();
 
 		if (data instanceof LineArtifactData) {
-			out.add(new MarkdownLineRow(node, context, colorFor(node, associationInfos)));
+			out.add(new MarkdownLineRow(node, context, colors.colorFor(node)));
 			return;
 		}
 
@@ -203,7 +135,7 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 			for (Node child : node.getChildren()) {
 				boolean isLine = child.getArtifact() != null && child.getArtifact().getData() instanceof LineArtifactData;
 				inLeadingHeadingRun &= isLine;
-				collectLines(child, inLeadingHeadingRun ? headingContext : context, associationInfos, out);
+				collectLines(child, inLeadingHeadingRun ? headingContext : context, colors, out);
 			}
 			return;
 		}
@@ -221,7 +153,7 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 			childContext = context.withKind(LineKind.THEMATIC_BREAK);
 		}
 		for (Node child : node.getChildren()) {
-			collectLines(child, childContext, associationInfos, out);
+			collectLines(child, childContext, colors, out);
 		}
 	}
 
@@ -266,59 +198,19 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 	public void setAssociationInfos(Collection<AssociationInfo> associationInfos) {
 		fileViews.clear(); // rebuild all file views on next showTree()
 
-		for (Map.Entry<String, AssociationInfo> entry : this.associationInfos.entrySet()) {
-			entry.getValue().removePropertyChangeListener(associationListeners.get(entry.getKey()));
-		}
-		this.associationInfos.clear();
-		associationListeners.clear();
-		if (associationInfos == null) {
-			return;
-		}
-
-		for (AssociationInfo ai : associationInfos) {
-			this.associationInfos.put(ai.getAssociation().getId(), ai);
-		}
-		for (AssociationInfo ai : this.associationInfos.values()) {
-			PropertyChangeListener pcl = getColorPropertyListener();
-			ai.addPropertyChangeListener(pcl);
-			associationListeners.put(ai.getAssociation().getId(), pcl);
-		}
+		colors.set(associationInfos);
 	}
 
-	private PropertyChangeListener getColorPropertyListener() {
-		return evt -> {
-			if (!"color".equals(evt.getPropertyName())) return;
-			AssociationInfo ai = (AssociationInfo) evt.getSource();
-			if (!Boolean.TRUE.equals(ai.getPropertyValue("selected"))) return;
-			String aId = ai.getAssociation().getId();
-			for (FileView fv : fileViews.values()) {
-				for (MarkdownLineRow row : fv.lines) {
-					if (row.getAssociation() != null && aId.equals(row.getAssociation().getId())) {
-						row.backgroundColor().set((Color) evt.getNewValue());
-					}
-				}
-				fv.listView.refresh();
-			}
-		};
-	}
-
-	private static Color colorFor(Node lineNode, Map<String, AssociationInfo> associationInfos) {
-		Association association = containingAssociation(lineNode);
-		if (association != null) {
-			AssociationInfo ai = associationInfos.get(association.getId());
-			if (ai != null && Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
-				Object val = ai.getPropertyValue("color");
-				if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
-					return col;
+	/** Colours the lines of association [id] [color]: its colour changed. */
+	private void recolor(String id, Color color) {
+		for (FileView fv : fileViews.values()) {
+			for (MarkdownLineRow row : fv.lines) {
+				if (row.getAssociation() != null && id.equals(row.getAssociation().getId())) {
+					row.backgroundColor().set(color);
 				}
 			}
+			fv.listView.refresh();
 		}
-		return Color.WHITE;
-	}
-
-	private static Association containingAssociation(Node node) {
-		return node.getArtifact() != null && node.getArtifact().getContainingNode() != null
-				? node.getArtifact().getContainingNode().getContainingAssociation() : null;
 	}
 
 	enum LineKind {
@@ -360,8 +252,14 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 	 * file already seen in this session, doesn't rebuild from scratch. */
 	private class FileView {
 
+		private final Path path;
+
 		private final ObservableList<MarkdownLineRow> lines = FXCollections.observableArrayList();
 		private final ListView<MarkdownLineRow> listView = createListView(lines);
+
+		FileView(Path path) {
+			this.path = path;
+		}
 
 		/** The file to show once this view is shown - see {@link #showLater}. */
 		private Node pending;
@@ -381,7 +279,7 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 		void showFile(Node fileRoot, Node nodeToHighlight) {
 			this.pending = null;
 			List<MarkdownLineRow> collected = new ArrayList<>();
-			collectLines(fileRoot, RenderContext.ROOT, associationInfos, collected);
+			collectLines(fileRoot, RenderContext.ROOT, colors, collected);
 			lines.setAll(collected);
 			if (nodeToHighlight != null) {
 				highlight(nodeToHighlight);
@@ -414,7 +312,7 @@ public class MarkdownViewer extends BorderPane implements AssociationInfoArtifac
 
 		MarkdownLineRow(Node node, RenderContext context, Color initialColor) {
 			this.node = node;
-			this.association = containingAssociation(node);
+			this.association = AssociationColors.associationOf(node);
 			this.text = (node.getArtifact() != null && node.getArtifact().getData() instanceof LineArtifactData lineArtifactData)
 					? lineArtifactData.getLine() : String.valueOf(node.getArtifact());
 			this.context = context;

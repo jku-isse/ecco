@@ -334,15 +334,20 @@ public class TextViewerTest {
         assertEquals(List.of("b1", "b2", "(final newline)", "(format: UTF-8, LF)"), texts(cells(viewer)));
         Tab a = onFx(() -> tabs.getTabs().stream().filter(t -> t.getText().equals("a.txt")).findFirst().orElseThrow());
         Tab c = onFx(() -> tabs.getTabs().stream().filter(t -> t.getText().equals("c.txt")).findFirst().orElseThrow());
-        assertEquals(0, onFx(() -> ((ListView<?>) a.getContent()).getItems().size()), "a.txt not built yet");
-        assertEquals(0, onFx(() -> ((ListView<?>) c.getContent()).getItems().size()), "c.txt not built yet");
+        assertFalse(onFx(() -> built(a)), "a.txt not built yet");
+        assertFalse(onFx(() -> built(c)), "c.txt not built yet");
 
         onFx(() -> {
             tabs.getSelectionModel().select(c);
             return null;
         });
         assertEquals(List.of("c1", "(final newline)", "(format: UTF-8, LF)"), texts(cells(viewer)), "built when selected");
-        assertEquals(0, onFx(() -> ((ListView<?>) a.getContent()).getItems().size()), "a.txt still not");
+        assertFalse(onFx(() -> built(a)), "a.txt still not");
+    }
+
+    /** Whether [tab]'s rows were built: it has none, or no content at all, until it is first shown. */
+    private static boolean built(Tab tab) {
+        return tab.getContent() instanceof ListView<?> list && !list.getItems().isEmpty();
     }
 
     /**

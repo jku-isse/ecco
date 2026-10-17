@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.markdown.view;
 
+import at.jku.isse.ecco.adapter.view.AssociationColors;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.markdown.MarkdownReader;
 import at.jku.isse.ecco.adapter.markdown.view.MarkdownViewer.LineKind;
@@ -13,7 +14,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -45,7 +45,7 @@ public class MarkdownViewerTest {
 
 	private static List<MarkdownLineRow> collect(Node fileNode) {
 		List<MarkdownLineRow> rows = new ArrayList<>();
-		MarkdownViewer.collectLines(fileNode, RenderContext.ROOT, Collections.emptyMap(), rows);
+		MarkdownViewer.collectLines(fileNode, RenderContext.ROOT, new AssociationColors((id, color) -> {}), rows);
 		return rows;
 	}
 

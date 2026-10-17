@@ -85,8 +85,9 @@ public class LilypondCodeViewerTabsTest {
 		return file;
 	}
 
+	/** [tab]'s lines: none, or no content at all, until it is first shown. */
 	private static int lines(Tab tab) {
-		return ((ListView<?>) tab.getContent()).getItems().size();
+		return tab.getContent() instanceof ListView<?> list ? list.getItems().size() : 0;
 	}
 
 	@Test

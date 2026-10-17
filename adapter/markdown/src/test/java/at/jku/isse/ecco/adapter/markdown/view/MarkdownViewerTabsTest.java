@@ -58,8 +58,9 @@ public class MarkdownViewerTabsTest {
 		return result.get();
 	}
 
+	/** [tab]'s rows: none, or no content at all, until it is first shown. */
 	private static int rows(Tab tab) {
-		return ((ListView<?>) tab.getContent()).getItems().size();
+		return tab.getContent() instanceof ListView<?> list ? list.getItems().size() : 0;
 	}
 
 	@Test

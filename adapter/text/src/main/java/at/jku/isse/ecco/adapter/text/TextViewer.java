@@ -3,7 +3,8 @@ package at.jku.isse.ecco.adapter.text;
 import at.jku.isse.ecco.adapter.AssociationInfo;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.artifact.ArtifactData;
+import at.jku.isse.ecco.adapter.view.AssociationColors;
+import at.jku.isse.ecco.adapter.view.FileTabs;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
 import javafx.beans.property.BooleanProperty;
@@ -15,18 +16,14 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 
-import java.beans.PropertyChangeListener;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,8 +44,7 @@ import java.util.Map;
  */
 public class TextViewer extends BorderPane implements AssociationInfoArtifactViewer {
 
-	private final Map<String, AssociationInfo> associationInfos = new HashMap<>();
-	private final Map<String, PropertyChangeListener> associationListeners = new HashMap<>();
+	private final AssociationColors colors = new AssociationColors(this::recolor);
 	private final Map<Path, FileView> fileViews = new LinkedHashMap<>();
 	private boolean highlightSelection = true;
 
@@ -58,15 +54,8 @@ public class TextViewer extends BorderPane implements AssociationInfoArtifactVie
 
 	@Override
 	public void showTree(Node node) {
-		Node treeRoot = node;
-		while (treeRoot.getParent() != null) {
-			treeRoot = treeRoot.getParent();
-		}
-
-		List<Node> fileNodes = new ArrayList<>();
-		collectFileNodes(treeRoot, fileNodes);
-
-		Node selectedFileNode = getPluginNode(node);
+		List<Node> fileNodes = FileTabs.files(node, getPluginId());
+		Node selectedFileNode = FileTabs.fileOf(node, getPluginId());
 
 		Map<Path, FileView> newFileViews = new LinkedHashMap<>();
 		FileView selectedFileView = null;
@@ -78,7 +67,7 @@ public class TextViewer extends BorderPane implements AssociationInfoArtifactVie
 
 			FileView fv = fileViews.get(fileName);
 			if (fv == null) {
-				fv = new FileView();
+				fv = new FileView(fileName);
 			}
 			newFileViews.put(fileName, fv);
 
@@ -95,72 +84,14 @@ public class TextViewer extends BorderPane implements AssociationInfoArtifactVie
 		fileViews.clear();
 		fileViews.putAll(newFileViews);
 
-		rebuildView(newFileViews, selectedFileView);
-	}
-
-	private void rebuildView(Map<Path, FileView> currentFileViews, FileView selectedFileView) {
-		if (currentFileViews.size() <= 1) {
-			ListView<LineRow> listView = currentFileViews.isEmpty()
-					? createListView(FXCollections.observableArrayList())
-					: currentFileViews.values().iterator().next().shown().listView;
-			this.setCenter(listView);
-			return;
-		}
-
-		TabPane tabPane = new TabPane();
-		Tab tabToSelect = null;
-		for (Map.Entry<Path, FileView> entry : currentFileViews.entrySet()) {
-			FileView fv = entry.getValue();
-			Tab tab = new Tab(entry.getKey().toString(), fv.listView);
-			tab.setClosable(false);
-			tabPane.getTabs().add(tab);
-			if (fv == selectedFileView) {
-				tabToSelect = tab;
-			}
-		}
-		if (tabToSelect != null) {
-			tabPane.getSelectionModel().select(tabToSelect);
-		}
-		// the tabs were added in the order of the views
-		Map<Tab, FileView> viewOfTab = new HashMap<>();
-		List<FileView> views = new ArrayList<>(currentFileViews.values());
-		for (int i = 0; i < tabPane.getTabs().size(); i++)
-			viewOfTab.put(tabPane.getTabs().get(i), views.get(i));
-		FileView shownView = viewOfTab.get(tabPane.getSelectionModel().getSelectedItem());
-		if (shownView != null)
-			shownView.shown();
-		tabPane.getSelectionModel().selectedItemProperty().addListener((o, was, tab) -> {
-			if (tab != null && viewOfTab.containsKey(tab))
-				viewOfTab.get(tab).shown();
-		});
-		this.setCenter(tabPane);
+		// a view's lines are built once its tab is shown
+		this.setCenter(FileTabs.show(new ArrayList<>(newFileViews.values()), selectedFileView, fv -> fv.path.toString(),
+				fv -> fv.shown().listView, () -> createListView(FXCollections.observableArrayList())));
 	}
 
 	@Override
 	public String getPluginId() {
 		return TextPlugin.class.getName();
-	}
-
-	private Node getPluginNode(Node n) {
-		while (n != null && !(n.getArtifact().getData() instanceof PluginArtifactData)) {
-			n = n.getParent();
-		}
-		return n;
-	}
-
-	private void collectFileNodes(Node n, List<Node> result) {
-		// composition root/container nodes have no artifact of their own
-		if (n.getArtifact() != null) {
-			ArtifactData d = n.getArtifact().getData();
-			if (d instanceof PluginArtifactData pad && getPluginId().equals(pad.getPluginId())) {
-				result.add(n);
-				// no file in a file: its lines were walked too, building every node of a lazy composition
-				return;
-			}
-		}
-		for (Node child : n.getChildren()) {
-			collectFileNodes(child, result);
-		}
 	}
 
 	private ListView<LineRow> createListView(ObservableList<LineRow> lines) {
@@ -203,67 +134,33 @@ public class TextViewer extends BorderPane implements AssociationInfoArtifactVie
 	public void setAssociationInfos(Collection<AssociationInfo> associationInfos) {
 		fileViews.clear(); // rebuild all file views on next showTree()
 
-		for (Map.Entry<String, AssociationInfo> entry : this.associationInfos.entrySet()) {
-			entry.getValue().removePropertyChangeListener(associationListeners.get(entry.getKey()));
-		}
-		this.associationInfos.clear();
-		associationListeners.clear();
-		if (associationInfos == null) {
-			return;
-		}
-
-		for (AssociationInfo ai : associationInfos) {
-			this.associationInfos.put(ai.getAssociation().getId(), ai);
-		}
-		for (AssociationInfo ai : this.associationInfos.values()) {
-			PropertyChangeListener pcl = getColorPropertyListener();
-			ai.addPropertyChangeListener(pcl);
-			associationListeners.put(ai.getAssociation().getId(), pcl);
-		}
+		colors.set(associationInfos);
 	}
 
-	private PropertyChangeListener getColorPropertyListener() {
-		return evt -> {
-			if (!"color".equals(evt.getPropertyName())) return;
-			AssociationInfo ai = (AssociationInfo) evt.getSource();
-			if (!Boolean.TRUE.equals(ai.getPropertyValue("selected"))) return;
-			String aId = ai.getAssociation().getId();
-			for (FileView fv : fileViews.values()) {
-				for (LineRow row : fv.lines) {
-					if (row.getAssociation() != null && aId.equals(row.getAssociation().getId())) {
-						row.backgroundColor().set((Color) evt.getNewValue());
-					}
-				}
-				fv.listView.refresh();
-			}
-		};
-	}
-
-	private Color colorFor(Node lineNode) {
-		Association association = containingAssociation(lineNode);
-		if (association != null) {
-			AssociationInfo ai = associationInfos.get(association.getId());
-			if (ai != null && Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
-				Object val = ai.getPropertyValue("color");
-				if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
-					return col;
+	/** Colours the lines of association [id] [color]: its colour changed. */
+	private void recolor(String id, Color color) {
+		for (FileView fv : fileViews.values()) {
+			for (LineRow row : fv.lines) {
+				if (row.getAssociation() != null && id.equals(row.getAssociation().getId())) {
+					row.backgroundColor().set(color);
 				}
 			}
+			fv.listView.refresh();
 		}
-		return Color.WHITE;
-	}
-
-	private static Association containingAssociation(Node node) {
-		return node.getArtifact() != null && node.getArtifact().getContainingNode() != null
-				? node.getArtifact().getContainingNode().getContainingAssociation() : null;
 	}
 
 	/** Per-file rendering state: the built lines, kept per file so switching tabs, or re-showing a
 	 * file already seen in this session, doesn't rebuild from scratch. */
 	private class FileView {
 
+		private final Path path;
+
 		private final ObservableList<LineRow> lines = FXCollections.observableArrayList();
 		private final ListView<LineRow> listView = createListView(lines);
+
+		FileView(Path path) {
+			this.path = path;
+		}
 
 		/** The file to show once this view is shown - see {@link #showLater}. */
 		private Node pending;
@@ -284,7 +181,7 @@ public class TextViewer extends BorderPane implements AssociationInfoArtifactVie
 			this.pending = null;
 			lines.clear();
 			for (Node child : fileRoot.getChildren()) {
-				lines.add(new LineRow(child, colorFor(child)));
+				lines.add(new LineRow(child, colors.colorFor(child)));
 			}
 			if (nodeToHighlight != null) {
 				highlight(nodeToHighlight);
@@ -315,7 +212,7 @@ public class TextViewer extends BorderPane implements AssociationInfoArtifactVie
 
 		LineRow(Node node, Color initialColor) {
 			this.node = node;
-			this.association = containingAssociation(node);
+			this.association = AssociationColors.associationOf(node);
 			this.text = (node.getArtifact() != null && node.getArtifact().getData() instanceof LineArtifactData lineArtifactData)
 					? lineArtifactData.getLine() : String.valueOf(node.getArtifact());
 
