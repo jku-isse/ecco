@@ -1,5 +1,8 @@
 package at.jku.isse.ecco.gui.view.detail;
 
+import java.util.IdentityHashMap;
+import javafx.scene.control.CheckBox;
+import javafx.collections.transformation.FilteredList;
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
@@ -46,9 +49,9 @@ import java.util.stream.Collectors;
 /**
  * Lets the user reorder an ORDER-ambiguous node's children before committing -- the same Move
  * Up/Move Down + {@code ObservableList}-bound {@code TableView} pattern {@code CommitView}'s
- * folders table uses, reusing {@link ArtifactDiagnostics}'s per-child rendering (source line
- * numbers, etc.) for row labels so the list reads the same way the warnings table's diagnostic
- * already does.
+ * folders table uses, each row labelled with its child's text ({@link ArtifactDiagnostics#textOf})
+ * and its place in the file in the # column. For a large file only the rows that may move are
+ * shown, with three around each ("Undecided only"), and "Next undecided" goes to the next of them.
  *
  * <p>When the ambiguous node's plugin (Java/C/Lilypond as of writing) has a registered {@code
  * AssociationInfoArtifactViewer} -- the same per-adapter syntax-highlighting code viewer {@code
@@ -114,7 +117,6 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		// nothing about `node` is left mutated for as long as the dialog itself claims (only OK's
 		// result should ever cause a lasting change).
 		List<Node.Op> originalChildren = new ArrayList<>(children);
-		List<String> labels = ArtifactDiagnostics.describeChildrenWithLines(node);
 		// the code preview (if any) shows the selected row's source (below); its viewer also knows the
 		// source of artifacts that don't hold their text (Python, TypeScript) - shown and sent to the
 		// LLM instead of their labels (a Python statement's label is its serialized bytes)
@@ -133,7 +135,9 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 				continue;
 			}
 			String source = i < sourceTexts.size() && sourceTexts.get(i) != null && !sourceTexts.get(i).isBlank() ? oneLine(sourceTexts.get(i)) : null;
-			String label = source != null ? source : (labels.size() == children.size()) ? labels.get(i) : String.valueOf(children.get(i).getArtifact());
+			// the text alone: its place is in the # column; the line the adapter recorded is that of the
+			// variant it was committed with - two rows to order said "line 31" both
+			String label = source != null ? source : ArtifactDiagnostics.textOf(children.get(i));
 			String text = source != null ? source : ArtifactDiagnostics.textOf(children.get(i));
 			rowData.add(new ChildEntry(children.get(i), label, text));
 		}
@@ -164,9 +168,37 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 				? new ButtonType[]{ButtonType.OK, ButtonType.CANCEL}
 				: new ButtonType[]{ButtonType.CLOSE});
 
+		// which rows are fixed and where each is, worked out once per change - it was for every cell
+		// drawn, two graph searches each; and the rows shown: with "Undecided only" those that may
+		// move and three around each - for a file of thousands of lines the few to decide were to be
+		// found among them all
+		Map<ChildEntry, Boolean> fixedRows = new IdentityHashMap<>();
+		Map<ChildEntry, Integer> placeOf = new IdentityHashMap<>();
+		Set<ChildEntry> nearUndecided = Collections.newSetFromMap(new IdentityHashMap<>());
+		CheckBox undecidedOnly = new CheckBox("Undecided only (and " + SUGGESTION_CONTEXT_ROWS + " rows around)");
+		undecidedOnly.setSelected(rowData.size() > LARGE_FILE_ROWS);
+		FilteredList<ChildEntry> shownRows = new FilteredList<>(rowData);
+		Runnable refreshRows = () -> {
+			fixedRows.clear();
+			placeOf.clear();
+			nearUndecided.clear();
+			for (int i = 0; i < rowData.size(); i++) {
+				boolean fixed = isRowFixed(i, rowData, pogNodesByChild);
+				fixedRows.put(rowData.get(i), fixed);
+				placeOf.put(rowData.get(i), i);
+				if (!fixed)
+					for (int j = Math.max(0, i - SUGGESTION_CONTEXT_ROWS); j <= Math.min(rowData.size() - 1, i + SUGGESTION_CONTEXT_ROWS); j++)
+						nearUndecided.add(rowData.get(j));
+			}
+			shownRows.setPredicate(undecidedOnly.isSelected() ? row -> nearUndecided.contains(row) : null);
+		};
+		refreshRows.run();
+		rowData.addListener((javafx.collections.ListChangeListener<ChildEntry>) change -> refreshRows.run());
+		undecidedOnly.selectedProperty().addListener((o, was, only) -> refreshRows.run());
+
 		TableView<ChildEntry> table = new TableView<>();
 		table.setEditable(false);
-		table.setItems(rowData);
+		table.setItems(shownRows);
 		table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
 		table.setPrefWidth(420);
 		table.setPrefHeight(320);
@@ -177,7 +209,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			@Override
 			protected void updateItem(ChildEntry item, boolean empty) {
 				super.updateItem(item, empty);
-				boolean fixed = !empty && item != null && isRowFixed(getIndex(), rowData, pogNodesByChild);
+				boolean fixed = !empty && item != null && fixedRows.getOrDefault(item, false);
 				setStyle(fixed ? "-fx-opacity: 0.55;" : "");
 				setTooltip(fixed ? orderFixedTooltip : null);
 			}
@@ -200,8 +232,12 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 					setGraphic(null);
 					return;
 				}
-				setText(String.valueOf(getIndex() + 1));
-				setGraphic(isRowFixed(getIndex(), rowData, pogNodesByChild) ? lockIcon : null);
+				// its place in the file, also while only some rows are shown
+				ChildEntry row = getTableRow() != null ? getTableRow().getItem() : null;
+				if (row == null && getIndex() >= 0 && getIndex() < getTableView().getItems().size())
+					row = getTableView().getItems().get(getIndex());
+				setText(row == null ? null : String.valueOf(placeOf.getOrDefault(row, getIndex()) + 1));
+				setGraphic(row != null && fixedRows.getOrDefault(row, false) ? lockIcon : null);
 			}
 		});
 
@@ -243,7 +279,8 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		moveDownButton.setTooltip(moveDownTooltip);
 
 		Runnable updateButtonStates = () -> {
-			int idx = table.getSelectionModel().getSelectedIndex();
+			// its place among all rows: only some may be shown
+			int idx = rowData.indexOf(table.getSelectionModel().getSelectedItem());
 
 			boolean canMoveUp = idx > 0 && !swapBlocked(rowData.get(idx - 1), rowData.get(idx), pogNodesByChild);
 			moveUpButton.setDisable(!canMoveUp);
@@ -260,10 +297,11 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		});
 
 		moveUpButton.setOnAction(e -> {
-			int idx = table.getSelectionModel().getSelectedIndex();
+			ChildEntry moved = table.getSelectionModel().getSelectedItem();
+			int idx = rowData.indexOf(moved);
 			if (idx > 0 && !swapBlocked(rowData.get(idx - 1), rowData.get(idx), pogNodesByChild)) {
 				Collections.swap(rowData, idx, idx - 1);
-				table.getSelectionModel().select(idx - 1);
+				table.getSelectionModel().select(moved);
 				updateButtonStates.run();
 				// a swap can change whether a row further out is now fixed/movable (e.g. the row that
 				// used to be adjacent to whichever child just moved away) - not just the two swapped
@@ -276,10 +314,11 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			}
 		});
 		moveDownButton.setOnAction(e -> {
-			int idx = table.getSelectionModel().getSelectedIndex();
+			ChildEntry moved = table.getSelectionModel().getSelectedItem();
+			int idx = rowData.indexOf(moved);
 			if (idx >= 0 && idx < rowData.size() - 1 && !swapBlocked(rowData.get(idx), rowData.get(idx + 1), pogNodesByChild)) {
 				Collections.swap(rowData, idx, idx + 1);
-				table.getSelectionModel().select(idx + 1);
+				table.getSelectionModel().select(moved);
 				updateButtonStates.run();
 				table.refresh();
 				updateCodePreview.run();
@@ -304,6 +343,23 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 					updateCodePreview.run();
 				}));
 
+		// the next row that may move, after the one selected (and round)
+		Button nextUndecided = new Button("Next undecided", new FontIcon(Feather.CHEVRONS_DOWN));
+		nextUndecided.setTooltip(new Tooltip("Select the next row whose place is not fixed"));
+		nextUndecided.setOnAction(e -> {
+			int from = rowData.indexOf(table.getSelectionModel().getSelectedItem());
+			for (int step = 1; step <= rowData.size(); step++) {
+				ChildEntry row = rowData.get(Math.floorMod(from + step, rowData.size()));
+				if (!fixedRows.getOrDefault(row, false)) {
+					table.getSelectionModel().select(row);
+					table.scrollTo(row);
+					break;
+				}
+			}
+		});
+		HBox filterBar = new HBox(10, undecidedOnly, nextUndecided);
+		filterBar.setAlignment(Pos.CENTER_LEFT);
+
 		// the Move buttons are guaranteed permanently disabled when nothing's reorderable - pure
 		// clutter next to the banner below explaining exactly that, so they're left out of the layout
 		// entirely rather than shown disabled.
@@ -311,7 +367,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		if (anyReorderable) {
 			VBox buttons = new VBox(10, moveUpButton, moveDownButton);
 			buttons.setAlignment(Pos.TOP_CENTER);
-			VBox tableAndSuggestion = new VBox(8, table, suggestButton, suggestStatus);
+			VBox tableAndSuggestion = new VBox(8, filterBar, table, suggestButton, suggestStatus);
 			VBox.setVgrow(table, Priority.ALWAYS);
 			tableAndButtons = new HBox(10, tableAndSuggestion, buttons);
 			HBox.setHgrow(tableAndSuggestion, Priority.ALWAYS);
@@ -359,8 +415,10 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		setResultConverter(buttonType -> buttonType != ButtonType.OK ? null : withMarkers(rowData, markers));
 	}
 
-	/** Rows sent around the ones that may move, as context. */
+	/** Rows sent around the ones that may move, as context; shown around them with "Undecided only". */
 	private static final int SUGGESTION_CONTEXT_ROWS = 3;
+	/** Rows of a file above which "Undecided only" is on from the start. */
+	static final int LARGE_FILE_ROWS = 40;
 
 	/**
 	 * Asks [suggester] for an order of the window of rows around those that may move (with a few

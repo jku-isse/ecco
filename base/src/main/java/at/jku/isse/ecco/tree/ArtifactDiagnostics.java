@@ -69,6 +69,18 @@ public final class ArtifactDiagnostics {
 		return children;
 	}
 
+	/** The first source line of [node] the adapter recorded, or null if it recorded none. */
+	public static Integer lineStart(Node node) {
+		Optional<Integer> line = node.getProperty(LINE_START_PROPERTY);
+		return line.orElse(null);
+	}
+
+	/** The last source line of [node] the adapter recorded, or null if it recorded none. */
+	public static Integer lineEnd(Node node) {
+		Optional<Integer> line = node.getProperty(LINE_END_PROPERTY);
+		return line.orElse(null);
+	}
+
 	private static String describeChildWithLine(Node childNode) {
 		String text = textOf(childNode);
 		Optional<Integer> lineStart = childNode.getProperty(LINE_START_PROPERTY);
@@ -118,6 +130,64 @@ public final class ArtifactDiagnostics {
 	 */
 	public static String describeChildren(Node node) {
 		return String.join(", ", describeChildrenWithLines(node));
+	}
+
+	/**
+	 * The ORDER warnings of [orderWarnings] with a decision left (see {@link #describeUndecided}):
+	 * those whose order the graph's history fixes for the children present need no action - the
+	 * GUI left them out, the .warnings file and the command line counted them.
+	 */
+	public static List<Node> actionableOrderWarnings(java.util.Collection<? extends Node> orderWarnings) {
+		List<Node> actionable = new java.util.ArrayList<>();
+		for (Node node : orderWarnings) {
+			PartialOrderGraph graph = node.getArtifact() != null ? node.getArtifact().getPartialOrderGraph() : null;
+			if (graph == null || graph.hasUnresolvedOrder(node))
+				actionable.add(node);
+		}
+		return actionable;
+	}
+
+	/** Characters of a child's text in {@link #describeUndecided}. */
+	static final int UNDECIDED_TEXT = 40;
+
+	/**
+	 * Where the order of [node]'s children is undecided ({@link at.jku.isse.ecco.pog.OrderRegions#undecided}),
+	 * a range each, by its places among the children - lines, when every child is one line - and its
+	 * first and last text: "lines 12-14 (int a; … int b;)", "2-3 of 40 (X … Y)". All of the
+	 * children without an order graph. The warnings listed every child, the decided ones too. The
+	 * lines the adapter recorded are those of the variant a child was committed with, not of the file
+	 * checked out: in a file whose order is undecided they are not where the lines are.
+	 */
+	public static List<String> describeUndecided(Node node) {
+		List<? extends Node> children = node.getChildren();
+		PartialOrderGraph graph = node.getArtifact() != null ? node.getArtifact().getPartialOrderGraph() : null;
+		List<at.jku.isse.ecco.pog.OrderRegions.Range> ranges = graph != null
+				? at.jku.isse.ecco.pog.OrderRegions.undecided(graph, node)
+				: children.size() > 1 ? List.of(new at.jku.isse.ecco.pog.OrderRegions.Range(0, children.size() - 1)) : List.of();
+		// lines: every child with lines recorded is one (a text file's markers, last, have none)
+		boolean lines = false;
+		for (Node child : children) {
+			Integer start = lineStart(child);
+			if (start == null)
+				continue;
+			lines = start.equals(lineEnd(child));
+			if (!lines)
+				break;
+		}
+		List<String> described = new java.util.ArrayList<>();
+		for (at.jku.isse.ecco.pog.OrderRegions.Range range : ranges) {
+			Node first = children.get(range.from()), last = children.get(range.to());
+			String where = lines
+					? "lines " + (range.from() + 1) + "-" + (range.to() + 1)
+					: (range.from() + 1) + "-" + (range.to() + 1) + " of " + children.size();
+			described.add(where + " (" + shortText(first) + " \u2026 " + shortText(last) + ")");
+		}
+		return described;
+	}
+
+	private static String shortText(Node node) {
+		String text = textOf(node).replaceAll("\\s+", " ").trim();
+		return text.length() <= UNDECIDED_TEXT ? text : text.substring(0, UNDECIDED_TEXT - 1) + "\u2026";
 	}
 
 	/**

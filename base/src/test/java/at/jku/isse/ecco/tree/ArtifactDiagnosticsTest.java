@@ -190,4 +190,60 @@ public class ArtifactDiagnosticsTest {
 		assertTrue(suggestion.contains("no action needed"));
 	}
 
+
+	/**
+	 * The undecided ranges of a node's children are named by their lines (or places) and first and
+	 * last text; a warning without any is no action and left out - head -> X -> {Y, Z} -> tail with
+	 * the children X, Y, Z: Y and Z are undecided.
+	 */
+	@Test
+	public void describeUndecided_namesTheRangesAndActionableLeavesOutTheMootOnes() {
+		Artifact.Op<?> childX = new SerArtifact<>(new TestArtifactData("X"));
+		Artifact.Op<?> childY = new SerArtifact<>(new TestArtifactData("Y"));
+		Artifact.Op<?> childZ = new SerArtifact<>(new TestArtifactData("Z"));
+		SerPartialOrderGraph pog = new SerPartialOrderGraph();
+		pog.getHead().removeChild(pog.getTail());
+		SerPartialOrderGraphNode x = new SerPartialOrderGraphNode(childX), y = new SerPartialOrderGraphNode(childY), z = new SerPartialOrderGraphNode(childZ);
+		x.setSequenceNumber(1);
+		y.setSequenceNumber(2);
+		z.setSequenceNumber(3);
+		pog.getHead().addChild(x);
+		x.addChild(y);
+		x.addChild(z);
+		y.addChild(pog.getTail());
+		z.addChild(pog.getTail());
+
+		Artifact.Op<?> parentArtifact = new SerArtifact<>(new TestArtifactData("Parent"));
+		parentArtifact.setPartialOrderGraph(pog);
+		SerNode parent = new SerNode(parentArtifact);
+		for (Artifact.Op<?> child : java.util.List.of(childX, childY, childZ))
+			parent.addChild(new SerNode(child));
+		assertEquals(java.util.List.of("2-3 of 3 (Y \u2026 Z)"), ArtifactDiagnostics.describeUndecided(parent));
+
+		// every child one line: its place is its line in the file checked out (the lines recorded are
+		// those of the variant it was committed with)
+		for (int i = 0; i < 3; i++) {
+			((SerNode) parent.getChildren().get(i)).putProperty("LINE_START", 10 + 3 * i);
+			((SerNode) parent.getChildren().get(i)).putProperty("LINE_END", 10 + 3 * i);
+		}
+		assertEquals(java.util.List.of("lines 2-3 (Y \u2026 Z)"), ArtifactDiagnostics.describeUndecided(parent));
+		// one of several lines: places
+		((SerNode) parent.getChildren().get(2)).putProperty("LINE_END", 20);
+		assertEquals(java.util.List.of("2-3 of 3 (Y \u2026 Z)"), ArtifactDiagnostics.describeUndecided(parent));
+
+		// X, Y only: decided - no action, left out
+		SerNode decided = new SerNode(parentArtifact);
+		decided.addChild(new SerNode(childX));
+		decided.addChild(new SerNode(childY));
+		assertEquals(java.util.List.of(), ArtifactDiagnostics.describeUndecided(decided));
+		assertEquals(java.util.List.of(parent), ArtifactDiagnostics.actionableOrderWarnings(java.util.List.of(parent, decided)));
+
+		// without a graph all of it is undecided
+		SerNode noGraph = new SerNode(new SerArtifact<>(new TestArtifactData("P")));
+		noGraph.addChild(new SerNode(new SerArtifact<>(new TestArtifactData("A"))));
+		noGraph.addChild(new SerNode(new SerArtifact<>(new TestArtifactData("B"))));
+		assertEquals(java.util.List.of("1-2 of 2 (A \u2026 B)"), ArtifactDiagnostics.describeUndecided(noGraph));
+		assertEquals(java.util.List.of(noGraph), ArtifactDiagnostics.actionableOrderWarnings(java.util.List.of(noGraph)));
+	}
+
 }

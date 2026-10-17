@@ -47,7 +47,8 @@ public class CheckoutCommand implements Command {
         List<String> parts = new ArrayList<>();
         add(parts, checkout.getMissing().size(), "MISSING");
         add(parts, checkout.getSurplusModules().size(), "SURPLUS");
-        add(parts, checkout.getOrderWarnings().size(), "ORDER");
+        // with a decision left, as .warnings and the GUI list them
+        add(parts, at.jku.isse.ecco.tree.ArtifactDiagnostics.actionableOrderWarnings(checkout.getOrderWarnings()).size(), "ORDER");
         add(parts, checkout.getConflicts().size(), "CONFLICT");
         add(parts, checkout.getUnresolvedAssociations().size(), "UNRESOLVED");
         add(parts, checkout.getConstraintWarnings().size(), "CONSTRAINT");

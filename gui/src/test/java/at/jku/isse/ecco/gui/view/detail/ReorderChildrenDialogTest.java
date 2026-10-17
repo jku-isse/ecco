@@ -7,6 +7,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableRow;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.TableView;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -78,6 +80,45 @@ public class ReorderChildrenDialogTest {
             assertNull(onFx(() -> d.dialog.getResultConverter().call(ButtonType.CANCEL)));
             assertNull(onFx(() -> d.dialog.getResultConverter().call(ButtonType.CLOSE)));
             assertEquals(List.of("a", "c", "b"), texts(file.getChildren()), "the node itself is not reordered");
+        }
+    }
+
+    /**
+     * A large file shows the undecided rows only, with three rows around each - its places in the #
+     * column - "Next undecided" goes to them, and the rows move as before; unticked, all rows are
+     * there. Every row of the file was listed: for a file of thousands of lines, the few to decide
+     * were to be found among them.
+     */
+    @Test
+    @Timeout(60)
+    public void aLargeFileShowsTheUndecidedRowsOnly(@TempDir Path tmp) throws Exception {
+        StringBuilder before = new StringBuilder(), after = new StringBuilder();
+        for (int i = 1; i <= 30; i++)
+            before.append("l").append(i).append("\n");
+        for (int i = 31; i <= 60; i++)
+            after.append("l").append(i).append("\n");
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "BASE, A", Map.of("f.txt", before + "a\n" + after));
+            commit(service, tmp.resolve("v2"), "BASE, B", Map.of("f.txt", before + "c\n" + after));
+            Node.Op file = orderWarning(service, tmp.resolve("out"), "BASE, A, B");
+
+            Fixture d = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file)));
+            CheckBox undecidedOnly = onFx(() -> (CheckBox) find(d.dialog.getDialogPane().getContent(), n -> n instanceof CheckBox c && c.getText().startsWith("Undecided only")));
+            assertTrue(onFx(undecidedOnly::isSelected), "on for a large file");
+            List<String> shown = onFx(d::shownLabels);
+            assertEquals(List.of("l28", "l29", "l30", shown.get(3), shown.get(4), "l31", "l32", "l33"), shown);
+            assertEquals(java.util.Set.of("a", "c"), java.util.Set.of(shown.get(3), shown.get(4)));
+            assertEquals(List.of("28", "29", "30", "31", "32", "33", "34", "35"), onFx(d::shownPlaces), "the places in the file");
+
+            onFx(() -> d.select(0));
+            onFx(() -> button(d.dialog.getDialogPane().getContent(), "Next undecided").fire());
+            assertEquals(shown.get(3), onFx(d::selectedLabel));
+            onFx(() -> d.down.fire());
+            assertEquals(shown.get(3), onFx(() -> d.order().get(31)), "moved, filtered as it is");
+            assertEquals(shown.get(3), onFx(d::selectedLabel), "still selected");
+
+            onFx(() -> undecidedOnly.setSelected(false));
+            assertEquals(62, (int) onFx(() -> d.table.getItems().size()), "all rows");
         }
     }
 
@@ -368,6 +409,33 @@ public class ReorderChildrenDialogTest {
 
         int selected() {
             return table.getSelectionModel().getSelectedIndex();
+        }
+
+        String selectedLabel() {
+            int index = table.getSelectionModel().getSelectedIndex();
+            return String.valueOf(table.getColumns().get(1).getCellObservableValue(index).getValue());
+        }
+
+        /** The Child column of the rows shown. */
+        List<String> shownLabels() {
+            List<String> labels = new ArrayList<>();
+            for (int i = 0; i < table.getItems().size(); i++)
+                labels.add(String.valueOf(table.getColumns().get(1).getCellObservableValue(i).getValue()));
+            return labels;
+        }
+
+        /** The # column of the rows shown, as rendered. */
+        List<String> shownPlaces() {
+            dialog.getDialogPane().applyCss();
+            dialog.getDialogPane().resize(900, 600);
+            dialog.getDialogPane().layout();
+            java.util.TreeMap<Integer, String> places = new java.util.TreeMap<>();
+            for (javafx.scene.Node n : findAll(table, n -> n instanceof TableCell<?, ?> c && c.getTableColumn() == table.getColumns().get(0))) {
+                TableCell<?, ?> cell = (TableCell<?, ?>) n;
+                if (!cell.isEmpty() && cell.getIndex() >= 0 && cell.getIndex() < table.getItems().size())
+                    places.put(cell.getIndex(), cell.getText());
+            }
+            return new ArrayList<>(places.values());
         }
 
         List<String> order() {

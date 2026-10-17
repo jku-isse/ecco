@@ -206,19 +206,15 @@ public class CheckoutDetailView extends BorderPane {
 			// present in one composition - PartialOrderGraph#hasUnresolvedOrder narrows that down to
 			// whether THIS node's actually-present children still have a real decision left, so a
 			// warning that stems entirely from unrelated history doesn't show up here as if it did.
-			for (Node orderWarningNode : checkout.getOrderWarnings()) {
-				PartialOrderGraph graph = orderWarningNode.getArtifact() != null ? orderWarningNode.getArtifact().getPartialOrderGraph() : null;
-				if (graph != null && !graph.hasUnresolvedOrder(orderWarningNode)) {
-					continue;
-				}
+			for (Node orderWarningNode : ArtifactDiagnostics.actionableOrderWarnings(checkout.getOrderWarnings())) {
 				String suggestedConfigurationString = checkout.getConfiguration() != null
 						? ModuleRevisions.suggestedConfigurationString(null, checkout.getConfiguration())
 						: null;
-				// one child per line (with its source line number(s), when the adapter tracked one)
-				// instead of a comma-joined blob, so the wrapping cell reads as a real list.
-				String childrenMultiline = String.join(System.lineSeparator(), ArtifactDiagnostics.describeChildrenWithLines(orderWarningNode));
+				// where the order is undecided, a range per line - it listed every child, for a large
+				// file thousands of lines in one cell
+				String undecided = String.join(System.lineSeparator(), ArtifactDiagnostics.describeUndecided(orderWarningNode));
 				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("ORDER",
-						orderWarningNode.getArtifact() + " (current order):" + System.lineSeparator() + childrenMultiline,
+						orderWarningNode.getArtifact() + " (undecided):" + System.lineSeparator() + undecided,
 						ArtifactDiagnostics.describePath(orderWarningNode),
 						ArtifactDiagnostics.suggestOrderFix(orderWarningNode),
 						suggestedConfigurationString,
