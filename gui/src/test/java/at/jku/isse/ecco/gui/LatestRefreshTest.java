@@ -52,7 +52,9 @@ public class LatestRefreshTest {
             for (int i = 0; i < 20; i++)
                 refresh.request(); // e.g. twenty commits meanwhile
             release.countDown();
-            waitUntil("done", () -> !refresh.busy());
+            // the result reaches the FX thread after the refresh is no longer busy
+            waitUntil("applied", () -> !refresh.busy() && !applied.isEmpty());
+            Thread.sleep(200);
             onFx(() -> { });
             assertEquals(2, computed.get(), "the first, and one more for all asked meanwhile");
             assertEquals(List.of(2), applied, "the first was overtaken: only the latest is shown");
@@ -109,6 +111,7 @@ public class LatestRefreshTest {
             refresh.clear();
             release.countDown();
             waitUntil("done", () -> !refresh.busy());
+            Thread.sleep(200); // what it would post to the FX thread, posted
             onFx(() -> { });
             assertEquals(List.of(), applied);
         }
