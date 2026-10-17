@@ -65,6 +65,13 @@ public final class RecentRepositories {
 		store(trimmed);
 	}
 
+	/** Takes [repositoryDir] off the list - the repository stays as it is. */
+	public static void removeRecentRepository(Path repositoryDir) {
+		List<Path> paths = new ArrayList<>(getRecentRepositories());
+		paths.remove(repositoryDir);
+		store(paths);
+	}
+
 	private static void store(List<Path> paths) {
 		StringBuilder sb = new StringBuilder();
 		for (Path p : paths) {

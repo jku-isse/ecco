@@ -119,9 +119,9 @@ public class MainViewTest {
             });
 
             service.open();
+            waitUntil("opened: its status", () -> "Status".equals(header(view)));
             waitUntil("the open repository's buttons", () -> !ribbonButton(view, "Repositories", "Close Repository").isDisable());
             onFx(() -> assertRepositoryButtons(view, true));
-            assertEquals("Status", onFx(() -> header(view)), "opened: its status");
 
             onFx(() -> ribbonButton(view, "Repositories", "Close Repository").fire());
             assertFalse(service.isInitialized(), "Close closes the repository");
@@ -234,6 +234,26 @@ public class MainViewTest {
                 onFx(() -> { });
                 javax.swing.SwingUtilities.invokeAndWait(() -> { });
             }
+        }
+    }
+
+    /** Choosing the Repositories tab shows the recent repositories again - also with one open. */
+    @Test
+    @Timeout(120)
+    public void theRepositoriesTabShowsTheStartPage(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
+            MainView view = onFx(() -> new MainView(service));
+            onFx(() -> ribbonButton(view, "Explore", "Commits").fire());
+            assertEquals("Commits", onFx(() -> header(view)));
+            onFx(() -> {
+                TabLine tabs = tabLine(view);
+                tabs.getSelectionModel().select(tabs.getTabs().stream().filter(t -> t.getText().equals("Repositories")).findFirst().orElseThrow());
+            });
+            assertEquals("Start", onFx(() -> header(view)));
+            assertInstanceOf(StartView.class, onFx(() -> contentArea(view).getCenter()));
+            onFx(() -> { });
+            javax.swing.SwingUtilities.invokeAndWait(() -> { });
         }
     }
 

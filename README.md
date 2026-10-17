@@ -117,7 +117,7 @@ The command line distribution includes the same [artifact adapters](#artifact-ad
 
 ## Graphical User Interface
 
-The GUI (`./gradlew :ecco-gui:run`) starts with the repositories opened before, to open with a double-click, and organizes its functions in a ribbon:
+The GUI (`./gradlew :ecco-gui:run`) starts with the repositories opened before (also under the Repositories tab) - to open with a double-click, take off the list, or delete (the `.ecco` folder only) - and organizes its functions in a ribbon:
 
 * **Repositories**: create, open, fork (see [Distributed Operations](#distributed-operations)), and close repositories; the open repository's status, and its working folder in the file manager. The dialogs call the folder you work in the repository folder (its `.ecco` is added), what you commit a variant folder, and where a checkout writes a checkout folder - Help explains them.
 * **Versions**: commit a variant or several variant folders at once, and **import a Git history** commit by commit - with feature suggestions for each commit from an optional LLM (any OpenAI-compatible chat completions endpoint, e.g. a local Ollama; set up under Preferences); check out configurations, and manage named *variants*.

@@ -162,7 +162,8 @@ public class MainView extends BorderPane implements EccoListener {
 		// construction order/timing
 		SettingsView statusView = new SettingsView(eccoService);
 		// while no repository is open: the recent ones to open - the window was empty
-		this.startView = new StartView(eccoService, newAction.action(), openAction.action(), forkAction.action());
+		this.startView = new StartView(eccoService, newAction.action(), openAction.action(), forkAction.action(),
+				() -> this.switchTo("Status", statusView));
 		this.statusView = statusView;
 		FeaturesView featuresView = new FeaturesView(eccoService, minimizationResults);
 		RemotesView remotesView = new RemotesView(eccoService);
@@ -249,6 +250,14 @@ public class MainView extends BorderPane implements EccoListener {
 		this.tabSpecs = List.copyOf(tabSpecs);
 
 		RibbonBar ribbonBar = new RibbonBar(tabSpecs);
+		// back to the Repositories tab: the recent repositories again, to open another or tidy the list
+		ribbonBar.setOnTabSelected(label -> {
+			if (label.equals(repositoryTab.label())) {
+				this.startView.refresh();
+				this.switchTo("Start", this.startView);
+				this.contentArea.setDisable(false);
+			}
+		});
 		this.setTop(ribbonBar);
 
 		this.newButton = ribbonBar.getButton(newAction);

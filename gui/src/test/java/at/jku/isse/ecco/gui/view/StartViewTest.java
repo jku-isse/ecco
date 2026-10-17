@@ -110,6 +110,91 @@ public class StartViewTest {
         }
     }
 
+    /** Remove from List takes it off the list, and leaves the repository as it is. */
+    @Test
+    @Timeout(60)
+    public void removeFromListKeepsTheRepository(@TempDir Path tmp) throws Exception {
+        Path a = tmp.resolve("a"), b = tmp.resolve("b");
+        repository(a).close();
+        repository(b).close();
+        recentPrefs().put(RECENT_REPOS_KEY, a.resolve(".ecco") + "\n" + b.resolve(".ecco") + "\n");
+        try (EccoService service = new EccoService()) {
+            StartView view = onFx(() -> new StartView(service, () -> { }, () -> { }, () -> { }));
+            onFx(() -> {
+                list(view).getSelectionModel().select(a.resolve(".ecco"));
+                button(view, "Remove from List").fire();
+            });
+            assertEquals(List.of(b.resolve(".ecco")), onFx(() -> List.copyOf(list(view).getItems())));
+            assertEquals(List.of(b.resolve(".ecco")), RecentRepositories.getRecentRepositories(), "remembered so");
+            assertTrue(Files.isDirectory(a.resolve(".ecco")), "the repository is kept");
+        }
+    }
+
+    /**
+     * Delete Repository asks first; it deletes the repository - the .ecco folder - and keeps the files
+     * worked on; an open one is closed first.
+     */
+    @Test
+    @Timeout(60)
+    public void deleteRepositoryAsksAndDeletesOnlyTheRepository(@TempDir Path tmp) throws Exception {
+        Path work = tmp.resolve("work");
+        repository(work).close();
+        Files.writeString(work.resolve("mine.txt"), "mine\n");
+        recentPrefs().put(RECENT_REPOS_KEY, work.resolve(".ecco") + "\n");
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(work.resolve(".ecco"));
+            service.setBaseDir(work);
+            service.open();
+            List<Path> asked = new java.util.ArrayList<>();
+            boolean[] answer = {false};
+            StartView view = onFx(() -> new StartView(service, () -> { }, () -> { }, () -> { }) {
+                @Override
+                boolean confirmDelete(Path repositoryDir) {
+                    asked.add(repositoryDir);
+                    return answer[0];
+                }
+            });
+            onFx(() -> {
+                list(view).getSelectionModel().select(0);
+                button(view, "Delete Repository...").fire();
+            });
+            assertEquals(List.of(work.resolve(".ecco")), asked);
+            assertTrue(Files.isDirectory(work.resolve(".ecco")), "declined: nothing deleted");
+            assertTrue(service.isInitialized());
+
+            answer[0] = true;
+            onFx(() -> button(view, "Delete Repository...").fire());
+            waitUntil("deleted", () -> !Files.exists(work.resolve(".ecco")));
+            assertFalse(service.isInitialized(), "closed first");
+            assertTrue(Files.exists(work.resolve("mine.txt")), "the files worked on are kept");
+            assertEquals(List.of(), RecentRepositories.getRecentRepositories());
+            assertTrue(onFx(() -> list(view).getItems().isEmpty()));
+        }
+    }
+
+    /** With a repository open, opening another one closes it first; the open one is marked in the list. */
+    @Test
+    @Timeout(60)
+    public void openingAnotherOneSwitchesToIt(@TempDir Path tmp) throws Exception {
+        Path a = tmp.resolve("a"), b = tmp.resolve("b");
+        repository(a).close();
+        repository(b).close();
+        recentPrefs().put(RECENT_REPOS_KEY, a.resolve(".ecco") + "\n" + b.resolve(".ecco") + "\n");
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(a.resolve(".ecco"));
+            service.setBaseDir(a);
+            service.open();
+            StartView view = onFx(() -> new StartView(service, () -> { }, () -> { }, () -> { }));
+            assertEquals(a.resolve(".ecco"), onFx(view::openRepository), "marked as open");
+
+            onFx(() -> {
+                list(view).getSelectionModel().select(b.resolve(".ecco"));
+                view.openSelected();
+            });
+            waitUntil("switched", () -> service.isInitialized() && b.resolve(".ecco").equals(service.getRepositoryDir()));
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private static ListView<Path> list(StartView view) {
         return (ListView<Path>) find(view, n -> n instanceof ListView);

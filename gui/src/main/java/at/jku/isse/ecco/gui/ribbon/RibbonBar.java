@@ -31,6 +31,8 @@ import java.util.Map;
 public class RibbonBar extends VBox {
 
 	private final Map<RibbonAction, Button> buttonsByAction = new IdentityHashMap<>();
+	/** Told the label of a tab when it is chosen. */
+	private java.util.function.Consumer<String> onTabSelected = label -> { };
 
 	public RibbonBar(List<RibbonTabSpec> tabSpecs) {
 		this.getStyleClass().add("ribbon-bar");
@@ -53,6 +55,7 @@ public class RibbonBar extends VBox {
 		tabLine.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> {
 			if (newTab != null) {
 				bandArea.getChildren().setAll(bandsByTab.get(newTab));
+				this.onTabSelected.accept(newTab.getText());
 			}
 		});
 		// TabLine's selection model auto-selects the first tab the moment it's added to getTabs()
@@ -99,6 +102,11 @@ public class RibbonBar extends VBox {
 	 * The {@link Button} built for {@code action} - for callers (e.g. {@code MainView}'s
 	 * disabled-while-no-repository-is-open wiring) that need to reach it after construction.
 	 */
+	/** [listener] is told the label of each tab chosen from now on. */
+	public void setOnTabSelected(java.util.function.Consumer<String> listener) {
+		this.onTabSelected = listener;
+	}
+
 	public Button getButton(RibbonAction action) {
 		return buttonsByAction.get(action);
 	}
