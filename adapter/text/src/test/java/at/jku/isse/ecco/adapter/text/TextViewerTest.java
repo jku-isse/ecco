@@ -346,21 +346,25 @@ public class TextViewerTest {
     }
 
     /**
-     * Files are keyed by file name (TextViewer.java:76), so two files of the same name in different
-     * folders share one tab: only the last one is shown.
+     * Two files of the same name in different folders get a tab each, named by their paths - they
+     * shared one, only the last shown, and a line of the first was looked for in the other.
      */
     @Test
-    public void sameNamedFilesInDifferentFoldersShareOneTabCurrentBehaviour() throws Exception {
+    public void sameNamedFilesInDifferentFoldersGetATabEach() throws Exception {
         Map<String, String> files = new java.util.LinkedHashMap<>();
         files.put("x/a.txt", "from x\n");
         files.put("y/a.txt", "from y\n");
         List<Node.Op> fileNodes = association("A", files);
+        Node.Op fromX = fileNodes.stream().filter(f -> f.getArtifact().getData().toString().contains("x")).findFirst().orElseThrow();
         TextViewer viewer = onFx(() -> {
             TextViewer v = new TextViewer();
-            v.showTree(fileNodes.get(0).getChildren().get(0));
+            v.showTree(fromX.getChildren().get(0));
             return v;
         });
-        assertInstanceOf(ListView.class, viewer.getCenter(), "one file view for two files");
-        assertEquals("from y", texts(cells(viewer)).get(0));
+        TabPane tabs = assertInstanceOf(TabPane.class, viewer.getCenter(), "a tab each");
+        assertEquals(java.util.Set.of(Path.of("x", "a.txt").toString(), Path.of("y", "a.txt").toString()),
+                onFx(() -> tabs.getTabs().stream().map(Tab::getText).collect(java.util.stream.Collectors.toSet())));
+        assertEquals("from x", texts(cells(viewer)).get(0), "the file of the line shown");
+        assertEquals(Color.YELLOW.toString(), cells(viewer).get(0)[2], "and the line marked");
     }
 }

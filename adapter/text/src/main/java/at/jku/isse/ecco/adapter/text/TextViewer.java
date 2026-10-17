@@ -73,7 +73,8 @@ public class TextViewer extends BorderPane implements AssociationInfoArtifactVie
 
 		for (Node fileNode : fileNodes) {
 			PluginArtifactData pad = (PluginArtifactData) fileNode.getArtifact().getData();
-			Path fileName = pad.getFileName();
+			// by path: two files of one name in different folders shared a tab, only the last shown
+			Path fileName = pad.getPath();
 
 			FileView fv = fileViews.get(fileName);
 			if (fv == null) {

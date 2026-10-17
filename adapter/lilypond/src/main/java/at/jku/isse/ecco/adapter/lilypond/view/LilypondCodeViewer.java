@@ -173,7 +173,8 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 
 		for (Node fileNode : fileNodes) {
 			PluginArtifactData pad = (PluginArtifactData) fileNode.getArtifact().getData();
-			Path fileName = pad.getFileName();
+			// by path: two files of one name in different folders shared a tab, only the last shown
+			Path fileName = pad.getPath();
 
 			FileView fv = fileViews.get(fileName);
 			if (fv == null) {
@@ -372,7 +373,10 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 
 		private final ObservableList<NodeTextBlock[]> codeLines = FXCollections.observableArrayList();
 		private final ListView<NodeTextBlock[]> listView = createListView(codeLines);
-		private final Map<String, int[]> nodeIdIndexes = new HashMap<>();
+		/** Set on the FX thread only, built whole by a parse - two parses wrote one map from their threads. */
+		private Map<String, int[]> nodeIdIndexes = new HashMap<>();
+		/** The latest parse asked for: an earlier one finishing later is not shown. */
+		private long parses;
 		private final List<NodeTextBlock> currentlyHighlighted = new ArrayList<>();
 		private Node root;
 		private volatile boolean isTreeInitialized = false;
@@ -402,32 +406,41 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 				// content would cost as much as the re-parse this cache exists to avoid.
 				isTreeInitialized = false;
 			}
+			boolean otherTree = fileRoot != this.root;
 			this.root = fileRoot;
 
 			if (!isTreeInitialized) {
-				nodeIdIndexes.clear();
-				nodeIdIndexes.put("0", new int[]{0, 0});
-
+				// the lines of another tree are not shown while this one is parsed
+				if (otherTree)
+					codeLines.clear();
+				long parse = ++this.parses;
+				// parsed from this root, into maps of its own - the task read the field, which a
+				// later showFile changed, and wrote the shared map while the FX thread read it
+				Node parsedRoot = fileRoot;
 				Task<Void> buildTask = new Task<>() {
 					@Override
 					protected Void call() {
+						Map<String, int[]> indexes = new HashMap<>();
+						indexes.put("0", new int[]{0, 0});
 						final ArrayList<NodeTextBlock[]> lines = new ArrayList<>();
 						ArrayList<NodeTextBlock> line = new ArrayList<>();
 						int[] pos = new int[]{0, 0};
 						int idx = 0;
-						for (Node cn : root.getChildren()) {
+						for (Node cn : parsedRoot.getChildren()) {
 							String id = "0.".concat(String.valueOf(idx));
-							nodeIdIndexes.put(id, new int[]{pos[0], pos[1]});
-							line = buildCodeLinesRec(cn, id, pos, lines, line);
+							indexes.put(id, new int[]{pos[0], pos[1]});
+							line = buildCodeLinesRec(cn, id, pos, lines, line, indexes);
 							idx++;
 						}
 						NodeTextBlock[] lastLine = new NodeTextBlock[line.size()];
 						lines.add(line.toArray(lastLine));
 
-						isTreeInitialized = true;
 						Platform.runLater(() -> {
-							codeLines.clear();
-							codeLines.addAll(lines);
+							if (parse != FileView.this.parses)
+								return; // a later parse was asked for
+							nodeIdIndexes = indexes;
+							isTreeInitialized = true;
+							codeLines.setAll(lines);
 							if (nodeToHighlight != null) {
 								highlightTree(nodeToHighlight);
 							}
@@ -435,7 +448,9 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 						return null;
 					}
 				};
-				new Thread(buildTask).start();
+				Thread thread = new Thread(buildTask, "lilypond-view-parse");
+				thread.setDaemon(true); // it kept the application running after Quit
+				thread.start();
 
 			} else if (nodeToHighlight != null) {
 				highlightTree(nodeToHighlight);
@@ -501,14 +516,15 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 			return sb.toString();
 		}
 
-		private ArrayList<NodeTextBlock> buildCodeLinesRec(Node n, String nodeId, int[] pos, Collection<NodeTextBlock[]> lines, ArrayList<NodeTextBlock> line) {
+		private ArrayList<NodeTextBlock> buildCodeLinesRec(Node n, String nodeId, int[] pos, Collection<NodeTextBlock[]> lines, ArrayList<NodeTextBlock> line,
+														  Map<String, int[]> nodeIdIndexes) {
 			ArtifactData d = n.getArtifact().getData();
 			if (d instanceof BaseContextArtifactData) {
 				List<? extends Node> children = n.getChildren();
 				for (int i = 0; i < children.size(); i++) {
 					String id = nodeId.concat(".").concat(String.valueOf(i));
 					nodeIdIndexes.put(id, new int[]{pos[0], pos[1]});
-					line = buildCodeLinesRec(children.get(i), id, pos, lines, line);
+					line = buildCodeLinesRec(children.get(i), id, pos, lines, line, nodeIdIndexes);
 				}
 
 			} else if (d instanceof DefaultTokenArtifactData) {
