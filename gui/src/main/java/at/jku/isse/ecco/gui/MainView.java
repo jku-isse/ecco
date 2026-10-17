@@ -161,6 +161,9 @@ public class MainView extends BorderPane implements EccoListener {
 		// visible changed (ribbon-driven swap instead of a tab click or dropdown menu), not
 		// construction order/timing
 		SettingsView statusView = new SettingsView(eccoService);
+		// while no repository is open: the recent ones to open - the window was empty
+		this.startView = new StartView(eccoService, newAction.action(), openAction.action(), forkAction.action());
+		this.statusView = statusView;
 		FeaturesView featuresView = new FeaturesView(eccoService, minimizationResults);
 		RemotesView remotesView = new RemotesView(eccoService);
 		CommitsView commitsView = new CommitsView(eccoService);
@@ -190,7 +193,12 @@ public class MainView extends BorderPane implements EccoListener {
 		// "Content" actions - swap the shared content area to a pre-built view via switchTo.
 		// it could not be reached again once another view was shown
 		RibbonAction statusAction = new RibbonAction("Status", Feather.INFO,
-				() -> this.switchTo("Status", statusView), false, "Which repository is open, and its folders");
+				() -> {
+					if (eccoService.isInitialized())
+						this.switchTo("Status", statusView);
+					else // nothing open: the recent repositories to open
+						this.switchTo("Start", this.startView);
+				}, false, "Which repository is open, and its folders - or, with none, the recent ones");
 		RibbonAction variantsAction = new RibbonAction("Variants", Feather.LAYERS,
 				() -> this.switchTo("Variants", variantsView), true, "The saved variants: configurations to check out by name");
 		RibbonAction remotesAction = new RibbonAction("Remotes", Feather.SERVER,
@@ -373,7 +381,11 @@ public class MainView extends BorderPane implements EccoListener {
 
 		this.eccoService.addListener(this);
 
-		this.switchTo("Status", statusView);
+		if (eccoService.isInitialized())
+			this.switchTo("Status", statusView);
+		else
+			this.switchTo("Start", this.startView);
+		this.wasInitialized = eccoService.isInitialized();
 		this.updateView();
 	}
 
@@ -538,8 +550,21 @@ public class MainView extends BorderPane implements EccoListener {
 		for (Button button : this.requiresOpenRepository) {
 			button.setDisable(!initialized);
 		}
-		this.contentArea.setDisable(!initialized);
+		// opened: its status; closed: the start page again
+		if (initialized && !this.wasInitialized && this.currentContentView == this.startView)
+			this.switchTo("Status", this.statusView);
+		else if (!initialized && this.wasInitialized) {
+			this.startView.refresh();
+			this.switchTo("Start", this.startView);
+		}
+		this.wasInitialized = initialized;
+		this.contentArea.setDisable(!initialized && this.currentContentView != this.startView);
 	}
+
+	private StartView startView;
+	private SettingsView statusView;
+	/** Whether a repository was open at the last update - opening and closing one switch the view. */
+	private boolean wasInitialized;
 
 
 	@Override

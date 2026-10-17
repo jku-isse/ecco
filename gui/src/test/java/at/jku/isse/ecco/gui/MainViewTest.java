@@ -100,7 +100,8 @@ public class MainViewTest {
             assertEquals(open, ribbonButton(view, "Repositories", label).isDisable(), label + " is only usable without an open repository");
         for (String[] button : NEEDS_REPOSITORY)
             assertEquals(!open, ribbonButton(view, button[0], button[1]).isDisable(), button[1] + " needs an open repository");
-        assertEquals(!open, contentArea(view).isDisable(), "the content area needs an open repository");
+        // the start page works without one; the other views need one
+        assertEquals(!open && !(contentArea(view).getCenter() instanceof StartView), contentArea(view).isDisable(), "the content area needs an open repository");
     }
 
     /** Without an open repository only New/Open/Fork are usable; opening and closing it flips that. */
@@ -110,19 +111,23 @@ public class MainViewTest {
         try (EccoService service = closedRepository(tmp)) {
             MainView view = onFx(() -> new MainView(service));
             onFx(() -> {
-                assertEquals("Status", header(view));
-                assertInstanceOf(SettingsView.class, contentArea(view).getCenter());
+                // no repository open: the recent ones to open - the window was empty
+                assertEquals("Start", header(view));
+                assertInstanceOf(StartView.class, contentArea(view).getCenter());
+                assertFalse(contentArea(view).isDisable());
                 assertRepositoryButtons(view, false);
             });
 
             service.open();
             waitUntil("the open repository's buttons", () -> !ribbonButton(view, "Repositories", "Close Repository").isDisable());
             onFx(() -> assertRepositoryButtons(view, true));
+            assertEquals("Status", onFx(() -> header(view)), "opened: its status");
 
             onFx(() -> ribbonButton(view, "Repositories", "Close Repository").fire());
             assertFalse(service.isInitialized(), "Close closes the repository");
             waitUntil("the closed repository's buttons", () -> ribbonButton(view, "Repositories", "Close Repository").isDisable());
             onFx(() -> assertRepositoryButtons(view, false));
+            assertEquals("Start", onFx(() -> header(view)), "closed: the start page again");
         }
     }
 
