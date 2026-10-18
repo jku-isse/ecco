@@ -70,6 +70,53 @@ python3 score.py results/vite120-qwen2.5-coder-32b-files.jsonl results/mine.json
 - On a server that holds one model at a time, keep other models off it. Each swap reloads the
   model, which took 15–45 s per request instead of 1–2 s.
 
+## Product lines: precision and recall
+
+The Vite truth has one feature per commit, and its scopes are the project's own words. A product
+line gives a truth with sets of features, and whose code is known exactly (Nguyen et al., 2026,
+"Investigating LLMs for Feature Presence Prediction in Software Products", used the same ones).
+
+- `spl_history.py` composes a FeatureHouse product line from SPL2go
+  (<https://spl2go.cs.ovgu.de>, e.g. `data/Elevator_Java.zip`) into a git history: the base
+  feature first, then one feature per commit and every third commit two, then two features
+  removed and added back. Messages are "Change N", so the model judges from the diff. The truth
+  goes to `<clone>.truth.json`. FeatureHouse is the jar of the paper's replication package
+  (<https://github.com/gunguyen/LLM_as_code_query_engines-Variability26>, `feature_house/`).
+- `replay.py --truth <clone>.truth.json` asks every commit but the first, which is BASE as in the
+  import. The known features are the true ones (oracle: a reviewer who always corrects the
+  suggestion); with `--online` they are the model's own earlier names, as in an unattended import.
+- `score_sets.py` gives precision and recall apart, recall of features known and new, made-up
+  names (a new name for no feature the commit adds), "misc"/"documentation" (always wrong here)
+  and removals.
+
+```sh
+python3 spl_history.py --features ElevatorPL/features --order ElevatorPL/allFeatures.exp \
+    --jar FeatureHouse-2011-03-15.jar --out /tmp/spl/elevator
+python3 spl_history.py --features CC_GPL-FH-Java/features --order CC_GPL-FH-Java/configs/Test3.config \
+    --reverse --jar FeatureHouse-2011-03-15.jar --out /tmp/spl/gpl
+python3 replay.py --repo /tmp/spl/elevator --truth /tmp/spl/elevator.truth.json --evidence \
+    --model gemma4:31b --out results/spl-elevator-gemma4-31b-oracle.jsonl
+python3 score_sets.py results/spl-*.jsonl
+```
+
+The truth is strict: a feature counts for the commit that adds or removes its directory. Code
+that only interacts with it changes too - FeatureHouse refines methods of features already there,
+and Elevator's `weight` directory holds the specifications of `overloaded` and `twothirdsfull` -
+so a known feature named for such code counts as wrong, though its name is in the diff.
+
+Results (October 2026, prompt of abbc980f, `--evidence` without `--ecco`, oracle; histories with
+the defaults above, Elevator, Email and MinePump from `allFeatures.exp`, GPL from `Test3.config`):
+
+| Model | Commits | Precision | Recall | Recall known / new | Made up | misc/doc | Empty answers |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| gemma4:31b | 40 | 0.36 | 0.76 | 7/8 / 22/30 | 2 | 5 | 0 |
+| gpt-oss:20b | 40 | 0.82 | 0.71 | 5/8 / 22/30 | 0 | 2 | 5 |
+
+gemma4 names nearly every known feature whose identifiers the diff touches (adding `autoresponder`
+to Email: `autoresponder, encrypt, sign, addressbook, decrypt, verify`); gpt-oss names few, and
+answered nothing five times, so a known feature added back was missed. Per history:
+`python3 score_sets.py results/spl-*.jsonl`.
+
 ## Results (Vite, October 2026)
 
 | Run | Commits | Seen: exact / extra / other known / made-up | New: new name / forced |

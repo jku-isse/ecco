@@ -99,6 +99,18 @@ def user_content(sha, message, diff_text, known, feature_files, changed, with_fi
     return text + f'\n\nCommit:\nid: {sha[:7]}\nsummary: {message}\nchange:\n{diff_text}'
 
 
+BASE = 'BASE'  # LlmFeatureSuggestionClient.BASE
+EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'  # git's, to diff a first commit against
+
+
+def predicted_names(prediction):
+    """The features a suggestion adds, without new-revision marks; not its removals ("-name") or a failed answer."""
+    if not isinstance(prediction, str) or prediction.startswith('<'):
+        return []
+    names = [t.strip().rstrip("'").strip() for t in prediction.split(',')]
+    return [n for n in names if n and not n.startswith('-') and n != BASE]
+
+
 def ask(endpoint, model, system, user):
     body = {'model': model, 'stream': False, 'temperature': 0, 'response_format': {'type': 'json_object'},
             'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]}
@@ -130,6 +142,10 @@ def main():
     p.add_argument('--baseline-ref', help='with --baseline-out: the prompt as it is in this git commit of the code (e.g. HEAD), not the working tree')
     p.add_argument('--ignore-scope', action='append', default=['deps'])
     p.add_argument('--alias', action='append', default=[], help='OLD=NEW: a scope spelled two ways (Vite: bundledDev=bundled-dev)')
+    p.add_argument('--truth', help="the ground truth of spl_history.py (<clone>.truth.json): every commit of it, the first as the import's BASE; "
+                                   'removals are "-name" - in place of conventional commit scopes')
+    p.add_argument('--online', action='store_true', help="with --truth: the known features are the model's own earlier names, as in an import, "
+                                                          'not the true ones; score_sets.py matches them to the true features')
     args = p.parse_args()
 
     system = system_prompt()
@@ -142,13 +158,26 @@ def main():
                 raise SystemExit(f'{edit_file}: not in the prompt: {edit["old"][:60]}...')
             system = system.replace(edit['old'], edit['new'])
 
-    commits = scoped_commits(args.repo, args.commits, set(args.ignore_scope), dict(a.split('=', 1) for a in args.alias))
+    if args.truth:
+        steps = json.loads(Path(args.truth).read_text())
+        commits = [(s['sha'], s['added'] + ['-' + r for r in s['removed']], git(args.repo, 'log', '-1', '--format=%s', s['sha']).strip())
+                   for s in steps]
+    else:
+        commits = scoped_commits(args.repo, args.commits, set(args.ignore_scope), dict(a.split('=', 1) for a in args.alias))
     adapter_positions = ev.ecco_positions(args.ecco, args.repo, [c[0] for c in commits]) if args.ecco else None
     known, feature_files, traces = [], {}, ev.Traces()
     runs = [('variant', system, open(args.out, 'w'))]
     if args.baseline_out:
         runs.append(('baseline', baseline, open(args.baseline_out, 'w')))
-    for sha, truth, message in commits:
+    for index, (sha, truth, message) in enumerate(commits):
+        if args.truth and index == 0:
+            # the import's first commit: BASE, the model is not asked (ImportGitView.processNextCommit)
+            known.append(BASE)
+            feature_files[BASE] = set(changed_files(args.repo, sha))
+            traces.add([BASE], ev.commit_evidence(args.repo, [EMPTY_TREE, sha]))
+            for _, _, out in runs:
+                out.write(json.dumps(dict(commit=sha[:7], message=message, base=truth[0], truth=[BASE])) + '\n')
+            continue
         diff_text, diff_lines = diff(args.repo, sha)
         changed = changed_files(args.repo, sha)
         evidence = ev.commit_evidence(args.repo, [sha + '^', sha])
@@ -164,17 +193,22 @@ def main():
                 prediction, usage, seconds = ask(args.endpoint, args.model, prompt, user)
             except Exception as e:  # noqa: BLE001 - recorded, the replay goes on
                 prediction, usage, seconds = f'<error> {e}', {}, 0
+            if name == 'variant':
+                last_prediction = prediction
             record = dict(commit=sha[:7], message=message, truth=truth, seen=[t for t in truth if t in known],
-                          known=len(known), prediction=prediction, diffLines=diff_lines,
+                          known=len(known), knownNames=list(known), mode='online' if args.online else 'oracle', prediction=prediction, diffLines=diff_lines,
                           promptTokens=usage.get('prompt_tokens'), seconds=round(seconds, 1))
             out.write(json.dumps(record) + '\n')
             out.flush()
             print(f"{name:8} {sha[:7]} {','.join(truth):15} {'seen' if record['seen'] else 'NEW '} -> {prediction}  ({seconds:.1f} s)", flush=True)
-        for t in truth:
+        # what the import learns from the commit: the true features (a reviewer who always corrects
+        # the suggestion), or with --online the suggested ones of the first run (one left unreviewed)
+        learned = [t for t in truth if not t.startswith('-')] if not args.online else predicted_names(last_prediction)
+        for t in learned:
             if t not in known:
                 known.append(t)
             feature_files.setdefault(t, set()).update(changed)
-        traces.add(truth, evidence)
+        traces.add(learned, evidence)
     for _, _, out in runs:
         out.close()
 
