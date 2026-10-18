@@ -104,18 +104,27 @@ that only interacts with it changes too - FeatureHouse refines methods of featur
 and Elevator's `weight` directory holds the specifications of `overloaded` and `twothirdsfull` -
 so a known feature named for such code counts as wrong, though its name is in the diff.
 
-Results (October 2026, prompt of abbc980f, `--evidence` without `--ecco`, oracle; histories with
-the defaults above, Elevator, Email and MinePump from `allFeatures.exp`, GPL from `Test3.config`):
+Results (October 2026, prompt of abbc980f, `--evidence` without `--ecco`; histories with the
+defaults above, Elevator, Email and MinePump from `allFeatures.exp`, GPL from `Test3.config`):
 
-| Model | Commits | Precision | Recall | Recall known / new | Made up | misc/doc | Empty answers |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| gemma4:31b | 40 | 0.36 | 0.76 | 7/8 / 22/30 | 2 | 5 | 0 |
-| gpt-oss:20b | 40 | 0.82 | 0.71 | 5/8 / 22/30 | 0 | 2 | 5 |
+| Model | Mode | Commits | Precision | Recall | Recall known / new | Made up | misc/doc | Removals P / R | Empty answers | Server errors |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| gemma4:31b | oracle | 40 | 0.36 | 0.76 | 7/8 / 22/30 | 2 | 5 | 0.78 / 0.88 | 0 | 0 |
+| gemma4:31b | online | 40 | 0.35 | 0.76 | 6/7 / 23/31 | 3 | 6 | 0.78 / 0.88 | 0 | 1 |
+| gpt-oss:20b | oracle | 40 | 0.82 | 0.71 | 5/8 / 22/30 | 0 | 2 | 0.67 / 0.75 | 5 | 0 |
+| gpt-oss:20b | online | 40 | 0.81 | 0.68 | 2/7 / 24/31 | 2 | 1 | 0.56 / 0.62 | 5 | 3 |
 
 gemma4 names nearly every known feature whose identifiers the diff touches (adding `autoresponder`
 to Email: `autoresponder, encrypt, sign, addressbook, decrypt, verify`); gpt-oss names few, and
 answered nothing five times, so a known feature added back was missed. Per history:
 `python3 score_sets.py results/spl-*.jsonl`.
+
+Online, with the model's own names as the known features, both keep their precision and recall:
+the names it chose stand in for the true ones about as well. What differs is a feature that comes
+back: gemma4 reuses its earlier name (6 of 7), gpt-oss mostly gives it a new one (2 of 7; MinePump's
+`low-water-monitoring` returns as `low-water-level`, Elevator's `weight-based-leave` as
+`empty-elevator`), so an import would get a second feature for it. The server errors are timeouts
+and one HTTP 500 of the shared server, not answers.
 
 ## Results (Vite, October 2026)
 
