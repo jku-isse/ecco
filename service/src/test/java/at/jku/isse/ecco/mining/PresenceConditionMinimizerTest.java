@@ -9,7 +9,10 @@ import org.logicng.formulas.FormulaFactory;
 import org.logicng.solvers.MiniSat;
 import org.logicng.solvers.SATSolver;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -124,5 +127,25 @@ public class PresenceConditionMinimizerTest {
         Formula disagreement = f.and(featureModel, f.not(f.equivalence(original, result)));
         assertFalse(satisfiable(disagreement),
                 "minimized formula must agree with the original wherever the feature model holds");
+    }
+
+    /**
+     * Absorbing by looking up subsets keeps the same terms, in the same order, as comparing every two:
+     * random terms of up to three literals, with repeats, negations and the empty term among them.
+     */
+    @Test
+    public void absorbBySubsetsKeepsWhatComparingPairsKeeps() {
+        Random random = new Random(42);
+        List<String> names = List.of("A", "B", "C", "D", "E", "F");
+        for (int round = 0; round < 200; round++) {
+            List<PresenceConditionMinimizer.Term> terms = new ArrayList<>();
+            for (int i = random.nextInt(40); i >= 0; i--) {
+                Set<String> positive = new HashSet<>(), negative = new HashSet<>();
+                for (int literal = random.nextInt(4); literal > 0; literal--)
+                    (random.nextBoolean() ? positive : negative).add(names.get(random.nextInt(names.size())));
+                terms.add(new PresenceConditionMinimizer.Term(positive, negative));
+            }
+            assertEquals(PresenceConditionMinimizer.absorbPairwise(terms), PresenceConditionMinimizer.absorbBySubsets(terms), terms.toString());
+        }
     }
 }

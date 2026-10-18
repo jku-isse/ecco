@@ -423,6 +423,13 @@ public final class LlmFeatureSuggestionClient {
 	public static final String BASE = "BASE";
 
 	/**
+	 * The features the prompt has for changes that serve no feature at all. They keep one revision:
+	 * with a new one per touch, a zip4j import of its tags revised "misc" in 37 of 40 commits, which
+	 * says nothing about where code came from and multiplied the counters.
+	 */
+	public static final java.util.Set<String> GENERIC = java.util.Set.of("misc", "documentation");
+
+	/**
 	 * The parents a reply named that make sense: for each feature {@code configuration} adds that
 	 * is not known, a known feature, {@link #BASE}, or another new feature of the configuration -
 	 * never itself. Package-visible for testing.

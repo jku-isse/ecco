@@ -9,8 +9,11 @@ import org.logicng.solvers.SATSolver;
 import org.logicng.solvers.SolverState;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -139,6 +142,13 @@ public final class PresenceConditionMinimizer {
      * {@code ChartsView}'s "Modules per Order" chart (visualizing raw vs. absorbed counts).
      */
     public static List<Term> absorb(List<Term> terms) {
+        int largest = 0;
+        for (Term term : terms) largest = Math.max(largest, term.positive.size() + term.negative.size());
+        return largest <= SUBSET_LOOKUP_MAX_LITERALS ? absorbBySubsets(terms) : absorbPairwise(terms);
+    }
+
+    /** {@link #absorb} by comparing every two terms - quadratic. Package-visible for testing. */
+    static List<Term> absorbPairwise(List<Term> terms) {
         List<Term> result = new ArrayList<>();
         for (int i = 0; i < terms.size(); i++) {
             Term ti = terms.get(i);
@@ -149,6 +159,43 @@ public final class PresenceConditionMinimizer {
                 }
             }
             if (!absorbed) result.add(ti);
+        }
+        return result;
+    }
+
+    /**
+     * Terms up to this many literals are absorbed by looking up each one's proper subsets (at most
+     * 2^n - 1 of them) rather than comparing it with every other term: a module has at most
+     * maxOrder + 1 literals, and comparing pairs took minutes for an association of a zip4j import
+     * at maxOrder 2 with 100k terms.
+     */
+    static final int SUBSET_LOOKUP_MAX_LITERALS = 8;
+
+    /** {@link #absorb} for short terms: the same result, in time linear in the number of terms. Package-visible for testing. */
+    static List<Term> absorbBySubsets(List<Term> terms) {
+        List<List<String>> literals = new ArrayList<>(terms.size());
+        Map<Set<String>, Integer> first = new HashMap<>();
+        for (int i = 0; i < terms.size(); i++) {
+            Term term = terms.get(i);
+            List<String> termLiterals = new ArrayList<>();
+            term.positive.forEach(name -> termLiterals.add("+" + name));
+            term.negative.forEach(name -> termLiterals.add("-" + name));
+            literals.add(termLiterals);
+            first.putIfAbsent(Set.copyOf(termLiterals), i);
+        }
+        List<Term> result = new ArrayList<>();
+        for (int i = 0; i < terms.size(); i++) {
+            List<String> termLiterals = literals.get(i);
+            // an identical term earlier, or any proper subset of this one's literals among the terms
+            boolean absorbed = first.get(Set.copyOf(termLiterals)) < i;
+            int all = (1 << termLiterals.size()) - 1;
+            for (int mask = 0; mask < all && !absorbed; mask++) {
+                Set<String> subset = new HashSet<>();
+                for (int bit = 0; bit < termLiterals.size(); bit++)
+                    if ((mask & (1 << bit)) != 0) subset.add(termLiterals.get(bit));
+                absorbed = first.containsKey(subset);
+            }
+            if (!absorbed) result.add(terms.get(i));
         }
         return result;
     }

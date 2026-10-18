@@ -197,6 +197,8 @@ public class ImportGitViewTaggedTest {
         // A imported and revised since, B imported and not, N new since: only imported ones get a new revision
         assertEquals("BASE, A', B, N", ImportGitView.releaseConfigurationText("BASE, A, B, N'", Set.of("A", "N"), Set.of("BASE", "A", "B")));
         assertEquals("BASE, A, B'", ImportGitView.releaseConfigurationText("BASE, A, B'", Set.of(), Set.of("BASE", "A", "B")));
+        // the generic features keep one revision
+        assertEquals("BASE, A', misc", ImportGitView.releaseConfigurationText("BASE, A, misc'", Set.of("A", "misc"), Set.of("BASE", "A", "misc")));
     }
 
     private static EccoService repository(Path dir) throws Exception {

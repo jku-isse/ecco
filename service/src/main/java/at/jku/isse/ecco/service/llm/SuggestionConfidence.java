@@ -27,7 +27,7 @@ public record SuggestionConfidence(double value, String reason) {
 	/** Below this, a suggestion is uncertain: the import stops for review. */
 	public static final double UNCERTAIN = 0.5;
 
-	private static final Set<String> GENERIC = Set.of("misc", "documentation");
+	private static final Set<String> GENERIC = LlmFeatureSuggestionClient.GENERIC;
 
 	public boolean uncertain() {
 		return this.value < UNCERTAIN;

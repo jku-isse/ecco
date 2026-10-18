@@ -54,6 +54,9 @@ public class ImportGitViewAccumulateConfigurationsTest {
 		assertEquals("BASE, A, B, D'", ImportGitView.defaultConfigurationText(running, java.util.Set.of("D"), "D"));
 		// a removal stays one
 		assertEquals("BASE, B", ImportGitView.defaultConfigurationText(running, java.util.Set.of(), "-A"));
+		// the generic features keep one revision: zip4j's tags revised "misc" in 37 of 40 commits
+		LinkedHashSet<String> withGeneric = new LinkedHashSet<>(java.util.List.of("BASE", "A", "misc", "documentation"));
+		assertEquals("BASE, A', misc, documentation", ImportGitView.defaultConfigurationText(withGeneric, java.util.Set.of(), "A, misc, documentation"));
 		// nothing suggested: nothing revised
 		assertEquals("BASE, A, B", ImportGitView.defaultConfigurationText(running, java.util.Set.of(), ""));
 

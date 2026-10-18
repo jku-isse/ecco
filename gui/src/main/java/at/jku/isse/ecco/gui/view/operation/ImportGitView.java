@@ -186,6 +186,13 @@ public class ImportGitView extends OperationView implements EccoListener {
 	private final LinkedHashSet<String> revisedSinceImport = new LinkedHashSet<>();
 	/** Commits suggested but not imported, their features gone into the next tagged one - for the summary. */
 	private int foldedCount;
+	/**
+	 * Whether the repository has no commit yet - read once when the run starts, cleared by its first
+	 * import. Asking the service for each commit, on the FX thread, waited for its lock while a view
+	 * read the repository in the background (the Charts' absorbed modules took minutes on a zip4j
+	 * import at maxOrder 2) and froze the window.
+	 */
+	private boolean repositoryEmpty;
 	// set the moment this run ends (Back, Stop, finish, or a real failure) - a background
 	// suggestion request (suggestOneCommit/autoImportOneCommit) started before that moment can
 	// still be in flight, and this flag stops its late-arriving succeeded()/failed() from
@@ -570,13 +577,15 @@ public class ImportGitView extends OperationView implements EccoListener {
 	/**
 	 * [configuration] of a tagged commit, its features marked with a new revision ("A'") if it or a
 	 * commit since the last import ([revised]) changed them - only those [imported] already: one new
-	 * since is new in this commit anyway. Pure and package-visible for testing.
+	 * since is new in this commit anyway - nor the generic ones ({@link LlmFeatureSuggestionClient#GENERIC}).
+	 * Pure and package-visible for testing.
 	 */
 	static String releaseConfigurationText(String configuration, java.util.Set<String> revised, java.util.Set<String> imported) {
 		List<String> text = new ArrayList<>();
 		for (String token : markedTokens(configuration)) {
 			String name = plainName(token);
-			boolean newRevision = imported.contains(name) && (token.endsWith("'") || revised.contains(name));
+			boolean newRevision = imported.contains(name) && !LlmFeatureSuggestionClient.GENERIC.contains(name)
+					&& (token.endsWith("'") || revised.contains(name));
 			text.add(name.equals(token) || token.endsWith("'") ? (newRevision ? name + "'" : name) : token);
 		}
 		return String.join(", ", text);
@@ -598,6 +607,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.skippedCount = 0;
 		this.foldedCount = 0;
 		this.revisedSinceImport.clear();
+		this.repositoryEmpty = this.service.getCommits().isEmpty();
 		this.runEnded = false;
 
 		this.logArea.clear();
@@ -620,7 +630,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 			this.finishImport(this.toImport(commitsOldestFirst), false);
 			return;
 		}
-		if (this.service.getCommits().isEmpty() && this.folds(commitsOldestFirst.get(index))) {
+		if (this.repositoryEmpty && this.folds(commitsOldestFirst.get(index))) {
 			// before the first tagged commit, which is BASE: all of their code is in it
 			this.foldedCount++;
 			this.logArea.appendText(String.format("%s (%s): before the first tagged commit - part of %s.%n",
@@ -628,7 +638,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 			this.processNextCommit(commitsOldestFirst, index + 1, useLlm, reviewEach);
 			return;
 		}
-		if (this.service.getCommits().isEmpty()) {
+		if (this.repositoryEmpty) {
 			// the root of the feature model: the code base as first imported, all of it, before any
 			// feature is told apart in it - the LLM named three features for a first snapshot, which
 			// then owned all of its code alike and could not be told apart
@@ -998,7 +1008,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 			row++;
 		}
 
-		if (this.service.getCommits().isEmpty() && importFailure == null) {
+		if (this.repositoryEmpty && importFailure == null) {
 			Label baseLabel = new Label("The first commit is " + LlmFeatureSuggestionClient.BASE + ": the code base as first imported, the root "
 					+ "of the feature model. Later commits tell features apart in it - the LLM is not asked about this one.");
 			baseLabel.setWrapText(true);
@@ -1208,6 +1218,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				super.succeeded();
 				ImportGitView.this.lastCommit = this.getValue();
 				ImportGitView.this.importedCount++;
+				ImportGitView.this.repositoryEmpty = false;
 				ImportGitView.this.revisedSinceImport.clear();
 				ImportGitView.this.recordSuggestionOutcome(commit, configurationText, commitChanges.get());
 				applyConfigurationToRunning(ImportGitView.this.runningFeatures, configurationText);
@@ -1529,7 +1540,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 * repository's [knownFeatures] - gets a new revision ("A'"): the commit changes it. With one
 	 * revision per feature, and nearly the same features on every commit, code that came or changed
 	 * later could be traced to no feature: tinycc's import 95% of its associations, zip4j's first
-	 * 275 commits 28% - 1.3% with a new revision for each feature the suggestions named.
+	 * 275 commits 28% - 1.3% with a new revision for each feature the suggestions named. The generic
+	 * features ({@link LlmFeatureSuggestionClient#GENERIC}) keep one revision.
 	 */
 	static String defaultConfigurationText(LinkedHashSet<String> runningFeatures, java.util.Set<String> knownFeatures, String suggestion) {
 		LinkedHashSet<String> combined = new LinkedHashSet<>(runningFeatures);
@@ -1544,7 +1556,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 					combined.remove(trimmed.substring(1).trim());
 				} else {
 					String name = plainName(trimmed);
-					if (runningFeatures.contains(name) || knownFeatures.contains(name))
+					if ((runningFeatures.contains(name) || knownFeatures.contains(name)) && !LlmFeatureSuggestionClient.GENERIC.contains(name))
 						revised.add(name);
 					combined.add(name);
 				}
