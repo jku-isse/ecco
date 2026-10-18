@@ -38,7 +38,13 @@ public final class FeatureSuggestionLog {
 		/** imported without review, with the suggested configuration */
 		AUTO,
 		/** left out on the review screen */
-		SKIPPED
+		SKIPPED,
+		/**
+		 * not imported, in an import of tagged commits only: a commit between two of them, whose
+		 * features go into the next one imported - {@code committed} is the configuration it would
+		 * have had, and its changes count for its features as an imported commit's do
+		 */
+		FOLDED
 	}
 
 	/**
@@ -79,6 +85,12 @@ public final class FeatureSuggestionLog {
 		public Entry withChanges(ImportedFeatureTraces.Changes changes) {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
 					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, this.committed, changes, this.parents);
+		}
+
+		/** This entry for a commit not imported, whose features go into the next imported one (see {@link Outcome#FOLDED}). */
+		public Entry folded() {
+			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, Outcome.FOLDED, this.committed, this.changes, this.parents);
 		}
 
 		/** This entry for a skipped commit. */

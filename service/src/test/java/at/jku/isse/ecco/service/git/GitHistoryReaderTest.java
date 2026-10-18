@@ -240,4 +240,27 @@ public class GitHistoryReaderTest {
 		assertTrue(Files.exists(target.resolve(".gitmodules")));
 		assertFalse(Files.exists(target.resolve("lib")), "the submodule itself is not part of this repository's content");
 	}
+
+	@Test
+	@Timeout(30)
+	public void listTags_namesEachTaggedCommitAnnotatedOrNot() throws Exception {
+		Path repoDir = Files.createTempDirectory("git-history-reader-test");
+		String first, second;
+		try (Git git = Git.init().setDirectory(repoDir.toFile()).call()) {
+			Files.writeString(repoDir.resolve("file.txt"), "first version\n");
+			git.add().addFilepattern(".").call();
+			first = git.commit().setMessage("first commit").setAuthor("Test", "test@example.com").call().getId().name();
+			git.tag().setName("v1.0").setAnnotated(false).call();
+			Files.writeString(repoDir.resolve("file.txt"), "second version\n");
+			git.add().addFilepattern(".").call();
+			second = git.commit().setMessage("second commit").setAuthor("Test", "test@example.com").call().getId().name();
+			git.tag().setName("v2.0").setMessage("release 2").setTagger(new org.eclipse.jgit.lib.PersonIdent("Test", "test@example.com")).call();
+			git.tag().setName("latest").setAnnotated(false).call();
+			Files.writeString(repoDir.resolve("file.txt"), "third version\n");
+			git.add().addFilepattern(".").call();
+			git.commit().setMessage("third commit").setAuthor("Test", "test@example.com").call();
+		}
+
+		assertEquals(java.util.Map.of(first, List.of("v1.0"), second, List.of("latest", "v2.0")), reader.listTags(repoDir));
+	}
 }

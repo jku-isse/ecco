@@ -74,6 +74,26 @@ public final class GitHistoryReader {
 	}
 
 	/**
+	 * The tags of the clone by the commit each names (an annotated tag peeled to its commit), the
+	 * names of a commit's tags sorted - a tag of a tree or blob is passed over.
+	 */
+	public Map<String, List<String>> listTags(Path repoDir) {
+		try (Repository repository = openRepository(repoDir);
+			 RevWalk revWalk = new RevWalk(repository)) {
+			Map<String, List<String>> tags = new LinkedHashMap<>();
+			for (org.eclipse.jgit.lib.Ref ref : repository.getRefDatabase().getRefsByPrefix(org.eclipse.jgit.lib.Constants.R_TAGS)) {
+				org.eclipse.jgit.revwalk.RevObject target = revWalk.peel(revWalk.parseAny(ref.getObjectId()));
+				if (target instanceof RevCommit commit)
+					tags.computeIfAbsent(commit.getId().name(), id -> new ArrayList<>()).add(ref.getName().substring(org.eclipse.jgit.lib.Constants.R_TAGS.length()));
+			}
+			tags.values().forEach(names -> names.sort(null));
+			return tags;
+		} catch (IOException e) {
+			throw new EccoException("Error reading the tags of " + repoDir, e);
+		}
+	}
+
+	/**
 	 * Writes {@code commitId}'s full tree snapshot into {@code targetDir} (which must already
 	 * exist and be empty) - the equivalent of {@code git archive <commit> | tar -x -C targetDir},
 	 * without needing a working-tree checkout that would disturb the clone itself.

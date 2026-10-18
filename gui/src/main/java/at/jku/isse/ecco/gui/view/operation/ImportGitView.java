@@ -128,6 +128,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 	// lets tests find the failure shown on a commit's review screen
 	static final String IMPORT_FAILURE_LABEL_ID = "importFailure";
 	static final String SUGGESTION_FAILURE_LABEL_ID = "suggestionFailure";
+	/** What importing the tagged commits only does. */
+	static final String TAGGED_ONLY_HINT = "Fewer and bigger steps: each release is one commit. Every commit is still suggested, so a feature "
+			+ "any commit since the last release changed gets a new revision in the next one; the commits before the first tag are part of "
+			+ LlmFeatureSuggestionClient.BASE + ". Commits after the last tag are left out.";
 	/** What the "'" of a suggested feature means, in the review's configuration field. */
 	static final String NEW_REVISION_HINT = "\nA feature with ' (A') gets a new revision: this commit changes it, so its code can be told from earlier versions.";
 	// lets tests find the confidence shown on a commit's review screen
@@ -169,6 +173,19 @@ public class ImportGitView extends OperationView implements EccoListener {
 	private int importedCount;
 	/** Commits left out on their review screen, for the summary. */
 	private int skippedCount;
+	/** The clone's tags by the commit each names (see {@link GitHistoryReader#listTags}) - read with its commits. */
+	private java.util.Map<String, List<String>> tags = java.util.Map.of();
+	/**
+	 * Whether only the tagged commits of the range are imported - its releases, fewer and bigger
+	 * steps. The commits between are still suggested, one at a time, and their features go into the
+	 * next tagged one (see {@link #folds}): on zip4j all of its code was traced at maxOrder 2, with
+	 * 25 commits imported of 275.
+	 */
+	private boolean taggedOnly;
+	/** In an import of tagged commits only: the features a commit since the last one imported revised. */
+	private final LinkedHashSet<String> revisedSinceImport = new LinkedHashSet<>();
+	/** Commits suggested but not imported, their features gone into the next tagged one - for the summary. */
+	private int foldedCount;
 	// set the moment this run ends (Back, Stop, finish, or a real failure) - a background
 	// suggestion request (suggestOneCommit/autoImportOneCommit) started before that moment can
 	// still be in flight, and this flag stops its late-arriving succeeded()/failed() from
@@ -307,6 +324,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 		gridPane.add(reviewUncertainCheckBox, 0, row, 3, 1);
 		row++;
 
+		CheckBox taggedOnlyCheckBox = new CheckBox("Import the tagged commits only (releases) - the commits between are suggested unattended, and their features go into the next tagged one");
+		taggedOnlyCheckBox.setTooltip(new Tooltip(TAGGED_ONLY_HINT));
+		gridPane.add(taggedOnlyCheckBox, 0, row, 3, 1);
+		row++;
+
 		chooseRepoButton.setOnAction(event -> {
 			DirectoryChooser directoryChooser = new DirectoryChooser();
 			directoryChooser.setTitle("Select a Local Git Repository");
@@ -349,6 +371,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 					// as "what happened" and the exact order the import itself has to process in
 					List<GitCommitInfo> commits = ImportGitView.this.gitHistoryReader.listCommits(selectedPath);
 					Collections.reverse(commits);
+					ImportGitView.this.tags = ImportGitView.this.gitHistoryReader.listTags(selectedPath);
 					return commits;
 				}
 
@@ -394,6 +417,16 @@ public class ImportGitView extends OperationView implements EccoListener {
 			int maxIndex = Collections.max(selectedIndices);
 			// table is already oldest-first, matching the order the import itself needs
 			List<GitCommitInfo> oldestFirst = new ArrayList<>(commitsTable.getItems().subList(minIndex, maxIndex + 1));
+			this.taggedOnly = taggedOnlyCheckBox.isSelected();
+			if (this.taggedOnly) {
+				int last = lastTagged(oldestFirst, this.tags);
+				if (last < 0) {
+					this.showInputError("The commits selected have no tag: select a range with at least one tagged commit, or import all commits.");
+					return;
+				}
+				// those after the last tag would only be suggested, for no commit
+				oldestFirst = new ArrayList<>(oldestFirst.subList(0, last + 1));
+			}
 
 			boolean useLlm = suggestFeaturesCheckBox.isSelected();
 			if (useLlm && LlmPreferences.getModelName().isBlank()) {
@@ -433,7 +466,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 		DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 		dateCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(dateFormatter.format(param.getValue().getDate())));
 
-		commitsTable.getColumns().setAll(idCol, messageCol, dateCol);
+		TableColumn<GitCommitInfo, String> tagCol = new TableColumn<>("Tags");
+		tagCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(String.join(", ", this.tags.getOrDefault(param.getValue().getId(), List.of()))));
+
+		commitsTable.getColumns().setAll(idCol, tagCol, messageCol, dateCol);
+		TableColumns.defaultWidth(tagCol, 90);
 
 		TableColumns.defaultWidth(idCol, 90);
 		TableColumns.defaultWidth(dateCol, 150);
@@ -490,7 +527,59 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 */
 	void startImport(Path repoDir, List<GitCommitInfo> commitsOldestFirst, boolean useLlm, boolean reviewEach) {
 		this.repoDir = repoDir;
+		this.taggedOnly = false;
 		this.startImport(commitsOldestFirst, useLlm, reviewEach);
+	}
+
+	/** As above, importing only the commits with one of [tags] (commit id to tag names). Package-visible for testing. */
+	void startTaggedImport(Path repoDir, java.util.Map<String, List<String>> tags, List<GitCommitInfo> commitsOldestFirst, boolean useLlm, boolean reviewEach) {
+		this.repoDir = repoDir;
+		this.tags = tags;
+		this.taggedOnly = true;
+		this.startImport(commitsOldestFirst, useLlm, reviewEach);
+	}
+
+	/** The index of the last of [commits] with a tag in [tags], -1 if none has. Package-visible for testing. */
+	static int lastTagged(List<GitCommitInfo> commits, java.util.Map<String, List<String>> tags) {
+		for (int i = commits.size() - 1; i >= 0; i--)
+			if (tags.containsKey(commits.get(i).getId()))
+				return i;
+		return -1;
+	}
+
+	/** Whether [commit] is not imported, only suggested: its features go into the next tagged commit (see {@link #taggedOnly}). */
+	private boolean folds(GitCommitInfo commit) {
+		return this.taggedOnly && !this.tags.containsKey(commit.getId());
+	}
+
+	/** What the run imports of [commits]: all, or the tagged ones. */
+	private int toImport(List<GitCommitInfo> commits) {
+		return this.taggedOnly ? (int) commits.stream().filter(commit -> !this.folds(commit)).count() : commits.size();
+	}
+
+	/**
+	 * The configuration proposed for [commit] from [suggestion] (see {@link #defaultConfigurationText}) -
+	 * for a tagged commit of an import of tagged commits only, with a new revision of each feature a
+	 * commit since the last import revised too.
+	 */
+	private String proposedConfiguration(GitCommitInfo commit, String suggestion) {
+		String proposed = defaultConfigurationText(this.runningFeatures, this.knownFeatures, suggestion);
+		return this.taggedOnly && !this.folds(commit) ? releaseConfigurationText(proposed, this.revisedSinceImport, this.knownFeatures) : proposed;
+	}
+
+	/**
+	 * [configuration] of a tagged commit, its features marked with a new revision ("A'") if it or a
+	 * commit since the last import ([revised]) changed them - only those [imported] already: one new
+	 * since is new in this commit anyway. Pure and package-visible for testing.
+	 */
+	static String releaseConfigurationText(String configuration, java.util.Set<String> revised, java.util.Set<String> imported) {
+		List<String> text = new ArrayList<>();
+		for (String token : markedTokens(configuration)) {
+			String name = plainName(token);
+			boolean newRevision = imported.contains(name) && (token.endsWith("'") || revised.contains(name));
+			text.add(name.equals(token) || token.endsWith("'") ? (newRevision ? name + "'" : name) : token);
+		}
+		return String.join(", ", text);
 	}
 
 	private void startImport(List<GitCommitInfo> commitsOldestFirst, boolean useLlm, boolean reviewEach) {
@@ -507,6 +596,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.lastCommit = null;
 		this.importedCount = 0;
 		this.skippedCount = 0;
+		this.foldedCount = 0;
+		this.revisedSinceImport.clear();
 		this.runEnded = false;
 
 		this.logArea.clear();
@@ -526,7 +617,15 @@ public class ImportGitView extends OperationView implements EccoListener {
 			return;
 		}
 		if (index >= commitsOldestFirst.size()) {
-			this.finishImport(commitsOldestFirst.size(), false);
+			this.finishImport(this.toImport(commitsOldestFirst), false);
+			return;
+		}
+		if (this.service.getCommits().isEmpty() && this.folds(commitsOldestFirst.get(index))) {
+			// before the first tagged commit, which is BASE: all of their code is in it
+			this.foldedCount++;
+			this.logArea.appendText(String.format("%s (%s): before the first tagged commit - part of %s.%n",
+					commitsOldestFirst.get(index).getShortId(), commitsOldestFirst.get(index).getMessage(), LlmFeatureSuggestionClient.BASE));
+			this.processNextCommit(commitsOldestFirst, index + 1, useLlm, reviewEach);
 			return;
 		}
 		if (this.service.getCommits().isEmpty()) {
@@ -544,12 +643,13 @@ public class ImportGitView extends OperationView implements EccoListener {
 			}
 			return;
 		}
-		if (!reviewEach) {
+		if (!reviewEach || this.folds(commitsOldestFirst.get(index))) {
+			// a commit between tagged ones is reviewed only when its suggestion failed or is uncertain
 			this.autoImportOneCommit(commitsOldestFirst, index, useLlm, reviewEach);
 		} else if (useLlm) {
 			this.suggestOneCommit(commitsOldestFirst, index, useLlm, reviewEach);
 		} else {
-			String defaultConfig = defaultConfigurationText(this.runningFeatures, "");
+			String defaultConfig = this.proposedConfiguration(commitsOldestFirst.get(index), "");
 			this.pendingSuggestion = this.suggestionEntry(commitsOldestFirst.get(index), null, null, defaultConfig, FeatureSuggestionLog.Outcome.REVIEWED);
 			this.showCommitReview(commitsOldestFirst, index, useLlm, reviewEach, defaultConfig, null, null);
 		}
@@ -594,7 +694,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 					return;
 				}
 				LlmFeatureSuggestionClient.SuggestionBatch batch = this.getValue().batch();
-				String defaultConfig = defaultConfigurationText(ImportGitView.this.runningFeatures, ImportGitView.this.knownFeatures, batch.configurations().get(0));
+				String defaultConfig = ImportGitView.this.proposedConfiguration(commit, batch.configurations().get(0));
 				ImportGitView.this.pendingSuggestion = ImportGitView.this.suggestionEntry(commit, this.getValue(), batch.failureReason(), defaultConfig, FeatureSuggestionLog.Outcome.REVIEWED);
 				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, reviewEach, defaultConfig, batch.failureReason(), null);
 			}
@@ -611,7 +711,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				// of silently landing on a review screen that looks like the LLM just had no
 				// suggestion, then still let the user fill the configuration in by hand.
 				new ExceptionAlert(this.getException()).show();
-				String defaultConfig = defaultConfigurationText(ImportGitView.this.runningFeatures, "");
+				String defaultConfig = ImportGitView.this.proposedConfiguration(commit, "");
 				ImportGitView.this.pendingSuggestion = ImportGitView.this.suggestionEntry(commit, null, String.valueOf(this.getException()), defaultConfig, FeatureSuggestionLog.Outcome.REVIEWED);
 				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, reviewEach, defaultConfig, String.valueOf(this.getException()), null);
 			}
@@ -636,12 +736,12 @@ public class ImportGitView extends OperationView implements EccoListener {
 		GitCommitInfo commit = commitsOldestFirst.get(index);
 
 		this.navButtons(commitsOldestFirst);
-		this.headerLabel.setText("Auto-Importing (commit " + (index + 1) + " of " + commitsOldestFirst.size() + ")");
+		this.headerLabel.setText((this.folds(commit) ? "Suggesting, for the next tagged commit" : "Auto-Importing") + " (commit " + (index + 1) + " of " + commitsOldestFirst.size() + ")");
 		this.rightButtons.getChildren().clear();
 
 		ProgressIndicator progressIndicator = new ProgressIndicator();
 		progressIndicator.setMaxSize(60, 60);
-		Label progressLabel = new Label("Importing commit " + commit.getShortId() + " unattended...");
+		Label progressLabel = new Label((this.folds(commit) ? "Suggesting features of commit " : "Importing commit ") + commit.getShortId() + " unattended...");
 		progressLabel.setWrapText(true);
 		VBox progressBox = new VBox(10, progressIndicator, progressLabel);
 		progressBox.setAlignment(Pos.CENTER);
@@ -651,7 +751,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.growToFit(); // a size the user chose stays - fit() resized the window for every commit
 
 		if (!useLlm) {
-			String config = defaultConfigurationText(this.runningFeatures, "");
+			String config = this.proposedConfiguration(commit, "");
 			this.pendingSuggestion = this.suggestionEntry(commit, null, null, config, FeatureSuggestionLog.Outcome.AUTO);
 			this.importOneCommit(commitsOldestFirst, index, useLlm, reviewEach, config);
 			return;
@@ -670,7 +770,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 					return;
 				}
 				LlmFeatureSuggestionClient.SuggestionBatch batch = this.getValue().batch();
-				String config = defaultConfigurationText(ImportGitView.this.runningFeatures, ImportGitView.this.knownFeatures, batch.configurations().get(0));
+				String config = ImportGitView.this.proposedConfiguration(commit, batch.configurations().get(0));
 				if (batch.failureReason() != null) {
 					ImportGitView.this.stopForFailedSuggestion(commitsOldestFirst, index, useLlm, reviewEach, commit, this.getValue(), config, batch.failureReason());
 					return;
@@ -692,7 +792,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				if (ImportGitView.this.runEnded) {
 					return;
 				}
-				String config = defaultConfigurationText(ImportGitView.this.runningFeatures, "");
+				String config = ImportGitView.this.proposedConfiguration(commit, "");
 				ImportGitView.this.stopForFailedSuggestion(commitsOldestFirst, index, useLlm, reviewEach, commit, null, config, String.valueOf(this.getException()));
 			}
 		};
@@ -771,6 +871,16 @@ public class ImportGitView extends OperationView implements EccoListener {
 								.map(position -> position.substring(position.indexOf('#') + 1))
 								.collect(Collectors.toCollection(java.util.LinkedHashSet::new))))
 				.collect(Collectors.toList());
+		// in an import of tagged commits only, those named since the last one imported, not in the
+		// repository yet: else the next commit named them anew, by another name
+		java.util.Set<String> listed = knownFeatures.stream().map(LlmFeatureSuggestionClient.KnownFeature::name).collect(Collectors.toSet());
+		for (String name : new ArrayList<>(this.runningFeatures))
+			if (listed.add(name))
+				knownFeatures.add(new LlmFeatureSuggestionClient.KnownFeature(name, llmParents.get(name),
+						featureFiles.getOrDefault(name, java.util.Set.of()),
+						featurePositions.getOrDefault(name, java.util.Set.<String>of()).stream()
+								.map(position -> position.substring(position.indexOf('#') + 1))
+								.collect(Collectors.toCollection(java.util.LinkedHashSet::new))));
 		return new SuggestionInput(commitForSuggestion, knownFeatures);
 	}
 
@@ -843,10 +953,14 @@ public class ImportGitView extends OperationView implements EccoListener {
 		GitCommitInfo commit = commitsOldestFirst.get(index);
 
 		this.navButtons(commitsOldestFirst);
+		boolean folds = this.folds(commit);
 		this.headerLabel.setText("Review Commit (" + (index + 1) + " of " + commitsOldestFirst.size() + ")");
 
 		Button skipButton = new Button("Skip");
-		Button importButton = new Button("Import");
+		// a commit between tagged ones is not imported: its features go into the next tagged one
+		Button importButton = new Button(folds ? "Use for Next Tag" : "Import");
+		if (folds)
+			skipButton.setTooltip(new Tooltip("Leave this commit's features out of the next tagged commit."));
 		importButton.setDefaultButton(true);
 		this.rightButtons.getChildren().setAll(skipButton, importButton);
 
@@ -911,6 +1025,21 @@ public class ImportGitView extends OperationView implements EccoListener {
 		commitLabel.setStyle("-fx-font-weight: bold;");
 		gridPane.add(commitLabel, 0, row, 1, 1);
 		row++;
+
+		if (folds) {
+			Label foldsLabel = new Label("Not imported: only the tagged commits are. The features of this one go into the next tagged commit, each it changes with a new revision.");
+			foldsLabel.setWrapText(true);
+			foldsLabel.setStyle("-fx-text-fill: #666666;");
+			gridPane.add(foldsLabel, 0, row, 1, 1);
+			row++;
+		} else if (this.taggedOnly && !this.tags.getOrDefault(commit.getId(), List.of()).isEmpty()) {
+			Label tagLabel = new Label("Tagged " + String.join(", ", this.tags.get(commit.getId()))
+					+ (this.revisedSinceImport.isEmpty() ? "" : " - revised since the last tagged commit: " + String.join(", ", this.revisedSinceImport)));
+			tagLabel.setWrapText(true);
+			tagLabel.setStyle("-fx-text-fill: #666666;");
+			gridPane.add(tagLabel, 0, row, 1, 1);
+			row++;
+		}
 
 		// what the commit changed, to judge the configuration by - the screen had only its message;
 		// read in the background, as the diff is
@@ -980,7 +1109,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 		importButton.setOnAction(event -> {
 			String warning = constraintWarningLabel.getText();
-			if (warning != null && !warning.isEmpty()) {
+			if (!folds && warning != null && !warning.isEmpty()) {
 				Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION, warning + "\n\nDo you want to import anyway?");
 				alert.setHeaderText("Constraint violation");
 				Optional<ButtonType> result = alert.showAndWait();
@@ -1000,6 +1129,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 	private void importOneCommit(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm, boolean reviewEach, String configurationText) {
 		this.importRunning(index, commitsOldestFirst.size());
 		GitCommitInfo commit = commitsOldestFirst.get(index);
+		if (this.folds(commit)) {
+			this.foldOneCommit(commitsOldestFirst, index, useLlm, reviewEach, configurationText);
+			return;
+		}
 		String before = String.join(", ", this.runningFeatures);
 		FeatureSuggestionLog.Entry suggestion = this.pendingSuggestion;
 		String suggested = suggestion != null && suggestion.commitId().equals(commit.getId()) ? suggestion.suggestion() : null;
@@ -1075,6 +1208,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				super.succeeded();
 				ImportGitView.this.lastCommit = this.getValue();
 				ImportGitView.this.importedCount++;
+				ImportGitView.this.revisedSinceImport.clear();
 				ImportGitView.this.recordSuggestionOutcome(commit, configurationText, commitChanges.get());
 				applyConfigurationToRunning(ImportGitView.this.runningFeatures, configurationText);
 				ImportGitView.this.knownFeatures.addAll(ImportGitView.this.runningFeatures);
@@ -1103,6 +1237,74 @@ public class ImportGitView extends OperationView implements EccoListener {
 	}
 
 	/**
+	 * A commit between tagged ones, in an import of tagged commits only: not imported, but its
+	 * [configurationText] is - the features it names are kept for the next tagged commit, each it
+	 * revises with a new revision there, and logged with what it changed, which counts for its
+	 * features as an imported commit's does.
+	 */
+	private void foldOneCommit(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm, boolean reviewEach, String configurationText) {
+		GitCommitInfo commit = commitsOldestFirst.get(index);
+		String before = String.join(", ", this.runningFeatures);
+		FeatureSuggestionLog.Entry suggestion = this.pendingSuggestion;
+		String suggested = suggestion != null && suggestion.commitId().equals(commit.getId()) ? suggestion.suggestion() : null;
+		java.util.Set<String> labels = ImportedFeatureTraces.labels(before, suggested, configurationText);
+		java.util.Set<String> relationLabels = ImportedFeatureTraces.relationLabels(before, suggested, configurationText);
+		java.util.Map<String, String> parents = suggestion != null && suggestion.commitId().equals(commit.getId()) ? suggestion.parents() : java.util.Map.of();
+
+		Task<ImportedFeatureTraces.Changes> changesTask = new Task<>() {
+			@Override
+			protected ImportedFeatureTraces.Changes call() {
+				try {
+					ImportedFeatureTraces.Changes changes = ImportedFeatureTraces.Changes.of(
+							ImportGitView.this.gitHistoryReader.getChangedPositions(ImportGitView.this.repoDir, commit.getId(), ImportGitView.this.service.getReader()));
+					ImportedFeatureTraces traces = ImportGitView.this.importedTraces;
+					if (traces != null) {
+						traces.record(String.valueOf(ImportGitView.this.repoDir), labels, relationLabels, changes);
+						traces.recordParents(ImportedFeatureTraces.keptParents(parents, configurationText));
+					}
+					return changes;
+				} catch (RuntimeException e) {
+					// its features still go into the next tagged commit; only its trace is lost
+					LOGGER.log(java.util.logging.Level.WARNING, "Could not locate the changes of " + commit.getShortId(), e);
+					return null;
+				}
+			}
+
+			@Override
+			protected void succeeded() {
+				ImportGitView.this.folded(commitsOldestFirst, index, useLlm, reviewEach, configurationText, this.getValue());
+			}
+
+			@Override
+			protected void failed() {
+				ImportGitView.this.folded(commitsOldestFirst, index, useLlm, reviewEach, configurationText, null);
+			}
+		};
+		Thread thread = new Thread(changesTask);
+		thread.setDaemon(true);
+		thread.start();
+	}
+
+	/** {@link #foldOneCommit} found what the commit changed ([changes], null if not): it is logged, and the run goes on. */
+	private void folded(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm, boolean reviewEach, String configurationText, ImportedFeatureTraces.Changes changes) {
+		GitCommitInfo commit = commitsOldestFirst.get(index);
+		FeatureSuggestionLog.Entry entry = this.pendingSuggestion;
+		if (entry != null && entry.commitId().equals(commit.getId())) {
+			this.pendingSuggestion = null;
+			FeatureSuggestionLog.append(entry.folded().committedAs(configurationText).withChanges(changes));
+		}
+		for (String token : markedTokens(configurationText))
+			if (token.endsWith("'"))
+				this.revisedSinceImport.add(plainName(token));
+		applyConfigurationToRunning(this.runningFeatures, configurationText);
+		this.foldedCount++;
+		this.logArea.appendText(String.format("Suggested %s (%s) -> [%s], for the next tagged commit.%n", commit.getShortId(), commit.getMessage(),
+				configurationText == null || configurationText.isEmpty() ? "(no configuration)" : configurationText));
+		if (!this.runEnded)
+			this.processNextCommit(commitsOldestFirst, index + 1, useLlm, reviewEach);
+	}
+
+	/**
 	 * Left-hand nav button for the currently-shown screen: "Back" to {@link #step1()} while nothing
 	 * has been imported yet in this run (nothing to lose), or "Stop" once at least one commit may
 	 * already be imported (those stay imported either way - see {@link #finishImport(int, boolean)}
@@ -1126,7 +1328,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 			this.leftButtons.getChildren().setAll(backButton);
 		} else {
 			Button stopButton = new Button("Stop");
-			stopButton.setOnAction(event -> this.finishImport(commitsOldestFirst.size(), true));
+			stopButton.setOnAction(event -> this.finishImport(this.toImport(commitsOldestFirst), true));
 			this.leftButtons.getChildren().setAll(stopButton);
 		}
 	}
@@ -1166,7 +1368,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.splitPane.setPadding(new Insets(0, 10, 10, 10));
 		// one summary above the log - there were up to two message boxes, possibly taller than the screen
 		this.summaryArea.setText(summary(this.importedCount, totalCommits, this.skippedCount, stoppedEarly,
-				this.allConstraintWarnings, this.llmSuggestionFailures));
+				this.allConstraintWarnings, this.llmSuggestionFailures)
+				+ (this.foldedCount == 0 ? "" : System.lineSeparator() + this.foldedCount + " commit(s) between the tagged ones were not imported: their features went into the next tagged one."));
 		this.summaryArea.setEditable(false);
 		this.summaryArea.setWrapText(true);
 		this.summaryArea.setPrefRowCount(Math.min(8, (int) this.summaryArea.getText().lines().count() + 1));
@@ -1351,6 +1554,16 @@ public class ImportGitView extends OperationView implements EccoListener {
 		for (String name : combined)
 			text.add(revised.contains(name) ? name + "'" : name);
 		return String.join(", ", text);
+	}
+
+	/** The features of [configuration] as written, with their new revision marks "'" - {@link #parseFeatureTokens} drops them. */
+	private static List<String> markedTokens(String configuration) {
+		List<String> tokens = new ArrayList<>();
+		if (configuration != null)
+			for (String token : configuration.split(","))
+				if (!token.isBlank())
+					tokens.add(token.trim());
+		return tokens;
 	}
 
 	/** A feature's name without the new revision mark "'". */
