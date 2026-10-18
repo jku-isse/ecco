@@ -1,0 +1,6 @@
+[
+ {
+  "old": "- A change that MODIFIES, FIXES a bug in,",
+  "new": "- A known feature may have been removed by an earlier commit and come back. When the added code is what a known feature's earlier commits added - the same files, positions and identifiers - give it that known name again, never a new name for the same capability.\n- A change that MODIFIES, FIXES a bug in,"
+ }
+]

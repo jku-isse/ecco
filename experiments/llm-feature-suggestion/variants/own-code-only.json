@@ -1,0 +1,6 @@
+[
+ {
+  "old": "- If the diff shows the change touching shared state, a shared file, or a common data structure that another known feature also depends on, consider that feature affected too and list it as well (comma-separated) - but only based on what the diff actually shows here, never speculation about code not shown to you.\n",
+  "new": "- List a known feature only when this commit changes that feature's OWN code - the code that implements what it does. A diff that merely calls, mentions, hooks into, or sits next to a known feature's functions, fields or classes does not make that feature affected: new code using an existing feature belongs to the new feature alone.\n"
+ }
+]

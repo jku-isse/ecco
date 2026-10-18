@@ -126,6 +126,27 @@ back: gemma4 reuses its earlier name (6 of 7), gpt-oss mostly gives it a new one
 `empty-elevator`), so an import would get a second feature for it. The server errors are timeouts
 and one HTTP 500 of the shared server, not answers.
 
+Two prompt changes, online, one run each (`--edit`):
+
+- `variants/own-code-only.json` replaces the rule to list a known feature whose shared state or
+  files the diff touches with: list a known feature only when the commit changes its own code.
+- `variants/returning-feature-same-name.json` adds: a feature removed earlier may come back; give
+  it its known name again.
+
+| Model | Prompt | Precision | Recall | Returning feature, old name | Made up | Removals P / R | Empty answers | Server errors |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| gemma4:31b | as in the code | 0.35 | 0.76 | 6 of 7 | 3 | 0.78 / 0.88 | 0 | 1 |
+| gemma4:31b | own code only | 0.68 | 0.79 | 7 of 8 | 1 | 0.62 / 0.62 | 2 | 0 |
+| gemma4:31b | both | 0.59 | 0.76 | 6 of 8 | 3 | 0.60 / 0.75 | 1 | 0 |
+| gpt-oss:20b | as in the code | 0.81 | 0.68 | 2 of 7 | 2 | 0.56 / 0.62 | 5 | 3 |
+| gpt-oss:20b | returning name | 0.91 | 0.79 | 5 of 7 | 1 | 0.71 / 0.62 | 6 | 0 |
+| gpt-oss:20b | both | 0.79 | 0.68 | 3 of 6 | 2 | 0.67 / 0.50 | 5 | 3 |
+
+The own-code rule nearly doubles gemma4's precision; with both changes the two models fall back
+part or all of the way. The answers differ from run to run though temperature is 0 (the shared
+server), so a run of 40 commits is noisy: gpt-oss "both" lost two returning features to server
+errors. Repeated runs would tell the changes from the noise.
+
 ## Results (Vite, October 2026)
 
 | Run | Commits | Seen: exact / extra / other known / made-up | New: new name / forced |
