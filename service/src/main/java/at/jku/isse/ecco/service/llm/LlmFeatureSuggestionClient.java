@@ -95,10 +95,10 @@ public final class LlmFeatureSuggestionClient {
 			- If the diff shows two or more genuinely SEPARATE capabilities being added or changed - \
 			not just one feature's own internals touching a shared file - list all of them, \
 			comma-separated, rather than picking only the most prominent one.
-			- If the diff shows the change touching shared state, a shared file, or a common data \
-			structure that another known feature also depends on, consider that feature affected too \
-			and list it as well (comma-separated) - but only based on what the diff actually shows \
-			here, never speculation about code not shown to you.
+			- List a known feature only when this commit changes that feature's OWN code - the code \
+			that implements what it does. A diff that merely calls, mentions, hooks into, or sits \
+			next to a known feature's functions, fields or classes does not make that feature \
+			affected: new code using an existing feature belongs to the new feature alone.
 			- If the diff clearly shows a KNOWN feature's own implementation being deleted, removed, \
 			or fully replaced by something unrelated - the feature genuinely stops existing as of \
 			this commit, not merely refactored, renamed, or modified in place - list that feature \
