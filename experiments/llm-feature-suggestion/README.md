@@ -147,6 +147,26 @@ part or all of the way. The answers differ from run to run though temperature is
 server), so a run of 40 commits is noisy: gpt-oss "both" lost two returning features to server
 errors. Repeated runs would tell the changes from the noise.
 
+Three runs of each (`results/spl-repeats/`, with `replay.py` asking once more after a server
+error, one model on the server at a time), mean and range:
+
+| Model | Prompt | Precision | Recall | Returning feature, old name | Made up | Removals P / R | Empty answers |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| gemma4:31b | as in the code | 0.34 | 0.79 | 7 of 7 | 3 | 0.78 / 0.88 | 0 |
+| gemma4:31b | own code only | 0.68 | 0.79 | 7 of 8 | 1 | 0.62 / 0.62 | 2 |
+| gemma4:31b | both | 0.59 | 0.76 | 6 of 8 | 3 | 0.60 / 0.75 | 1 |
+| gpt-oss:20b | as in the code | 0.79 (0.76-0.83) | 0.66 | 1-2 of 6-7 | 1-5 | 0.58 / 0.75 | 4-6 |
+| gpt-oss:20b | returning name | 0.78 (0.70-0.83) | 0.63 (0.61-0.66) | 1-3 of 6 | 3-4 | 0.73 / 0.75 | 6-8 |
+| gpt-oss:20b | both | 0.81 (0.76-0.90) | 0.70 (0.66-0.76) | 2-5 of 7-8 | 0-1 | 0.75 / 0.62 | 5-7 |
+
+gemma4 answers the same in every run (and as in the single runs above), so its numbers are exact:
+the own-code rule doubles its precision at the same recall, and adding the returning-name rule
+takes some of that back. It finds fewer removals: of 8, it lists `-Weighted` and `-empty` not at
+all and removes the wrong feature for `-lowWaterSensor`. gpt-oss varies from run to run, and the
+returning-name rule's 5 of 7 above was luck: no change of it stands out of the noise. Twice in
+every gpt-oss run a commit timed out (GPL's `TestProg` and Email's `sign` added back), twice 10
+minutes each.
+
 ## Results (Vite, October 2026)
 
 | Run | Commits | Seen: exact / extra / other known / made-up | New: new name / forced |

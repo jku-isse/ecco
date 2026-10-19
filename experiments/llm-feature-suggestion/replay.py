@@ -117,7 +117,14 @@ def ask(endpoint, model, system, user):
     start = time.time()
     request = urllib.request.Request(endpoint.rstrip('/') + '/v1/chat/completions', json.dumps(body).encode(),
                                      {'Content-Type': 'application/json'})
-    reply = json.load(urllib.request.urlopen(request, timeout=600))
+    for attempt in (1, 2):  # a busy shared server fails now and then (timeouts, HTTP 500): once more
+        try:
+            reply = json.load(urllib.request.urlopen(request, timeout=600))
+            break
+        except (OSError, ValueError):  # URLError, HTTPError, TimeoutError; a cut-off reply
+            if attempt == 2:
+                raise
+            time.sleep(10)
     content = reply['choices'][0]['message']['content']
     try:
         prediction = json.loads(content).get('configuration', '')
