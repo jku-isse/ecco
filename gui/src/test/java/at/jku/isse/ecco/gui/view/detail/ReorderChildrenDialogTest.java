@@ -55,7 +55,7 @@ public class ReorderChildrenDialogTest {
             Node.Op file = orderWarning(service, tmp.resolve("out"), "BASE, A, B");
             assertEquals(List.of("a", "c", "b"), texts(file.getChildren()));
 
-            Fixture d = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file)));
+            Fixture d = fixture(() -> new ReorderChildrenDialog(service, file));
             assertEquals(List.of(ButtonType.OK, ButtonType.CANCEL), onFx(() -> d.dialog.getDialogPane().getButtonTypes()));
             assertNull(onFx(d::banner));
             assertEquals(List.of(true, false, false), onFx(d::locked));
@@ -102,7 +102,7 @@ public class ReorderChildrenDialogTest {
             commit(service, tmp.resolve("v2"), "BASE, B", Map.of("f.txt", before + "c\n" + after));
             Node.Op file = orderWarning(service, tmp.resolve("out"), "BASE, A, B");
 
-            Fixture d = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file)));
+            Fixture d = fixture(() -> new ReorderChildrenDialog(service, file));
             CheckBox undecidedOnly = onFx(() -> (CheckBox) find(d.dialog.getDialogPane().getContent(), n -> n instanceof CheckBox c && c.getText().startsWith("Undecided only")));
             assertTrue(onFx(undecidedOnly::isSelected), "on for a large file");
             List<String> shown = onFx(d::shownLabels);
@@ -140,7 +140,7 @@ public class ReorderChildrenDialogTest {
                     List.of("a", "b"), List.of("a", "y"), List.of("a", "c"), List.of("b", "y"),
                     List.of("b", "c"), List.of("y", "c"), List.of("a", "x"));
 
-            Fixture d = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file)));
+            Fixture d = fixture(() -> new ReorderChildrenDialog(service, file));
             assertEquals(List.of(true, false, false, true, true), onFx(d::locked));
 
             // y (row 3) can go neither up past b nor down past c
@@ -183,6 +183,54 @@ public class ReorderChildrenDialogTest {
         }
     }
 
+    /**
+     * The order graph is read in the background, holding the service's lock: while a commit holds it,
+     * the dialog opens at once, says it reads the graph and can only be cancelled - the FX thread does
+     * not wait for the lock (it asked the graph there, read while a commit changed it); released, the
+     * dialog is built with what the graph fixes.
+     */
+    @Test
+    @Timeout(60)
+    public void theOrderGraphIsReadOffTheFxThreadHoldingTheLock(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "BASE, A", Map.of("f.txt", "a\nb\n"));
+            commit(service, tmp.resolve("v2"), "BASE, B", Map.of("f.txt", "a\nc\n"));
+            Node.Op file = orderWarning(service, tmp.resolve("out"), "BASE, A, B");
+
+            java.util.concurrent.CountDownLatch locked = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+            Thread commitLike = new Thread(() -> {
+                synchronized (service) {
+                    locked.countDown();
+                    try {
+                        release.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            commitLike.start();
+            try {
+                assertTrue(locked.await(10, java.util.concurrent.TimeUnit.SECONDS));
+                // onFx fails if the FX thread does not get to it within 10 s
+                ReorderChildrenDialog dialog = onFx(() -> new ReorderChildrenDialog(service, file));
+                Thread.sleep(300);
+                assertFalse(onFx(dialog::isBuilt), "not read while the lock is held");
+                assertEquals(List.of(ButtonType.CANCEL), onFx(() -> List.copyOf(dialog.getDialogPane().getButtonTypes())));
+                assertEquals("Reading the order graph...", onFx(() -> ((Label) dialog.getDialogPane().getContent()).getText()));
+
+                release.countDown();
+                waitUntil("built once the lock is released", dialog::isBuilt);
+                Fixture d = onFx(() -> new Fixture(dialog));
+                assertEquals(List.of(ButtonType.OK, ButtonType.CANCEL), onFx(() -> d.dialog.getDialogPane().getButtonTypes()));
+                assertEquals(List.of(true, false, false), onFx(d::locked));
+            } finally {
+                release.countDown();
+                commitLike.join(10_000);
+            }
+        }
+    }
+
     private static List<Boolean> expectedLocks(List<String> order, Set<List<String>> fixed) {
         List<Boolean> locks = new ArrayList<>();
         for (int i = 0; i < order.size(); i++) {
@@ -206,7 +254,7 @@ public class ReorderChildrenDialogTest {
             Node.Op file = (Node.Op) fileNode(checkout.getNode(), "f.txt");
             assertEquals(List.of("a", "b"), texts(file.getChildren()));
 
-            Fixture d = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file)));
+            Fixture d = fixture(() -> new ReorderChildrenDialog(service, file));
             assertEquals(List.of(ButtonType.CLOSE), onFx(() -> d.dialog.getDialogPane().getButtonTypes()));
             assertTrue(onFx(d::banner).startsWith("Nothing to reorder"), onFx(d::banner));
             assertFalse(onFx(() -> d.inLayout(d.up) || d.inLayout(d.down)), "no Move buttons");
@@ -239,7 +287,7 @@ public class ReorderChildrenDialogTest {
                 return new at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Suggestion(reversed, null);
             };
 
-            Fixture d = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file, reversing)));
+            Fixture d = fixture(() -> new ReorderChildrenDialog(service, file, reversing));
             onFx(() -> suggestButton(d.dialog).fire());
             waitUntil("the suggestion", () -> status(d.dialog).startsWith("Suggested"));
 
@@ -289,7 +337,7 @@ public class ReorderChildrenDialogTest {
                 asked.add(rows);
                 return new at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Suggestion(null, "recorded");
             };
-            Fixture d = onFx(() -> new Fixture(new ReorderChildrenDialog(service, warning, recording)));
+            Fixture d = fixture(() -> new ReorderChildrenDialog(service, warning, recording));
             onFx(() -> suggestButton(d.dialog).fire());
             waitUntil("the question", () -> !asked.isEmpty());
             return asked.get(0).stream().map(at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Row::text).toList();
@@ -305,15 +353,15 @@ public class ReorderChildrenDialogTest {
             commit(service, tmp.resolve("v2"), "BASE, B", Map.of("f.txt", "a\nc\n"));
             Node.Op file = orderWarning(service, tmp.resolve("out"), "BASE, A, B");
 
-            Fixture failing = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file,
-                    (path, rows) -> new at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Suggestion(null, "the endpoint is offline"))));
+            Fixture failing = fixture(() -> new ReorderChildrenDialog(service, file,
+                    (path, rows) -> new at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Suggestion(null, "the endpoint is offline")));
             onFx(() -> suggestButton(failing.dialog).fire());
             waitUntil("the failure", () -> status(failing.dialog).startsWith("No suggestion"));
             assertTrue(onFx(() -> status(failing.dialog)).contains("the endpoint is offline"));
             assertEquals(List.of("a", "c", "b"), onFx(failing::order));
             assertFalse(onFx(() -> suggestButton(failing.dialog).isDisabled()), "it can be asked again");
 
-            Fixture noModel = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file, null)));
+            Fixture noModel = fixture(() -> new ReorderChildrenDialog(service, file, null));
             assertTrue(onFx(() -> suggestButton(noModel.dialog).isDisabled()));
             assertTrue(onFx(() -> status(noModel.dialog)).contains("choose a model in Preferences"), onFx(() -> status(noModel.dialog)));
         }
@@ -337,7 +385,7 @@ public class ReorderChildrenDialogTest {
                 return new at.jku.isse.ecco.service.llm.LlmOrderSuggestionClient.Suggestion(List.of(1, 0, 2), null);
             };
 
-            Fixture d = onFx(() -> new Fixture(new ReorderChildrenDialog(service, file, never)));
+            Fixture d = fixture(() -> new ReorderChildrenDialog(service, file, never));
             onFx(() -> suggestButton(d.dialog).fire());
             Button stop = onFx(() -> suggestButton(d.dialog));
             assertEquals("Stop", onFx(stop::getText), "the button stops it while it waits");
@@ -372,6 +420,13 @@ public class ReorderChildrenDialogTest {
             if (sibling instanceof Label label)
                 return label.getText() == null ? "" : label.getText();
         return "";
+    }
+
+    /** The dialog [create] makes on the FX thread, once it is built: the order graph is read in the background. */
+    private static Fixture fixture(java.util.concurrent.Callable<ReorderChildrenDialog> create) throws Exception {
+        ReorderChildrenDialog dialog = onFx(create);
+        waitUntil("the dialog is built", dialog::isBuilt);
+        return onFx(() -> new Fixture(dialog));
     }
 
     private static final class Fixture {

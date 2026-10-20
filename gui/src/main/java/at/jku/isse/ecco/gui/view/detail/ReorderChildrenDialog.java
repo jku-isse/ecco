@@ -6,6 +6,7 @@ import javafx.collections.transformation.FilteredList;
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
+import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.service.EccoService;
@@ -143,10 +144,30 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		}
 
 		// used to disable a move that would cross a pair whose order the graph has already fixed -
-		// see the class javadoc. Empty (never blocks anything) if there's no graph, matching this
-		// dialog's pre-existing free-form behavior.
-		PartialOrderGraph pog = node.getArtifact() != null ? node.getArtifact().getPartialOrderGraph() : null;
-		Map<Node, PartialOrderGraph.Node> pogNodesByChild = pog != null ? pog.matchChildren(node) : Map.of();
+		// see the class javadoc. The graph is the repository's, which a commit or a recorded order
+		// changes holding the service's lock: what this dialog asks of it is copied holding the lock,
+		// in the background (it was asked on the FX thread, while they changed it), and the dialog is
+		// built once it is - until then it says so, and can be cancelled
+		getDialogPane().getButtonTypes().setAll(ButtonType.CANCEL);
+		Label reading = new Label(service.isInitialized() ? "Reading the order graph..." : "The repository is closed.");
+		reading.setPadding(new Insets(10));
+		getDialogPane().setContent(reading);
+		setResultConverter(buttonType -> null);
+		RepositoryAccess.read(service, "Order graph", svc -> Order.of(node),
+				order -> this.build(node, suggester, originalChildren, codePreview, rowData, markers, order),
+				failure -> reading.setText("The order graph could not be read: " + failure));
+	}
+
+	/** Whether the dialog is built, with what the order graph says - for tests. */
+	boolean isBuilt() {
+		return this.built;
+	}
+
+	private boolean built;
+
+	/** Builds the dialog's content, [order] copied from the order graph. */
+	private void build(Node.Op node, OrderSuggester suggester, List<Node.Op> originalChildren, Pane codePreview,
+					   ObservableList<ChildEntry> rowData, List<Node.Op> markers, Order order) {
 		// shared by every "this position is fixed" affordance below (row dimming, the # column's
 		// lock icon, and the Move buttons) so there's exactly one tooltip instance/message.
 		Tooltip orderFixedTooltip = new Tooltip("Order fixed by an earlier commit");
@@ -159,12 +180,12 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		// instead of presenting a table where every row and both buttons are disabled.
 		boolean anyReorderable = false;
 		for (int i = 0; i < rowData.size(); i++) {
-			if (!isRowFixed(i, rowData, pogNodesByChild)) {
+			if (!isRowFixed(i, rowData, order)) {
 				anyReorderable = true;
 				break;
 			}
 		}
-		getDialogPane().getButtonTypes().addAll(anyReorderable
+		getDialogPane().getButtonTypes().setAll(anyReorderable
 				? new ButtonType[]{ButtonType.OK, ButtonType.CANCEL}
 				: new ButtonType[]{ButtonType.CLOSE});
 
@@ -181,7 +202,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		// rows [from, to] checked against the graph again - two searches each
 		java.util.function.BiConsumer<Integer, Integer> checkRows = (from, to) -> {
 			for (int i = Math.max(0, from); i <= Math.min(rowData.size() - 1, to); i++) {
-				fixedRows.put(rowData.get(i), isRowFixed(i, rowData, pogNodesByChild));
+				fixedRows.put(rowData.get(i), isRowFixed(i, rowData, order));
 				placeOf.put(rowData.get(i), i);
 			}
 		};
@@ -300,11 +321,11 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			// its place among all rows: only some may be shown
 			int idx = rowData.indexOf(table.getSelectionModel().getSelectedItem());
 
-			boolean canMoveUp = idx > 0 && !swapBlocked(rowData.get(idx - 1), rowData.get(idx), pogNodesByChild);
+			boolean canMoveUp = idx > 0 && !swapBlocked(rowData.get(idx - 1), rowData.get(idx), order);
 			moveUpButton.setDisable(!canMoveUp);
 			moveUpButton.setTooltip(idx > 0 && !canMoveUp ? orderFixedTooltip : moveUpTooltip);
 
-			boolean canMoveDown = idx >= 0 && idx < rowData.size() - 1 && !swapBlocked(rowData.get(idx), rowData.get(idx + 1), pogNodesByChild);
+			boolean canMoveDown = idx >= 0 && idx < rowData.size() - 1 && !swapBlocked(rowData.get(idx), rowData.get(idx + 1), order);
 			moveDownButton.setDisable(!canMoveDown);
 			moveDownButton.setTooltip(idx >= 0 && idx < rowData.size() - 1 && !canMoveDown ? orderFixedTooltip : moveDownTooltip);
 		};
@@ -317,7 +338,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		moveUpButton.setOnAction(e -> {
 			ChildEntry moved = table.getSelectionModel().getSelectedItem();
 			int idx = rowData.indexOf(moved);
-			if (idx > 0 && !swapBlocked(rowData.get(idx - 1), rowData.get(idx), pogNodesByChild)) {
+			if (idx > 0 && !swapBlocked(rowData.get(idx - 1), rowData.get(idx), order)) {
 				swapAt[0] = idx - 1;
 				try {
 					Collections.swap(rowData, idx, idx - 1);
@@ -339,7 +360,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		moveDownButton.setOnAction(e -> {
 			ChildEntry moved = table.getSelectionModel().getSelectedItem();
 			int idx = rowData.indexOf(moved);
-			if (idx >= 0 && idx < rowData.size() - 1 && !swapBlocked(rowData.get(idx), rowData.get(idx + 1), pogNodesByChild)) {
+			if (idx >= 0 && idx < rowData.size() - 1 && !swapBlocked(rowData.get(idx), rowData.get(idx + 1), order)) {
 				swapAt[0] = idx;
 				try {
 					Collections.swap(rowData, idx, idx + 1);
@@ -365,7 +386,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			// a disabled control shows no tooltip: the reason goes next to it
 			suggestStatus.setText("To have an LLM suggest an order, choose a model in Preferences (LLM).");
 		}
-		suggestButton.setOnAction(e -> this.suggestOrder(suggester, node, rowData, pogNodesByChild, table, suggestButton, suggestStatus,
+		suggestButton.setOnAction(e -> this.suggestOrder(suggester, node, rowData, order, table, suggestButton, suggestStatus,
 				() -> {
 					updateButtonStates.run();
 					updateCodePreview.run();
@@ -441,6 +462,10 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		}
 
 		setResultConverter(buttonType -> buttonType != ButtonType.OK ? null : withMarkers(rowData, markers));
+		this.built = true;
+		// shown already, while it was read: as large as its content
+		if (getDialogPane().getScene() != null && getDialogPane().getScene().getWindow() != null)
+			getDialogPane().getScene().getWindow().sizeToScene();
 	}
 
 	/** Rows sent around the ones that may move, as context; shown around them with "Undecided only". */
@@ -454,11 +479,11 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	 * user to review, edit, and record with OK. The order graph's fixed precedences always win
 	 * (LlmOrderSuggestionClient#respecting): a suggestion never breaks an order a commit fixed.
 	 */
-	private void suggestOrder(OrderSuggester suggester, Node.Op node, ObservableList<ChildEntry> rowData, Map<Node, PartialOrderGraph.Node> pogNodesByChild,
+	private void suggestOrder(OrderSuggester suggester, Node.Op node, ObservableList<ChildEntry> rowData, Order order,
 							  TableView<ChildEntry> table, Button suggestButton, Label status, Runnable afterReorder) {
 		int first = -1, last = -1;
 		for (int i = 0; i < rowData.size(); i++) {
-			if (!isRowFixed(i, rowData, pogNodesByChild)) {
+			if (!isRowFixed(i, rowData, order)) {
 				if (first < 0)
 					first = i;
 				last = i;
@@ -474,8 +499,8 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		}
 		List<LlmOrderSuggestionClient.Row> rows = new ArrayList<>();
 		for (int i = 0; i < window.size(); i++)
-			rows.add(new LlmOrderSuggestionClient.Row(window.get(i).getText(), !isRowFixed(from + i, rowData, pogNodesByChild)));
-		boolean[][] mustPrecede = mustPrecede(window, pogNodesByChild);
+			rows.add(new LlmOrderSuggestionClient.Row(window.get(i).getText(), !isRowFixed(from + i, rowData, order)));
+		boolean[][] mustPrecede = mustPrecede(window, order);
 		String path = ArtifactDiagnostics.describePath(node);
 
 		int windowFrom = from;
@@ -512,9 +537,9 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 				status.setText("No suggestion: " + (suggestion == null ? "no answer" : suggestion.failureReason()));
 				return;
 			}
-			List<Integer> order = LlmOrderSuggestionClient.respecting(suggestion.order(), mustPrecede);
+			List<Integer> suggested = LlmOrderSuggestionClient.respecting(suggestion.order(), mustPrecede);
 			List<ChildEntry> reordered = new ArrayList<>(rowData.subList(0, windowFrom));
-			for (int i : order)
+			for (int i : suggested)
 				reordered.add(window.get(i));
 			reordered.addAll(rowData.subList(windowFrom + window.size(), rowData.size()));
 			ChildEntry selected = table.getSelectionModel().getSelectedItem();
@@ -542,30 +567,15 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	}
 
 	/** [a][b]: the order graph fixed row a before row b, directly or transitively. */
-	private static boolean[][] mustPrecede(List<ChildEntry> rows, Map<Node, PartialOrderGraph.Node> pogNodesByChild) {
+	private static boolean[][] mustPrecede(List<ChildEntry> rows, Order order) {
 		int n = rows.size();
 		boolean[][] precede = new boolean[n][n];
-		Map<PartialOrderGraph.Node, Integer> indexOf = new java.util.IdentityHashMap<>();
-		for (int i = 0; i < n; i++) {
-			PartialOrderGraph.Node pogNode = pogNodesByChild.get(rows.get(i).getNode());
-			if (pogNode != null)
-				indexOf.put(pogNode, i);
-		}
 		for (int a = 0; a < n; a++) {
-			PartialOrderGraph.Node start = pogNodesByChild.get(rows.get(a).getNode());
-			if (start == null)
-				continue;
 			// everything reachable from it comes after it
-			java.util.Set<PartialOrderGraph.Node> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-			java.util.Deque<PartialOrderGraph.Node> pending = new java.util.ArrayDeque<>(start.getNext());
-			while (!pending.isEmpty()) {
-				PartialOrderGraph.Node next = pending.pop();
-				if (!seen.add(next))
-					continue;
-				Integer b = indexOf.get(next);
-				if (b != null && b != a)
-					precede[a][b] = true;
-				pending.addAll(next.getNext());
+			java.util.BitSet after = order.after(rows.get(a).getNode());
+			for (int b = 0; b < n; b++) {
+				Integer node = order.nodeOf(rows.get(b).getNode());
+				precede[a][b] = a != b && node != null && after.get(node);
 			}
 		}
 		return precede;
@@ -585,10 +595,8 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	 * matching node for at all) are treated as "no known constraint", same permissive fallback as
 	 * having no graph at all.
 	 */
-	private static boolean swapBlocked(ChildEntry earlier, ChildEntry later, Map<Node, PartialOrderGraph.Node> pogNodesByChild) {
-		PartialOrderGraph.Node earlierPogNode = pogNodesByChild.get(earlier.getNode());
-		PartialOrderGraph.Node laterPogNode = pogNodesByChild.get(later.getNode());
-		return earlierPogNode != null && laterPogNode != null && PartialOrderGraph.Op.canReach(earlierPogNode, laterPogNode);
+	private static boolean swapBlocked(ChildEntry earlier, ChildEntry later, Order order) {
+		return order.canReach(earlier.getNode(), later.getNode());
 	}
 
 	/**
@@ -597,9 +605,9 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	 * involves it. Used to visually de-emphasize such rows, so what's left un-dimmed is exactly the
 	 * ambiguity the user actually needs to resolve.
 	 */
-	private static boolean isRowFixed(int idx, List<ChildEntry> rowData, Map<Node, PartialOrderGraph.Node> pogNodesByChild) {
-		boolean canMoveUp = idx > 0 && !swapBlocked(rowData.get(idx - 1), rowData.get(idx), pogNodesByChild);
-		boolean canMoveDown = idx >= 0 && idx < rowData.size() - 1 && !swapBlocked(rowData.get(idx), rowData.get(idx + 1), pogNodesByChild);
+	private static boolean isRowFixed(int idx, List<ChildEntry> rowData, Order order) {
+		boolean canMoveUp = idx > 0 && !swapBlocked(rowData.get(idx - 1), rowData.get(idx), order);
+		boolean canMoveDown = idx >= 0 && idx < rowData.size() - 1 && !swapBlocked(rowData.get(idx), rowData.get(idx + 1), order);
 		return !canMoveUp && !canMoveDown;
 	}
 
@@ -631,6 +639,122 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * What the order graph of a node's artifact says of the node's children, copied holding the
+	 * service's lock: its nodes and edges, each child's node ({@link PartialOrderGraph#matchChildren})
+	 * - asked on the FX thread while the dialog is open, as often as rows move.
+	 */
+	static final class Order {
+
+		/** No graph: nothing is fixed. */
+		private static final Order NONE = new Order(new IdentityHashMap<>(), new int[0][], new int[0], new boolean[0]);
+
+		/** The graph node of each child that has one, by the child (the dialog's own nodes). */
+		private final Map<Node, Integer> nodeOf;
+		/** The graph's nodes' next nodes, by index. */
+		private final int[][] next;
+		private final int[] sequenceNumber;
+		private final boolean[] hasArtifact;
+
+		private Order(Map<Node, Integer> nodeOf, int[][] next, int[] sequenceNumber, boolean[] hasArtifact) {
+			this.nodeOf = nodeOf;
+			this.next = next;
+			this.sequenceNumber = sequenceNumber;
+			this.hasArtifact = hasArtifact;
+		}
+
+		/** Copies what the graph of [node]'s artifact says of its children - holding the service's lock. */
+		static Order of(Node node) {
+			PartialOrderGraph pog = node.getArtifact() != null ? node.getArtifact().getPartialOrderGraph() : null;
+			if (pog == null)
+				return NONE;
+			Map<PartialOrderGraph.Node, Integer> index = new IdentityHashMap<>();
+			List<PartialOrderGraph.Node> nodes = new ArrayList<>();
+			java.util.Deque<PartialOrderGraph.Node> pending = new java.util.ArrayDeque<>();
+			pending.push(pog.getHead());
+			index.put(pog.getHead(), 0);
+			nodes.add(pog.getHead());
+			while (!pending.isEmpty())
+				for (PartialOrderGraph.Node child : pending.pop().getNext())
+					if (!index.containsKey(child)) {
+						index.put(child, nodes.size());
+						nodes.add(child);
+						pending.push(child);
+					}
+			int[][] next = new int[nodes.size()][];
+			int[] sequenceNumber = new int[nodes.size()];
+			boolean[] hasArtifact = new boolean[nodes.size()];
+			for (int i = 0; i < nodes.size(); i++) {
+				PartialOrderGraph.Node pogNode = nodes.get(i);
+				next[i] = pogNode.getNext().stream().mapToInt(index::get).toArray();
+				sequenceNumber[i] = pogNode.getSequenceNumber();
+				hasArtifact[i] = pogNode.getArtifact() != null;
+			}
+			// looked up by the children themselves: as matchChildren's map, an equal child finds the node too
+			Map<Node, PartialOrderGraph.Node> matched = pog.matchChildren(node);
+			Map<Node, Integer> nodeOf = new IdentityHashMap<>();
+			for (Node child : node.getChildren()) {
+				PartialOrderGraph.Node pogNode = matched.get(child);
+				if (pogNode != null)
+					nodeOf.put(child, index.get(pogNode));
+			}
+			return new Order(nodeOf, next, sequenceNumber, hasArtifact);
+		}
+
+		/**
+		 * Whether the graph node of [later] can be reached from that of [earlier] - false if either has
+		 * none. As {@link PartialOrderGraph.Op#canReach}, on the copy.
+		 */
+		boolean canReach(Node earlier, Node later) {
+			Integer from = this.nodeOf.get(earlier), target = this.nodeOf.get(later);
+			if (from == null || target == null)
+				return false;
+			java.util.Deque<Integer> stack = new java.util.ArrayDeque<>();
+			java.util.BitSet stacked = new java.util.BitSet(this.next.length);
+			stack.push(from);
+			stacked.set(from);
+			while (!stack.isEmpty()) {
+				int current = stack.pop();
+				// by sequence number only when it is assigned, as canReach does
+				if (current == target
+						|| (!this.hasArtifact[target] && !this.hasArtifact[current])
+						|| (this.hasArtifact[target] && this.hasArtifact[current] && this.sequenceNumber[target] >= 0 && this.sequenceNumber[current] == this.sequenceNumber[target]))
+					return true;
+				for (int child : this.next[current])
+					if (!stacked.get(child)) {
+						stacked.set(child);
+						stack.push(child);
+					}
+			}
+			return false;
+		}
+
+		/** The index of [child]'s graph node, or null if it has none. */
+		Integer nodeOf(Node child) {
+			return this.nodeOf.get(child);
+		}
+
+		/** The indices of the graph nodes after that of [earlier], following the edges - none if it has no node. */
+		java.util.BitSet after(Node earlier) {
+			java.util.BitSet seen = new java.util.BitSet(this.next.length);
+			Integer from = this.nodeOf.get(earlier);
+			if (from == null)
+				return seen;
+			java.util.Deque<Integer> pending = new java.util.ArrayDeque<>();
+			for (int child : this.next[from])
+				pending.push(child);
+			while (!pending.isEmpty()) {
+				int current = pending.pop();
+				if (seen.get(current))
+					continue;
+				seen.set(current);
+				for (int child : this.next[current])
+					pending.push(child);
+			}
+			return seen;
+		}
 	}
 
 	private static class ChildEntry {

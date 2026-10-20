@@ -4,6 +4,9 @@ import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.AssociationInfo;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl;
 import at.jku.isse.ecco.gui.view.graph.PartialOrderGraphView;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
@@ -31,9 +34,26 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	private boolean initialized;
 	private Collection<AssociationInfo> associationInfos = null;
 	private PartialOrderGraphView partialOrderGraphView;
-	private final AtomicLong pogGeneration = new AtomicLong();
 	/** The node whose order graph its tab shows once selected - drawn only then, see {@link #updatePartialOrderGraphTab}. */
 	private Node pogNode;
+	/** The order graph of {@link #pogNode}, got holding the service's lock. */
+	private PartialOrderGraph pog;
+
+	/**
+	 * Counts the requests to show a node: a node is read in the background, holding the service's
+	 * lock (see {@link #show}), and only the latest request's result is shown. FX thread only.
+	 */
+	private long requests;
+	private boolean reading;
+	/** The copy of the tree the viewers show (see {@link #viewerCopy}): a block chosen in the order graph is looked up in it. */
+	private NodeSnapshot shownCopy;
+	/** Counts the repository's changes ({@link #statusChangedEvent}): a copy made before one is made again. */
+	private final AtomicLong repositoryChanges = new AtomicLong();
+	/** The last copy made for the viewers, read and replaced holding the service's lock. */
+	private volatile CachedCopy cachedCopy;
+
+	private record CachedCopy(Node root, String pluginId, long changes, NodeSnapshot snapshot) {
+	}
 
 	@Inject
 	private Set<ArtifactViewer> artifactViewers;
@@ -83,7 +103,11 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	}
 
 	public void reset() {
+		requests++; // a node still being read is not shown
+		reading = false;
 		pogNode = null;
+		pog = null;
+		shownCopy = null;
 		if (null != partialOrderGraphView) {
 			partialOrderGraphView.closeGraph();
 			partialOrderGraphView = null;
@@ -97,6 +121,8 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	}
 
 	/**
+	 * Shows [node] - once it is read, in the background, holding the service's lock (see {@link #show}).
+	 *
 	 * @param restoreTabKey a key previously returned by {@link #getSelectedTabKey()} (captured
 	 *                      BEFORE calling {@link #reset()}), to restore afterwards if a tab of the
 	 *                      same kind still exists - otherwise every recompose (e.g. a feature
@@ -106,17 +132,127 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	 *                      showTree() call, with nothing to restore).
 	 */
 	public void showTree(Node node, String restoreTabKey) {
-		if (node == null) {
+		this.show(node, false, restoreTabKey);
+	}
+
+	/**
+	 * Shows the first node below [root] a viewer can show - its code, without a click on a node first
+	 * - else [root] itself (its Info tab); found in the background, holding the service's lock. See
+	 * {@link #showTree(Node, String)} for [restoreTabKey].
+	 */
+	public void showFirstViewable(Node root, String restoreTabKey) {
+		this.show(root, true, restoreTabKey);
+	}
+
+	/** Whether a node is still being read - for tests. */
+	public boolean isReading() {
+		return this.reading;
+	}
+
+	/**
+	 * Reads what the tabs show of [node] (or of the first node below it a viewer can show) - its
+	 * description, condition, order graph and a copy of its tree for the viewers - in the background,
+	 * holding the service's lock: they were read on the FX thread while a commit changed them (the
+	 * check whether one ran, before the condition was computed, did not keep one from starting right
+	 * after it), and the viewers walked the tree there. Until then the tabs stay, the Info tab saying
+	 * the node is being read; a request made meanwhile supersedes this one.
+	 */
+	private void show(Node node, boolean firstViewable, String restoreTabKey) {
+		if (node == null || !this.service.isInitialized()) {
 			// e.g. no node in this tree has a registered ArtifactViewer (a plain commit with no
-			// adapter-specific viewer, such as pure Java/text content)
+			// adapter-specific viewer, such as pure Java/text content); nothing of a closed repository
+			// is shown either - closing it cleared the tabs
+			if (!this.service.isInitialized())
+				this.initialized = false;
 			this.reset();
 			return;
 		}
+		long request = ++this.requests;
+		Set<String> viewable = this.viewerPluginIds();
+		this.reading = true;
+		Tab infoTab = this.openDetailsTabs.get("info");
+		if (infoTab != null)
+			infoTab.setContent(infoLabel("Reading the node..."));
+		RepositoryAccess.read(this.service, "Artifact details", svc -> this.read(node, firstViewable, viewable),
+				details -> {
+					if (request != this.requests)
+						return;
+					this.reading = false;
+					this.apply(details, restoreTabKey);
+				},
+				failure -> {
+					if (request != this.requests)
+						return;
+					this.reading = false;
+					new ExceptionAlert(failure).show();
+				});
+	}
 
+	/** What the tabs show of a node (the original, not a copy), read holding the service's lock. */
+	private record Details(Node node, String described, Association association, String condition, String flags,
+						   PartialOrderGraph pog, String pluginId, NodeSnapshot copy, Node viewed) {
+	}
+
+	/** Reads [node] (or the first node below it of a plugin in [viewable]) - holding the service's lock. */
+	private Details read(Node node, boolean firstViewable, Set<String> viewable) {
+		Node live = node.getNode();
+		if (firstViewable) {
+			Node found = firstWithViewer(live, viewable);
+			if (found != null)
+				live = found;
+		}
+		StringBuilder text = new StringBuilder(live.toString());
+		List<String> path = new ArrayList<>();
+		for (Node parent = live.getParent(); parent != null; parent = parent.getParent())
+			if (parent.getArtifact() != null && !String.valueOf(parent.getArtifact()).isBlank())
+				path.add(0, String.valueOf(parent.getArtifact()));
+		if (!path.isEmpty())
+			text.append("\n\nIn: ").append(String.join(" > ", path));
+		Association association = null;
+		String condition = null;
+		StringBuilder flags = new StringBuilder();
+		if (live.getArtifact() != null) {
+			association = live.getArtifact().getContainingNode() == null ? null
+					: live.getArtifact().getContainingNode().getContainingAssociation();
+			if (association != null)
+				condition = association.computeCondition().toDisplayString();
+			flags.append("\n\nOrdered children: ").append(live.getArtifact().isOrdered() ? "yes" : "no");
+			if (live.getArtifact().getSequenceNumber() >= 0)
+				flags.append("\nPosition in its parent's order: ").append(live.getArtifact().getSequenceNumber());
+		}
+		flags.append("\nUnique to its association: ").append(live.isUnique() ? "yes" : "no")
+				.append("\nAtomic (compared as a whole): ").append(live.isAtomic() ? "yes" : "no");
+		PartialOrderGraph graph = live.getArtifact() != null ? live.getArtifact().getPartialOrderGraph() : null;
+		String pluginId = getPluginId(live);
+		NodeSnapshot copy = pluginId != null && viewable.contains(pluginId) ? this.viewerCopy(live, pluginId) : null;
+		return new Details(live, text.toString(), association, condition, flags.toString(), graph, pluginId, copy, copy == null ? null : copy.copyOf(live));
+	}
+
+	/**
+	 * A copy of the tree [node] is in, for the viewers of plugin [pluginId]: they walk it from its
+	 * root, each file of theirs in a tab - the files of other plugins are copied without their
+	 * content. Made once per tree and plugin, until the repository changes; holding the service's lock.
+	 */
+	private NodeSnapshot viewerCopy(Node node, String pluginId) {
+		Node root = node;
+		while (root.getParent() != null)
+			root = root.getParent();
+		long changes = this.repositoryChanges.get();
+		CachedCopy cached = this.cachedCopy;
+		if (cached != null && cached.root() == root && cached.pluginId().equals(pluginId) && cached.changes() == changes && cached.snapshot().copyOf(node) != null)
+			return cached.snapshot();
+		NodeSnapshot copy = NodeSnapshot.of(root, n -> !(n.getArtifact() != null && n.getArtifact().getData() instanceof PluginArtifactData data
+				&& !pluginId.equals(data.getPluginId())));
+		this.cachedCopy = new CachedCopy(root, pluginId, changes, copy);
+		return copy;
+	}
+
+	/** Shows [details], read for the latest request. */
+	private void apply(Details details, String restoreTabKey) {
 		Tab selected = detailsTabPane.getSelectionModel().getSelectedItem();
-		updateInfoTab(node);
-		updatePartialOrderGraphTab(node);
-		updateArtifactViewerTabs(node);
+		updateInfoTab(details);
+		updatePartialOrderGraphTab(details);
+		updateArtifactViewerTabs(details);
 		orderTabs();
 
 		// the tab open before stays open (also across a recompose); else the first: the code
@@ -148,7 +284,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			detailsTabPane.getTabs().setAll(ordered);
 	}
 
-	private void updateInfoTab(Node node) {
+	private void updateInfoTab(Details details) {
 		Tab t;
 		if (openDetailsTabs.containsKey("info")) {
 			t = openDetailsTabs.get("info");
@@ -159,62 +295,51 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			detailsTabPane.getTabs().add(t);
 		}
 
-		Label info = new Label(describe(node));
+		t.setContent(infoLabel(describe(details)));
+	}
+
+	private static Label infoLabel(String text) {
+		Label info = new Label(text);
 		info.setWrapText(true);
 		info.setPadding(new javafx.geometry.Insets(8));
-		t.setContent(info);
+		return info;
 	}
 
 	/** What the Info tab says about a node: what it is, where, its association and how its children are kept. */
-	private String describe(Node node) {
-		StringBuilder text = new StringBuilder(node.toString());
-		List<String> path = new ArrayList<>();
-		for (Node parent = node.getParent(); parent != null; parent = parent.getParent())
-			if (parent.getArtifact() != null && !String.valueOf(parent.getArtifact()).isBlank())
-				path.add(0, String.valueOf(parent.getArtifact()));
-		if (!path.isEmpty())
-			text.append("\n\nIn: ").append(String.join(" > ", path));
-		if (node.getArtifact() != null) {
-			at.jku.isse.ecco.core.Association association = node.getArtifact().getContainingNode() == null ? null
-					: node.getArtifact().getContainingNode().getContainingAssociation();
-			if (association != null) {
-				text.append("\n\nAssociation: ").append(at.jku.isse.ecco.gui.TableColumns.shortIds(association.getId()));
-				String condition = this.conditionOf(association);
-				if (condition != null)
-					text.append("\nCondition: ").append(condition);
-			}
-			text.append("\n\nOrdered children: ").append(node.getArtifact().isOrdered() ? "yes" : "no");
-			if (node.getArtifact().getSequenceNumber() >= 0)
-				text.append("\nPosition in its parent's order: ").append(node.getArtifact().getSequenceNumber());
+	private String describe(Details details) {
+		StringBuilder text = new StringBuilder(details.described());
+		if (details.association() != null) {
+			text.append("\n\nAssociation: ").append(at.jku.isse.ecco.gui.TableColumns.shortIds(details.association().getId()));
+			String condition = this.minimizedConditionOf(details.association());
+			if (condition == null)
+				condition = details.condition();
+			if (condition != null)
+				text.append("\nCondition: ").append(condition);
 		}
-		text.append("\nUnique to its association: ").append(node.isUnique() ? "yes" : "no")
-				.append("\nAtomic (compared as a whole): ").append(node.isAtomic() ? "yes" : "no");
-		return text.toString();
+		return text.append(details.flags()).toString();
 	}
 
-	/** The association's minimized condition, as the associations table shows it, else its full condition. */
-	private String conditionOf(at.jku.isse.ecco.core.Association association) {
+	/** The association's minimized condition, as the associations table shows it, else null (then its full condition is shown). */
+	private String minimizedConditionOf(Association association) {
 		if (this.associationInfos != null)
 			for (AssociationInfo info : this.associationInfos)
 				if (info.getAssociation() == association && info instanceof AssociationInfoImpl impl
 						&& impl.getMinimizedCondition() != null && !impl.getMinimizedCondition().isEmpty())
 					return impl.getMinimizedCondition();
-		if (this.service.isWriteInProgress())
-			return null;
-		return association.computeCondition().toDisplayString();
+		return null;
 	}
 
-	private void updatePartialOrderGraphTab(Node node) {
+	private void updatePartialOrderGraphTab(Details details) {
 		// if node is an ordered node display its sequence graph
-		if (node.getArtifact() != null && node.getArtifact().getPartialOrderGraph() != null) {
+		if (details.pog() != null) {
 			if (null == partialOrderGraphView) {
 				partialOrderGraphView = new PartialOrderGraphView();
 				partialOrderGraphView.setOnBlockChosen(this::showInCode);
 			}
 			// drawn when its tab is selected: drawn for every node shown, the graph of a large file -
 			// a node per line - was laid out and redrawn without end in the hidden tab, until the heap ran out
-			pogNode = node;
-			pogGeneration.incrementAndGet();
+			pogNode = details.node();
+			pog = details.pog();
 
 			if (!openDetailsTabs.containsKey("pog")) {
 				Tab t = new Tab("Order graph");
@@ -227,6 +352,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 
 		} else if (openDetailsTabs.containsKey("pog")) {
 			pogNode = null;
+			pog = null;
 			detailsTabPane.getTabs().remove(openDetailsTabs.get("pog"));
 			openDetailsTabs.remove("pog");
 		}
@@ -237,9 +363,13 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	 * selected. The tree's selection stays: the order graph's tab with it, for the next block.
 	 */
 	private void showInCode(Node child) {
+		// the viewers show a copy of the tree: the chosen node's copy
+		Node copy = shownCopy == null ? null : shownCopy.copyOf(child);
+		if (copy == null)
+			return;
 		for (Tab tab : detailsTabPane.getTabs()) {
 			if (tab.getContent() instanceof ArtifactViewer viewer && openDetailsTabs.entrySet().stream().anyMatch(e -> e.getValue() == tab && e.getKey().startsWith("AV_"))) {
-				viewer.showTree(child);
+				viewer.showTree(copy);
 				detailsTabPane.getSelectionModel().select(tab);
 				return;
 			}
@@ -252,22 +382,15 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		if (node == null || partialOrderGraphView == null)
 			return;
 		pogNode = null; // drawn: selecting the tab again keeps it
-		long generation = pogGeneration.incrementAndGet();
-		PartialOrderGraphView graphView = partialOrderGraphView;
-		Thread th = new Thread(() -> {
-			PartialOrderGraph pog = node.getArtifact().getPartialOrderGraph();
-			Platform.runLater(() -> {
-				if (pogGeneration.get() != generation || graphView != partialOrderGraphView) { return; }
-				// got in the background: on the FX thread it waited for a running commit
-				graphView.showGraph(pog, node, () -> this.service.isInitialized() ? this.service.getRepository() : null, this.service);
-			});
-		});
-		th.setDaemon(true);
-		th.start();
+		// the graph was got holding the service's lock (a thread of its own got it without), and is
+		// read holding it too
+		partialOrderGraphView.showGraph(pog, node, () -> this.service.isInitialized() ? this.service.getRepository() : null, this.service);
 	}
 
-	private void updateArtifactViewerTabs(Node node) {
-		List<? extends ArtifactViewer> viewers = getArtifactViewers(node);
+	private void updateArtifactViewerTabs(Details details) {
+		// a copy of the tree: the viewers walk it on the FX thread
+		List<? extends ArtifactViewer> viewers = details.viewed() == null ? List.of() : viewersFor(details.pluginId());
+		shownCopy = details.copy();
 		List<String> tabKeysToRemove = openDetailsTabs.keySet().stream()
 				.filter(k -> k.startsWith("AV_"))
 				.collect(Collectors.toList());
@@ -291,7 +414,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 				if (v instanceof AssociationInfoArtifactViewer) {
 					((AssociationInfoArtifactViewer)v).setAssociationInfos(associationInfos);
 				}
-				v.showTree(node);
+				v.showTree(details.viewed());
 				t.setContent((Pane) v);
 
 			} catch (Exception ex) {
@@ -317,23 +440,15 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	/**
 	 * Checks for injected {@link ArtifactViewer}s or {@link AssociationInfoArtifactViewer}s with matching plugin id
 	 * and adds them to resulting list if the viewer is an instance of {@link Pane}.
-	 * @param node The node to find {@link ArtifactViewer}s for.
+	 * @param pluginId The plugin to find {@link ArtifactViewer}s for (may be null: none).
 	 * @return A list of matching {@link ArtifactViewer}s or an empty list if there are no matches,
 	 * or the service is not initialized.
 	 */
-	private List<ArtifactViewer> getArtifactViewers(Node node) {
+	private List<ArtifactViewer> viewersFor(String pluginId) {
 		LinkedList<ArtifactViewer> viewers = new LinkedList<>();
-		if (service.isInitialized()) {
-			if (!initialized) {
-				service.getInjector().injectMembers(this);
-				initialized = true;
-			}
-		} else {
-			initialized = false;
+		if (!injected() || pluginId == null)
 			return viewers;
-		}
 
-		String pluginId = getPluginId(node);
 		if (artifactViewers != null) {
 			for (ArtifactViewer tempArtifactViewer : artifactViewers) {
 				if (tempArtifactViewer.getPluginId() != null && tempArtifactViewer instanceof Pane) {
@@ -357,12 +472,46 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		return viewers;
 	}
 
+	/** The plugins a viewer is registered for - none while the repository is not open. */
+	private Set<String> viewerPluginIds() {
+		Set<String> pluginIds = new HashSet<>();
+		if (!injected())
+			return pluginIds;
+		for (Set<? extends ArtifactViewer> registered : Arrays.<Set<? extends ArtifactViewer>>asList(artifactViewers, associationInfoArtifactViewers))
+			if (registered != null)
+				for (ArtifactViewer viewer : registered)
+					if (viewer.getPluginId() != null && viewer instanceof Pane)
+						pluginIds.add(viewer.getPluginId());
+		return pluginIds;
+	}
+
+	/** Injects the viewers once the repository is open; false while it is not. */
+	private boolean injected() {
+		if (service.isInitialized()) {
+			if (!initialized) {
+				service.getInjector().injectMembers(this);
+				initialized = true;
+			}
+			return true;
+		}
+		initialized = false;
+		return false;
+	}
+
+	/**
+	 * The first node below [node] a viewer of [artifactDetailView] can show, or null. Walks the tree:
+	 * call it holding the service's lock, off the FX thread - or see {@link #showFirstViewable}.
+	 */
 	public static Node findNodeWithArtifactViewerRec(ArtifactDetailView artifactDetailView, Node node) {
+		return firstWithViewer(node, artifactDetailView.viewerPluginIds());
+	}
+
+	private static Node firstWithViewer(Node node, Set<String> pluginIds) {
 		for (Node n : node.getChildren()) {
-			if (artifactDetailView.getArtifactViewers(n).size() > 0) {
+			if (pluginIds.contains(getPluginId(n))) {
 				return n;
 			}
-			Node found = findNodeWithArtifactViewerRec(artifactDetailView, n);
+			Node found = firstWithViewer(n, pluginIds);
 			if (found != null) {
 				return found;
 			}
@@ -391,8 +540,11 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 
 	@Override
 	public void statusChangedEvent(EccoService service) {
+		// the repository changed: a copy of a tree made before is not shown again
+		this.repositoryChanges.incrementAndGet();
 		if (!service.isInitialized()) {
-			// initialized is read and written by getArtifactViewers() on the FX thread
+			this.cachedCopy = null;
+			// initialized is read and written by injected() on the FX thread
 			Platform.runLater(() -> {
 				initialized = false;
 				this.reset();

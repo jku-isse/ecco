@@ -58,15 +58,18 @@ public class ArtifactDetailViewTest {
             ArtifactDetailView view = onFx(() -> new ArtifactDetailView(service));
 
             onFx(() -> view.showTree(file));
+            read(view);
             assertEquals(List.of("Code", "Order graph", "Info"), onFx(() -> tabNames(view)));
             assertTrue(onFx(() -> infoText(view)).startsWith("a.txt "));
 
             onFx(() -> view.showTree(file.getChildren().get(0)));
+            read(view);
             assertEquals(List.of("Code", "Info"), onFx(() -> tabNames(view)));
             assertTrue(onFx(() -> infoText(view)).startsWith("a1\n"), onFx(() -> infoText(view)));
 
             // a directory has no plugin: its viewer tab goes
             onFx(() -> view.showTree(file.getParent()));
+            read(view);
             assertEquals(List.of("Info"), onFx(() -> tabNames(view)));
         }
     }
@@ -82,6 +85,7 @@ public class ArtifactDetailViewTest {
             assertNull(onFx(() -> view.getSelectedTabKey()), "nothing shown yet");
 
             onFx(() -> view.showTree(a));
+            read(view);
             onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Order graph")));
             String key = onFx(() -> view.getSelectedTabKey());
             assertEquals("pog", key);
@@ -90,6 +94,7 @@ public class ArtifactDetailViewTest {
                 view.reset();
                 view.showTree(b, key);
             });
+            read(view);
             assertEquals("Order graph", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()));
 
             // a key whose tab no longer exists leaves the default selection: the first tab, the code
@@ -97,6 +102,7 @@ public class ArtifactDetailViewTest {
                 view.reset();
                 view.showTree(b.getChildren().get(0), key);
             });
+            read(view);
             assertEquals("Code", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()));
 
             onFx(() -> view.showTree(null));
@@ -116,6 +122,7 @@ public class ArtifactDetailViewTest {
             Node file = association(service, "a.txt").getRootNode().getChildren().get(0).getChildren().get(0);
             ArtifactDetailView view = onFx(() -> new ArtifactDetailView(service));
             onFx(() -> view.showTree(file));
+            read(view);
             assertEquals("Code", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()));
             Thread.sleep(500); // it was drawn in the background
             assertEquals(0, drawnNodes(view), "not drawn while the code is shown");
@@ -130,6 +137,7 @@ public class ArtifactDetailViewTest {
             // shown again with the graph's tab selected: drawn right away
             onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Order graph")));
             onFx(() -> view.showTree(file));
+            read(view);
             waitUntil("drawn", () -> drawnNodes(view) > 0);
         }
     }
@@ -149,6 +157,7 @@ public class ArtifactDetailViewTest {
                 return v;
             });
             onFx(() -> view.showTree(file));
+            read(view);
             onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Order graph")));
             waitUntil("drawn", () -> drawnNodes(view) > 0);
 
@@ -219,6 +228,7 @@ public class ArtifactDetailViewTest {
             List<AssociationInfoImpl> infos = List.of(new AssociationInfoImpl(association));
             onFx(() -> view.setAssociationInfo(infos));
             onFx(() -> view.showTree(line));
+            read(view);
             onFx(() -> view.setAssociationInfo(infos));
             onFx(() -> view.setAssociationInfo(null));
             assertEquals(List.of("Code", "Info"), onFx(() -> tabNames(view)));
@@ -227,7 +237,8 @@ public class ArtifactDetailViewTest {
             waitUntil("the tabs are cleared", () -> tabPane(view).getTabs().isEmpty());
 
             onFx(() -> view.showTree(line));
-            assertEquals(List.of("Info"), onFx(() -> tabNames(view)), "no viewers without a repository");
+            assertFalse(onFx(view::isReading), "nothing is read without a repository");
+            assertEquals(List.of(), onFx(() -> tabNames(view)), "no viewers without a repository - nothing of it is shown");
         } finally {
             service.close();
         }
@@ -248,7 +259,85 @@ public class ArtifactDetailViewTest {
         }
     }
 
+    /**
+     * A node is read in the background, holding the service's lock: while a commit holds it, the FX
+     * thread goes on (it computed the condition and walked the tree itself, waiting for nothing - read
+     * while the commit changed them), the Info tab saying the node is read; released, the node is shown.
+     */
+    @Test
+    @Timeout(60)
+    public void aNodeIsReadOffTheFxThreadHoldingTheLock(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFiles(tmp)) {
+            Node file = association(service, "a.txt").getRootNode().getChildren().get(0).getChildren().get(0);
+            ArtifactDetailView view = onFx(() -> new ArtifactDetailView(service));
+            onFx(() -> view.showTree(file.getChildren().get(1)));
+            read(view);
+            assertTrue(onFx(() -> infoText(view)).startsWith("a2\n"));
+
+            java.util.concurrent.CountDownLatch locked = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+            Thread commitLike = new Thread(() -> {
+                synchronized (service) {
+                    locked.countDown();
+                    try {
+                        release.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            commitLike.start();
+            try {
+                assertTrue(locked.await(10, java.util.concurrent.TimeUnit.SECONDS));
+                // onFx fails if the FX thread does not get to it within 10 s
+                onFx(() -> view.showTree(file));
+                Thread.sleep(300);
+                assertTrue(onFx(view::isReading), "not read while the lock is held");
+                assertEquals("Reading the node...", onFx(() -> infoText(view)));
+                assertEquals(List.of("Code", "Info"), onFx(() -> tabNames(view)), "the tabs shown stay meanwhile");
+
+                release.countDown();
+                read(view);
+                assertTrue(onFx(() -> infoText(view)).startsWith("a.txt "), onFx(() -> infoText(view)));
+                assertEquals(List.of("Code", "Order graph", "Info"), onFx(() -> tabNames(view)));
+            } finally {
+                release.countDown();
+                commitLike.join(10_000);
+            }
+        }
+    }
+
+    /** The code viewers show a copy of the tree: of the node's own file, the files of other plugins without content. */
+    @Test
+    @Timeout(60)
+    public void theViewersShowACopyOfTheTree(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFiles(tmp)) {
+            Node root = association(service, "a.txt").getRootNode();
+            Node file = root.getChildren().get(0).getChildren().get(0);
+            NodeSnapshot copy = NodeSnapshot.of(root);
+            Node fileCopy = copy.copyOf(file);
+            assertNotSame(file, fileCopy);
+            assertEquals(file.toString(), fileCopy.toString());
+            assertEquals(file.getChildren().stream().map(String::valueOf).toList(), fileCopy.getChildren().stream().map(String::valueOf).toList());
+            assertSame(file.getArtifact().getData(), fileCopy.getArtifact().getData(), "the data is shared, it is not changed");
+            assertSame(file.getArtifact().getContainingNode().getContainingAssociation(), fileCopy.getArtifact().getContainingNode().getContainingAssociation(),
+                    "the viewers colour by the association");
+            assertSame(copy.root(), fileCopy.getParent().getParent());
+            assertNull(fileCopy.getArtifact().getPartialOrderGraph(), "the order graph is read from the original");
+            assertEquals(fileCopy, copy.copyOf(file), "copies compare as the originals do");
+
+            NodeSnapshot shells = NodeSnapshot.of(root, n -> n != file);
+            assertTrue(shells.copyOf(file).getChildren().isEmpty());
+            assertNull(shells.copyOf(file.getChildren().get(0)));
+        }
+    }
+
     // --- helpers -------------------------------------------------------------------------------------
+
+    /** Waits until the node last asked for is read and shown - in the background, holding the service's lock. */
+    static void read(ArtifactDetailView view) throws Exception {
+        waitUntil("the node is read", () -> !view.isReading());
+    }
 
     /** A repository with a.txt for A and b.txt added for B. */
     static EccoService twoFiles(Path tmp) throws Exception {

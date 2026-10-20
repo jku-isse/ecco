@@ -39,6 +39,7 @@ public class ArtifactTreeViewTest {
             ArtifactTreeView view = onFx(() -> new ArtifactTreeView(service));
 
             onFx(() -> view.setRootNode(a.getRootNode()));
+            read(view);
 
             assertEquals(List.of("Code", "Order graph", "Info"), onFx(() -> tabNames(view)));
             assertEquals("Code", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()), "it opens on the code");
@@ -55,12 +56,14 @@ public class ArtifactTreeViewTest {
             Association a = association(service, "a.txt");
             ArtifactTreeView view = onFx(() -> new ArtifactTreeView(service));
             onFx(() -> view.setRootNode(a.getRootNode()));
+            read(view);
 
             onFx(() -> {
                 ArtifactTreeTableView table = table(view);
                 TreeItem<ArtifactTreeTableView.NodeWrapper> line = table.getRoot().getChildren().get(0).getChildren().get(0).getChildren().get(1);
                 table.getSelectionModel().select(line);
             });
+            read(view);
 
             assertTrue(onFx(() -> infoText(view)).startsWith("a2\n"), onFx(() -> infoText(view)));
             assertEquals(List.of("Code", "Info"), onFx(() -> tabNames(view)), "a line has no order graph");
@@ -74,9 +77,11 @@ public class ArtifactTreeViewTest {
         try (EccoService service = twoFeatures(tmp)) {
             ArtifactTreeView view = onFx(() -> new ArtifactTreeView(service));
             onFx(() -> view.setRootNode(association(service, "a.txt").getRootNode()));
+            read(view);
             onFx(() -> tabPane(view).getSelectionModel().select(tab(view, "Code")));
 
             onFx(() -> view.setRootNode(association(service, "b.txt").getRootNode()));
+            read(view);
 
             assertEquals("Code", onFx(() -> tabPane(view).getSelectionModel().getSelectedItem().getText()));
             assertTrue(onFx(() -> infoText(view)).startsWith("b.txt "));
@@ -88,6 +93,12 @@ public class ArtifactTreeViewTest {
     }
 
     // --- helpers -------------------------------------------------------------------------------------
+
+    /** Waits until the tree and the node shown are read - in the background, holding the service's lock. */
+    private static void read(ArtifactTreeView view) throws Exception {
+        waitUntil("the tree and the node are read", () -> !table(view).isReading()
+                && !((at.jku.isse.ecco.gui.view.detail.ArtifactDetailView) find(view, n -> n instanceof at.jku.isse.ecco.gui.view.detail.ArtifactDetailView)).isReading());
+    }
 
     private static ArtifactTreeTableView table(ArtifactTreeView view) {
         return (ArtifactTreeTableView) find(view, n -> n instanceof ArtifactTreeTableView);

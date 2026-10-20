@@ -469,7 +469,8 @@ public class ArtifactsView extends BorderPane implements EccoListener, at.jku.is
     /**
      * Shows the composition of the ticked associations in the tree - after every change of the ticks
      * (see composeDelay); there was a Compose Selected button to press. A later composition
-     * supersedes an earlier one still being built.
+     * supersedes an earlier one still being built. The associations' trees are got holding the
+     * service's lock (they were without it); the tree reads the composition's levels holding it too.
      */
     private void composeTicked() {
         long generation = this.composeGeneration.incrementAndGet();
@@ -481,21 +482,17 @@ public class ArtifactsView extends BorderPane implements EccoListener, at.jku.is
             this.artifactTreeView.setRootNode(null);
             return;
         }
-        Task<LazyCompositionRootNode> composeTask = new Task<>() {
-            @Override
-            protected LazyCompositionRootNode call() {
-                LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
-                for (Association association : ticked)
-                    rootNode.addOrigNode(association.getRootNode());
-                return rootNode;
-            }
-        };
-        composeTask.setOnSucceeded(event -> {
-            if (this.composeGeneration.get() == generation)
-                this.artifactTreeView.setRootNode(composeTask.getValue());
-        });
-        TaskFailures.reportAndReenable(composeTask);
-        new Thread(composeTask).start();
+        at.jku.isse.ecco.gui.RepositoryAccess.read(this.service, "Compose", svc -> {
+                    LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
+                    for (Association association : ticked)
+                        rootNode.addOrigNode(association.getRootNode());
+                    return rootNode;
+                },
+                rootNode -> {
+                    if (this.composeGeneration.get() == generation)
+                        this.artifactTreeView.setRootNode(rootNode);
+                },
+                failure -> new ExceptionAlert(failure).show());
     }
 
     /** Docks the Features pane at the left, or takes it away; it is built from the repository's features when first shown. */

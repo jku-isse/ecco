@@ -41,7 +41,7 @@ public class ArtifactTreeTableViewTest {
     public void listsEveryNodeOfTheTreeExpanded(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFeatures(tmp)) {
             Association a = association(service, "a.txt");
-            ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView(a.getRootNode()));
+            ArtifactTreeTableView view = shown(service, a.getRootNode());
 
             List<TreeItem<ArtifactTreeTableView.NodeWrapper>> items = onFx(() -> items(view.getRoot()));
             List<Node> nodes = new ArrayList<>();
@@ -71,10 +71,11 @@ public class ArtifactTreeTableViewTest {
             commit(service, tmp.resolve("v1"), "A.1", java.util.Map.of("big.txt", lines.toString()));
             Association big = service.getRepository().getAssociations().stream()
                     .max(java.util.Comparator.comparingInt(a -> a.getRootNode().countArtifacts())).orElseThrow();
-            ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView());
+            ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView(service));
 
             long start = System.nanoTime();
             onFx(() -> view.setRootNode(big.getRootNode()));
+            read(view);
             long millis = (System.nanoTime() - start) / 1_000_000;
 
             assertTrue(millis < 2_000, "shown in " + millis + " ms");
@@ -84,6 +85,8 @@ public class ArtifactTreeTableViewTest {
             TreeItem<ArtifactTreeTableView.NodeWrapper> file = onFx(() -> items(view.getRoot()).stream()
                     .filter(i -> String.valueOf(i.getValue()).startsWith("big.txt")).findFirst().orElseThrow());
             onFx(() -> file.setExpanded(true));
+            // read when opened, in the background
+            waitUntil("the lines", () -> !file.getChildren().isEmpty());
             assertEquals(20_000 + 2, (int) onFx(() -> file.getChildren().size()), "every line, the final newline and the format");
         }
     }
@@ -95,7 +98,8 @@ public class ArtifactTreeTableViewTest {
     @Test
     @Timeout(60)
     public void theInternalsAreHiddenAtFirst() throws Exception {
-        ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView());
+        // no tree is shown: no repository is read
+        ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView(null));
         for (String hidden : List.of("Ordered", "Atomic", "Unique", "Sequence Number"))
             assertFalse(onFx(() -> column(view, hidden).isVisible()), hidden);
         for (String shown : List.of("Node", "Association"))
@@ -108,7 +112,7 @@ public class ArtifactTreeTableViewTest {
     public void columnsShowTheArtifactsFlagsAndAssociation(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFeatures(tmp)) {
             Association a = association(service, "a.txt");
-            ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView(a.getRootNode()));
+            ArtifactTreeTableView view = shown(service, a.getRootNode());
             TreeItem<ArtifactTreeTableView.NodeWrapper> root = onFx(() -> view.getRoot());
             TreeItem<ArtifactTreeTableView.NodeWrapper> file = onFx(() -> item(view, "a.txt"));
             TreeItem<ArtifactTreeTableView.NodeWrapper> line = onFx(() -> item(view, "a1"));
@@ -133,11 +137,12 @@ public class ArtifactTreeTableViewTest {
             Association a = association(service, "a.txt");
             AssociationInfoImpl info = new AssociationInfoImpl(a);
             ArtifactTreeTableView view = onFx(() -> {
-                ArtifactTreeTableView v = new ArtifactTreeTableView();
+                ArtifactTreeTableView v = new ArtifactTreeTableView(service);
                 v.setAssociationInfo(List.of(info));
                 v.setRootNode(a.getRootNode());
                 return v;
             });
+            read(view);
             List<TreeItem<ArtifactTreeTableView.NodeWrapper>> items = onFx(() -> items(view.getRoot()));
 
             onFx(() -> info.colorProperty().set(Color.RED));
@@ -149,6 +154,7 @@ public class ArtifactTreeTableViewTest {
             // in b.txt's tree only the directory, whose artifact a.txt's association owns, takes the color
             Association b = association(service, "b.txt");
             onFx(() -> view.setRootNode(b.getRootNode()));
+            read(view);
             for (TreeItem<ArtifactTreeTableView.NodeWrapper> item : onFx(() -> items(view.getRoot()))) {
                 Artifact<?> artifact = item.getValue().getArtifact();
                 boolean owned = artifact != null && artifact.getContainingNode().getContainingAssociation() == a;
@@ -168,10 +174,15 @@ public class ArtifactTreeTableViewTest {
             Association b = association(service, "b.txt");
             AssociationInfoImpl info = new AssociationInfoImpl(b);
             info.colorProperty().set(Color.YELLOW);
-            ArtifactTreeTableView view = onFx(() -> {
-                ArtifactTreeTableView v = new ArtifactTreeTableView();
+            ArtifactTreeTableView read = onFx(() -> {
+                ArtifactTreeTableView v = new ArtifactTreeTableView(service);
                 v.setAssociationInfo(List.of(info));
                 v.setRootNode(b.getRootNode());
+                return v;
+            });
+            read(read);
+            ArtifactTreeTableView view = onFx(() -> {
+                ArtifactTreeTableView v = read;
                 new Scene(v, 900, 600);
                 v.applyCss();
                 v.layout();
@@ -203,7 +214,7 @@ public class ArtifactTreeTableViewTest {
     public void theWrapperDelegatesToItsNode(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFeatures(tmp)) {
             Node file = association(service, "a.txt").getRootNode().getChildren().get(0).getChildren().get(0);
-            ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView());
+            ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView(service));
             ArtifactTreeTableView.NodeWrapper wrapper = view.new NodeWrapper(file);
 
             assertSame(file, wrapper.getNode());
@@ -230,7 +241,92 @@ public class ArtifactTreeTableViewTest {
         }
     }
 
+    /**
+     * A tree is read in the background, holding the service's lock, a level at a time: while a commit
+     * holds it, the FX thread goes on (the items and cells read the live tree there, while the commit
+     * changed it) and the tree shown before stays; released, the tree is shown - and a level opened
+     * while the lock is held is read once it is released.
+     */
+    @Test
+    @Timeout(60)
+    public void theTreeIsReadOffTheFxThreadHoldingTheLock(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFeatures(tmp)) {
+            Association a = association(service, "a.txt");
+            ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView(service));
+            java.util.concurrent.CountDownLatch locked = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+            Thread commitLike = new Thread(() -> {
+                synchronized (service) {
+                    locked.countDown();
+                    try {
+                        release.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            commitLike.start();
+            try {
+                assertTrue(locked.await(10, java.util.concurrent.TimeUnit.SECONDS));
+                // onFx fails if the FX thread does not get to it within 10 s
+                onFx(() -> view.setRootNode(a.getRootNode()));
+                Thread.sleep(300);
+                assertTrue(onFx(view::isReading), "not read while the lock is held");
+                assertNull(onFx(view::getRoot));
+
+                release.countDown();
+                read(view);
+                List<Node> nodes = new ArrayList<>();
+                a.getRootNode().traverse(nodes::add);
+                assertEquals(nodes.stream().map(String::valueOf).toList(), onFx(() -> items(view.getRoot())).stream().map(i -> String.valueOf(i.getValue())).toList());
+            } finally {
+                release.countDown();
+                commitLike.join(10_000);
+            }
+
+            // a level not read yet: opened while the lock is held, read once it is released
+            TreeItem<ArtifactTreeTableView.NodeWrapper> file = onFx(() -> item(view, "a.txt"));
+            ArtifactTreeTableView.NodeTreeItem unread = onFx(() -> view.new NodeTreeItem(file.getValue()));
+            java.util.concurrent.CountDownLatch lockedAgain = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch releaseAgain = new java.util.concurrent.CountDownLatch(1);
+            Thread again = new Thread(() -> {
+                synchronized (service) {
+                    lockedAgain.countDown();
+                    try {
+                        releaseAgain.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            again.start();
+            try {
+                assertTrue(lockedAgain.await(10, java.util.concurrent.TimeUnit.SECONDS));
+                assertTrue(onFx(() -> unread.getChildren().isEmpty()), "none until read");
+                releaseAgain.countDown();
+                waitUntil("the level", () -> !unread.getChildren().isEmpty());
+                assertEquals(file.getValue().getNode().getChildren().stream().map(String::valueOf).toList(),
+                        onFx(() -> unread.getChildren().stream().map(i -> String.valueOf(i.getValue())).toList()));
+            } finally {
+                releaseAgain.countDown();
+                again.join(10_000);
+            }
+        }
+    }
+
     // --- helpers -------------------------------------------------------------------------------------
+
+    /** A table showing [root] - read in the background, holding the service's lock. */
+    private static ArtifactTreeTableView shown(EccoService service, at.jku.isse.ecco.tree.RootNode root) throws Exception {
+        ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView(service, root));
+        read(view);
+        return view;
+    }
+
+    /** Waits until the tree last set is read and shown. */
+    static void read(ArtifactTreeTableView view) throws Exception {
+        waitUntil("the tree is read", () -> !view.isReading());
+    }
 
     /** A repository with a.txt for A and b.txt added for B. */
     static EccoService twoFeatures(Path tmp) throws Exception {

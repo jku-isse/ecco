@@ -2,11 +2,14 @@ package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
+import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.tree.RootNode;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -20,6 +23,9 @@ public class AssociationDetailView extends BorderPane {
 	private EccoService service;
 
 	private Association currentAssociation;
+	/** Counts the associations asked to be shown: only the latest one read is shown. FX thread only. */
+	private long requests;
+	private boolean reading;
 
 	private TextField associationId;
 	private SplitPane splitPane;
@@ -115,12 +121,12 @@ public class AssociationDetailView extends BorderPane {
 		return pane;
 	}
 
-	/** The module revisions of [association]'s condition, by order, with their counts. Package-visible for testing. */
+	/** The module revisions of [association]'s condition, by order, with their counts - holding the service's lock. Package-visible for testing. */
 	static java.util.List<ModuleRow> moduleRows(Association association) {
 		return moduleRows(association, association.computeCondition());
 	}
 
-	/** As above, with the association's [condition] computed already - it was computed twice per selection. */
+	/** As above, with the association's [condition] computed already - it was computed twice per selection. Reads the counters: holding the service's lock. */
 	static java.util.List<ModuleRow> moduleRows(Association association, Condition condition) {
 		java.util.Set<ModuleRevision> absorbed = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 		absorbed.addAll(condition.getAbsorbedModuleRevisions());
@@ -141,24 +147,56 @@ public class AssociationDetailView extends BorderPane {
 		return revisionCounter == null ? 0 : revisionCounter.getCount();
 	}
 
+	/** What the view shows of an association, read holding the service's lock. */
+	private record Details(String condition, java.util.List<ModuleRow> rows, RootNode snippets) {
+	}
+
+	/**
+	 * Shows [association] - its id at once, its condition, modules and artifacts once read, in the
+	 * background, holding the service's lock: they were read on the FX thread (the condition and the
+	 * counters, the snippet tree walking the association's tree) while a commit changed them. The
+	 * artifacts are shown from a copy of its tree, which the snippet tree walks again on every filter.
+	 */
 	public final void showAssociation(Association association) {
 		this.currentAssociation = association;
+		long request = ++this.requests;
 
 		if (association != null) {
 			this.setCenter(this.splitPane);
 
-			// show details
+			// show details: the id is the association's own (it does not change), the rest is read
 			this.associationId.setText(String.valueOf(association.getId()));
-			Condition condition = association.computeCondition();
-			this.associationPC.setText(condition.toDisplayString());
-			java.util.List<ModuleRow> rows = moduleRows(association, condition);
-			this.modulesTable.setItems(FXCollections.observableArrayList(rows));
-			this.modulesSummary.setText(rows.size() + " module revision(s), " + rows.stream().filter(ModuleRow::inCondition).count()
-					+ " of them in the condition - the others are absorbed by one with fewer literals");
+			this.associationPC.setText("Reading the condition...");
+			this.modulesTable.getItems().clear();
+			this.modulesSummary.setText("");
+			this.artifactTreeView.setRootNode(null);
+			this.reading = true;
+			RepositoryAccess.read(this.service, "Association details", svc -> {
+						Condition condition = association.computeCondition();
+						return new Details(condition.toDisplayString(), moduleRows(association, condition), NodeSnapshot.of(association.getRootNode()).root());
+					},
+					details -> {
+						if (request != this.requests)
+							return;
+						this.reading = false;
+						this.associationPC.setText(details.condition());
+						java.util.List<ModuleRow> rows = details.rows();
+						this.modulesTable.setItems(FXCollections.observableArrayList(rows));
+						this.modulesSummary.setText(rows.size() + " module revision(s), " + rows.stream().filter(ModuleRow::inCondition).count()
+								+ " of them in the condition - the others are absorbed by one with fewer literals");
 
-			// show containment table
-			this.artifactTreeView.setRootNode(association.getRootNode());
+						// show containment table
+						this.artifactTreeView.setRootNode(details.snippets());
+					},
+					failure -> {
+						if (request != this.requests)
+							return;
+						this.reading = false;
+						this.associationPC.setText("");
+						new ExceptionAlert(failure).show();
+					});
 		} else {
+			this.reading = false;
 			this.setCenter(null);
 
 			this.associationId.setText("");
@@ -168,6 +206,11 @@ public class AssociationDetailView extends BorderPane {
 
 			this.artifactTreeView.setRootNode(null);
 		}
+	}
+
+	/** Whether the association shown is still being read - for tests. */
+	public boolean isReading() {
+		return this.reading;
 	}
 
 }

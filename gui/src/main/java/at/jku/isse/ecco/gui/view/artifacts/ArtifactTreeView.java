@@ -2,7 +2,6 @@ package at.jku.isse.ecco.gui.view.artifacts;
 
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import javafx.geometry.Orientation;
 import javafx.scene.control.SplitPane;
@@ -18,7 +17,7 @@ public class ArtifactTreeView extends BorderPane {
 		artifactDetailView = new ArtifactDetailView(service);
 
 		// artifact tree table view
-		this.artifactTreeTableView = new ArtifactTreeTableView();
+		this.artifactTreeTableView = new ArtifactTreeTableView(service);
 
 		this.artifactTreeTableView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
 			if (newValue != null) {
@@ -46,19 +45,12 @@ public class ArtifactTreeView extends BorderPane {
 		this.artifactTreeTableView.setRootNode(rootNode);
 
 		// auto-show a sensible default node's code instead of requiring a manual click on a tree
-		// row first - findNodeWithArtifactViewerRec() walks the (sub)tree down to the first node
-		// with a registered viewer.
+		// row first - the first node below the root with a registered viewer, found in the
+		// background, holding the service's lock (it walks the tree).
 		// Falls back to the root node itself if nothing has a registered viewer (e.g. an adapter
-		// with no dedicated viewer plugin) - showTree() still populates the Info tab for any
-		// non-null node, so this is a strictly better default than showing nothing at all.
-		Node defaultNode = rootNode;
-		if (rootNode != null) {
-			Node withViewer = ArtifactDetailView.findNodeWithArtifactViewerRec(this.artifactDetailView, rootNode);
-			if (withViewer != null) {
-				defaultNode = withViewer;
-			}
-		}
-		this.artifactDetailView.showTree(defaultNode, previouslySelectedTabKey);
+		// with no dedicated viewer plugin) - its Info tab is still shown, a strictly better default
+		// than showing nothing at all.
+		this.artifactDetailView.showFirstViewable(rootNode, previouslySelectedTabKey);
 	}
 
 	/** What the empty tree says - where its artifacts come from differs between the tabs that show one. */

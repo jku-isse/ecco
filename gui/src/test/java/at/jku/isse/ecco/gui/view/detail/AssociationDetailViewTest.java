@@ -40,6 +40,7 @@ public class AssociationDetailViewTest {
             assertNull(onFx(() -> view.getTop()), "no toolbar: it held nothing");
 
             onFx(() -> view.showAssociation(a));
+            waitUntil("the association is read", () -> !view.isReading());
 
             assertNotNull(onFx(() -> view.getCenter()));
             TextField id = onFx(() -> (TextField) find(view, n -> n instanceof TextField));
@@ -70,6 +71,53 @@ public class AssociationDetailViewTest {
             assertEquals("", onFx(() -> condition.getText()));
             assertNull(onFx(() -> snippets.getRoot()));
             assertEquals(0, onFx(() -> modules.getItems().size()));
+        }
+    }
+
+    /**
+     * The condition, modules and artifacts are read in the background, holding the service's lock:
+     * while a commit holds it, the FX thread goes on (it computed the condition and read the counters
+     * itself, while the commit changed them), the id shown at once; released, the rest is shown.
+     */
+    @Test
+    @Timeout(60)
+    public void theAssociationIsReadOffTheFxThreadHoldingTheLock(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFiles(tmp)) {
+            Association a = association(service, "a.txt");
+            AssociationDetailView view = onFx(() -> new AssociationDetailView(service));
+            java.util.concurrent.CountDownLatch locked = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+            Thread commitLike = new Thread(() -> {
+                synchronized (service) {
+                    locked.countDown();
+                    try {
+                        release.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            commitLike.start();
+            try {
+                assertTrue(locked.await(10, java.util.concurrent.TimeUnit.SECONDS));
+                // onFx fails if the FX thread does not get to it within 10 s
+                onFx(() -> view.showAssociation(a));
+                Thread.sleep(300);
+                assertTrue(onFx(view::isReading), "not read while the lock is held");
+                TextField id = onFx(() -> (TextField) find(view, n -> n instanceof TextField));
+                TextArea condition = onFx(() -> (TextArea) find(view, n -> n instanceof TextArea));
+                assertEquals(a.getId(), onFx(() -> id.getText()));
+                assertEquals("Reading the condition...", onFx(() -> condition.getText()));
+
+                release.countDown();
+                waitUntil("read once the lock is released", () -> !view.isReading());
+                assertEquals(a.computeCondition().toString(), onFx(() -> condition.getText()));
+                TreeView<?> snippets = onFx(() -> (TreeView<?>) find(view, n -> n instanceof TreeView));
+                assertNotNull(onFx(() -> snippets.getRoot()), "the artifact snippets");
+            } finally {
+                release.countDown();
+                commitLike.join(10_000);
+            }
         }
     }
 }

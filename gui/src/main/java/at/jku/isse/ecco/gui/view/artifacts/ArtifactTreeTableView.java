@@ -2,7 +2,10 @@ package at.jku.isse.ecco.gui.view.artifacts;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import javafx.beans.binding.Bindings;
@@ -16,7 +19,18 @@ import javafx.util.Callback;
 
 import java.util.*;
 
+/**
+ * An artifact tree - a commit's, or the composition of the ticked associations - as a table. Its
+ * nodes are the repository's (a composition's reach into the associations' trees), which a commit,
+ * pull or import changes holding the service's lock: what a row shows is read in the background,
+ * holding it (see {@link NodeWrapper}), a level at a time - the levels opened first when a tree is
+ * shown, then each level when it is opened. They were read on the FX thread, by the cells and the
+ * opened items, while a commit changed them. A level at a time, not the whole tree copied at once:
+ * a tree can have hundreds of thousands of nodes (an image's pixels), of which a few are looked at.
+ */
 public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.NodeWrapper> {
+
+	private final EccoService service;
 
 	// referenced again from setRootNode() below to re-fit their width to the newly-loaded tree, so
 	// (unlike every other column here, which is only ever touched from inside the constructor)
@@ -24,8 +38,13 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 	private final TreeTableColumn<NodeWrapper, Integer> snNodeCol;
 	private final TreeTableColumn<NodeWrapper, String> associationNodeCol;
 
-	public ArtifactTreeTableView() {
+	/** Counts {@link #setRootNode} calls: only the latest tree read is shown. FX thread only. */
+	private long requests;
+	private boolean reading;
+
+	public ArtifactTreeTableView(EccoService service) {
 		super();
+		this.service = service;
 
 		// create columns
 
@@ -63,7 +82,8 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		});
 
 		TreeTableColumn<NodeWrapper, Boolean> orderedNodeCol = new TreeTableColumn<>("Ordered");
-		orderedNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Boolean> param) -> new ReadOnlyBooleanWrapper(param.getValue().getValue().getArtifact() != null && param.getValue().getValue().getArtifact().isOrdered()));
+		// the values a row's node had when it was read (see NodeWrapper), not the live node's
+		orderedNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Boolean> param) -> new ReadOnlyBooleanWrapper(param.getValue().getValue().isOrdered()));
 
 		TreeTableColumn<NodeWrapper, Boolean> atomicNodeCol = new TreeTableColumn<>("Atomic");
 		atomicNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Boolean> param) -> new ReadOnlyBooleanWrapper(param.getValue().getValue().isAtomic()));
@@ -72,19 +92,13 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		uniqueNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Boolean> param) -> new ReadOnlyBooleanWrapper(param.getValue().getValue().isUnique()));
 
 		this.snNodeCol = new TreeTableColumn<>("Sequence Number");
-		snNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getValue().getArtifact() == null ? -1 : param.getValue().getValue().getArtifact().getSequenceNumber()));
+		snNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getValue().getSequenceNumber()));
 
 		this.associationNodeCol = new TreeTableColumn<>("Association");
 		associationNodeCol.setCellValueFactory(
-				(TreeTableColumn.CellDataFeatures<NodeWrapper, String> param) ->
-				{
-					if (param.getValue().getValue().getArtifact() != null) {
-						Association containingAssociation = param.getValue().getValue().getArtifact().getContainingNode().getContainingAssociation();
-						if (containingAssociation != null)
-							return new ReadOnlyStringWrapper(String.valueOf(containingAssociation.getId()));
-
-					}
-					return new ReadOnlyStringWrapper("null");
+				(TreeTableColumn.CellDataFeatures<NodeWrapper, String> param) -> {
+					Association containingAssociation = param.getValue().getValue().getArtifactAssociation();
+					return new ReadOnlyStringWrapper(containingAssociation == null ? "null" : String.valueOf(containingAssociation.getId()));
 				}
 		);
 
@@ -161,8 +175,8 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		TableColumns.growToFill(this, labelNodeCol);
 	}
 
-	public ArtifactTreeTableView(RootNode rootNode) {
-		this();
+	public ArtifactTreeTableView(EccoService service, RootNode rootNode) {
+		this(service);
 
 		this.setRootNode(rootNode);
 	}
@@ -175,40 +189,91 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 	static final int MAX_EXPANDED_ROWS = 2_000;
 
 	/**
-	 * Shows [rootNode], opened breadth first up to {@link #MAX_EXPANDED_ROWS} rows. It was opened all
-	 * through after being attached, each row added on its own: the table walked every opened row again
-	 * for each - quadratic, 100 s for a tinycc commit of 57,000 artifacts, on the FX thread. Opened
-	 * while detached, children added at once, so far only.
+	 * Shows [rootNode], opened breadth first up to {@link #MAX_EXPANDED_ROWS} rows - once they are
+	 * read, in the background, holding the service's lock; until then the tree shown before stays.
+	 * It was opened all through after being attached, each row added on its own: the table walked
+	 * every opened row again for each - quadratic, 100 s for a tinycc commit of 57,000 artifacts, on
+	 * the FX thread. Opened while detached, children added at once, so far only.
 	 */
 	public final void setRootNode(RootNode rootNode) {
+		long request = ++this.requests;
 		if (rootNode == null) {
+			this.reading = false;
 			this.setRoot(null);
-		} else {
-			TreeItem<NodeWrapper> root = new NodeTreeItem(new NodeWrapper(rootNode));
-			expandBreadthFirst(root, MAX_EXPANDED_ROWS);
-			this.setRoot(root);
+			return;
+		}
+		this.reading = true;
+		RepositoryAccess.read(this.service, "Artifact tree", svc -> this.readOpened(rootNode, MAX_EXPANDED_ROWS),
+				opened -> {
+					if (request != this.requests)
+						return;
+					this.reading = false;
+					TreeItem<NodeWrapper> root = this.itemOf(opened);
+					this.setRoot(root);
 
-			TableColumns.fitToContent(snNodeCol, root);
+					TableColumns.fitToContent(snNodeCol, root);
+				},
+				failure -> {
+					if (request != this.requests)
+						return;
+					this.reading = false;
+					new ExceptionAlert(failure).show();
+				});
+	}
 
+	/** Whether the tree last set is still being read - for tests. */
+	public boolean isReading() {
+		return this.reading;
+	}
+
+	/** A node read, its children too if read; opened, if they are. */
+	private static final class Read {
+		final NodeWrapper wrapper;
+		List<Read> children;
+
+		Read(NodeWrapper wrapper) {
+			this.wrapper = wrapper;
 		}
 	}
 
-	/** Opens [root] and below, breadth first, while the opened rows stay within [budget]. */
-	private static void expandBreadthFirst(TreeItem<NodeWrapper> root, int budget) {
-		java.util.ArrayDeque<TreeItem<NodeWrapper>> queue = new java.util.ArrayDeque<>();
-		queue.add(root);
+	/**
+	 * Reads [root] and below, breadth first, the children of each node while the rows opened stay
+	 * within [budget] - the nodes' further children are read when they are opened. Holding the
+	 * service's lock.
+	 */
+	private Read readOpened(Node root, int budget) {
+		Read top = new Read(new NodeWrapper(root));
+		java.util.ArrayDeque<Read> queue = new java.util.ArrayDeque<>();
+		queue.add(top);
 		int rows = 1;
 		while (!queue.isEmpty()) {
-			TreeItem<NodeWrapper> item = queue.poll();
-			if (item.isLeaf())
+			Read item = queue.poll();
+			if (item.wrapper.isLeaf())
 				continue;
-			int children = item.getChildren().size();
-			if (rows + children > budget)
+			List<? extends Node> children = item.wrapper.getNode().getChildren();
+			if (rows + children.size() > budget)
 				break;
-			item.setExpanded(true);
-			rows += children;
-			queue.addAll(item.getChildren());
+			item.children = new ArrayList<>();
+			for (Node child : children)
+				item.children.add(new Read(new NodeWrapper(child)));
+			rows += children.size();
+			queue.addAll(item.children);
 		}
+		return top;
+	}
+
+	/** The item for [read], opened where its children were read. FX thread. */
+	private TreeItem<NodeWrapper> itemOf(Read read) {
+		NodeTreeItem item = new NodeTreeItem(read.wrapper);
+		if (read.children != null) {
+			// at once: one change for the table, not one per child
+			List<TreeItem<NodeWrapper>> children = new ArrayList<>();
+			for (Read child : read.children)
+				children.add(this.itemOf(child));
+			item.setChildrenRead(children);
+			item.setExpanded(true);
+		}
+		return item;
 	}
 
 	private Collection<AssociationInfoImpl> associationInfos = null;
@@ -226,52 +291,116 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 
 	public class NodeTreeItem extends TreeItem<NodeWrapper> {
-		private boolean firstTimeChildren = true;
+		private boolean childrenRead;
+		private boolean readingChildren;
 
 		public NodeTreeItem(NodeWrapper node) {
 			super(node);
 
-			if (ArtifactTreeTableView.this.associationInfos != null) {
-				if (node != null && node.getArtifact() != null && node.getArtifact().getContainingNode() != null) {
-					Association nodeAssociation = node.getArtifact().getContainingNode().getContainingAssociation();
-					if (nodeAssociation != null) {
-						AssociationInfoImpl associationInfo = ArtifactTreeTableView.this.associationInfoByAssociation.get(nodeAssociation);
-						if (associationInfo != null)
-							node.colorProperty().bind(associationInfo.colorProperty());
-					}
+			if (ArtifactTreeTableView.this.associationInfos != null && node != null) {
+				Association nodeAssociation = node.getArtifactAssociation();
+				if (nodeAssociation != null) {
+					AssociationInfoImpl associationInfo = ArtifactTreeTableView.this.associationInfoByAssociation.get(nodeAssociation);
+					if (associationInfo != null)
+						node.colorProperty().bind(associationInfo.colorProperty());
 				}
 			}
 		}
 
+		/**
+		 * The children: when first asked for (the item is opened), read in the background, holding the
+		 * service's lock - none until then.
+		 */
 		@Override
 		public ObservableList<TreeItem<NodeWrapper>> getChildren() {
-			if (this.firstTimeChildren) {
-				this.firstTimeChildren = false;
-
-				// at once: one change for the table, not one per child
-				List<TreeItem<NodeWrapper>> children = new ArrayList<>();
-				for (Node child : this.getValue().getChildren())
-					children.add(new NodeTreeItem(new NodeWrapper(child)));
-				super.getChildren().setAll(children);
+			if (!this.childrenRead && !this.readingChildren && !this.isLeaf()) {
+				this.readingChildren = true;
+				Node node = this.getValue().getNode();
+				RepositoryAccess.read(ArtifactTreeTableView.this.service, "Artifact tree", svc -> {
+							List<NodeWrapper> children = new ArrayList<>();
+							for (Node child : node.getChildren())
+								children.add(new NodeWrapper(child));
+							return children;
+						},
+						children -> {
+							List<TreeItem<NodeWrapper>> items = new ArrayList<>();
+							for (NodeWrapper child : children)
+								items.add(new NodeTreeItem(child));
+							this.setChildrenRead(items);
+						},
+						failure -> {
+							this.readingChildren = false;
+							new ExceptionAlert(failure).show();
+						});
 			}
 			return super.getChildren();
 		}
 
+		void setChildrenRead(List<TreeItem<NodeWrapper>> children) {
+			this.childrenRead = true;
+			this.readingChildren = false;
+			super.getChildren().setAll(children);
+		}
+
 		@Override
 		public boolean isLeaf() {
-			return this.getValue().getChildren().isEmpty();
+			return this.getValue().isLeaf();
 		}
 	}
 
+	/**
+	 * A node of the tree, with what its row shows read when the wrapper is made - holding the
+	 * service's lock (see {@link #setRootNode}): the cells read it on the FX thread. The {@link Node}
+	 * methods are the live node's: call them holding the lock, as the details view does.
+	 */
 	public class NodeWrapper implements Node {
 
 		private static final long serialVersionUID = 1L;
 
 		private final ObjectProperty<Color> color;
 
+		private final String label;
+		private final boolean ordered;
+		private final boolean atomic;
+		private final boolean unique;
+		private final int sequenceNumber;
+		private final Association artifactAssociation;
+		private final boolean leaf;
+		private final int hash;
+
+		/** Reads what the row shows of [node]: call it holding the service's lock. */
 		public NodeWrapper(Node node) {
 			this.node = node;
 			this.color = new SimpleObjectProperty<>(Color.TRANSPARENT);
+			Artifact<?> artifact = node.getArtifact();
+			this.label = node.toString();
+			this.ordered = artifact != null && artifact.isOrdered();
+			this.atomic = node.isAtomic();
+			this.unique = node.isUnique();
+			this.sequenceNumber = artifact == null ? -1 : artifact.getSequenceNumber();
+			this.artifactAssociation = artifact == null || artifact.getContainingNode() == null ? null : artifact.getContainingNode().getContainingAssociation();
+			this.leaf = node.getChildren().isEmpty();
+			this.hash = node.hashCode();
+		}
+
+		/** Whether the node's artifact orders its children, when read. */
+		public boolean isOrdered() {
+			return this.ordered;
+		}
+
+		/** The sequence number of the node's artifact when read, -1 without one. */
+		public int getSequenceNumber() {
+			return this.sequenceNumber;
+		}
+
+		/** The association that held the node's artifact when read, null if none (e.g. no artifact). */
+		public Association getArtifactAssociation() {
+			return this.artifactAssociation;
+		}
+
+		/** Whether the node had no children when read. */
+		public boolean isLeaf() {
+			return this.leaf;
 		}
 
 		public ObjectProperty<Color> colorProperty() {
@@ -286,7 +415,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 		@Override
 		public int hashCode() {
-			return node.hashCode();
+			return hash;
 		}
 
 		@Override
@@ -301,7 +430,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 		@Override
 		public String toString() {
-			return node.toString();
+			return label;
 		}
 
 		@Override
@@ -311,7 +440,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 		@Override
 		public boolean isAtomic() {
-			return node.isAtomic();
+			return atomic;
 		}
 
 		@Override
@@ -331,7 +460,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 		@Override
 		public boolean isUnique() {
-			return node.isUnique();
+			return unique;
 		}
 
 		@Override
