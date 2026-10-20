@@ -1,6 +1,6 @@
 # ECCO - Recovered Requirements
 
-As of 2026-10-13.
+As of 2026-10-20.
 
 ## Contents
 
@@ -29,6 +29,10 @@ These requirements were recovered, not written up front. ECCO has no requirement
 Scope: the live Gradle modules (`base`, `service`, `logic`, `util`, `cli`, `gui`, `rest` and the adapters in `settings.gradle`). The retired storage backends, the `java6`/`java8`/`designspace` adapters and other unbuilt extras are out of scope.
 
 **shall** = required and enforced; **should** = expected but not enforced everywhere.
+
+All requirements - functional, adapter, interface and non-functional - are written in EARS (Easy Approach to Requirements Syntax, Mavin et al., RE'09): *ubiquitous* (the system shall ...), *event-driven* (When ..., the system shall ...), *state-driven* (While ...), *optional* (Where ...) and *unwanted behaviour* (If ..., then the system shall ...). A requirement split into several keeps its old ID with a letter (FR-D8a ...), so the old ID still names the group. *Use case* points to where the requirement is realized: `B3` is step 3 of the basic flow, `SA2` a specific and `BA1` a bounded alternative flow, `post` a postcondition. *Acceptance test* names the tests that check it; *Evidence* the code, document or commit it was recovered from. A requirement that prescribes a design rather than a behaviour is marked *design constraint*; the performance requirements give a *Baseline* instead of a test. A test marked *(unit)* checks the requirement on one class, *(GUI)* through the GUI, not through the service.
+
+Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `base/.../repository/Repository.java`, `DR`/`DW` = `service/.../adapter/dispatch/DispatchReader.java`/`DispatchWriter.java`, `STS` = `service/.../storage/ser/dao/SerTransactionStrategy.java`, `SR` = `service/.../storage/ser/repository/SerRepository.java`.
 
 
 ## Stakeholders and usage contexts
@@ -1045,10 +1049,6 @@ Postcondition: The repository is unchanged.
 
 ## Functional requirements
 
-The requirements are written in EARS (Easy Approach to Requirements Syntax, Mavin et al., RE'09): *ubiquitous* (the system shall ...), *event-driven* (When ..., the system shall ...), *state-driven* (While ...), *optional* (Where ...) and *unwanted behaviour* (If ..., then the system shall ...). A requirement split into several keeps its old ID with a letter (FR-D8a ...), so the old ID still names the group. *Use case* points to where the requirement is realized: `B3` is step 3 of the basic flow, `SA2` a specific and `BA1` a bounded alternative flow, `post` a postcondition. *Acceptance test* names the tests that check it; *Evidence* the code or commit it was recovered from. A test marked *(unit)* checks the requirement on one class, *(GUI)* through the GUI, not through the service.
-
-Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `base/.../repository/Repository.java`, `DR`/`DW` = `service/.../adapter/dispatch/DispatchReader.java`/`DispatchWriter.java`, `STS` = `service/.../storage/ser/dao/SerTransactionStrategy.java`, `SR` = `service/.../storage/ser/repository/SerRepository.java`.
-
 ### Repository lifecycle
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
@@ -1237,19 +1237,31 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 
 ### Contract for every adapter
 
-| ID | Requirement | Source |
-| --- | --- | --- |
-| AD-1 | An adapter shall be a `ArtifactPlugin` registered through `ServiceLoader`, binding its reader, writer and optional viewers through Guice; `getPluginId()` returns the plugin class name. | Code; `adapter/README.md`; per-adapter plugin-id tests |
-| AD-2 | A reader shall return one root node per file carrying `PluginArtifactData`; a writer is chosen by that plugin id. | Code DR, DW |
-| AD-3 | A reader shall declare prioritized glob patterns, from which `.adapters` is first written (FR-M6b); a tie between enabled adapters is broken by plugin id and logged. | Code; Test `DispatchReaderJavaPluginPriorityTest`, `DispatchReaderPriorityTieTest` |
-| AD-4 | Adapters shall be enabled or disabled per user (at least one: FR-L4b). | Code `AdapterPreferences`, ES |
-| AD-5 | Viewers shall not be bound when running headless (`ecco.headless`). | Code; History bfcddc23 |
-| AD-6 | Line-based adapters shall round-trip byte-exact: encoding (UTF-8, else ISO-8859-1), line separator and final newline, each per variant as FR-K10a-c say how a checkout writes them. The final newline shall be traced (`FinalNewlineArtifactData`, the last child of the file's node); encoding and line separator are traced per variant too (`TextFormatArtifactData`, after the final newline; not for an empty file). This holds for the text, Markdown, C and C++ adapters. A file that mixes line separators keeps them per variant (in `TextFormatArtifactData`, by line). | Tests `MixedLineSeparatorsTest`, `TextFileFormatTest` (5,000 random rounds), `FinalNewlineVariantsTest`, `TextFormatVariantsTest`; History 8282a32d, 5027fcb0 |
-| AD-7 | An adapter whose tree format changes shall mark old data with `retiredFormat()` or a tree-format check, so old repositories are refused for commit, not corrupted (NFR-V1). | Code `ArtifactData#retiredFormat`, `JavaASTData.TREE_FORMAT`, `cpp/data/RetiredFormat` |
-| AD-8 | An adapter that needs Python shall fail the commit when Python or its modules are missing, not commit an empty file, and shall pick a free py4j port. | Test `PythonGatewayPortTest`, `LilypondGatewayPortTest` |
-| AD-9 | An adapter that needs Python shall find its interpreter, not rely on `python` on the PATH: the one set in Preferences if any, else the first of `python`, `python3` and the usual install locations (MacPorts, Homebrew, python.org, `/usr/local/bin`, `/usr/bin`) that imports its modules - libcst and py4j for Python; tree-sitter, py4j and lymodel for LilyPond (lymodel's tree-sitter parse reads the files), lymodel from the lymodel directory in Preferences, `LYPYTHON` or installed. When none will do, the error shall name each interpreter tried and what it lacks; a module installed after a failure shall be found without restarting. | Code `PythonFinder`, `LilypondPython`, `PY4JParser.python()`; Test `PythonFinderTest`, `LilypondPythonTest`; History d8c8ac60, 6765398d, 143e32cb |
-| AD-10 | The LilyPond adapter shall read with lymodel's tree-sitter parse, recorded in a new repository's settings (`lilypond.parser=lybar-2`). A repository without that setting was read with parce, whose tokens and contexts the parse would never match, and one with `lybar-1` holds tokens that do not record whether they were written together with the one before them (part of a token's identity since `lybar-2`): their files shall still check out, but a commit shall be refused with an explanation before anything is written. A repository with no LilyPond settings and no LilyPond files takes the settings of a new repository at its next commit. | Code `LilypondReader#readable`, `EccoService#adoptRepositorySettings`, `LilypondPlugin.PARSER_SETTING`, `LilypondParser_2.py`; Test `LilypondRepositorySettingsTest`, `LilypondParseTest`; History 4b95ee97, 143e32cb, lybar-2 2026-10-11 |
-| AD-11 | A file its adapter cannot read shall not fail the commit: it shall be read by the text adapter if it is text (no NUL byte in its first 8 KB), else by the file adapter, both byte-exact, with a warning naming the file and the error (a `.json` with comments, a Git LFS pointer named `.png`, a construct an adapter does not know). An adapter that cannot run at all (no Python, a repository made for another version of it: `AdapterUnavailableException`) and a cancelled commit shall still fail it. | Test `DispatchReaderFallbackTest`; History 86ea679c |
+| ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| AD-1a | Ubiquitous | An adapter shall be an `ArtifactPlugin` registered through `ServiceLoader` that binds its reader, writer and optional viewers through Guice. | - | - | Code; `adapter/README.md` |
+| AD-1b | Ubiquitous | An adapter's `getPluginId()` shall return its plugin class name. | - | `FileReaderTest`, `CReaderWriterTest`, `CppReaderWriterTest` (unit) | Code |
+| AD-2a | Ubiquitous | A reader shall return one root node per file, carrying `PluginArtifactData`. | UC-3 B5 | - | Code DR |
+| AD-2b | Ubiquitous | ECCO shall choose the writer of a file by the plugin id of its root node. | UC-5 B10 | - | Code DW |
+| AD-3a | Ubiquitous | A reader shall declare prioritized glob patterns, from which `.adapters` is first written (FR-M6b). | - | `DispatchReaderJavaPluginPriorityTest` | Code |
+| AD-3b | Unwanted | If enabled adapters tie on priority, then ECCO shall prefer one by plugin id and log the tie. | - | `DispatchReaderPriorityTieTest` | Code |
+| AD-4 | Ubiquitous | ECCO shall let each user enable or disable adapters (at least one: FR-L4b; in the GUI: IF-G11). | - | `PreferencesViewTest` (GUI) | Code `AdapterPreferences`, ES |
+| AD-5 | State | While ECCO runs headless (`ecco.headless`), it shall not bind adapter viewers. | - | `InitCommandTest` | Code; History bfcddc23 |
+| AD-6a | Ubiquitous | The text, Markdown, C and C++ adapters shall round-trip a file byte-exact: its encoding (UTF-8, else ISO-8859-1), line separator and final newline, each per variant (how a checkout writes them: FR-K10a-c). | UC-3 post; UC-5 B10 | `TextFileFormatTest` (5,000 random rounds), `TextFormatVariantsTest`, `FinalNewlineVariantsTest` | History 8282a32d, 5027fcb0 |
+| AD-6b | Ubiquitous | These adapters shall trace a file's final newline per variant (`FinalNewlineArtifactData`, the last child of the file's node), and its encoding and line separator per variant (`TextFormatArtifactData`, after the final newline; not for an empty file). | - | `FinalNewlineVariantsTest`, `TextFormatVariantsTest` | History 8282a32d, 5027fcb0 |
+| AD-6c | Ubiquitous | For a file that mixes line separators, these adapters shall keep the separators per line and per variant. | - | `MixedLineSeparatorsTest` | Code `TextFormatArtifactData` |
+| AD-7 | Event | When an adapter's tree format changes, the adapter shall mark the old data with `retiredFormat()` or a tree-format check (NFR-V1). | - | `CppRoundTripTest` | Code `ArtifactData#retiredFormat`, `JavaASTData.TREE_FORMAT`, `cpp/data/RetiredFormat` |
+| AD-8 | Ubiquitous | An adapter that needs Python shall pick a free py4j port. (A missing Python fails the commit: AD-11b.) | - | `PythonGatewayPortTest`, `LilypondGatewayPortTest` | |
+| AD-9a | Ubiquitous | An adapter that needs Python shall run the interpreter set in Preferences, else the first of `python`, `python3` and the usual install locations (MacPorts, Homebrew, python.org, `/usr/local/bin`, `/usr/bin`) that imports its modules - libcst and py4j for Python; tree-sitter, py4j and lymodel for LilyPond, lymodel from the lymodel directory in Preferences, `LYPYTHON` or installed - not rely on `python` on the PATH. | - | `PythonFinderTest`, `LilypondPythonTest` | Code `PythonFinder`, `LilypondPython`, `PY4JParser.python()`; History d8c8ac60, 6765398d |
+| AD-9b | Unwanted | If no interpreter will do, then the adapter shall name each interpreter tried and what it lacks. | UC-3 BA1 | `PythonFinderTest` | Code `PythonFinder` |
+| AD-9c | Event | When a module is installed after a failed lookup, the adapter shall find it without a restart. | - | - | History 143e32cb |
+| AD-10a | Ubiquitous | The LilyPond adapter shall read with lymodel's tree-sitter parse and record it in a new repository's settings (`lilypond.parser=lybar-2`). | - | `LilypondRepositorySettingsTest`, `LilypondParseTest` | Code `LilypondPlugin.PARSER_SETTING`, `LilypondParser_2.py`; History 4b95ee97, 143e32cb |
+| AD-10b | Unwanted | If a repository's LilyPond files were read with an earlier parse (no parser setting: parce; `lybar-1`), then ECCO shall refuse a commit to it with an explanation before anything is written, and still check its files out. | - | `LilypondRepositorySettingsTest` | Code `LilypondReader#readable` |
+| AD-10c | Event | When a repository with neither LilyPond settings nor LilyPond files is next committed to, ECCO shall give it the settings of a new repository. | - | `LilypondRepositorySettingsTest` | Code `EccoService#adoptRepositorySettings` |
+| AD-11a | Unwanted | If an enabled adapter cannot read a file, then ECCO shall read it with the text adapter if it is text (no NUL byte in its first 8 KB), else with the file adapter, both byte-exact, and warn, naming the file and the error. | UC-3 SA4 | `DispatchReaderFallbackTest` | History 86ea679c |
+| AD-11b | Unwanted | If an adapter cannot run at all (no Python or Python modules, a repository made for another version of it: `AdapterUnavailableException`) or the commit is cancelled, then ECCO shall fail the commit instead of falling back, never committing an empty file. | UC-3 BA1 | `DispatchReaderFallbackTest` | Code DR |
+
+AD-10b: parce's tokens and contexts would never match those of the tree-sitter parse, and `lybar-1` tokens do not record whether they were written together with the one before them, which is part of a token's identity since `lybar-2`. AD-11a covers, for example, a `.json` with comments, a Git LFS pointer named `.png` and a construct an adapter does not know.
 
 ### Per adapter
 
@@ -1277,45 +1289,73 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 
 ### Command line (`cli`)
 
-| ID | Requirement | Source |
-| --- | --- | --- |
-| IF-C1 | The CLI shall offer `init`, `status`, `adapters`, `commit -c [-m]`, `checkout -c`, `features`, `traces`, `get`/`set`, `remotes`, `fork`, `fetch`, `pull`, `push`, `dg`, `suggest-constraints`, `accept-constraint`, `reject-constraint`, `minimize-preview`, `minimize` and `order`; `checkout` takes `--minimized`. | Code `Main.registerCommands()` |
-| IF-C2 | `commit` and `checkout` shall require a configuration (`-c`). | Code |
-| IF-C3 | Exit codes shall be 0 on success, 1 on a failed command, 2 on invalid arguments; errors go to stderr with their cause chain, the stack trace only with `-Decco.debug=true`. The error shown shall be the command's own: a failure to close the repository afterwards is attached to it, not shown in its place; running out of memory is reported as such, with the heap size and how to raise it (`JAVA_OPTS=-Xmx16g`). | Code `Main.run`, `Command#withOpenRepository`; Test `CommitCommandTest`; History 2dc75b70 |
-| IF-C4 | `fetch`, `pull` and `push` shall default to the remote `origin`; `pull`, `push` and `fork` take `--exclude` feature revisions. | Code |
-| IF-C5 | `suggest-constraints` and `minimize-preview` shall take `--min-witness` and `--confidence` (defaults in FR-N1b); only the feature model is ever applied. `suggest-constraints` shall leave out accepted and rejected suggestions unless given `--all`. | Code |
-| IF-C6 | `dg` shall print the association dependency graph as GML on stdout. | Code |
-| IF-C7 | The CLI shall run without JavaFX and bundle the same adapters as the GUI, so it can work on repositories made with the GUI. | Code (`ecco.headless`, openjfx excluded); Doc |
-| IF-C8 | The CLI shall find the repository in the current or nearest parent directory and use that directory as the working directory; `init` and `fork` create a repository in the current directory. | Doc; Test `MainRepositoryDiscoveryTest` |
-| IF-C9 | `commit` shall print the commit id and configuration, then each violated accepted constraint as `CONSTRAINT:`; `checkout` shall print the configuration and the number of warnings of each kind, pointing to `.warnings`. | Test `CommitCommandTest`, `CheckoutCommandTest` |
-| IF-C10 | `order <file>...` shall record the order of checked-out files as they are now, without a commit (FR-K11): the configuration comes from `.config`, the files are matched to its composition by content, content added or removed is refused, and paths are relative to the directory the command runs in. | Test `OrderCommandTest`, `RecordOrderTest` |
+| ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| IF-C1 | Ubiquitous | The CLI shall offer `init`, `status`, `adapters`, `commit -c [-m]`, `checkout -c [--minimized]`, `features`, `traces`, `get`/`set`, `remotes`, `fork`, `fetch`, `pull`, `push`, `dg`, `suggest-constraints`, `accept-constraint`, `reject-constraint`, `minimize-preview`, `minimize` and `order`. | Front ends of UC-1 to UC-12 | one test per command (`cli/.../command`) | Code `Main.registerCommands()` |
+| IF-C2 | Unwanted | If `commit` or `checkout` is run without a configuration (`-c`), then the CLI shall refuse it as invalid arguments. | - | - | Code `Main.java:180,188` |
+| IF-C3a | Ubiquitous | The CLI shall exit with 0 on success, 1 on a failed command and 2 on invalid arguments. | - | `MainExitCodeTest` | Code `Main.run` |
+| IF-C3b | Unwanted | If a command fails, then the CLI shall write the error with its cause chain to stderr, with the stack trace only under `-Decco.debug=true`. | UC-3 BA1 | - | Code `Main.run` |
+| IF-C3c | Unwanted | If closing the repository fails after a command, then the CLI shall attach that failure to the command's own error, not show it in its place. | - | `CommitCommandTest` | Code `Command#withOpenRepository`; History 2dc75b70 |
+| IF-C3d | Unwanted | If a command runs out of memory, then the CLI shall say so, with the heap size and how to raise it (`JAVA_OPTS=-Xmx16g`). | UC-3 BA1 | `CommitCommandTest` | History 2dc75b70 |
+| IF-C4a | Ubiquitous | `fetch`, `pull` and `push` shall use the remote `origin` when given none. | UC-12 precondition | - | Code |
+| IF-C4b | Ubiquitous | `pull`, `push` and `fork` shall take feature revisions to exclude (`--exclude`, FR-D4). | UC-11 B1; UC-12 B1 | - | Code |
+| IF-C5a | Ubiquitous | `suggest-constraints` and `minimize-preview` shall take `--min-witness` and `--confidence` (defaults in FR-N1b). | UC-8 SA1, SA4; UC-9 SA1 | `SuggestConstraintsCommandTest`, `MinimizePreviewCommandTest` | Code |
+| IF-C5b | Optional | Unless given `--all`, `suggest-constraints` shall leave out accepted and rejected suggestions. | UC-8 SA4 | - | Code |
+| IF-C6 | Event | When `dg` runs, the CLI shall print the association dependency graph as GML on stdout. | UC-7 SA3 | `DependencyGraphCommandTest` | Code |
+| IF-C7 | Ubiquitous | The CLI shall bundle the same adapters as the GUI, so that it can work on repositories made with the GUI (headless: NFR-B3). | - | - | Doc |
+| IF-C8a | Event | When a command runs, the CLI shall use the repository in the current or nearest parent directory, and that directory as the working directory. | UC-2 SA1 | `MainRepositoryDiscoveryTest` | Doc |
+| IF-C8b | Event | When `init` or `fork` runs, the CLI shall create the repository in the current directory. | UC-1 B1; UC-11 B1 | `InitCommandTest`, `ForkCommandTest` | Doc |
+| IF-C9a | Event | When `commit` succeeds, the CLI shall print the commit id and configuration, then each accepted constraint the configuration violates as `CONSTRAINT:`, checked before committing. | UC-3 front ends | `CommitCommandTest` | |
+| IF-C9b | Event | When `checkout` succeeds, the CLI shall print the configuration and the number of warnings of each kind, pointing to `.warnings`. | UC-5 SA4 | `CheckoutCommandTest` | |
+| IF-C10a | Event | When `order <file>...` runs, the CLI shall record the order of the files as they are now, without a commit (FR-K11), taking the configuration from `.config` and matching the files to its composition by content. | UC-6 SA3 | `OrderCommandTest`, `RecordOrderTest` | |
+| IF-C10b | Unwanted | If a file given to `order` holds content the composition does not, or lacks some of it, then the CLI shall refuse it, naming that content. | UC-6 SA3 | `RecordOrderTest` | |
+| IF-C10c | Ubiquitous | `order` shall read paths relative to the directory it runs in. | UC-6 SA3 | `RecordOrderTest` | |
 
 ### Graphical user interface (`gui`)
 
-| ID | Requirement | Source |
-| --- | --- | --- |
-| IF-G1 | The GUI shall group its functions in a ribbon: Repositories (new, open, fork, close, status, base directory), Versions, Collaborate, Explore (the views, and the graphs); repository actions are disabled until a repository is open, and new, open and fork while one is; every button has a tooltip, and Help lists them with the shortcuts; About tells the version. | Code `MainView`, `RibbonBar` |
-| IF-G2 | Users shall be able to commit one variant folder or several at once, check out configurations, and manage named variants (add, remove, edit feature revisions, check out several into a base directory). | Code `CommitBaseDirView`, `CommitView`, `VariantsView` |
-| IF-G3 | Users shall be able to import one continuous range of a Git history commit by commit, oldest first, either reviewing each commit (Import, Skip, Stop; with the files it changed) or importing them unattended, stopping only for a failure or an uncertain suggestion; closing the window while a commit is suggested or imported asks whether to stop; a summary ends the import. | Code `ImportGitView` |
-| IF-G4 | Git import should suggest a configuration per commit from an LLM at any OpenAI-compatible endpoint, configured under Preferences (URL, model). | Code `PreferencesView`; Doc |
-| IF-G5 | The feature model view shall show the feature model derived from the commits and let users accept, reject or return mined constraints and suggested subfeatures; an accepted subfeature is stored as the feature's parent - one each, no cycles - in the repository (travelling with fork, pull and push) with the REQUIRES it means; the tree places a feature under its accepted parent, else its suggested one, else BASE; every review minimizes the presence conditions with them again, as the Artifacts view does on request. | Code `FeaturesView`, `FeatureModelTree`, `ConstraintSuggestionsView`, `Repository#getFeatureParents`, `MinimizationResults`; Test `FeatureParentsTest` |
-| IF-G6 | Users shall be able to list and compare commits, list associations with their full and simplified conditions and the details of each, and browse the artifact tree of any selection of associations - composed as soon as it changes, and selected by hand or by a configuration, which selects the associations a checkout of it takes - then check out exactly that selection into a folder they choose. | Code `CommitsView`, `CommitComparisonView`, `ArtifactsView`, `AssociationDetailView`, `FeatureTogglePanel`; Test `ArtifactsViewTest` |
-| IF-G7 | Wherever associations are listed, an association preview shall show their artifacts in their files, coloured by association, for every mapped adapter. | Doc; Code `ArtifactDetailView` viewers |
-| IF-G8 | Checkout results shall show their warnings with a suggested fix; an ambiguous order shall be resolvable by reordering in a dialog, which records the order without a commit (FR-K11), and in which a configured local LLM can suggest an order - shown for review, never across an order earlier commits fixed. | Code `CheckoutDetailView`, `ReorderChildrenDialog`, `LlmOrderSuggestionClient`; Test `CheckoutDetailViewRecordOrderTest`, `ReorderChildrenDialogTest`, `LlmOrderSuggestionClientTest` |
-| IF-G9 | The GUI shall visualize a knowledge graph (features, commits, variants, associations), the artifact graph and the dependency graph, plus charts, each exportable. | Code `view/graph/*`, `ChartsView` |
-| IF-G10 | The GUI shall manage remotes - add, remove, change a remote's name, address and type (keeping what was fetched from it) and fetch it - fetch, pull and push, and start a sync server on a chosen port, local-only unless "accept connections from other machines" is set. | Code `RemotesView`, `RemoteDetailView`, `EccoService#updateRemote`, `ServerView`; Test `RemotesViewTest`, `RemoteDetailViewTest`, `UpdateRemoteTest` |
-| IF-G11 | Users shall be able to enable or disable adapters (effective on the next open), and set minimization thresholds, LilyPond paths, and the Python the Python and LilyPond adapters run (and LilyPond's lymodel directory) when it is not found (AD-9). | Code `PreferencesView` |
+| ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| IF-G1a | Ubiquitous | The GUI shall group its functions in a ribbon: Repositories (new, open, fork, close, status, base directory), Versions, Collaborate, Explore (the views and the graphs). | - | `RibbonBarTest`, `MainViewTest` | Code `MainView`, `RibbonBar` |
+| IF-G1b | State | While no repository is open, the GUI shall disable the repository actions; while one is open, new, open and fork. | - | `MainViewTest` | Code `MainView` |
+| IF-G1c | Ubiquitous | The GUI shall give every button a tooltip, list the buttons with their shortcuts under Help, and tell its version under About. | - | `MainViewTest` | Code `MainView` |
+| IF-G2 | Ubiquitous | The GUI shall let users commit one variant folder or several at once, check out configurations, and manage named variants (add, remove, edit feature revisions, check out several into a base directory). | UC-3, UC-4, UC-5 front ends | `CommitViewTest`, `CommitBaseDirViewTest`, `CheckoutViewTest`, `VariantsViewTest`, `AddVariantViewTest` | Code `CommitBaseDirView`, `CommitView`, `VariantsView` |
+| IF-G3a | Ubiquitous | The GUI shall import one continuous range of a Git history, commit by commit (in the order of FR-G1b). | UC-10 B3, B4, SA8 | - | Code `ImportGitView` |
+| IF-G3b | Optional | Where the user reviews each commit, the GUI shall show it with the files it changed and offer Import, Skip and Stop. | UC-10 B10-B12, SA4, SA5 | `ImportGitViewRetryTest` (GUI) | Code `ImportGitView` |
+| IF-G3c | Optional | Where the user imports unattended, the GUI shall stop only for a failure or an uncertain suggestion. | UC-10 SA2 | `ImportGitViewRetryTest` (GUI) | Code `ImportGitView` |
+| IF-G3d | Event | When the window is closed while a commit is suggested or imported, the GUI shall ask whether to stop the import. | UC-10 GA1 | - | Code `ImportGitView` |
+| IF-G3e | Event | When an import ends, the GUI shall show a summary. | UC-10 B17 | `ImportGitViewConstraintTest` (GUI) | Code `ImportGitView` |
+| IF-G4 | Ubiquitous | The GUI shall let users configure the LLM of Git import (FR-G3a) under Preferences, by URL and model; any OpenAI-compatible endpoint should do. | UC-10 precondition | - | Code `PreferencesView`; Doc |
+| IF-G5a | Ubiquitous | The feature model view shall show the feature model derived from the commits. | UC-8 B1, B7 | `FeaturesViewTest` (GUI) | Code `FeaturesView` |
+| IF-G5b | Event | When the user accepts, rejects or returns mined constraints or suggested subfeatures, the GUI shall store the decision (FR-N4a, FR-N6). | UC-8 B4, B5, SA2, SA3 | `ConstraintSuggestionsViewTest` (GUI) | Code `ConstraintSuggestionsView` |
+| IF-G5c | Event | When a subfeature is accepted, ECCO shall store it in the repository as the feature's parent - one each, no cycles - with the REQUIRES it means, and carry it with fork, pull and push. | - | `FeatureParentsTest` | Code `Repository#getFeatureParents` |
+| IF-G5d | Ubiquitous | The feature model tree shall place a feature under its accepted parent, else its suggested one, else BASE. | UC-8 B7 | `FeaturesViewTest` (GUI), `FeatureModelTreeTest` (unit) | Code `FeatureModelTree` |
+| IF-G5e | Event | When a review in the feature model view changes the decisions, the GUI shall minimize the presence conditions again, as the Artifacts view does on request. | UC-8 B6, SA3 | `ConstraintSuggestionsViewTest` (GUI) | Code `MinimizationResults` |
+| IF-G6a | Ubiquitous | The GUI shall let users list and compare commits. | - | `CommitsViewTest` (GUI) | Code `CommitsView`, `CommitComparisonView` |
+| IF-G6b | Ubiquitous | The GUI shall list the associations with their full and simplified conditions, and the details of each. | UC-7 B4, B5 | `ArtifactsViewTest`, `AssociationDetailViewTest` (GUI) | Code `ArtifactsView`, `AssociationDetailView` |
+| IF-G6c | Event | When the selection of associations changes - by hand, or by a configuration, which selects the associations a checkout of it takes - the GUI shall compose and show their artifact tree. | UC-7 B6, B7 | `ArtifactsViewTest` (GUI), `ComposeSelectedAssociationsTest` | Code `FeatureTogglePanel` |
+| IF-G6d | Event | When the user checks out the selection, the GUI shall write exactly that selection into a folder the user chooses. | UC-5 front ends | `ArtifactsViewTest` (GUI) | Code `ArtifactsView` |
+| IF-G7 | Ubiquitous | Wherever associations are listed, the GUI shall offer a preview of their artifacts in their files, coloured by association, for every mapped adapter. | UC-7 B7 | - | Doc; Code `ArtifactDetailView` viewers |
+| IF-G8a | Event | When a checkout ends, the GUI shall show its warnings with a suggested fix. | UC-5 B12 | - | Code `CheckoutDetailView` |
+| IF-G8b | Event | When the user reorders the children of an ambiguous order in the dialog, the GUI shall record the order without a commit (FR-K11). | UC-6 B1-B9 | `CheckoutDetailViewRecordOrderTest`, `ReorderChildrenDialogTest` (GUI) | Code `ReorderChildrenDialog` |
+| IF-G8c | Optional | Where a local LLM is configured, the reorder dialog shall suggest an order for review, never across an order earlier commits fixed. | UC-6 SA2 (first) | `ReorderChildrenDialogTest` (GUI), `LlmOrderSuggestionClientTest` (unit) | Code `LlmOrderSuggestionClient` |
+| IF-G9 | Ubiquitous | The GUI shall visualize a knowledge graph (features, commits, variants, associations), the artifact graph, the dependency graph and charts, each exportable. | UC-7 SA3 | `KnowledgeGraphLayoutTest`, `DependencyGraphViewTest`, `ChartsViewTest` (GUI) | Code `view/graph/*`, `ChartsView` |
+| IF-G10a | Ubiquitous | The GUI shall let users add and remove remotes, change a remote's name, address and type (keeping what was fetched from it), and fetch, pull and push. | UC-12 front ends | `RemotesViewTest`, `RemoteDetailViewTest` (GUI), `UpdateRemoteTest` | Code `RemotesView`, `RemoteDetailView`, `EccoService#updateRemote` |
+| IF-G10b | Ubiquitous | The GUI shall let users start the sync server on a chosen port, and show the port and a log of the server's connections (who may connect: NFR-S1, NFR-S3). | UC-13 B1-B9 | `ServerViewLogTest` (GUI) | Code `ServerView` |
+| IF-G11 | Ubiquitous | The GUI shall let users enable or disable adapters (effective on the next open) and set the minimization thresholds, the LilyPond paths, and the Python of the Python and LilyPond adapters and LilyPond's lymodel directory when they are not found (AD-9). | - | `PreferencesViewTest` (GUI) | Code `PreferencesView` |
 
 ### REST server (`rest`)
 
-| ID | Requirement | Source |
-| --- | --- | --- |
-| IF-R1 | The REST server shall serve the repositories of a storage directory (`ECCO_STORAGE_DIR`) to the external ecco-client on port 8081 (`PORT`), with an OpenAPI description and Swagger UI. | Doc; Code `application.yml`; Test `SettingsTest` |
-| IF-R2 | It shall let clients list, create, clone, fork (deselecting features) and delete repositories. | Code `RepositoryController` |
-| IF-R3 | It shall accept a commit as a multipart upload of files, message, configuration and user name, and refuse a malformed configuration or one without features with 400 before writing any file. | Code `CommitController`; Test `FileRepositoryServiceTest` |
-| IF-R4 | It shall let clients describe features and feature revisions, and pull features from another repository while deselecting some. | Code `FeatureController` |
-| IF-R5 | It shall let clients manage variants (add, rename, add/update/remove features) and download a variant's checkout as a file. | Code `VariantController` |
-| IF-R6 | Every endpoint except Swagger shall require an authenticated JWT bearer token. | Code `@Secured(IS_AUTHENTICATED)` |
+| ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| IF-R1a | Ubiquitous | The REST server shall serve the repositories of a storage directory (`ECCO_STORAGE_DIR`) to the external ecco-client on port 8081 (`PORT`). | UC-14, UC-15 precondition | `SettingsTest` | Doc; Code `application.yml` |
+| IF-R1b | Ubiquitous | The REST server shall publish an OpenAPI description and Swagger UI. | - | - | Doc |
+| IF-R2 | Ubiquitous | The REST server shall let clients list, create, clone, fork (deselecting features) and delete repositories. | UC-11 front ends | `FileRepositoryServiceTest`, `RestTest` | Code `RepositoryController` |
+| IF-R3a | Event | When a client uploads a commit as a multipart request of files, message, configuration and user name, the REST server shall commit it. | UC-14 B4-B10 | `RepositoryHandlerTest` | Code `CommitController` |
+| IF-R3b | Unwanted | If the configuration of an upload is malformed or names no feature, then the REST server shall refuse it with 400 before writing any file. | UC-14 B6, SA3 | `FileRepositoryServiceTest` | Code `CommitController` |
+| IF-R4 | Ubiquitous | The REST server shall let clients describe features and feature revisions, and pull features from another repository while deselecting some. | UC-12 front ends | `RestFeatureTest` (unit) | Code `FeatureController` |
+| IF-R5a | Ubiquitous | The REST server shall let clients manage variants: add, rename, and add, update or remove their features. | - | `VariantControllerTest` (unit), `RepositoryHandlerTest` | Code `VariantController` |
+| IF-R5b | Event | When a client requests a variant's checkout, the REST server shall return it as a zip file. | UC-15 B1-B7 | `VariantControllerTest` (unit) | Code `VariantController` |
+| IF-R6 | Unwanted | If a request to any endpoint except Swagger carries no valid signed JWT bearer token, then the REST server shall refuse it. | UC-14 GA1; UC-15 GA1 | `RestTokenSecurityTest` | Code `@Secured(IS_AUTHENTICATED)` |
 
 ### Where the front ends differ
 
@@ -1338,69 +1378,82 @@ None of these were written as targets; they are recovered from refusals in the c
 
 ### Reliability and data integrity
 
-| ID | Requirement | Source |
-| --- | --- | --- |
-| NFR-R1 | A commit shall be atomic: a crash leaves the previous state or the new one, never a mix. Dirty files are staged and rolled forward after the id swap. | Doc; History a6f4acac, feb839d1 |
-| NFR-R2 | Durability shall not rely on per-file fsync; atomicity comes from the roll-forward journal. | History: fsync measured ~10x slower (112 s vs 10.6 s, 21k artifacts) and rejected |
-| NFR-R3 | A commit followed by close, reopen and checkout shall reproduce exactly what was committed, for repositories, forks and pulls alike (a fork or pull checks out what its source does). | Test `CommitCheckoutTest`, `ForkReopenTest`, `ReopenEquivalenceTest`; History 2c299089, 09fa089a |
-| NFR-R4 | Distinct artifacts with equal content shall stay distinct through persistence. | History c288ed2d, da14de14 |
-| NFR-R5 | Errors shall surface, not be dropped: missing associations throw instead of being skipped; a rollback never follows a successful commit (FR-M10c). | History c6bb7561 |
-| NFR-R6 | Write-time pruning of associations shall not be used; it loses data on fork-and-merge. | History (reproduced, closed) |
-| NFR-R7 | A failed read or write of the repository shall name the repository and the system's reason; for a repository in a folder a cloud service synchronizes (iCloud Drive, also a synced Desktop or Documents folder; Dropbox, OneDrive, Google Drive), it shall say that such folders can time out reading and what to do. `init`, `fork` and `status`, and the GUI when it opens a repository, shall warn about such a folder. | Code `SyncedFolders`, `SerTransactionStrategy#ioFailure`, `ExceptionAlert#describe`; Test `SyncedFoldersTest`, `SyncedFolderWarningTest`, `ExceptionAlertTest`; README |
+| ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| NFR-R1 | Ubiquitous | ECCO shall store a commit atomically: after a crash the repository holds the previous state or the new one, never a mix. | UC-3 BA1 post | `SerTransactionStrategyInterruptedCommitTest`, `SerTransactionStrategyAtomicWriteTest` | Doc; History a6f4acac, feb839d1 |
+| NFR-R2 | Ubiquitous (design constraint) | ECCO shall not rely on per-file fsync for durability; atomicity comes from the roll-forward journal. | - | - | History: fsync measured ~10x slower (112 s vs 10.6 s, 21k artifacts) and rejected |
+| NFR-R3 | Event | When a repository is closed, reopened and checked out after a commit, ECCO shall reproduce exactly what was committed - for repositories, forks and pulls alike (a fork or pull checks out what its source does). | UC-3 post; UC-11 post; UC-12 post | `CommitCheckoutTest`, `ForkReopenTest`, `ReopenEquivalenceTest` | History 2c299089, 09fa089a |
+| NFR-R4 | Ubiquitous | ECCO shall keep distinct artifacts with equal content distinct through persistence. | - | - | History c288ed2d, da14de14 |
+| NFR-R5 | Ubiquitous | ECCO shall surface errors instead of dropping them: a missing association a commit refers to is reported instead of skipped, and a failed load reports its real cause (rollbacks: FR-M10c). | - | `SerCommitDanglingAssociationTest`, `ErrorMaskingRollbackTest` | History c6bb7561 |
+| NFR-R6 | Ubiquitous (design constraint) | ECCO shall not prune associations at write time, which loses data on fork-and-merge. | - | - | History (reproduced, closed) |
+| NFR-R7a | Unwanted | If a read or write of the repository fails, then ECCO shall name the repository and the system's reason. | UC-3 BA1 | `ExceptionAlertTest` (GUI) | Code `SerTransactionStrategy#ioFailure`, `ExceptionAlert#describe` |
+| NFR-R7b | Unwanted | If the failing repository is in a folder a cloud service synchronizes (iCloud Drive, also a synced Desktop or Documents folder; Dropbox, OneDrive, Google Drive), then ECCO shall say that such folders can time out reading, and what to do. | - | `SyncedFoldersTest` | Code `SyncedFolders`; README |
+| NFR-R7c | Event | When `init`, `fork` or `status` runs, or the GUI opens a repository, in such a folder, ECCO shall warn about the folder. | UC-1 B1; UC-2 B1; UC-11 B1 | `SyncedFolderWarningTest` | Code `SyncedFolders` |
+
+NFR-R1 is met by staging the dirty files and rolling them forward after the id swap.
 
 ### Performance (recorded baselines)
 
-| ID | Requirement | Baseline | Source |
-| --- | --- | --- | --- |
-| NFR-P1 | Commit and checkout should scale to tens of features and variants interactively. | 60 variants / 40 features: commit 1.8 s, checkout 1.1 s, status 0.2 s | History cd764f4e, 81442a9e |
-| NFR-P2 | Opening a repository should take seconds, not minutes. | Real x8 repo: 65 s to 5.3 s | History decb2e37 |
-| NFR-P3 | The time to store a commit should grow with what the commit changes, not with the size of the repository (FR-P3a). | 15.7 s to 2.6 s after skipping identical writes. Associations: only those whose bytes changed, in pieces and one pack per write (#48, done). Still: every touched artifact is serialized to find out whether it changed (#49) | History 4bb0961c |
-| NFR-P4 | Pixel-granular images should be usable at around 1.7 megapixels. | 71k-px image: commit 67 to 2 s, checkout 157 to 3.4 s | History 7a4e0aec, 47f6f0e5 |
-| NFR-P5 | Storage should stay compact as commits accumulate. | Association files 147 to 13 MB (compact counters); packs 2.5-7x smaller | History 81442a9e, 7c18da73 |
-| NFR-P6 | Merging a file into its partial order graph should not be quadratic in its length; every commit merges every file, changed or not. | Large Git import: one commit 73 s to 19 s, another out of memory to 35 s; a 47-commit LilyPond repository replays to the same checkouts and stored content | History 3c9ce88f (`AlignPathsEquivalenceTest`) |
-| NFR-P7 | Read-tree reuse (FR-M11) should keep a typical commit of a long history at or below the baseline. | 15 flipperzero-firmware commits: 238 s to 205 s, a typical commit 13 s to 10 s | History 90135e96 |
-| NFR-P8 | What a commit writes should not grow with the number of artifacts in the repository (FR-P2). | flipperzero-firmware: core written per commit 26.5 MB to ~0; a commit after the first 10.9 s to 8.9 s by comparing artifacts by id, to 8.3 s with the index left out of the core; the first commit 23.5 s to 19.5 s | History 6dc69da5 |
-| NFR-P9 | Ordering a node's children on checkout shall not be quadratic in their number: children are looked up by their artifact's hash. | 3 flipperzero-firmware commits incl. the 343,764-line `u8g2_fonts.c`: a checkout 800 s to 34 s, the same 2,658 files | History 2d8b1382 (`OrderSelectorEquivalenceTest`) |
-| NFR-P10 | Merging a commit into a file's partial order graph should not cost a full alignment per ordering of its open branches (2^n for n two-way branches): the LCS lengths of all orderings are computed together, sharing their common work, and only the first longest is aligned. | tinycc, 12 commits: 417 s to 60 s, the same checkouts and warnings; the 13th commit (`tccgen.c` with 15 open branches, 32,768 orderings of 6,273 lines) from not finishing to 10 s | History 0be3bd63 (`IterativeLcsAlignmentEquivalenceTest`) |
+| ID | Pattern | Requirement | Use case | Baseline | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| NFR-P1 | Ubiquitous | Commit and checkout should stay interactive for tens of features and variants. | UC-3; UC-5 | 60 variants / 40 features: commit 1.8 s, checkout 1.1 s, status 0.2 s | History cd764f4e, 81442a9e |
+| NFR-P2 | Event | When ECCO opens a repository, it should take seconds, not minutes. | UC-2 B5 | Real x8 repo: 65 s to 5.3 s | History decb2e37 |
+| NFR-P3 | Ubiquitous | The time to store a commit should grow with what the commit changes, not with the size of the repository (FR-P3a). | UC-3 B10 | 15.7 s to 2.6 s after skipping identical writes. Associations: only those whose bytes changed, in pieces and one pack per write (#48, done). Still: every touched artifact is serialized to find out whether it changed (#49) | History 4bb0961c |
+| NFR-P4 | Ubiquitous | The image adapter should be usable on pixel-granular images of around 1.7 megapixels. | - | 71k-px image: commit 67 to 2 s, checkout 157 to 3.4 s | History 7a4e0aec, 47f6f0e5 |
+| NFR-P5 | Ubiquitous | Storage should stay compact as commits accumulate. | - | Association files 147 to 13 MB (compact counters); packs 2.5-7x smaller | History 81442a9e, 7c18da73 |
+| NFR-P6 | Ubiquitous | Merging a file into its partial order graph should not be quadratic in the file's length. | UC-3 B8 | Large Git import: one commit 73 s to 19 s, another out of memory to 35 s; a 47-commit LilyPond repository replays to the same checkouts and stored content | History 3c9ce88f (`AlignPathsEquivalenceTest`) |
+| NFR-P7 | Ubiquitous | Read-tree reuse (FR-M11) should keep a typical commit of a long history at or below the baseline. | UC-3 B5 | 15 flipperzero-firmware commits: 238 s to 205 s, a typical commit 13 s to 10 s | History 90135e96 |
+| NFR-P8 | Ubiquitous | What a commit writes should not grow with the number of artifacts in the repository (FR-P2a). | UC-3 B10 | flipperzero-firmware: core written per commit 26.5 MB to ~0; a commit after the first 10.9 s to 8.9 s by comparing artifacts by id, to 8.3 s with the index left out of the core; the first commit 23.5 s to 19.5 s | History 6dc69da5 |
+| NFR-P9 | Ubiquitous | Ordering a node's children on checkout shall not be quadratic in their number. | UC-5 B7 | 3 flipperzero-firmware commits incl. the 343,764-line `u8g2_fonts.c`: a checkout 800 s to 34 s, the same 2,658 files | History 2d8b1382 (`OrderSelectorEquivalenceTest`) |
+| NFR-P10 | Ubiquitous | Merging a commit into a file's partial order graph should not cost a full alignment per ordering of its open branches (2^n for n two-way branches). | UC-3 B8 | tinycc, 12 commits: 417 s to 60 s, the same checkouts and warnings; the 13th commit (`tccgen.c` with 15 open branches, 32,768 orderings of 6,273 lines) from not finishing to 10 s | History 0be3bd63 (`IterativeLcsAlignmentEquivalenceTest`) |
+
+No test checks a time; the tests named under *Evidence* check that a faster algorithm gives the same result as the one it replaced. Every commit merges every file into its partial order graph, changed or not (NFR-P6). Checkout looks children up by their artifact's hash (NFR-P9).
 
 Partial-order-graph alignment considers every ordering of a graph's concurrent unresolved branches - factorial in their number. The orderings are not aligned one by one: their LCS lengths are computed together, reusing the work after a point where different orderings reach the same state, which is the usual case (NFR-P10); in the worst case this costs as much as aligning each. Above 100,000 orderings a fast fallback takes over (`ConcurrentBranchScalingTest`). Aligning two long paths builds an n x m matrix; equal trailing nodes are matched before it is built, which leaves the matrix small when a file changed little (NFR-P6).
 
 ### Concurrency
 
-| ID | Requirement | Source |
-| --- | --- | --- |
-| NFR-C1 | Repository data shall be safe to read and write from background threads while the GUI reads it. A view that reads repository structures outside a service call (the partial order graph of the artifact details) shall read them holding the service's lock, which the service's writes hold. | History f03347d4, 3d84bc03, 7fde1962, 04825b26, 59e6aefb |
-| NFR-C2 | Listener events shall reach every listener even if one throws or events fire from a background thread. | History (CopyOnWriteArrayList, per-listener isolation) |
-| NFR-C3 | The GUI shall keep repository writes off the JavaFX thread and UI reads on it. | History 5cb865c3, 56a51e6a, dae048f6 |
+| ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| NFR-C1a | Ubiquitous | ECCO shall keep repository data safe to read and write from background threads while the GUI reads it. | - | `ConcurrentReaderTest`, `SerModuleRevisionCounterConcurrencyTest` | History f03347d4, 3d84bc03, 7fde1962, 04825b26, 59e6aefb |
+| NFR-C1b | Ubiquitous | A view that reads repository structures outside a service call (the partial order graph of the artifact details) shall hold the service's lock, which the service's writes hold. | - | - | History 59e6aefb |
+| NFR-C2 | Ubiquitous | ECCO shall deliver listener events to every listener, also when one throws or an event fires from a background thread. | - | `ListenerRegistryServerEventTest` | Code `ListenerRegistry` (CopyOnWriteArrayList, per-listener isolation) |
+| NFR-C3 | Ubiquitous | The GUI shall run repository writes off the JavaFX thread and UI reads on it. | - | - | History 5cb865c3, 56a51e6a, dae048f6 |
 
 ### Compatibility and evolution
 
-| ID | Requirement | Source |
-| --- | --- | --- |
-| NFR-V1 | A repository in an older or retired format shall be refused with an explanation, never fail with an exception or be misread: a commit or merge into a repository holding artifacts of a retired adapter format, or unordered artifacts whose data requires order, is refused. | Code `ArtifactData#retiredFormat`, `Repository#checkArtifactFormats`, tree-format checks; Test `CppRoundTripTest`; History ff3c5dfe |
-| NFR-V2 | Where an adapter's tree format changed, old repositories should stay checkout-only rather than become unreadable. | Test `CppRoundTripTest`; History d9ce686c (C++) |
-| NFR-V3 | A build shall read the current storage layout only, and refuse an older one with a message naming the version that converts it; older builds need not read newer ones. Since 2026-10-15 (decided: the repositories in use are test repositories) the layouts of version 0.2.0 and of builds before - a file per association or artifact, the artifact index in the core - are refused; commit 4473766d reads them all and writes the current layout (`ecco convert`; seven repositories converted, every committed configuration checking out the same). A build from before 2026-10-14 cannot read a repository holding a per-variant text format (`TextFormatArtifactData`) or a Java enum's constant group (`ASTNodeType.ENUM_CONSTANT_GROUP`). Text data stored before is read and written as before; a Java repository of an older tree format (`JavaASTData.TREE_FORMAT`, 2 since the constant group) checks out but refuses commits (AD-7). | Test `OldStorageFormatTest`, `StorageFormatTest`; History 81442a9e, 7c18da73, 6dc69da5, 5027fcb0, bd1f3662, 4473766d |
+| ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| NFR-V1a | Unwanted | If a repository is in an older or retired format, then ECCO shall refuse it with an explanation, never fail with an exception or misread it. | UC-2 B4, SA4 | `OldStorageFormatTest` | Code tree-format checks; History ff3c5dfe |
+| NFR-V1b | Unwanted | If a repository holds artifacts of a retired adapter format, or unordered artifacts whose data requires order, then ECCO shall refuse a commit or merge into it. | UC-3 B6, SA2; UC-12 B6, SA5 | `CppRoundTripTest` | Code `ArtifactData#retiredFormat`, `Repository#checkArtifactFormats` |
+| NFR-V2 | State | While a repository holds data of an adapter's older tree format, ECCO should still check it out. | - | `CppRoundTripTest`, `LegacyCppWriterTest` | History d9ce686c (C++) |
+| NFR-V3a | Ubiquitous | A build shall read the current storage layout only. | - | - | History 6dc69da5 |
+| NFR-V3b | Unwanted | If a repository is in an older storage layout (a file per association or artifact, the artifact index in the core), then ECCO shall refuse to open it with a message naming the version that converts it. | UC-2 B4, SA4 | `OldStorageFormatTest` | Code SR `isCurrentLayout`; History 4473766d |
+| NFR-V3c | Unwanted | If a core records a newer format than the build knows, then ECCO shall refuse it. | UC-2 B4, SA4 | `StorageFormatTest` | Code STS |
+
+Since 2026-10-15 (decided: the repositories in use are test repositories) the layouts of version 0.2.0 and of builds before are refused; commit 4473766d reads them all and writes the current layout (`ecco convert`; seven repositories converted, every committed configuration checking out the same). A build from before 2026-10-14 cannot read a repository holding a per-variant text format (`TextFormatArtifactData`) or a Java enum's constant group (`ASTNodeType.ENUM_CONSTANT_GROUP`). Text data stored before is read and written as before; a Java repository of an older tree format (`JavaASTData.TREE_FORMAT`, 2 since the constant group) checks out but refuses commits (AD-7). History 81442a9e, 7c18da73, 5027fcb0, bd1f3662.
 
 ### Security
 
-| ID | Requirement | Source |
-| --- | --- | --- |
-| NFR-S1 | The sync server shall accept only local connections unless explicitly started on all interfaces. | Doc |
-| NFR-S2 | The REST server shall reject upload and repository names that escape their storage folder. | History ad74aaad |
-| NFR-S3 | Remote sync is unauthenticated; the GUI shall ask for confirmation before accepting connections from other machines. | Doc; Code `ServerView` - the missing authentication is a stated limitation |
-| NFR-S4 | The REST server shall sign its tokens and refuse unsigned or wrongly signed ones. | Test `RestTokenSecurityTest`, `RestShippedConfigTokenTest` |
-| NFR-S5 | Outside development mode the REST server shall refuse to start without a JWT secret of at least 32 characters other than the default, and a users file holding password hashes. | Test `RestSecurityTest` |
+| ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| NFR-S1 | Ubiquitous | The sync server shall accept only local connections unless it is started for connections from other machines. | UC-13 B4, SA2 | `RemoteSyncServerHardeningTest` | Doc |
+| NFR-S2 | Unwanted | If an upload or repository name escapes its storage folder, then the REST server shall reject it. | UC-14 B7, SA4 | `FileRepositoryServiceTest` | History ad74aaad |
+| NFR-S3 | Event | When the user starts the sync server for connections from other machines, the GUI shall warn that synchronization has no authentication and ask for confirmation. | UC-13 SA2 | - | Doc; Code `ServerView` |
+| NFR-S4 | Ubiquitous | The REST server shall sign the tokens it issues (refusing unsigned ones: IF-R6). | UC-14 B3 | `RestTokenSecurityTest`, `RestShippedConfigTokenTest` | |
+| NFR-S5 | Unwanted | If, outside development mode, the REST server has no JWT secret of at least 32 characters other than the default, or no users file holding password hashes, then it shall refuse to start. | UC-14 precondition | `RestSecurityTest` | |
+
+Remote sync has no authentication; that is a stated limitation (gap #8), and NFR-S3 makes the user confirm it.
 
 ### Platform and build
 
-| ID | Requirement | Source |
-| --- | --- | --- |
-| NFR-B1 | The system shall build and test with JDK 21+ and the bundled Gradle wrapper, with no other prerequisite. | Doc |
-| NFR-B2 | Tests that need optional Python modules (`libcst`, `tree-sitter`, `py4j`, `lymodel`) shall be skipped, not failed, when the modules are absent - decided by the adapters' own interpreter lookup (AD-9), so a test runs whenever the adapter could. | Doc; Test `Lymusic`, `PythonAvailable` |
-| NFR-B3 | CLI and REST shall run headless, without JavaFX on the classpath. | History bfcddc23 |
-| NFR-B4 | The GUI shall be installable as a native application on macOS, Linux and Windows. | Doc (jpackage tasks) |
-| NFR-B5 | Third-party dependency versions shall be kept in one version catalog. | Doc (`gradle/libs.versions.toml`) |
-
+| ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| NFR-B1 | Ubiquitous | The system shall build and test with JDK 21+ and the bundled Gradle wrapper, with no other prerequisite. | - | - | Doc |
+| NFR-B2 | Unwanted | If a test needs Python modules (`libcst`, `tree-sitter`, `py4j`, `lymodel`) that are absent - as the adapters' own interpreter lookup decides (AD-9) - then the build shall skip the test, not fail it, so that a test runs whenever the adapter could. | - | - | Doc; Code test helpers `Lymusic`, `PythonAvailable` |
+| NFR-B3 | Ubiquitous | The CLI and the REST server shall run headless, without JavaFX on the classpath. | - | `InitCommandTest` | History bfcddc23 |
+| NFR-B4 | Ubiquitous | The GUI shall be installable as a native application on macOS, Linux and Windows. | - | - | Doc (jpackage tasks) |
+| NFR-B5 | Ubiquitous (design constraint) | Third-party dependency versions shall be kept in one version catalog. | - | - | Doc (`gradle/libs.versions.toml`) |
 
 ## Known gaps
 
@@ -1420,11 +1473,13 @@ Requirements the code does not meet, places where the documentation and the code
 | 69 | UC-3 step 11 checks the configuration against the accepted constraints after the commit; since 2c65fe6e every front end checks before committing, because a committed configuration can no longer violate a constraint re-mined with it. | UC-3 B11, SA3 | Use case out of date |
 | 70 | UC-12 SA1 (push) leaves out the check for a retired adapter format that the pull does in step 6; `Repository#merge` checks both repositories, so the push is refused too. | UC-12 SA1 | Use case out of date |
 | 71 | UC-6 has two alternative flows named SA2 (suggest an order; an order contradicting one recorded before), and so SA3 names a third. | UC-6 | Use case defect |
-| 72 | Cancelling a commit (`EccoService#cancelCommit`: the repository stays as it was; cancelling with no commit running does not stop the next one) has no requirement and no use-case flow. | `CommitCancellationTest` | Requirement missing |
+| 72 | Cancelling a commit (`EccoService#cancelCommit`: the repository stays as it was; cancelling with no commit running does not stop the next one) or a fetch, pull or push (nothing changes) has no requirement and no use-case flow. | `CommitCancellationTest`, `CancelRemoteSyncTest`, `CommitBaseDirViewTest` | Requirement missing |
 | 73 | `A, -B` is refused with a hint to leave B out; no requirement says so. FR-F2 does not say what happens to a revision id prefix that several revisions share. | `ConfigurationGrammarTest`; FR-F2 | Requirement missing |
 | 74 | FR-K5d covers a file stored whole with several versions in the combination, not one with none - which is reported as CONFLICT as well. | `WholeFileConflictTest` | Requirement incomplete |
 | 75 | Git import refuses a folder that is no Git repository (UC-10 SA1) and takes BASE as the configuration of the first commit (UC-10 SA9); no functional requirement states either. | UC-10 SA1, SA9; `GitHistoryReaderTest` | Requirement missing |
-| 76 | A pack left by a crashed or unfinished write is deleted, a missing pack is reported as damage, and a newer core format is refused; NFR-R1 and NFR-V3 cover this only in part. | `ArtifactPackTest`, `StorageFormatTest` | Requirement incomplete |
+| 76 | A pack left by a crashed or unfinished write is deleted, and a missing pack is reported as damage; NFR-R1 covers this only in part. | `ArtifactPackTest` | Requirement incomplete |
+| 77 | Adapter, interface and non-functional requirements no acceptance test checks: AD-1a, AD-2a/b, AD-9c; IF-C2, IF-C3b, IF-C4a/b, IF-C5b, IF-C7, IF-G3a, IF-G3d, IF-G4, IF-G7, IF-G8a, IF-R1b; NFR-R4, NFR-C1b, NFR-C3, NFR-V3a, NFR-S3. No test checks a performance requirement's time. (The design constraints NFR-R2, NFR-R6, NFR-B5 and the build requirements NFR-B1, NFR-B2, NFR-B4 are not for acceptance tests; 45 of the 115 rows have no use case, mostly cross-cutting ones - adapter contract, concurrency, build - that no single scenario realizes.) | [Artifact adapter](#artifact-adapter-requirements), [interface](#interface-requirements) and [non-functional requirements](#non-functional-requirements) | Traceability - found by the EARS rewrite 2026-10-20 |
+| 78 | Tested behaviour no requirement states: Git import of tagged commits only, each with the revisions of the commits since the last import (`ImportGitViewTaggedTest`; IF-G3 says nothing of it); refusing a wrong password or an unknown user at login (UC-14 SA1; `RestTokenSecurityTest`). | IF-G3; UC-14 SA1 | Requirement missing |
 
 ### Closed gaps
 
