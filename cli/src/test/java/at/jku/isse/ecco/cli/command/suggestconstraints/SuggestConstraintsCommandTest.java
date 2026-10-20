@@ -88,4 +88,33 @@ public class SuggestConstraintsCommandTest {
                     "expected a MANDATORY Core suggestion since every one of the 4 commits selected Core; got: " + writer.getLines());
         }
     }
+
+    /**
+     * FR-N3: constraints are mined per feature - two revisions of one feature never share a
+     * configuration, and are still not suggested as excluding each other.
+     */
+    @Test
+    public void revisionsOfOneFeatureAreNeverSuggestedAsExcludingEachOther() throws IOException {
+        Path workDir = Files.createTempDirectory("suggest-constraints-revisions");
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(workDir.resolve(".ecco"));
+            service.init();
+            String[] configurations = {"Core, A", "Core, A", "Core, A", "Core, A", "Core, A'", "Core, A", "Core, A", "Core, A"};
+            for (int i = 0; i < configurations.length; i++) {
+                Path variantDir = Files.createDirectories(workDir.resolve("variant" + i));
+                Files.writeString(variantDir.resolve("core.txt"), "core\n");
+                Files.writeString(variantDir.resolve("a.txt"), (i < 4 ? "a1 " : "a2 ") + i + "\n");
+                service.setBaseDir(variantDir);
+                service.commit("variant " + i, configurations[i]);
+            }
+            assertEquals(2, service.getRepository().getFeatures().stream().filter(f -> f.getName().equals("A")).findFirst().orElseThrow().getRevisions().size());
+            service.close();
+
+            StringWriter writer = new StringWriter();
+            new SuggestConstraintsCommand(service, writer).run(defaultArgs());
+
+            assertTrue(writer.getLines().stream().anyMatch(line -> line.startsWith("MANDATORY A")), writer.getLines().toString());
+            assertTrue(writer.getLines().stream().noneMatch(line -> line.startsWith("EXCLUDES")), writer.getLines().toString());
+        }
+    }
 }

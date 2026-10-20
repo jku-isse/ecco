@@ -20,4 +20,11 @@ public class MainExitCodeTest {
         // unparsable remote address is rejected by the command itself
         assertEquals(1, Main.run(new String[]{"fork", "\u0000invalid"}));
     }
+
+    /** IF-C2: commit and checkout require a configuration - without -c the arguments are invalid. */
+    @Test
+    public void commitAndCheckoutWithoutAConfigurationExitWith2() {
+        assertEquals(2, Main.run(new String[]{"commit"}));
+        assertEquals(2, Main.run(new String[]{"checkout"}));
+    }
 }

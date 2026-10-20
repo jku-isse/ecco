@@ -41,6 +41,27 @@ public class RemoteSyncServerHardeningTest {
         }
     }
 
+    /**
+     * Interrupting the server's thread closes its channel without stopServer(): the accept loop
+     * then got ClosedChannelException at once, every time, and spun at full CPU for good instead of
+     * ending - seen when a test timed out with the server running in its own thread.
+     */
+    @Test
+    @Timeout(60)
+    public void anInterruptedServerEndsInsteadOfSpinning() throws Exception {
+        Server server = Server.start();
+        try {
+            server.thread.interrupt();
+            server.thread.join(10_000);
+            assertFalse(server.thread.isAlive(), "the accept loop ended");
+            assertFalse(server.service.serverRunning());
+        } finally {
+            if (server.service.serverRunning())
+                server.service.stopServer();
+            server.service.close();
+        }
+    }
+
     @Test
     @Timeout(60)
     public void payloadsOfNonEccoClassesAreNotDeserialized() throws Exception {

@@ -469,13 +469,19 @@ public class RemoteSyncService {
                     this.rollbackIfTransactionInProgress();
                     throw e;
                 } catch (AsynchronousCloseException e) {
-                    // server shut down
+                    // server shut down - or its channel closed otherwise, e.g. by interrupting the
+                    // server thread (ClosedByInterruptException), which leaves serverShutdown unset:
+                    // accept() then threw ClosedChannelException at once, forever, and the loop spun
                     this.rollbackIfTransactionInProgress();
+                    if (!ssChannel.isOpen())
+                        break;
                 } catch (SocketException | ClosedChannelException e) {
+                    this.rollbackIfTransactionInProgress();
+                    if (!ssChannel.isOpen())
+                        break;
                     LOGGER.warning("Error receiving request.");
                     owner.listeners.fireServerEvent("Error receiving request: " + e.getMessage());
                     e.printStackTrace();
-                    this.rollbackIfTransactionInProgress();
                 } catch (Exception e) {
                     LOGGER.warning("Error receiving request.");
                     owner.listeners.fireServerEvent("Error receiving request: " + e.getMessage());
