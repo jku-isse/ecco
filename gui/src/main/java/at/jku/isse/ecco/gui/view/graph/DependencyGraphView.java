@@ -3,11 +3,15 @@ package at.jku.isse.ecco.gui.view.graph;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.DependencyGraph;
+import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.GraphCameraControls;
 import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Condition;
+import at.jku.isse.ecco.module.ConditionText;
+import at.jku.isse.ecco.module.ModuleRevision;
 import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
@@ -22,8 +26,12 @@ import org.graphstream.ui.view.Viewer;
 
 import javax.swing.*;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class DependencyGraphView extends BorderPane implements EccoListener, TabVisibilityAware {
 
@@ -43,6 +51,27 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	private volatile boolean hideImpliedDependencies = true;
 	private final at.jku.isse.ecco.gui.LatestRefresh<Dependencies> refresher;
 	private boolean hideTransitiveDependencies = true;
+
+	/**
+	 * One node per feature instead of per association: for zip4j's Git import the associations made
+	 * 331 nodes and 804 edges, labelled with whole conditions - unreadable; its 49 features are not.
+	 */
+	private volatile boolean byFeature = true;
+	/** Edges lighter than this are not shown: by feature, zip4j had 1728 edges, 61 of weight 5 or more. */
+	private volatile int minWeight = DEFAULT_MIN_WEIGHT;
+	static final int DEFAULT_MIN_WEIGHT = 5;
+	private final Label shownLabel = new Label();
+
+	/**
+	 * The absorbed terms of the associations' conditions, kept from one refresh to the next until a
+	 * commit or another repository: computed anew, they took 5 s for zip4j's Git import on every
+	 * change of the minimum weight or another option.
+	 */
+	private volatile Map<Association, List<ModuleRevision>> termsCache = newTermsCache();
+
+	private static Map<Association, List<ModuleRevision>> newTermsCache() {
+		return java.util.Collections.synchronizedMap(new IdentityHashMap<>());
+	}
 
 	/**
 	 * See {@code ArtifactGraphView#tabVisible} for the full rationale: without this,
@@ -84,6 +113,13 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		toolBar.getItems().add(new Separator());
 
 
+		CheckBox byFeatureCheckbox = new CheckBox("Group by Feature");
+		byFeatureCheckbox.setTooltip(new Tooltip("One node per feature, the associations' dependencies added up between the features of their conditions"));
+		byFeatureCheckbox.setSelected(this.byFeature);
+		toolBar.getItems().add(byFeatureCheckbox);
+		toolBar.getItems().add(new Separator());
+
+
 		CheckBox simplifyLabelsCheckbox = new CheckBox("Hide Revisions");
 		// what it does: "A" for "A.1" - it said "Simplified Labels", the name of another option elsewhere
 		simplifyLabelsCheckbox.setTooltip(new Tooltip("Show the conditions without feature revisions: A instead of A.1"));
@@ -94,6 +130,13 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 			DependencyGraphView.this.updateGraph();
 		});
 		toolBar.getItems().add(new Separator());
+		// a feature's name has no revisions to hide
+		simplifyLabelsCheckbox.setDisable(this.byFeature);
+		byFeatureCheckbox.selectedProperty().addListener((ov, old_val, new_val) -> {
+			DependencyGraphView.this.byFeature = new_val;
+			simplifyLabelsCheckbox.setDisable(new_val);
+			DependencyGraphView.this.updateGraph();
+		});
 
 
 		CheckBox hideImpliedDependenciesCheckBox = new CheckBox("Hide Implied Dependencies");
@@ -113,6 +156,16 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 			DependencyGraphView.this.hideTransitiveDependencies = new_val;
 			DependencyGraphView.this.updateGraph();
 		});
+		toolBar.getItems().add(new Separator());
+
+		Spinner<Integer> minWeightSpinner = new EditableSpinner(1, 1_000_000, this.minWeight);
+		minWeightSpinner.setPrefWidth(90);
+		minWeightSpinner.setTooltip(new Tooltip("Hide the dependencies lighter than this"));
+		minWeightSpinner.valueProperty().addListener((obs, oldValue, newValue) -> {
+			DependencyGraphView.this.minWeight = newValue;
+			DependencyGraphView.this.updateGraph();
+		});
+		toolBar.getItems().addAll(new Label("Min. Weight: "), minWeightSpinner, this.shownLabel);
 		toolBar.getItems().add(new Separator());
 
 		toolBar.getItems().addAll(GraphCameraControls.build(() -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, () -> {
@@ -168,8 +221,11 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		this.refresher.request();
 	}
 
-	/** What the graph shows: its nodes - an association's id and label - and edges, read in the background. */
-	record Dependencies(Map<String, String> labels, List<String[]> edges) {
+	/**
+	 * What the graph shows: its nodes - an association's or feature's id and label - and edges, read
+	 * in the background; [all] edges there were before the ones lighter than the minimum weight were left out.
+	 */
+	record Dependencies(Map<String, String> labels, List<String[]> edges, int all) {
 	}
 
 	/**
@@ -179,23 +235,90 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	 * the next commit changed them.
 	 */
 	private Dependencies computeDependencies(EccoService service) {
-		boolean hideImplied = this.hideImpliedDependencies, simplify = this.simplifyLabels;
+		boolean hideImplied = this.hideImpliedDependencies, simplify = this.simplifyLabels, byFeature = this.byFeature;
+		int minWeight = this.minWeight;
 		DependencyGraph graph = new DependencyGraph(service.getRepository().getAssociations());
 		this.dg = graph;
-		Map<String, String> labels = new java.util.LinkedHashMap<>();
+		Map<String, String> labels = new LinkedHashMap<>();
 		List<String[]> edges = new java.util.ArrayList<>();
-		// once per association, not per dependency: an association is in many (2.5 s for tinycc)
-		Map<Association, Condition> conditions = new IdentityHashMap<>();
+		int all = 0;
+		// once per association, not per dependency: an association is in many (2.5 s for tinycc);
+		// absorbed: zip4j's Git import had 8.1M module revisions in its conditions, 34k absorbed
+		Map<Association, List<ModuleRevision>> terms = this.termsCache;
+		Map<Association, Set<String>> features = new IdentityHashMap<>();
+		Map<List<String>, Double> featureWeights = new LinkedHashMap<>();
 		for (DependencyGraph.Dependency dep : graph.getDependencies()) {
-			Condition from = conditions.computeIfAbsent(dep.getFrom(), Association::computeCondition);
-			Condition to = conditions.computeIfAbsent(dep.getTo(), Association::computeCondition);
-			if (hideImplied && isImplied(from, to))
+			List<ModuleRevision> fromTerms = terms.computeIfAbsent(dep.getFrom(), a -> a.computeCondition().getAbsorbedModuleRevisions());
+			List<ModuleRevision> toTerms = terms.computeIfAbsent(dep.getTo(), a -> a.computeCondition().getAbsorbedModuleRevisions());
+			if (hideImplied && isImplied(fromTerms, toTerms))
 				continue;
-			labels.computeIfAbsent(String.valueOf(dep.getFrom().getId()), id -> "[" + (simplify ? from.toDisplayString(false) : from.toDisplayString()) + "]");
-			labels.computeIfAbsent(String.valueOf(dep.getTo().getId()), id -> "[" + (simplify ? to.toDisplayString(false) : to.toDisplayString()) + "]");
+			if (byFeature) {
+				addFeatureDependency(featureWeights, features.computeIfAbsent(dep.getFrom(), a -> features(fromTerms)),
+						features.computeIfAbsent(dep.getTo(), a -> features(toTerms)), dep.getWeight());
+				continue;
+			}
+			all++;
+			if (dep.getWeight() < minWeight)
+				continue;
+			labels.computeIfAbsent(String.valueOf(dep.getFrom().getId()), id -> "[" + displayString(fromTerms, !simplify) + "]");
+			labels.computeIfAbsent(String.valueOf(dep.getTo().getId()), id -> "[" + displayString(toTerms, !simplify) + "]");
 			edges.add(new String[]{String.valueOf(dep.getFrom().getId()), String.valueOf(dep.getTo().getId()), String.valueOf(dep.getWeight())});
 		}
-		return new Dependencies(labels, edges);
+		if (byFeature) {
+			all = featureWeights.size();
+			featureWeights.forEach((pair, weight) -> {
+				if (weight < minWeight)
+					return;
+				// prefixed: a feature's name is not an association's id
+				String fromId = "feature:" + pair.get(0), toId = "feature:" + pair.get(1);
+				labels.putIfAbsent(fromId, pair.get(0));
+				labels.putIfAbsent(toId, pair.get(1));
+				edges.add(new String[]{fromId, toId, formatWeight(weight)});
+			});
+		}
+		return new Dependencies(labels, edges, all);
+	}
+
+	/**
+	 * The names of the features in a condition's absorbed [terms] - present in one of them; negated
+	 * ones do not count - or {@link Condition#NOT_TRACED} for an association traced to no feature.
+	 */
+	static Set<String> features(List<ModuleRevision> terms) {
+		Set<String> names = new TreeSet<>();
+		for (ModuleRevision term : terms)
+			for (FeatureRevision featureRevision : term.getPos())
+				names.add(featureRevision.getFeature().getName());
+		if (names.isEmpty())
+			names.add(Condition.NOT_TRACED);
+		return names;
+	}
+
+	/**
+	 * Adds a dependency of weight [weight] between associations of features [from] and [to] to
+	 * [weights], keyed by (from feature, to feature): shared out over the pairs, not given to each in
+	 * full - with the whole weight, an association of ten features made a hundred heavy edges, and
+	 * zip4j's 49 features 1728 edges, most of them of weight 5 or more. A pair of the same feature is
+	 * a dependency within it, not drawn; its share is left out.
+	 */
+	static void addFeatureDependency(Map<List<String>, Double> weights, Set<String> from, Set<String> to, int weight) {
+		double share = (double) weight / (from.size() * to.size());
+		for (String fromFeature : from)
+			for (String toFeature : to)
+				if (!fromFeature.equals(toFeature))
+					weights.merge(List.of(fromFeature, toFeature), share, Double::sum);
+	}
+
+	/** {@link Condition#toDisplayString(boolean)} from the absorbed [terms], not absorbing them again. */
+	static String displayString(List<ModuleRevision> terms, boolean withRevisions) {
+		List<java.util.SortedSet<String>> literals = new java.util.ArrayList<>();
+		for (ModuleRevision term : terms)
+			literals.add(ConditionText.literals(term, withRevisions));
+		return literals.isEmpty() ? Condition.NOT_TRACED : ConditionText.join(literals);
+	}
+
+	/** A shared-out weight for an edge's label: whole from 10 on, one decimal below. */
+	static String formatWeight(double weight) {
+		return weight >= 10 ? String.valueOf(Math.round(weight)) : String.format(Locale.ROOT, "%.1f", weight);
 	}
 
 	/** Shows [dependencies], on the FX thread: the viewer made if there is none - kept, not made anew for each commit. */
@@ -203,6 +326,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		if (this.viewer == null || this.view == null)
 			initView();
 		this.setDisable(false);
+		this.shownLabel.setText(" " + dependencies.edges().size() + " of " + dependencies.all() + " shown");
 		SwingUtilities.invokeLater(() -> this.drawDependencies(dependencies));
 	}
 
@@ -247,11 +371,33 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	 * dependencies that do say something and showing the self-evident ones.
 	 */
 	static boolean isImplied(Condition from, Condition to) {
-		return to.isImpliedBy(from);
+		return isImplied(from.getAbsorbedModuleRevisions(), to.getAbsorbedModuleRevisions());
+	}
+
+	/**
+	 * {@link Condition#isImpliedBy} on the absorbed terms of the two conditions - each term of from
+	 * has a term of to within it - with the same answer: a term absorbed is within one kept, on
+	 * either side. On all of them, zip4j's Git import (up to 261k terms in one condition, compared
+	 * pairwise for each dependency) kept the graph from showing for many minutes.
+	 */
+	static boolean isImplied(List<ModuleRevision> fromTerms, List<ModuleRevision> toTerms) {
+		for (ModuleRevision fromTerm : fromTerms) {
+			boolean within = false;
+			for (ModuleRevision toTerm : toTerms) {
+				if (toTerm.isImpliedBy(fromTerm)) {
+					within = true;
+					break;
+				}
+			}
+			if (!within)
+				return false;
+		}
+		return true;
 	}
 
 	@Override
 	public void statusChangedEvent(EccoService service) {
+		this.termsCache = newTermsCache(); // after a commit, or for another repository
 		if (service.isInitialized()) {
 			Platform.runLater(() -> this.setDisable(false));
 			this.refresher.request(); // noted while hidden, shown when shown
