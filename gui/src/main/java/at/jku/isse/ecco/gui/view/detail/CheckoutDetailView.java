@@ -291,19 +291,26 @@ public class CheckoutDetailView extends BorderPane {
 
 		new Thread(() -> {
 			try {
-				java.util.Collection<? extends at.jku.isse.ecco.core.Variant> existing =
-						this.service.getRepository().getVariants();
-				at.jku.isse.ecco.core.Variant duplicate = existing.stream()
-						.filter(v -> v.getConfiguration().equals(configuration))
-						.findFirst().orElse(null);
+				// the check and the add holding the service's lock: a commit or pull running meanwhile
+				// changes the variants (iterated without it: a ConcurrentModificationException)
+				at.jku.isse.ecco.core.Variant duplicate;
+				String existingName;
+				synchronized (this.service) {
+					java.util.Collection<? extends at.jku.isse.ecco.core.Variant> existing =
+							this.service.getRepository().getVariants();
+					duplicate = existing.stream()
+							.filter(v -> v.getConfiguration().equals(configuration))
+							.findFirst().orElse(null);
+					existingName = duplicate == null ? null : duplicate.getName();
+					if (duplicate == null)
+						this.service.addVariant(configuration, name, description);
+				}
 				if (duplicate != null) {
-					String existingName = duplicate.getName();
 					// a notification, as other quick operations report - it was a message box to dismiss
 					javafx.application.Platform.runLater(() -> at.jku.isse.ecco.gui.Notifications.info(
 							"This configuration is already saved as variant '" + existingName + "'."));
 					return;
 				}
-				this.service.addVariant(configuration, name, description);
 				javafx.application.Platform.runLater(() -> at.jku.isse.ecco.gui.Notifications.success("Saved as variant '" + name + "'."));
 			} catch (RuntimeException e) {
 				javafx.application.Platform.runLater(() -> new ExceptionAlert(e).showAndWait());

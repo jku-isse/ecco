@@ -2,16 +2,20 @@ package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.gui.TableColumns;
-import javafx.beans.property.IntegerProperty;
+import at.jku.isse.ecco.service.EccoService;
 import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.VPos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class CommitDetailView extends BorderPane {
 
@@ -20,8 +24,27 @@ public class CommitDetailView extends BorderPane {
 	private TextField commitId;
 	private TextArea commitConfiguration;
 
+	/** Whose lock a commit is read under - null: read where {@link #showCommit} is called. */
+	private final EccoService service;
+	/** Counts the commits asked to be shown: a read overtaken by a later one shows nothing. */
+	private int shown;
 
+
+	/**
+	 * Reads a commit where {@link #showCommit} is called - on the FX thread, without the service's
+	 * lock: a commit running meanwhile changes its associations. Use the other constructor.
+	 */
 	public CommitDetailView() {
+		this(null);
+	}
+
+	/**
+	 * @param service the repository's: a commit's associations, their conditions and artifact counts
+	 *                are read holding its lock, in the background - a commit running meanwhile changes them
+	 */
+	public CommitDetailView(EccoService service) {
+		this.service = service;
+
 		// callers that place it flush against other content (e.g. under a log) override this
 		this.setPadding(new Insets(10));
 
@@ -69,8 +92,9 @@ public class CommitDetailView extends BorderPane {
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
 		associationsTable.getColumns().setAll(idAssociationsCol, conditionAssociationsCol);
 
-		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
-		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().computeCondition().toDisplayString()));
+		// read with the commit: a condition computed here, on the FX thread, read counters a commit changed meanwhile
+		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getId()));
+		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getCondition()));
 		conditionAssociationsCol.setCellFactory(TableColumns.wrappingCellFactory());
 
 		associationsTable.setItems(this.associationsData);
@@ -90,24 +114,49 @@ public class CommitDetailView extends BorderPane {
 		row++;
 
 		// show nothing initially
-		this.showCommit(null);
+		this.show(null);
 	}
 
 
+	/** Shows [commit] (nothing: null) once read - in the background, holding the service's lock, if there is a service. */
 	public final void showCommit(Commit commit) {
+		if (commit == null || this.service == null) {
+			this.show(commit == null ? null : read(commit));
+			return;
+		}
+		int read = ++this.shown;
+		RepositoryAccess.read(this.service, "Commit details", service -> read(commit), details -> {
+			if (read == this.shown)
+				this.show(details);
+		}, failure -> new ExceptionAlert(failure).show());
+	}
 
+	/**
+	 * What is shown of [commit], as plain values - to be called holding the service's lock, off the
+	 * FX thread: its associations, their conditions and artifact counts change with every commit.
+	 */
+	public static Details read(Commit commit) {
+		List<AssociationInfo> associations = new ArrayList<>();
+		for (Association association : commit.getAssociations())
+			associations.add(new AssociationInfo(association.getId(), association.computeCondition().toDisplayString(),
+					association.getRootNode().countArtifacts()));
+		return new Details(String.valueOf(commit.getId()),
+				commit.getConfiguration() == null ? "" : commit.getConfiguration().toString(), associations);
+	}
+
+	/** Shows [details] from {@link #read} (nothing: null), on the FX thread; a read still running for {@link #showCommit} is overtaken. */
+	public final void show(Details details) {
+		this.shown++;
 		this.associationsData.clear();
 
-		if (commit != null) {
+		if (details != null) {
 			this.setCenter(this.centerPane);
 
-			this.commitId.setText(String.valueOf(commit.getId()));
-			this.commitConfiguration.setText(commit.getConfiguration() == null ? "" : commit.getConfiguration().toString());
+			this.commitId.setText(details.id());
+			this.commitConfiguration.setText(details.configuration());
 
 			// show associations
-			for (Association association : commit.getAssociations()) {
-				CommitDetailView.this.associationsData.add(new AssociationInfo(association));
-			}
+			this.associationsData.addAll(details.associations());
 		} else {
 			this.setCenter(null);
 
@@ -117,29 +166,31 @@ public class CommitDetailView extends BorderPane {
 	}
 
 
+	/** A commit as shown: its id, configuration and associations. */
+	public record Details(String id, String configuration, List<AssociationInfo> associations) {
+	}
+
+	/** An association as shown: its id, condition and number of artifacts. */
 	public static class AssociationInfo {
-		private Association association;
+		private final String id;
+		private final String condition;
+		private final int numArtifacts;
 
-		private IntegerProperty numArtifacts;
-
-		public AssociationInfo(Association association) {
-			this.association = association;
-			this.numArtifacts = new SimpleIntegerProperty(association.getRootNode().countArtifacts());
+		public AssociationInfo(String id, String condition, int numArtifacts) {
+			this.id = id;
+			this.condition = condition;
+			this.numArtifacts = numArtifacts;
 		}
 
-		public Association getAssociation() {
-			return this.association;
+		public String getId() {
+			return this.id;
+		}
+
+		public String getCondition() {
+			return this.condition;
 		}
 
 		public int getNumArtifacts() {
-			return this.numArtifacts.get();
-		}
-
-		public void setNumArtifacts(int numArtifacts) {
-			this.numArtifacts.set(numArtifacts);
-		}
-
-		public IntegerProperty numArtifactsProperty() {
 			return this.numArtifacts;
 		}
 	}

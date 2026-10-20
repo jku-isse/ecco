@@ -67,8 +67,35 @@ public class ConfigurationPickerDialogTest {
         }
     }
 
+    /** A picker with its features read - in the background. */
     private static Picker picker(EccoService service) throws Exception {
-        return onFx(() -> Picker.of(new ConfigurationPickerDialog(service)));
+        ConfigurationPickerDialog dialog = onFx(() -> new ConfigurationPickerDialog(service));
+        waitUntil("the features", () -> !dialog.reading());
+        return onFx(() -> Picker.of(dialog));
+    }
+
+    /**
+     * While a commit holds the service's lock, opening the picker does not freeze the window: the
+     * features are read in the background, once the lock is free. The FX thread waited for the lock to copy the features (and a commit adding a
+     * feature meanwhile failed the copy).
+     */
+    @Test
+    @Timeout(60)
+    public void theFeaturesAreNotReadOnTheFxThread(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoRevisionsOfA(tmp)) {
+            ConfigurationPickerDialog dialog;
+            synchronized (service) { // as a commit running
+                // onFx fails after 10 s if the FX thread waits for the lock
+                dialog = onFx(() -> new ConfigurationPickerDialog(service));
+                assertEquals(List.of(), onFx(() -> Picker.of(dialog).names()), "not read while the lock is held");
+            }
+            waitUntil("the features", () -> !dialog.reading());
+            Picker picker = onFx(() -> Picker.of(dialog));
+            assertEquals(List.of("A", "b", "C"), onFx(picker::names));
+            onFx(() -> picker.configString().setText("A.1"));
+            assertTrue(onFx(() -> picker.include("A").isSelected()));
+            assertEquals("1", onFx(() -> picker.revision("A").getValue().getId()));
+        }
     }
 
     private static EccoService twoRevisionsOfA(Path tmp) throws Exception {

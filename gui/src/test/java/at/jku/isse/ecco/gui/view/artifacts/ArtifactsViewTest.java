@@ -322,6 +322,7 @@ public class ArtifactsViewTest {
             onFx(() -> featuresButton(view).fire());
             Parent pane = onFx(() -> (Parent) view.getLeft());
             assertNotNull(pane, "the pane is docked");
+            waitUntil("its features, read in the background", () -> featureToggle(pane, "A") != null);
 
             onFx(() -> featureToggle(pane, "A").fire());
             waitUntil("a.txt is ticked", () -> row(view, "a.txt").isSelected());
@@ -356,6 +357,7 @@ public class ArtifactsViewTest {
             assertNull(onFx(() -> find(view, n -> n instanceof MenuButton)), "one route, not two: no Selection menu with it");
             onFx(() -> featuresButton(view).fire());
             Parent pane = onFx(() -> (Parent) view.getLeft());
+            waitUntil("its features, read in the background", () -> featureToggle(pane, "A") != null);
 
             onFx(() -> button(pane, "Exact Configuration...").fire()); // cancelled
             assertTrue(onFx(() -> table(view).getItems().stream().noneMatch(AssociationInfoImpl::isSelected)));

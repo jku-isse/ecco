@@ -128,12 +128,12 @@ public class CommitsViewTest {
 
             Commit second = onFx(() -> view.commitsData.get(1));
             onFx(() -> table(view).getSelectionModel().select(1));
-            assertNotNull(onFx(() -> details.getCenter()), "the details are shown");
+            // read in the background
+            ArtifactTreeTableView tree = onFx(() -> (ArtifactTreeTableView) find(view, n -> n instanceof ArtifactTreeTableView));
+            waitUntil("the details and the tree", () -> details.getCenter() != null && tree.getRoot() != null);
             TextField idField = onFx(() -> (TextField) find(details, n -> n instanceof TextField));
             assertEquals(second.getId(), onFx(() -> idField.getText()));
             // its artifacts, as a tree to pick a node from
-            ArtifactTreeTableView tree = onFx(() -> (ArtifactTreeTableView) find(view, n -> n instanceof ArtifactTreeTableView));
-            assertNotNull(onFx(() -> tree.getRoot()));
             assertTrue(onFx(() -> treeLabels(tree.getRoot()).stream().anyMatch(l -> l.startsWith("b.txt"))),
                     onFx(() -> treeLabels(tree.getRoot()).toString()));
 
@@ -141,6 +141,34 @@ public class CommitsViewTest {
             assertEquals("", onFx(() -> idField.getText()));
             assertNull(onFx(() -> details.getCenter()));
             assertNull(onFx(() -> tree.getRoot()));
+        }
+    }
+
+    /**
+     * While a commit holds the service's lock, selecting a commit does not freeze the window: its
+     * details are read in the background, and shown once the lock is free. The FX thread waited for
+     * the lock to compute the conditions, count the artifacts and compose the tree.
+     */
+    @Test
+    @Timeout(60)
+    public void selectingACommitDoesNotWaitForTheServiceLock(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
+            CommitsView view = loaded(service, 1);
+            CommitDetailView details = onFx(() -> (CommitDetailView) find(view, n -> n instanceof CommitDetailView));
+            CommitsView another;
+            synchronized (service) { // as a commit running
+                // onFx fails after 10 s if the FX thread waits for the lock
+                onFx(() -> table(view).getSelectionModel().select(0));
+                assertNull(onFx(() -> details.getCenter()), "not read while the lock is held");
+                // nor are the commits listed by a view opened meanwhile
+                another = onFx(() -> new CommitsView(service));
+                assertTrue(onFx(() -> another.commitsData.isEmpty()));
+            }
+            waitUntil("the details", () -> details.getCenter() != null);
+            waitUntil("the commits", () -> another.commitsData.size() == 1);
+            assertEquals(service.getCommits().iterator().next().getId(),
+                    onFx(() -> ((TextField) find(details, n -> n instanceof TextField)).getText()));
         }
     }
 

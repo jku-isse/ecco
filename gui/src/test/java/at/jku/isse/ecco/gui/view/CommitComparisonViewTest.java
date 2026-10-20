@@ -46,7 +46,7 @@ public class CommitComparisonViewTest {
 
             CommitComparisonView view = onFx(() -> new CommitComparisonView(service, older, newer));
             // the conditions come in the background
-            waitUntil("the conditions", () -> rows(view).stream().noneMatch(row -> row.contains(CommitComparisonView.COMPUTING)));
+            waitUntil("the conditions", () -> rows(view).size() == 3 && rows(view).stream().noneMatch(row -> row.contains(CommitComparisonView.COMPUTING)));
             assertEquals(List.of("Commit " + older.getId().substring(0, 8), "Commit " + newer.getId().substring(0, 8)),
                     onFx(() -> table(view).getColumns().stream().map(TableColumn::getText).toList()));
             assertEquals(List.of(
@@ -71,6 +71,38 @@ public class CommitComparisonViewTest {
             for (int row = 0; row < 3; row++) {
                 int r = row;
                 onFx(() -> table(view).getSelectionModel().select(r));
+            }
+            assertFalse(onFx(view::isDisabled));
+        }
+    }
+
+    /**
+     * While a commit holds the service's lock, opening the comparison and selecting a row do not freeze
+     * the window: the associations, their conditions and the node to show are read in the background,
+     * once the lock is free. The FX thread waited for the lock to list the associations.
+     */
+    @Test
+    @Timeout(60)
+    public void theComparisonDoesNotWaitForTheServiceLock(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "BASE, A", Map.of("f.txt", "a\nb\n"));
+            commit(service, tmp.resolve("v2"), "BASE, B", Map.of("f.txt", "a\nc\n"));
+            Commit older = commitWith(service, "A");
+            Commit newer = commitWith(service, "B");
+
+            CommitComparisonView view;
+            synchronized (service) { // as a commit running
+                // onFx fails after 10 s if the FX thread waits for the lock
+                view = onFx(() -> new CommitComparisonView(service, older, newer));
+                assertEquals(List.of(), onFx(() -> rows(view)), "not read while the lock is held");
+            }
+            waitUntil("the conditions", () -> rows(view).size() == 3 && rows(view).stream().noneMatch(row -> row.contains(CommitComparisonView.COMPUTING)));
+
+            synchronized (service) {
+                for (int row = 0; row < 3; row++) {
+                    int r = row;
+                    onFx(() -> table(view).getSelectionModel().select(r));
+                }
             }
             assertFalse(onFx(view::isDisabled));
         }

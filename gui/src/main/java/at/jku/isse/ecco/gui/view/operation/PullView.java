@@ -41,8 +41,11 @@ public class PullView extends TransferView {
 		return this.service.getRemote(remote).getFeatures();
 	}
 
+	/** Holding the service's lock: a commit running meanwhile adds features and revisions (iterated without it: a ConcurrentModificationException). */
 	@Override
 	protected Set<String> revisionsAtTarget(String remote) {
-		return revisions(this.service.getRepository().getFeatures());
+		synchronized (this.service) {
+			return revisions(this.service.getRepository().getFeatures());
+		}
 	}
 }

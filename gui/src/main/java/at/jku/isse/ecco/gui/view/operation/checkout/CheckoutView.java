@@ -171,7 +171,11 @@ public class CheckoutView extends OperationView implements EccoListener {
         gridPane.add(knownVariantsComboBox, 1, row, 2, 1);
         row++;
 
-        java.util.Map<at.jku.isse.ecco.core.Variant, String> knownVariantWarnings = new java.util.HashMap<>();
+        // each variant's label, configuration and warning, read with the variants (holding the
+        // service's lock): the cells and the action do not read the variants themselves
+        java.util.Map<at.jku.isse.ecco.core.Variant, String> knownVariantWarnings = new java.util.IdentityHashMap<>();
+        java.util.Map<at.jku.isse.ecco.core.Variant, String> knownVariantLabels = new java.util.IdentityHashMap<>();
+        java.util.Map<at.jku.isse.ecco.core.Variant, String> knownVariantConfigurations = new java.util.IdentityHashMap<>();
         javafx.util.Callback<ListView<at.jku.isse.ecco.core.Variant>, ListCell<at.jku.isse.ecco.core.Variant>> variantCellFactory = lv -> new ListCell<at.jku.isse.ecco.core.Variant>() {
             @Override
             protected void updateItem(at.jku.isse.ecco.core.Variant variant, boolean empty) {
@@ -181,7 +185,7 @@ public class CheckoutView extends OperationView implements EccoListener {
                     setStyle("");
                     return;
                 }
-                String label = variant.getName() == null || variant.getName().isEmpty() ? variant.getId() : variant.getName();
+                String label = knownVariantLabels.getOrDefault(variant, "");
                 String warning = knownVariantWarnings.get(variant);
                 if (warning != null && !warning.isEmpty()) {
                     setText("⚠ " + label);
@@ -196,20 +200,34 @@ public class CheckoutView extends OperationView implements EccoListener {
         knownVariantsComboBox.setButtonCell(variantCellFactory.call(null));
         knownVariantsComboBox.setOnAction(event -> {
             at.jku.isse.ecco.core.Variant selected = knownVariantsComboBox.getValue();
-            if (selected != null) {
-                configurationStringTextField.setText(selected.getConfiguration().toString());
+            if (selected != null && knownVariantConfigurations.containsKey(selected)) {
+                configurationStringTextField.setText(knownVariantConfigurations.get(selected));
             }
         });
 
         if (this.service.isInitialized() && !this.service.isWriteInProgress()) {
             new Thread(() -> {
-                java.util.List<at.jku.isse.ecco.core.Variant> variants =
-                        new java.util.ArrayList<>(this.service.getRepository().getVariants());
-                for (at.jku.isse.ecco.core.Variant variant : variants) {
-                    String warning = ConstraintWarnings.describe(this.service, variant.getConfiguration());
-                    if (!warning.isEmpty()) knownVariantWarnings.put(variant, warning);
+                java.util.List<at.jku.isse.ecco.core.Variant> variants;
+                java.util.Map<at.jku.isse.ecco.core.Variant, String> warnings = new java.util.IdentityHashMap<>();
+                java.util.Map<at.jku.isse.ecco.core.Variant, String> labels = new java.util.IdentityHashMap<>();
+                java.util.Map<at.jku.isse.ecco.core.Variant, String> configurations = new java.util.IdentityHashMap<>();
+                // holding the service's lock: a commit or pull running meanwhile changes the variants
+                // (iterated without it: a ConcurrentModificationException)
+                synchronized (this.service) {
+                    if (!this.service.isInitialized())
+                        return;
+                    variants = new java.util.ArrayList<>(this.service.getRepository().getVariants());
+                    for (at.jku.isse.ecco.core.Variant variant : variants) {
+                        labels.put(variant, variant.getName() == null || variant.getName().isEmpty() ? variant.getId() : variant.getName());
+                        configurations.put(variant, variant.getConfiguration().toString());
+                        String warning = ConstraintWarnings.describe(this.service, variant.getConfiguration());
+                        if (!warning.isEmpty()) warnings.put(variant, warning);
+                    }
                 }
                 Platform.runLater(() -> {
+                    knownVariantWarnings.putAll(warnings);
+                    knownVariantLabels.putAll(labels);
+                    knownVariantConfigurations.putAll(configurations);
                     knownVariantsComboBox.getItems().setAll(variants);
                     knownVariantsComboBox.setButtonCell(variantCellFactory.call(null));
                 });

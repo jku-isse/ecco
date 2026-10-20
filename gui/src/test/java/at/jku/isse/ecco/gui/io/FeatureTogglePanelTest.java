@@ -42,6 +42,19 @@ public class FeatureTogglePanelTest {
         return findAll(panel, n -> n instanceof CheckBox).stream().map(n -> ((CheckBox) n).getText()).toList();
     }
 
+    /** A panel with its features read - in the background. */
+    private static FeatureTogglePanel panel(EccoService service, FeatureTogglePanel.ConfigurationChangeListener listener) throws Exception {
+        FeatureTogglePanel panel = onFx(() -> new FeatureTogglePanel(service, listener));
+        waitUntil("the features", () -> !panel.reading());
+        return panel;
+    }
+
+    /** Shown again: the constraints read again - in the background. */
+    private static void reload(FeatureTogglePanel panel) throws Exception {
+        onFx(panel::reloadConstraints);
+        waitUntil("the constraints", () -> !panel.reading());
+    }
+
     private static Set<String> revisions(Configuration configuration) {
         return Arrays.stream(configuration.getFeatureRevisions())
                 .map(r -> r.getFeature().getName() + "." + r.getId()).collect(Collectors.toSet());
@@ -65,7 +78,7 @@ public class FeatureTogglePanelTest {
             commit(service, tmp.resolve("v1"), "A.1, b.1", Map.of("a.txt", "a\n"));
             commit(service, tmp.resolve("v2"), "A.2, c.1", Map.of("a.txt", "a2\n"));
             List<Configuration> reported = new CopyOnWriteArrayList<>();
-            FeatureTogglePanel panel = onFx(() -> new FeatureTogglePanel(service, reported::add));
+            FeatureTogglePanel panel = panel(service, reported::add);
             assertEquals(List.of("A", "b", "c"), onFx(() -> boxes(panel)));
             assertTrue(reported.isEmpty());
 
@@ -86,7 +99,7 @@ public class FeatureTogglePanelTest {
         try (EccoService service = constrained(tmp)) {
             service.acceptConstraint(Constraint.Kind.MANDATORY, "A", null);
             List<Configuration> reported = new CopyOnWriteArrayList<>();
-            FeatureTogglePanel panel = onFx(() -> new FeatureTogglePanel(service, reported::add));
+            FeatureTogglePanel panel = panel(service, reported::add);
             onFx(() -> {
                 assertTrue(box(panel, "A").isSelected());
                 assertTrue(box(panel, "A").isDisabled());
@@ -105,7 +118,7 @@ public class FeatureTogglePanelTest {
         try (EccoService service = constrained(tmp)) {
             service.acceptConstraint(Constraint.Kind.REQUIRES, "B", "C");
             List<Configuration> reported = new CopyOnWriteArrayList<>();
-            FeatureTogglePanel panel = onFx(() -> new FeatureTogglePanel(service, reported::add));
+            FeatureTogglePanel panel = panel(service, reported::add);
 
             onFx(() -> box(panel, "B").fire());
             assertEquals(Set.of("B.1", "C.1"), revisions(reported.get(0)));
@@ -125,19 +138,44 @@ public class FeatureTogglePanelTest {
     @Timeout(60)
     public void showingAgainPicksUpConstraintChanges(@TempDir Path tmp) throws Exception {
         try (EccoService service = constrained(tmp)) {
-            FeatureTogglePanel panel = onFx(() -> new FeatureTogglePanel(service, c -> { }));
+            FeatureTogglePanel panel = panel(service, c -> { });
             assertFalse(onFx(() -> box(panel, "A").isSelected() || box(panel, "A").isDisabled()));
 
             service.acceptConstraint(Constraint.Kind.MANDATORY, "A", null);
-            onFx(panel::reloadConstraints);
+            reload(panel);
             assertTrue(onFx(() -> box(panel, "A").isSelected() && box(panel, "A").isDisabled()));
 
             service.unacceptConstraint(at.jku.isse.ecco.core.Constraint.Kind.MANDATORY, "A", null);
-            onFx(panel::reloadConstraints);
+            reload(panel);
             onFx(() -> {
                 assertFalse(box(panel, "A").isDisabled(), "unlocked");
                 assertTrue(box(panel, "A").isSelected(), "but left checked");
             });
+        }
+    }
+
+    /**
+     * While a commit holds the service's lock, the panel does not freeze the window: the features are
+     * read in the background, once the lock is free - with a configuration picked meanwhile ticked
+     * then. The FX thread waited for the lock to copy the features (and a commit adding a feature
+     * meanwhile failed the copy).
+     */
+    @Test
+    @Timeout(60)
+    public void theFeaturesAreNotReadOnTheFxThread(@TempDir Path tmp) throws Exception {
+        try (EccoService service = constrained(tmp)) {
+            Configuration picked = service.parseConfigurationString("B.1, D.1");
+            FeatureTogglePanel panel;
+            synchronized (service) { // as a commit running
+                // onFx fails after 10 s if the FX thread waits for the lock
+                panel = onFx(() -> new FeatureTogglePanel(service, c -> { }));
+                assertEquals(List.of(), onFx(() -> boxes(panel)), "not read while the lock is held");
+                onFx(() -> panel.showConfiguration(picked));
+                onFx(panel::reloadConstraints);
+            }
+            waitUntil("the features", () -> !panel.reading());
+            assertEquals(List.of("A", "B", "C", "D"), onFx(() -> boxes(panel)));
+            assertEquals(List.of("B", "D"), onFx(() -> boxes(panel).stream().filter(f -> box(panel, f).isSelected()).toList()));
         }
     }
 
@@ -146,7 +184,7 @@ public class FeatureTogglePanelTest {
     @Timeout(60)
     public void theFilterHidesNonMatchingFeatures(@TempDir Path tmp) throws Exception {
         try (EccoService service = constrained(tmp)) {
-            FeatureTogglePanel panel = onFx(() -> new FeatureTogglePanel(service, c -> { }));
+            FeatureTogglePanel panel = panel(service, c -> { });
             onFx(() -> ((TextField) find(panel, n -> n instanceof TextField)).setText("d"));
             onFx(() -> {
                 assertTrue(box(panel, "D").isVisible() && box(panel, "D").isManaged());

@@ -14,7 +14,7 @@ import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
 
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 
 /**
  * Lets the user compose a {@link Configuration} either by checking/unchecking each existing
@@ -27,6 +27,8 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 	/** What the string field holds when OK is pressed - the configuration as typed, A' and all. */
 	private final TextField configStringField = new TextField();
 	private final Label invalidLabel = new Label();
+	/** Whether the features are still being read. */
+	private boolean reading;
 
 	public ConfigurationPickerDialog(EccoService service) {
 		this(service, "");
@@ -41,11 +43,8 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 
 		getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-		List<? extends Feature> features = new ArrayList<>(service.getRepository().getFeatures());
-		features.sort(Comparator.comparing(Feature::getName, String.CASE_INSENSITIVE_ORDER));
-
-		Map<Feature, ComboBox<FeatureRevision>> comboBoxesByFeature = new LinkedHashMap<>();
-		Map<Feature, CheckBox> checkBoxesByFeature = new LinkedHashMap<>();
+		Map<String, ComboBox<FeatureRevision>> comboBoxesByFeature = new LinkedHashMap<>();
+		Map<String, CheckBox> checkBoxesByFeature = new LinkedHashMap<>();
 		Map<HBox, String> rowSearchNames = new LinkedHashMap<>();
 		VBox rowsContainer = new VBox(6);
 
@@ -53,70 +52,14 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 		// guards against the field <-> checkbox <-> combo box listeners re-triggering each other
 		boolean[] updating = {false};
 
-		for (Feature feature : features) {
-			CheckBox includeCheckBox = new CheckBox();
-
-			Label nameLabel = new Label(feature.getName());
-			nameLabel.setMinWidth(150);
-			nameLabel.setPrefWidth(150);
-
-			ComboBox<FeatureRevision> revisionComboBox = new ComboBox<>();
-			revisionComboBox.getItems().addAll(feature.getRevisions());
-			revisionComboBox.setValue(null);
-			revisionComboBox.setMaxWidth(Double.MAX_VALUE);
-			revisionComboBox.disableProperty().bind(includeCheckBox.selectedProperty().not());
-			revisionComboBox.setConverter(new StringConverter<>() {
-				@Override
-				public String toString(FeatureRevision featureRevision) {
-					return featureRevision == null ? "" : featureRevision.getId();
-				}
-
-				@Override
-				public FeatureRevision fromString(String string) {
-					return null;
-				}
-			});
-			HBox.setHgrow(revisionComboBox, Priority.ALWAYS);
-
-			revisionComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
-				if (updating[0]) return;
-				updating[0] = true;
-				configStringField.setText(buildConfigurationString(comboBoxesByFeature));
-				updating[0] = false;
-			});
-
-			includeCheckBox.selectedProperty().addListener((observable, wasSelected, isSelected) -> {
-				if (updating[0]) return;
-				updating[0] = true;
-				if (isSelected) {
-					if (revisionComboBox.getValue() == null) {
-						FeatureRevision latest = feature.getLatestRevision();
-						if (latest != null) {
-							revisionComboBox.setValue(latest);
-						}
-					}
-				} else {
-					revisionComboBox.setValue(null);
-				}
-				configStringField.setText(buildConfigurationString(comboBoxesByFeature));
-				updating[0] = false;
-			});
-
-			HBox row = new HBox(10, includeCheckBox, nameLabel, revisionComboBox);
-			comboBoxesByFeature.put(feature, revisionComboBox);
-			checkBoxesByFeature.put(feature, includeCheckBox);
-			rowSearchNames.put(row, feature.getName().toLowerCase());
-			rowsContainer.getChildren().add(row);
-		}
-
-		configStringField.setPromptText("e.g. FeatureA.revisionId, FeatureB");
-		configStringField.textProperty().addListener((observable, oldValue, newValue) -> {
+		// ticks the features the string names, with the named revisions
+		Runnable showString = () -> {
 			if (updating[0]) return;
 			updating[0] = true;
 			try {
-				Configuration parsed = service.parseConfigurationString(newValue);
+				Configuration parsed = service.parseConfigurationString(configStringField.getText());
 				Set<FeatureRevision> selectedRevisions = new HashSet<>(Arrays.asList(parsed.getFeatureRevisions()));
-				for (Feature feature : comboBoxesByFeature.keySet()) {
+				for (String feature : comboBoxesByFeature.keySet()) {
 					ComboBox<FeatureRevision> revisionComboBox = comboBoxesByFeature.get(feature);
 					FeatureRevision match = revisionComboBox.getItems().stream()
 							.filter(selectedRevisions::contains)
@@ -128,19 +71,95 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 				// leave the checkboxes/combo boxes as they are while the typed string is incomplete/invalid
 			}
 			updating[0] = false;
-		});
+		};
+
+		// a row per feature, once the features are read
+		Consumer<List<FeatureRow>> showFeatures = features -> {
+			for (FeatureRow feature : features) {
+				CheckBox includeCheckBox = new CheckBox();
+
+				Label nameLabel = new Label(feature.name());
+				nameLabel.setMinWidth(150);
+				nameLabel.setPrefWidth(150);
+
+				ComboBox<FeatureRevision> revisionComboBox = new ComboBox<>();
+				revisionComboBox.getItems().addAll(feature.revisions());
+				revisionComboBox.setValue(null);
+				revisionComboBox.setMaxWidth(Double.MAX_VALUE);
+				revisionComboBox.disableProperty().bind(includeCheckBox.selectedProperty().not());
+				revisionComboBox.setConverter(new StringConverter<>() {
+					@Override
+					public String toString(FeatureRevision featureRevision) {
+						return featureRevision == null ? "" : featureRevision.getId();
+					}
+
+					@Override
+					public FeatureRevision fromString(String string) {
+						return null;
+					}
+				});
+				HBox.setHgrow(revisionComboBox, Priority.ALWAYS);
+
+				revisionComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+					if (updating[0]) return;
+					updating[0] = true;
+					configStringField.setText(buildConfigurationString(comboBoxesByFeature));
+					updating[0] = false;
+				});
+
+				includeCheckBox.selectedProperty().addListener((observable, wasSelected, isSelected) -> {
+					if (updating[0]) return;
+					updating[0] = true;
+					if (isSelected) {
+						if (revisionComboBox.getValue() == null) {
+							FeatureRevision latest = feature.latest();
+							if (latest != null) {
+								revisionComboBox.setValue(latest);
+							}
+						}
+					} else {
+						revisionComboBox.setValue(null);
+					}
+					configStringField.setText(buildConfigurationString(comboBoxesByFeature));
+					updating[0] = false;
+				});
+
+				HBox row = new HBox(10, includeCheckBox, nameLabel, revisionComboBox);
+				comboBoxesByFeature.put(feature.name(), revisionComboBox);
+				checkBoxesByFeature.put(feature.name(), includeCheckBox);
+				rowSearchNames.put(row, feature.name().toLowerCase());
+				rowsContainer.getChildren().add(row);
+			}
+		};
+
+		configStringField.setPromptText("e.g. FeatureA.revisionId, FeatureB");
+		configStringField.textProperty().addListener((observable, oldValue, newValue) -> showString.run());
 		// OK only for a configuration that parses - OK with an invalid one failed in the result converter
 		configStringField.textProperty().addListener((observable, oldValue, newValue) -> this.validate(service));
 
 		TextField filterField = new TextField();
 		filterField.setPromptText("Filter features...");
-		filterField.textProperty().addListener((observable, oldValue, newValue) -> {
-			String filter = newValue.trim().toLowerCase();
+		Runnable filterRows = () -> {
+			String filter = filterField.getText().trim().toLowerCase();
 			for (HBox row : rowSearchNames.keySet()) {
 				boolean matches = filter.isEmpty() || rowSearchNames.get(row).contains(filter);
 				row.setVisible(matches);
 				row.setManaged(matches);
 			}
+		};
+		filterField.textProperty().addListener((observable, oldValue, newValue) -> filterRows.run());
+
+		// the features read in the background, holding the service's lock: read on the FX thread, the
+		// window froze while a commit ran, and a commit adding a feature failed the copy of them
+		this.reading = true;
+		at.jku.isse.ecco.gui.RepositoryAccess.read(service, "Configuration features", FeatureRow::read, features -> {
+			this.reading = false;
+			showFeatures.accept(features);
+			showString.run(); // the string given or typed meanwhile
+			filterRows.run();
+		}, failure -> {
+			this.reading = false;
+			new at.jku.isse.ecco.gui.ExceptionAlert(failure).show();
 		});
 
 		ScrollPane scrollPane = new ScrollPane(rowsContainer);
@@ -186,6 +205,24 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 		this.getDialogPane().lookupButton(ButtonType.OK).setDisable(problem != null);
 	}
 
+	/** Whether the features are still being read - for tests. */
+	public boolean reading() {
+		return this.reading;
+	}
+
+	/** A feature as listed: its name, revisions and latest revision - read holding the service's lock. */
+	private record FeatureRow(String name, List<FeatureRevision> revisions, FeatureRevision latest) {
+
+		static List<FeatureRow> read(EccoService service) {
+			List<Feature> features = new ArrayList<>(service.getRepository().getFeatures());
+			features.sort(Comparator.comparing(Feature::getName, String.CASE_INSENSITIVE_ORDER));
+			List<FeatureRow> rows = new ArrayList<>();
+			for (Feature feature : features)
+				rows.add(new FeatureRow(feature.getName(), List.copyOf(feature.getRevisions()), feature.getLatestRevision()));
+			return rows;
+		}
+	}
+
 	/** The configuration string as it stands. */
 	public String text() {
 		return this.configStringField.getText();
@@ -215,7 +252,7 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 
 	// uses each revision's full id (not FeatureRevision#toString()'s 7-character-truncated display
 	// form) so the resulting string round-trips correctly through parseConfigurationString().
-	private static String buildConfigurationString(Map<Feature, ComboBox<FeatureRevision>> comboBoxesByFeature) {
+	private static String buildConfigurationString(Map<String, ComboBox<FeatureRevision>> comboBoxesByFeature) {
 		return at.jku.isse.ecco.feature.ConfigurationText.print(comboBoxesByFeature.values().stream()
 				.map(ComboBox::getValue)
 				.filter(Objects::nonNull)

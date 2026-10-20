@@ -1,21 +1,30 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.adapter.ArtifactViewer;
+import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.gui.EccoListenerLifecycle;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.gui.view.operation.OperationView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.tree.Node;
+import com.google.inject.Inject;
 import javafx.beans.property.*;
-import javafx.concurrent.Task;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.*;
+import javafx.scene.layout.Pane;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
@@ -25,7 +34,10 @@ public class CommitComparisonView extends OperationView implements EccoListener 
     final ObservableList<Tuple2<Association, Association>> comparisonData = FXCollections.observableArrayList();
 
     /** Shown for a condition until it is computed. */
-    static final String COMPUTING = "\u2026";
+    static final String COMPUTING = "…";
+
+    /** The plugins that have a viewer - found on the FX thread when first needed: the viewers are panes, a WebView among them. */
+    private Set<String> viewerPluginIds;
 
     public CommitComparisonView(final EccoService service, Commit oldCommit, Commit newCommit) {
 
@@ -61,8 +73,8 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         newCommitCol.getColumns().addAll(newId, newAssociation);
         commitsTable.getColumns().setAll(oldCommitCol, newCommitCol);
 
-        oldId.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue()._1 == null ? "" : param.getValue()._1.getId()));
-        newId.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue()._2 == null ? "" : param.getValue()._2.getId()));
+        oldId.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().id1));
+        newId.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().id2));
         // the conditions computed once, in the background: computed for every cell shown - both kinds
         // of label - and for every comparison of a sort, sorting by Condition took 10 s for tinycc
         oldAssociation.setCellValueFactory(param -> new ReadOnlyObjectWrapper<>(param.getValue()._1 == null ? ""
@@ -74,25 +86,21 @@ public class CommitComparisonView extends OperationView implements EccoListener 
             commitsTable.sort();
         });
 
-        fillCompasisonData(oldCommit, newCommit);
         commitsTable.setItems(comparisonData);
-        List<Tuple2<Association, Association>> rows = List.copyOf(comparisonData);
-        Task<Void> conditionsTask = new Task<>() {
-            @Override
-            protected Void call() {
+        // the rows, then their conditions, read holding the service's lock in the background: a commit
+        // running meanwhile adds associations and changes their conditions (read on the FX thread, the
+        // window froze while it ran)
+        RepositoryAccess.read(service, "Commit Comparison", svc -> rows(oldCommit, newCommit), rows -> {
+            comparisonData.setAll(rows);
+            RepositoryAccess.read(service, "Commit Comparison conditions", svc -> {
                 for (Tuple2<Association, Association> row : rows)
                     row.computeConditions();
-                return null;
-            }
-        };
-        conditionsTask.setOnSucceeded(event -> {
-            commitsTable.refresh();
-            commitsTable.sort();
-        });
-        at.jku.isse.ecco.gui.TaskFailures.reportAndReenable(conditionsTask);
-        Thread conditionsThread = new Thread(conditionsTask, "Commit Comparison conditions");
-        conditionsThread.setDaemon(true);
-        conditionsThread.start();
+                return rows;
+            }, computed -> {
+                commitsTable.refresh();
+                commitsTable.sort();
+            }, failure -> new ExceptionAlert(failure).show());
+        }, failure -> new ExceptionAlert(failure).show());
 
         TableColumns.shortIds(oldId, commitsTable.getItems());
         TableColumns.shortIds(newId, commitsTable.getItems());
@@ -101,9 +109,18 @@ public class CommitComparisonView extends OperationView implements EccoListener 
 
         //Detail view
         ArtifactDetailView artifactDetailView = new ArtifactDetailView(service);
+        int[] selected = {0}; // counts the selections: a node found for an earlier one is not shown
         commitsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
-            if (newValue != null) {
-                artifactDetailView.showTree(newValue._1 != null ? ArtifactDetailView.findNodeWithArtifactViewerRec(artifactDetailView, newValue._1.getRootNode()) : ArtifactDetailView.findNodeWithArtifactViewerRec(artifactDetailView, newValue._2.getRootNode()));
+            if (newValue != null && service.isInitialized()) {
+                int read = ++selected[0];
+                Set<String> pluginIds = this.viewerPluginIds(service);
+                Association association = newValue._1 != null ? newValue._1 : newValue._2;
+                // the node to show found holding the service's lock, in the background: a commit
+                // running meanwhile changes the association's tree
+                RepositoryAccess.read(service, "Commit Comparison artifacts", svc -> firstWithViewer(association.getRootNode(), pluginIds), node -> {
+                    if (read == selected[0])
+                        artifactDetailView.showTree(node);
+                }, failure -> new ExceptionAlert(failure).show());
             }
         });
 
@@ -121,7 +138,8 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         }
     }
 
-    private void fillCompasisonData(final Commit oldCommit, final Commit newCommit) {
+    /** The rows: each association of the two commits, under the commit (or both) it belongs to - holding the service's lock. */
+    private static List<Tuple2<Association, Association>> rows(final Commit oldCommit, final Commit newCommit) {
         Collection<Association> oldAssosiation = oldCommit.getAssociations();
         Collection<Association> newAssosiation = newCommit.getAssociations();
         // the same association object in both (associations are equal only to themselves); a list's
@@ -132,25 +150,66 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         inNew.addAll(newAssosiation);
 
         // _1 is shown under the old commit's columns, _2 under the new commit's
+        List<Tuple2<Association, Association>> rows = new ArrayList<>();
         for (Association a : newAssosiation)
-            comparisonData.add(new Tuple2<>(inOld.contains(a) ? a : null, a));
+            rows.add(new Tuple2<>(inOld.contains(a) ? a : null, a));
         for (Association c : oldAssosiation)
             if (!inNew.contains(c))
-                comparisonData.add(new Tuple2<>(c, null));
+                rows.add(new Tuple2<>(c, null));
+        return rows;
     }
 
-    /** A row: the association under the older commit, the one under the newer, and their conditions once computed. */
+    /** As {@link ArtifactDetailView#findNodeWithArtifactViewerRec}, by the plugins that have a viewer - holding the service's lock. */
+    private static Node firstWithViewer(Node node, Set<String> pluginIds) {
+        for (Node child : node.getChildren()) {
+            if (pluginIds.contains(ArtifactDetailView.getPluginId(child)))
+                return child;
+            Node found = firstWithViewer(child, pluginIds);
+            if (found != null)
+                return found;
+        }
+        return null;
+    }
+
+    /** The plugins with a viewer the detail view shows - on the FX thread, which the viewers are made on. */
+    private Set<String> viewerPluginIds(EccoService service) {
+        if (this.viewerPluginIds == null) {
+            Viewers viewers = new Viewers();
+            service.getInjector().injectMembers(viewers);
+            Set<String> pluginIds = new HashSet<>();
+            for (Set<? extends ArtifactViewer> set : List.of(viewers.artifactViewers, viewers.associationInfoArtifactViewers))
+                for (ArtifactViewer viewer : set)
+                    if (viewer.getPluginId() != null && viewer instanceof Pane) // as ArtifactDetailView picks them
+                        pluginIds.add(viewer.getPluginId());
+            this.viewerPluginIds = pluginIds;
+        }
+        return this.viewerPluginIds;
+    }
+
+    /** The viewers, as {@link ArtifactDetailView} has them injected. */
+    private static class Viewers {
+        @Inject(optional = true)
+        Set<ArtifactViewer> artifactViewers = Set.of();
+        @Inject(optional = true)
+        Set<AssociationInfoArtifactViewer> associationInfoArtifactViewers = Set.of();
+    }
+
+    /** A row: the association under the older commit, the one under the newer, their ids, and their conditions once computed. */
     private static class Tuple2<F extends Association, S extends Association> {
+        /** Only read holding the service's lock. */
         public F _1;
         public S _2;
+        final String id1, id2;
         volatile String simple1 = COMPUTING, full1 = COMPUTING, simple2 = COMPUTING, full2 = COMPUTING;
 
         public Tuple2(F _1, S _2) {
             this._1 = _1;
             this._2 = _2;
+            this.id1 = _1 == null ? "" : _1.getId();
+            this.id2 = _2 == null ? "" : _2.getId();
         }
 
-        /** In the background; the same association on both sides has its condition computed once. */
+        /** In the background, holding the service's lock; the same association on both sides has its condition computed once. */
         void computeConditions() {
             if (this._1 != null) {
                 at.jku.isse.ecco.module.Condition condition = this._1.computeCondition();

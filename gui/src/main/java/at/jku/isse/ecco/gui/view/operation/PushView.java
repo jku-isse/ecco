@@ -28,16 +28,23 @@ public class PushView extends TransferView {
 		this.service.push(remote, deselection, cancelled);
 	}
 
-	/** This repository's own. */
+	/**
+	 * This repository's own - copied holding the service's lock: a commit running meanwhile adds
+	 * features (the repository's own collection, iterated without it: a ConcurrentModificationException).
+	 */
 	@Override
 	protected Collection<? extends Feature> features(String remote, java.util.function.BooleanSupplier cancelled) {
-		return this.service.getRepository().getFeatures();
+		synchronized (this.service) {
+			return new java.util.ArrayList<>(this.service.getRepository().getFeatures());
+		}
 	}
 
 	/** The remote's, as a fetch reads them now. */
 	@Override
 	protected Set<String> revisionsAtTarget(String remote) {
-		this.service.fetch(remote);
-		return revisions(this.service.getRemote(remote).getFeatures());
+		synchronized (this.service) {
+			this.service.fetch(remote);
+			return revisions(this.service.getRemote(remote).getFeatures());
+		}
 	}
 }

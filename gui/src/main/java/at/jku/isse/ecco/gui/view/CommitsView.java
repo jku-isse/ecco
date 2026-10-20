@@ -21,7 +21,6 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public class CommitsView extends BorderPane implements EccoListener {
@@ -36,8 +35,19 @@ public class CommitsView extends BorderPane implements EccoListener {
 
 	final TableView<Commit> commitsTable = new TableView<>();
 
+	/**
+	 * Lists the commits again: they were read on the FX thread at first (waiting for the service's
+	 * lock while a commit ran) and listed from the repository's own collection, which a commit adds to.
+	 */
+	private final at.jku.isse.ecco.gui.LatestRefresh<List<Commit>> refresher;
+
 	public CommitsView(EccoService service) {
 		this.service = service;
+		this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Commits", service, svc -> List.copyOf(svc.getCommits()), commits -> {
+			this.setDisable(false);
+			this.commitsData.clear();
+			this.commitsData.addAll(commits);
+		}, failure -> new at.jku.isse.ecco.gui.ExceptionAlert(failure).show());
 
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
@@ -65,20 +75,32 @@ public class CommitsView extends BorderPane implements EccoListener {
 		TableColumns.growToFill(commitsTable, commitMessage);
 
 		// the details and the artifacts of the commit selected last
-		CommitDetailView commitDetailView = new CommitDetailView();
+		CommitDetailView commitDetailView = new CommitDetailView(service);
 		ArtifactTreeView artifactTreeView = new ArtifactTreeView(service);
 		artifactTreeView.setPlaceholder("Select a commit to see its artifacts.");
+		int[] selected = {0}; // counts the selections: a read overtaken by a later one shows nothing
 		commitsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
-			commitDetailView.showCommit(newValue);
-			// its artifacts as a tree to pick from - it showed the first node of them that had a viewer
+			int read = ++selected[0];
 			if (newValue == null) {
+				commitDetailView.show(null);
 				artifactTreeView.setRootNode(null);
-			} else {
+				return;
+			}
+			// its details, and its artifacts as a tree to pick from (it showed the first node of them
+			// that had a viewer) - read holding the service's lock, in the background: a commit
+			// running meanwhile changes the associations, their conditions and trees
+			at.jku.isse.ecco.gui.RepositoryAccess.read(service, "Commit details", svc -> {
+				CommitDetailView.Details details = CommitDetailView.read(newValue);
 				LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
 				for (Association association : newValue.getAssociations())
 					rootNode.addOrigNode(association.getRootNode());
-				artifactTreeView.setRootNode(rootNode);
-			}
+				return new Selected(details, rootNode);
+			}, shown -> {
+				if (read != selected[0])
+					return;
+				commitDetailView.show(shown.details());
+				artifactTreeView.setRootNode(shown.artifacts());
+			}, failure -> new at.jku.isse.ecco.gui.ExceptionAlert(failure).show());
 		});
 
 		// enabled with exactly two selected: with any other number it opened an error with a stack trace
@@ -110,6 +132,10 @@ public class CommitsView extends BorderPane implements EccoListener {
 		service.addListener(this);
 	}
 
+	/** A selected commit as shown: its details, and its artifacts composed from its associations. */
+	private record Selected(CommitDetailView.Details details, LazyCompositionRootNode artifacts) {
+	}
+
 	/** The selected commits in the order they are listed. */
 	private List<Commit> selectedCommits() {
 		List<Commit> selected = new ArrayList<>();
@@ -122,13 +148,9 @@ public class CommitsView extends BorderPane implements EccoListener {
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
-			Platform.runLater(() -> this.setDisable(false));
-			Collection<Commit> commits = service.getCommits();
-			Platform.runLater(() -> {
-				this.commitsData.clear();
-				this.commitsData.addAll(commits);
-			});
+			this.refresher.request();
 		} else {
+			this.refresher.clear();
 			Platform.runLater(() -> {
 				this.setDisable(true);
 				this.commitsData.clear();
