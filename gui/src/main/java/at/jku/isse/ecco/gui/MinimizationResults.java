@@ -92,16 +92,17 @@ public class MinimizationResults implements EccoListener {
                 // added a counterexample since), filter to accepted signatures, then let
                 // ParallelMinimization compile the feature model once per worker thread and process
                 // every association concurrently.
-                // fingerprints first: results are only valid for the repository as it was when the run started
-                Map<String, String> bases = service.minimizationBases();
-                // then read holding the service's lock - a commit meanwhile changes the counters the
-                // conditions are computed from, and the constraints (NFR-C1b): the configurations, the
-                // accepted constraints and every association's condition. Mined and minimized without
-                // it, from these: that can take minutes, and would hold up every commit meanwhile.
+                // read holding the service's lock - a commit meanwhile changes the counters the
+                // conditions are computed from, and the constraints (NFR-C1b): the fingerprints the
+                // results are valid for, the configurations, the accepted constraints and every
+                // association's condition - all of one state. Mined and minimized without it, from
+                // these: that can take minutes, and would hold up every commit meanwhile.
+                Map<String, String> bases;
                 List<Set<String>> configs;
                 Set<String> accepted;
                 List<Association> associations = new ArrayList<>();
                 synchronized (service) {
+                    bases = service.minimizationBases();
                     configs = ConfigurationBridge.readConfigurations(service);
                     accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
                     for (Association association : service.getRepository().getAssociations())

@@ -86,12 +86,31 @@ public final class CheckoutConditions {
     public static Map<String, LogicCondition> minimize(Collection<? extends Association> associations,
                                                List<ConstraintMiner.Suggestion> trustedSuggestions,
                                                Collection<? extends Feature> features) {
-        Formula featureModel = FeatureModelFormula.compileRevisionAware(trustedSuggestions, features);
+        return minimize(read(associations, trustedSuggestions, features));
+    }
+
+    /**
+     * All {@link #minimize(Input)} needs of the repository: the feature model and each association's
+     * condition as terms - read holding the service's lock, since a commit changes the counters the
+     * conditions are computed from, so that the minimization can run without it.
+     */
+    public record Input(Formula featureModel, Map<String, List<PresenceConditionMinimizer.Term>> termsById) {
+    }
+
+    public static Input read(Collection<? extends Association> associations,
+                             List<ConstraintMiner.Suggestion> trustedSuggestions,
+                             Collection<? extends Feature> features) {
+        Map<String, List<PresenceConditionMinimizer.Term>> termsById = new HashMap<>();
+        for (Association association : associations)
+            termsById.put(association.getId(), ModuleConditionBridge.toRevisionTerms(association.computeCondition()));
+        return new Input(FeatureModelFormula.compileRevisionAware(trustedSuggestions, features), termsById);
+    }
+
+    public static Map<String, LogicCondition> minimize(Input input) {
         Map<String, LogicCondition> result = new HashMap<>();
-        for (Association association : associations) {
-            List<PresenceConditionMinimizer.Term> terms = ModuleConditionBridge.toRevisionTerms(association.computeCondition());
-            List<PresenceConditionMinimizer.Term> minimized = PresenceConditionMinimizer.minimize(featureModel, terms);
-            result.put(association.getId(), LogicCondition.of(PresenceConditionMinimizer.toFormula(minimized)));
+        for (Map.Entry<String, List<PresenceConditionMinimizer.Term>> entry : input.termsById().entrySet()) {
+            List<PresenceConditionMinimizer.Term> minimized = PresenceConditionMinimizer.minimize(input.featureModel(), entry.getValue());
+            result.put(entry.getKey(), LogicCondition.of(PresenceConditionMinimizer.toFormula(minimized)));
         }
         return result;
     }

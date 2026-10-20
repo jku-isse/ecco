@@ -67,6 +67,11 @@ public class ConfigurationPickerDialogTest {
         }
     }
 
+    /** Waits for the string to be parsed - in the background, as the service's lock may be held. */
+    private static void parsed(Picker picker) throws Exception {
+        waitUntil("the string parsed", () -> !picker.dialog().parsing());
+    }
+
     /** A picker with its features read - in the background. */
     private static Picker picker(EccoService service) throws Exception {
         ConfigurationPickerDialog dialog = onFx(() -> new ConfigurationPickerDialog(service));
@@ -93,6 +98,7 @@ public class ConfigurationPickerDialogTest {
             Picker picker = onFx(() -> Picker.of(dialog));
             assertEquals(List.of("A", "b", "C"), onFx(picker::names));
             onFx(() -> picker.configString().setText("A.1"));
+            parsed(picker);
             assertTrue(onFx(() -> picker.include("A").isSelected()));
             assertEquals("1", onFx(() -> picker.revision("A").getValue().getId()));
         }
@@ -171,6 +177,7 @@ public class ConfigurationPickerDialogTest {
         try (EccoService service = twoRevisionsOfA(tmp)) {
             Picker picker = picker(service);
             onFx(() -> picker.configString().setText("A.1, b.1"));
+            parsed(picker);
             onFx(() -> {
                 assertTrue(picker.include("A").isSelected());
                 assertEquals("1", picker.revision("A").getValue().getId());
@@ -182,6 +189,7 @@ public class ConfigurationPickerDialogTest {
             });
 
             onFx(() -> picker.configString().setText("C.1"));
+            parsed(picker);
             onFx(() -> {
                 assertFalse(picker.include("A").isSelected());
                 assertFalse(picker.include("b").isSelected());
@@ -198,6 +206,7 @@ public class ConfigurationPickerDialogTest {
             Picker picker = picker(service);
             onFx(() -> picker.include("A").setSelected(true));
             onFx(() -> picker.configString().setText("A.2, ,,"));
+            parsed(picker);
             onFx(() -> {
                 assertTrue(picker.include("A").isSelected());
                 assertEquals("2", picker.revision("A").getValue().getId());
@@ -232,6 +241,7 @@ public class ConfigurationPickerDialogTest {
                 picker.include("A").setSelected(true);
                 picker.include("b").setSelected(true);
             });
+            parsed(picker);
             Configuration result = onFx(() -> picker.dialog().getResultConverter().call(ButtonType.OK));
             assertEquals(Set.of("A.2", "b.1"), revisions(result));
             assertNull(onFx(() -> picker.dialog().getResultConverter().call(ButtonType.CANCEL)));

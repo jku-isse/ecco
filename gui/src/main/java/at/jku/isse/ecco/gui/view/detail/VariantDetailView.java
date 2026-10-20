@@ -130,20 +130,24 @@ public class VariantDetailView extends BorderPane {
 
 
 		// show nothing initially
-		this.showVariant(null);
+		this.showVariant(null, null, null);
 	}
 
 
 
-	public final void showVariant(Variant variant) {
+	/**
+	 * Shows a variant (nothing: a null id) from values read holding the service's lock - not the
+	 * Variant, whose fields a commit changes meanwhile (NFR-C1b).
+	 */
+	public final void showVariant(String id, String name, String configuration) {
 
-		if (variant != null) {
+		if (id != null) {
 			this.setCenter(this.centerPane);
 			this.toolBar.setDisable(false);
 
-			this.variantId.setText(String.valueOf(variant.getId()));
-			this.variantName.setText(String.valueOf(variant.getName()));
-			this.variantConfiguration.setText(variant.getConfiguration() == null ? "" : variant.getConfiguration().toString());
+			this.variantId.setText(id);
+			this.variantName.setText(String.valueOf(name));
+			this.variantConfiguration.setText(configuration == null ? "" : configuration);
 
 		} else {
 			this.setCenter(null);

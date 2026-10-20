@@ -215,7 +215,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.splitPane = new SplitPane();
 		this.splitPane.setOrientation(Orientation.VERTICAL);
 
-		this.commitDetailView = new CommitDetailView();
+		this.commitDetailView = new CommitDetailView(service);
 
 		this.logArea = new TextArea();
 		this.logArea.setEditable(false);

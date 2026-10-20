@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.gui.io;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -27,6 +26,11 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 	/** What the string field holds when OK is pressed - the configuration as typed, A' and all. */
 	private final TextField configStringField = new TextField();
 	private final Label invalidLabel = new Label();
+	/** The string as last parsed, if it is a configuration - null while it is parsed or is none. */
+	private Configuration parsed;
+	/** Counts the parses started: only the latest one's result is shown. */
+	private int parses;
+	private boolean parsing;
 	/** Whether the features are still being read. */
 	private boolean reading;
 
@@ -52,23 +56,20 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 		// guards against the field <-> checkbox <-> combo box listeners re-triggering each other
 		boolean[] updating = {false};
 
-		// ticks the features the string names, with the named revisions
+		// ticks the features the string names, with the named revisions - as last parsed; while the
+		// typed string is incomplete or invalid the checkboxes/combo boxes stay as they are
 		Runnable showString = () -> {
-			if (updating[0]) return;
+			Configuration parsed = this.parsed;
+			if (updating[0] || parsed == null) return;
 			updating[0] = true;
-			try {
-				Configuration parsed = service.parseConfigurationString(configStringField.getText());
-				Set<FeatureRevision> selectedRevisions = new HashSet<>(Arrays.asList(parsed.getFeatureRevisions()));
-				for (String feature : comboBoxesByFeature.keySet()) {
-					ComboBox<FeatureRevision> revisionComboBox = comboBoxesByFeature.get(feature);
-					FeatureRevision match = revisionComboBox.getItems().stream()
-							.filter(selectedRevisions::contains)
-							.findFirst().orElse(null);
-					revisionComboBox.setValue(match);
-					checkBoxesByFeature.get(feature).setSelected(match != null);
-				}
-			} catch (EccoException ignored) {
-				// leave the checkboxes/combo boxes as they are while the typed string is incomplete/invalid
+			Set<FeatureRevision> selectedRevisions = new HashSet<>(Arrays.asList(parsed.getFeatureRevisions()));
+			for (String feature : comboBoxesByFeature.keySet()) {
+				ComboBox<FeatureRevision> revisionComboBox = comboBoxesByFeature.get(feature);
+				FeatureRevision match = revisionComboBox.getItems().stream()
+						.filter(selectedRevisions::contains)
+						.findFirst().orElse(null);
+				revisionComboBox.setValue(match);
+				checkBoxesByFeature.get(feature).setSelected(match != null);
 			}
 			updating[0] = false;
 		};
@@ -133,9 +134,8 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 		};
 
 		configStringField.setPromptText("e.g. FeatureA.revisionId, FeatureB");
-		configStringField.textProperty().addListener((observable, oldValue, newValue) -> showString.run());
+		configStringField.textProperty().addListener((observable, oldValue, newValue) -> this.parse(service, showString));
 		// OK only for a configuration that parses - OK with an invalid one failed in the result converter
-		configStringField.textProperty().addListener((observable, oldValue, newValue) -> this.validate(service));
 
 		TextField filterField = new TextField();
 		filterField.setPromptText("Filter features...");
@@ -180,29 +180,63 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 			if (buttonType != ButtonType.OK) {
 				return null;
 			}
-			return service.parseConfigurationString(configStringField.getText());
+			return this.parsed; // OK is enabled only once the string as it is now was parsed
 		});
 		configStringField.setText(initial == null ? "" : initial);
-		this.validate(service);
+		this.parse(service, showString);
 	}
 
-	/** Disables OK, and says why, while the string is no configuration. */
-	private void validate(EccoService service) {
+	/**
+	 * Parses the string in the background and then, unless it was changed meanwhile, shows it (or
+	 * why it is no configuration) and enables OK. parseConfigurationString waits for the service's
+	 * lock: on the FX thread, at every keystroke, typing froze behind a running commit (NFR-C3).
+	 */
+	private void parse(EccoService service, Runnable showParsed) {
 		String text = this.configStringField.getText();
-		String problem = null;
+		int parse = ++this.parses;
+		this.parsed = null;
+		this.getDialogPane().lookupButton(ButtonType.OK).setDisable(true);
 		if (text == null || text.isBlank()) {
-			problem = "";
-		} else {
-			try {
-				service.parseConfigurationString(text);
-			} catch (RuntimeException e) {
-				problem = e.getMessage() == null ? "Not a configuration." : e.getMessage();
-			}
+			this.parsing = false;
+			this.showProblem("");
+			return;
 		}
+		this.parsing = true;
+		at.jku.isse.ecco.gui.RepositoryAccess.read(service, "Configuration", s -> {
+			try {
+				return new Parsed(s.parseConfigurationString(text), null);
+			} catch (RuntimeException e) {
+				return new Parsed(null, e.getMessage() == null ? "Not a configuration." : e.getMessage());
+			}
+		}, result -> {
+			if (parse != this.parses)
+				return; // typed on meanwhile
+			this.parsing = false;
+			this.parsed = result.configuration();
+			this.showProblem(result.problem());
+			showParsed.run();
+		}, failure -> {
+			if (parse != this.parses)
+				return;
+			this.parsing = false;
+			this.showProblem("Could not be read: " + failure.getMessage());
+		});
+	}
+
+	private record Parsed(Configuration configuration, String problem) {
+	}
+
+	/** Says why the string is no configuration ("": nothing to say), and enables OK if it is one. */
+	private void showProblem(String problem) {
 		this.invalidLabel.setText(problem == null ? "" : problem);
 		this.invalidLabel.setVisible(problem != null && !problem.isEmpty());
 		this.invalidLabel.setManaged(this.invalidLabel.isVisible());
 		this.getDialogPane().lookupButton(ButtonType.OK).setDisable(problem != null);
+	}
+
+	/** Whether the string is still being parsed - for tests. */
+	public boolean parsing() {
+		return this.parsing;
 	}
 
 	/** Whether the features are still being read - for tests. */

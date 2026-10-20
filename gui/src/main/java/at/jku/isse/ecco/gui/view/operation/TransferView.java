@@ -3,6 +3,7 @@ package at.jku.isse.ecco.gui.view.operation;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -220,7 +221,6 @@ public abstract class TransferView extends OperationView {
 
 		Remote remote = this.remoteComboBox.getValue();
 		String title = titledPane.getText();
-		this.fillTree(tree, this.featuresNow(remote.getName()));
 		titledPane.setText(title + " (reading ...)");
 		// a read still running for an earlier visit of this step is overtaken: it stops, and shows
 		// nothing - finishing later, it replaced the tree shown, and what was unticked there was transferred
@@ -228,10 +228,21 @@ public abstract class TransferView extends OperationView {
 		java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean();
 		this.featuresCancelled = cancelled;
 		int read = ++this.featuresRead;
-		Task<Collection<? extends Feature>> featuresTask = new Task<>() {
+		java.util.concurrent.atomic.AtomicBoolean filled = new java.util.concurrent.atomic.AtomicBoolean();
+		// what is there already, at once - read in the background as well: getRemote() waits for the
+		// service's lock, and a commit holds it (NFR-C3); not shown once the fresh read was
+		RepositoryAccess.read(this.service, "Features as last read", service -> snapshot(this.featuresNow(remote.getName())), features -> {
+			if (read == this.featuresRead && !filled.get())
+				this.fillTree(tree, features);
+		}, failure -> {
+		});
+		Task<List<FeatureRevisions>> featuresTask = new Task<>() {
 			@Override
-			public Collection<? extends Feature> call() {
-				return TransferView.this.features(remote.getName(), cancelled::get);
+			public List<FeatureRevisions> call() {
+				Collection<? extends Feature> features = TransferView.this.features(remote.getName(), cancelled::get);
+				synchronized (TransferView.this.service) {
+					return snapshot(features);
+				}
 			}
 
 			@Override
@@ -239,6 +250,7 @@ public abstract class TransferView extends OperationView {
 				super.succeeded();
 				if (read != TransferView.this.featuresRead)
 					return;
+				filled.set(true);
 				titledPane.setText(title);
 				TransferView.this.fillTree(tree, this.getValue());
 			}
@@ -262,14 +274,15 @@ public abstract class TransferView extends OperationView {
 	 * Shows [features] with their revisions, each ticked unless the deselection field names it - so the
 	 * tree can be built again without losing what was left out. Unticking and ticking writes the field.
 	 */
-	private void fillTree(TreeView<FeatureInfo> tree, Collection<? extends Feature> features) {
+	private void fillTree(TreeView<FeatureInfo> tree, List<FeatureRevisions> features) {
 		this.revisionItems.clear();
 		CheckBoxTreeItem<FeatureInfo> root = new CheckBoxTreeItem<>(new FeatureInfo(null, null));
-		List<Feature> sorted = new ArrayList<>(features);
-		sorted.sort(Comparator.comparing(Feature::getName, String.CASE_INSENSITIVE_ORDER));
-		for (Feature feature : sorted) {
+		List<FeatureRevisions> sorted = new ArrayList<>(features);
+		sorted.sort(Comparator.comparing(entry -> entry.feature().getName(), String.CASE_INSENSITIVE_ORDER));
+		for (FeatureRevisions entry : sorted) {
+			Feature feature = entry.feature();
 			CheckBoxTreeItem<FeatureInfo> featureItem = new CheckBoxTreeItem<>(new FeatureInfo(feature, null));
-			for (FeatureRevision revision : feature.getRevisions()) {
+			for (FeatureRevision revision : entry.revisions()) {
 				CheckBoxTreeItem<FeatureInfo> revisionItem = new CheckBoxTreeItem<>(new FeatureInfo(feature, revision));
 				featureItem.getChildren().add(revisionItem);
 				this.revisionItems.put(revision.toString(), revisionItem);
@@ -354,6 +367,18 @@ public abstract class TransferView extends OperationView {
 	}
 
 	/** A feature (revision null) or one of its revisions in the tree. */
+	/** A feature and its revisions as they were read, holding the service's lock - a commit adds revisions meanwhile (NFR-C1b). */
+	private record FeatureRevisions(Feature feature, List<FeatureRevision> revisions) {
+	}
+
+	/** [features] with their revisions copied - to be called holding the service's lock. */
+	private static List<FeatureRevisions> snapshot(Collection<? extends Feature> features) {
+		List<FeatureRevisions> snapshot = new ArrayList<>();
+		for (Feature feature : features)
+			snapshot.add(new FeatureRevisions(feature, List.copyOf(feature.getRevisions())));
+		return snapshot;
+	}
+
 	public static class FeatureInfo {
 		private final Feature feature;
 		private final FeatureRevision featureVersion;

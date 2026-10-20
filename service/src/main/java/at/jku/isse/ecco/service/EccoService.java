@@ -1791,28 +1791,27 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     /**
      * Computes and stores, for every association, a revision-exact minimized condition checkout can use
      * ({@link CheckoutConditions}), under the trusted accepted constraints ({@link #acceptedSuggestions}).
-     * The fingerprints are taken first; the minimization runs without holding this service, so it does
-     * not block other calls, and results a commit overtook are stored but never used.
+     * The fingerprints and the conditions are read holding this service; the minimization runs without
+     * it, so it does not block other calls, and results a commit overtook are stored but never used.
      *
      * @return the number of associations a condition was stored for
      */
     public int minimizeConditionsForCheckout() {
-        record Read(Map<String, String> bases, List<ConstraintMiner.Suggestion> trusted, List<Association> associations, List<Feature> features) {
+        // the conditions computed and the feature model compiled here, holding this service: a commit
+        // changes the counters the conditions come from - only their minimization runs without it
+        record Read(Map<String, String> bases, CheckoutConditions.Input input) {
         }
         Read read;
         synchronized (this) {
             this.checkInitialized();
             read = this.readTransaction("Error reading the repository for minimization.", () -> {
                 Repository.Op repository = this.repositoryDao.load();
-                return new Read(CheckoutConditions.bases(repository), this.acceptedSuggestions(repository),
-                        new ArrayList<>(repository.getAssociations()), new ArrayList<>(repository.getFeatures()));
+                return new Read(CheckoutConditions.bases(repository), CheckoutConditions.read(repository.getAssociations(),
+                        this.acceptedSuggestions(repository), repository.getFeatures()));
             });
         }
         Map<String, String> bases = read.bases();
-        List<ConstraintMiner.Suggestion> trusted = read.trusted();
-        List<Association> associations = read.associations();
-        List<Feature> features = read.features();
-        Map<String, LogicCondition> minimized = CheckoutConditions.minimize(associations, trusted, features);
+        Map<String, LogicCondition> minimized = CheckoutConditions.minimize(read.input());
         this.writeTransaction("Error persisting checkout conditions.", repository -> {
             for (Association.Op association : repository.getAssociations()) {
                 LogicCondition condition = minimized.get(association.getId());

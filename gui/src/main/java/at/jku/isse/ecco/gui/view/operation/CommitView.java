@@ -85,7 +85,7 @@ public class CommitView extends OperationView implements EccoListener {
 		this.splitPane.setOrientation(Orientation.VERTICAL);
 
 		// commit detail view
-		this.commitDetailView = new CommitDetailView();
+		this.commitDetailView = new CommitDetailView(service);
 
 		// plain scrolling text log (one line per read/write/commit) -- no explicit size here defaults
 		// to TextArea's own tiny (~2 visible rows) preferred size, so the step2 "Committing..." view

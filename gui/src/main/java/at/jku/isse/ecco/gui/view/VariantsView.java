@@ -80,9 +80,9 @@ public class VariantsView extends BorderPane implements EccoListener {
         // trigger another selection-changed event.
         variantsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
             if (newValue != null) {
-                variantDetailView.showVariant(newValue.getVariant());
+                variantDetailView.showVariant(newValue.getId(), newValue.getName(), newValue.getConfigurationText());
             } else {
-                variantDetailView.showVariant(null);
+                variantDetailView.showVariant(null, null, null);
             }
         });
 

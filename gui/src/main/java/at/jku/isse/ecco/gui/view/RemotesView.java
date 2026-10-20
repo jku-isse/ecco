@@ -22,6 +22,8 @@ import java.util.List;
 
 public class RemotesView extends BorderPane implements EccoListener {
 
+	private TableView<Remote> remotesTable;
+
 	private EccoService service;
 
 	private final ObservableList<Remote> remotesData = FXCollections.observableArrayList();
@@ -75,7 +77,7 @@ public class RemotesView extends BorderPane implements EccoListener {
 
 
 		// list of remotes
-		TableView<Remote> remotesTable = new TableView<>();
+		TableView<Remote> remotesTable = this.remotesTable = new TableView<>();
 		remotesTable.setEditable(true);
 		remotesTable.setTableMenuButtonVisible(true);
 
@@ -100,10 +102,16 @@ public class RemotesView extends BorderPane implements EccoListener {
 
 		// remote details view
 		RemoteDetailView remoteDetailView = new RemoteDetailView(service);
+		// the saved remote takes the place of the one shown - at once, without asking the service (which
+		// waits for its lock): the detail pane reports "Saved." after this reselects the remote
 		remoteDetailView.setOnRemoteChanged(changed -> {
-			this.remotesData.setAll(this.service.getRemotes());
-			this.remotesData.stream().filter(remote -> remote.getName().equals(changed.getName())).findFirst()
-					.ifPresent(remote -> remotesTable.getSelectionModel().select(remote));
+			Remote shown = remotesTable.getSelectionModel().getSelectedItem();
+			int index = shown == null ? -1 : this.remotesData.indexOf(shown);
+			if (index >= 0)
+				this.remotesData.set(index, changed);
+			else
+				this.remotesData.add(changed);
+			remotesTable.getSelectionModel().select(changed);
 		});
 
 
@@ -172,16 +180,30 @@ public class RemotesView extends BorderPane implements EccoListener {
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
 			Platform.runLater(() -> this.setDisable(false));
-			Collection<? extends Remote> remotes = service.getRemotes();
-			Platform.runLater(() -> {
-				this.remotesData.clear();
-				for (Remote remote : remotes) {
-					this.remotesData.add(remote);
-				}
-			});
+			// getRemotes() waits for the service's lock: on the FX thread (the first refresh, or
+			// setBaseDir() firing this there) that froze the window behind a commit (NFR-C3)
+			if (Thread.holdsLock(service))
+				this.showRemotes(service.getRemotes(), null);
+			else
+				RepositoryAccess.read(service, "Remotes", EccoService::getRemotes, remotes -> this.showRemotes(remotes, null),
+						failure -> new ExceptionAlert(failure).show());
 		} else {
 			Platform.runLater(() -> this.setDisable(true));
 		}
+	}
+
+	/** Lists [remotes] - on the FX thread, or from any thread through runLater - selecting the one named [select], if any. */
+	private void showRemotes(Collection<? extends Remote> remotes, String select) {
+		Runnable show = () -> {
+			this.remotesData.setAll(remotes);
+			if (select != null)
+				this.remotesData.stream().filter(remote -> remote.getName().equals(select)).findFirst()
+						.ifPresent(remote -> this.remotesTable.getSelectionModel().select(remote));
+		};
+		if (Platform.isFxApplicationThread())
+			show.run();
+		else
+			Platform.runLater(show);
 	}
 
 }

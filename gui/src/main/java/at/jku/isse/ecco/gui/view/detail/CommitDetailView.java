@@ -24,19 +24,11 @@ public class CommitDetailView extends BorderPane {
 	private TextField commitId;
 	private TextArea commitConfiguration;
 
-	/** Whose lock a commit is read under - null: read where {@link #showCommit} is called. */
+	/** Whose lock a commit is read under. */
 	private final EccoService service;
 	/** Counts the commits asked to be shown: a read overtaken by a later one shows nothing. */
 	private int shown;
 
-
-	/**
-	 * Reads a commit where {@link #showCommit} is called - on the FX thread, without the service's
-	 * lock: a commit running meanwhile changes its associations. Use the other constructor.
-	 */
-	public CommitDetailView() {
-		this(null);
-	}
 
 	/**
 	 * @param service the repository's: a commit's associations, their conditions and artifact counts
@@ -118,13 +110,13 @@ public class CommitDetailView extends BorderPane {
 	}
 
 
-	/** Shows [commit] (nothing: null) once read - in the background, holding the service's lock, if there is a service. */
+	/** Shows [commit] (nothing: null) once read - in the background, holding the service's lock; a newer call wins. */
 	public final void showCommit(Commit commit) {
-		if (commit == null || this.service == null) {
-			this.show(commit == null ? null : read(commit));
+		int read = ++this.shown;
+		if (commit == null) {
+			this.show(null);
 			return;
 		}
-		int read = ++this.shown;
 		RepositoryAccess.read(this.service, "Commit details", service -> read(commit), details -> {
 			if (read == this.shown)
 				this.show(details);
