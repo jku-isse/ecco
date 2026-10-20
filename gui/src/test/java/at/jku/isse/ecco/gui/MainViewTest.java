@@ -124,7 +124,8 @@ public class MainViewTest {
             onFx(() -> assertRepositoryButtons(view, true));
 
             onFx(() -> ribbonButton(view, "Repositories", "Close Repository").fire());
-            assertFalse(service.isInitialized(), "Close closes the repository");
+            // in the background
+            waitUntil("Close closes the repository", () -> !service.isInitialized());
             waitUntil("the closed repository's buttons", () -> ribbonButton(view, "Repositories", "Close Repository").isDisable());
             onFx(() -> assertRepositoryButtons(view, false));
             assertEquals("Start", onFx(() -> header(view)), "closed: the start page again");
@@ -312,14 +313,43 @@ public class MainViewTest {
             Runnable closeShortcut = accelerators.get(new KeyCodeCombination(KeyCode.W, KeyCombination.SHORTCUT_DOWN));
 
             onFx(closeShortcut::run);
-            assertFalse(service.isInitialized(), "Cmd+W closed the repository");
+            waitUntil("Cmd+W closed the repository", () -> !service.isInitialized());
             onFx(closeShortcut::run); // no repository open: nothing to do, no failure
 
             service.open();
             WindowEvent request = new WindowEvent(stage, WindowEvent.WINDOW_CLOSE_REQUEST);
             onFx(() -> stage.getOnCloseRequest().handle(request));
             assertTrue(request.isConsumed(), "the window stays open");
-            assertFalse(service.isInitialized(), "the close control closed the repository");
+            waitUntil("the close control closed the repository", () -> !service.isInitialized());
+        }
+    }
+
+    /**
+     * Close runs in the background (NFR-C3): while a commit holds the service's lock, the FX thread
+     * goes on - it waited for the lock, the window frozen until the commit ended - and the
+     * repository closes once the lock is free.
+     */
+    @Test
+    @Timeout(120)
+    public void closeDoesNotBlockTheFxThreadWhileTheServiceIsLocked(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            MainView view = onFx(() -> new MainView(service));
+            waitUntil("the open repository's buttons", () -> !ribbonButton(view, "Repositories", "Close Repository").isDisable());
+            // what the views queued when they were built is done
+            Thread.sleep(500);
+            onFx(() -> {
+            });
+
+            synchronized (service) {
+                long start = System.nanoTime();
+                onFx(() -> ribbonButton(view, "Repositories", "Close Repository").fire());
+                onFx(() -> {
+                });
+                assertTrue(System.nanoTime() - start < 2_000_000_000L, "the FX thread did not wait for the lock");
+                assertTrue(service.isInitialized(), "not closed while the lock is held");
+            }
+            waitUntil("closed once the lock is free", () -> !service.isInitialized());
+            waitUntil("the closed repository's buttons", () -> ribbonButton(view, "Repositories", "Close Repository").isDisable());
         }
     }
 

@@ -88,7 +88,7 @@ public class VariantsViewTest {
                 select(view, "C.1");
                 button(view, "Remove Selected Variant").fire();
             });
-            waitUntil("the list shows what is left", () -> view.variantsDataSelected.size() == 1);
+            waitUntil("the list shows what is left", () -> view.variantsDataSelected.size() == 1 && !toolBar(view).isDisable());
 
             assertEquals(Set.of(Set.of("A.1")), service.getRepository().getVariants().stream().map(VariantsViewTest::revisions).collect(Collectors.toSet()));
             assertEquals(Set.of("A.1"), onFx(() -> revisions(view.variantsDataSelected.get(0).getVariant())));
@@ -111,17 +111,75 @@ public class VariantsViewTest {
             commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
             VariantsView view = loaded(service, 1);
 
-            RuntimeException thrown = onFx(() -> {
+            int dialogsBefore = onFx(VariantsViewTest::openDialogs);
+
+            onFx(() -> {
                 select(view, "A.1");
-                try {
-                    button(view, "Remove Selected Variant").fire();
-                    return null;
-                } catch (RuntimeException e) {
-                    return e;
-                }
+                button(view, "Remove Selected Variant").fire();
             });
-            assertNotNull(thrown, "the removal failed");
+            // the removal runs in the background: its failure is shown (non-modal), the toolbar enabled again
+            waitUntil("the failure shown", () -> openDialogs() == dialogsBefore + 1);
             assertFalse(onFx(() -> toolBar(view).isDisable()));
+            assertEquals(1, onFx(() -> view.variantsDataSelected.size()), "nothing was removed");
+            closeDialogs();
+        }
+    }
+
+    /**
+     * Remove runs in the background (NFR-C3): while a commit holds the service's lock, the FX thread
+     * goes on - it waited for the lock, the window frozen - and the removal follows once the lock is
+     * free.
+     */
+    @Test
+    @Timeout(60)
+    public void removeDoesNotBlockTheFxThreadWhileTheServiceIsLocked(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
+            commit(service, tmp.resolve("v2"), "B.1", Map.of("b.txt", "b\n"));
+            VariantsView view = loaded(service, 2);
+
+            synchronized (service) {
+                long start = System.nanoTime();
+                onFx(() -> {
+                    select(view, "B.1");
+                    button(view, "Remove Selected Variant").fire();
+                });
+                onFx(() -> {
+                });
+                assertTrue(System.nanoTime() - start < 2_000_000_000L, "the FX thread did not wait for the lock");
+                assertTrue(onFx(() -> toolBar(view).isDisable()), "disabled while the removal waits");
+                assertEquals(2, service.getRepository().getVariants().size(), "not removed while the lock is held");
+            }
+            waitUntil("the removal", () -> view.variantsDataSelected.size() == 1 && !toolBar(view).isDisable());
+            assertEquals(Set.of(Set.of("A.1")), variantRevisions(service));
+        }
+    }
+
+    /** As above for Checkout, which also set the base directory on the FX thread. */
+    @Test
+    @Timeout(60)
+    public void checkoutDoesNotBlockTheFxThreadWhileTheServiceIsLocked(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
+            VariantsView view = loaded(service, 1);
+            Path base = Files.createDirectories(tmp.resolve("out"));
+
+            synchronized (service) {
+                long start = System.nanoTime();
+                onFx(() -> {
+                    baseDirField(view).setText(base.toString());
+                    select(view, "A.1");
+                    button(view, "Checkout").fire();
+                });
+                onFx(() -> {
+                });
+                assertTrue(System.nanoTime() - start < 2_000_000_000L, "the FX thread did not wait for the lock");
+                assertTrue(onFx(() -> toolBar(view).isDisable()), "disabled while the checkout waits");
+            }
+            waitUntil("the checkout", () -> !toolBar(view).isDisable());
+            try (Stream<Path> list = Files.list(base)) {
+                assertEquals(1, list.count(), "one folder for the variant");
+            }
         }
     }
 
@@ -143,6 +201,7 @@ public class VariantsViewTest {
                 select(view, "A.1", "B.1");
                 button(view, "Checkout").fire();
             });
+            waitUntil("the checkout", () -> !toolBar(view).isDisable());
 
             List<Path> folders;
             try (Stream<Path> list = Files.list(base)) {
@@ -175,6 +234,7 @@ public class VariantsViewTest {
                 select(view, "A.1");
                 button(view, "Checkout").fire();
             });
+            waitUntil("the checkout", () -> !toolBar(view).isDisable());
 
             assertEquals("a\n", Files.readString(base.resolve("alpha").resolve("a.txt")));
         }
@@ -199,7 +259,7 @@ public class VariantsViewTest {
                 button(view, "Checkout").fire();
             });
 
-            assertFalse(onFx(() -> toolBar(view).isDisable()), "the toolbar is enabled again");
+            waitUntil("the toolbar is enabled again", () -> !toolBar(view).isDisable());
             // the failure is shown (non-modal); close it again
             onFx(() -> {
                 List<javafx.stage.Window> shown = List.copyOf(javafx.stage.Window.getWindows());
@@ -339,6 +399,14 @@ public class VariantsViewTest {
         return (int) javafx.stage.Window.getWindows().stream()
                 .filter(w -> w.getScene() != null && w.getScene().getRoot() instanceof javafx.scene.control.DialogPane)
                 .count();
+    }
+
+    private static void closeDialogs() throws Exception {
+        onFx(() -> {
+            for (javafx.stage.Window window : List.copyOf(javafx.stage.Window.getWindows()))
+                if (window.getScene() != null && window.getScene().getRoot() instanceof javafx.scene.control.DialogPane)
+                    window.hide();
+        });
     }
 
     private static VariantsView loaded(EccoService service, int variants) throws Exception {

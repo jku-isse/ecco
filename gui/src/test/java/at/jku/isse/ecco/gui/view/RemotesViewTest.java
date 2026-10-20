@@ -95,6 +95,8 @@ public class RemotesViewTest {
                 select(view, "other");
                 button(view, "Remove").fire();
             });
+            // in the background
+            waitUntil("the removal", () -> !toolBar(view).isDisable());
             assertEquals(Set.of("origin"), onFx(() -> names(view)));
             assertNull(service.getRemote("other"));
             assertNotNull(service.getRemote("origin"));
@@ -104,6 +106,50 @@ public class RemotesViewTest {
                 button(view, "Remove").fire();
             });
             assertNotNull(service.getRemote("origin"), "nothing selected, nothing removed");
+        }
+    }
+
+    /**
+     * Add and Remove run in the background (NFR-C3): while a commit holds the service's lock, the FX
+     * thread goes on - it waited for the lock, the window frozen - and they follow once it is free.
+     */
+    @Test
+    @Timeout(60)
+    public void addAndRemoveDoNotBlockTheFxThreadWhileTheServiceIsLocked(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            service.addRemote("origin", tmp.resolve("o").toString(), Remote.Type.LOCAL);
+            RemotesView view = onFx(() -> new RemotesView(service));
+            waitUntil("the remote", () -> table(view).getItems().size() == 1);
+            String dir = tmp.resolve("elsewhere").toString();
+
+            synchronized (service) {
+                long start = System.nanoTime();
+                onFx(() -> {
+                    fields(view).get(0).setText("local");
+                    fields(view).get(1).setText(dir);
+                    button(view, "Add").fire();
+                });
+                onFx(() -> {
+                });
+                assertTrue(System.nanoTime() - start < 2_000_000_000L, "the FX thread did not wait for the lock");
+                assertTrue(onFx(() -> toolBar(view).isDisable()), "disabled while the addition waits");
+            }
+            waitUntil("added", () -> names(view).equals(Set.of("origin", "local")) && !toolBar(view).isDisable());
+            assertNotNull(service.getRemote("local"));
+
+            synchronized (service) {
+                long start = System.nanoTime();
+                onFx(() -> {
+                    select(view, "origin");
+                    button(view, "Remove").fire();
+                });
+                onFx(() -> {
+                });
+                assertTrue(System.nanoTime() - start < 2_000_000_000L, "the FX thread did not wait for the lock");
+                assertNotNull(service.getRemote("origin"), "not removed while the lock is held");
+            }
+            waitUntil("removed", () -> names(view).equals(Set.of("local")) && !toolBar(view).isDisable());
+            assertNull(service.getRemote("origin"));
         }
     }
 

@@ -1,9 +1,10 @@
 package at.jku.isse.ecco.gui.view;
 
-import at.jku.isse.ecco.gui.TaskFailures;
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.gui.EditableSpinner;
+import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.MinimizationResults;
+import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.mining.AcceptedConstraints;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
@@ -95,10 +96,12 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
     private final Button rejectButton = new Button("Reject");
     private final Button moveBackButton = new Button("Move back to pending");
     private final Label explanation = new Label();
+    /** The action buttons; disabled while a review decision is stored (see {@link #review}). */
+    private HBox actions;
 
     private volatile boolean tabVisible = true;
 
-    /** Re-triggered after every accept/unaccept -- see {@link #acceptSelected}/{@link #undoAccepted}. */
+    /** Re-triggered after every accept/unaccept/reject -- see {@link #acceptRows}/{@link #moveBackRows}. */
     private final MinimizationResults minimizationResults;
 
     public ConstraintSuggestionsView(EccoService service, MinimizationResults minimizationResults) {
@@ -216,7 +219,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         table.setRowFactory(tv -> {
             TableRow<ReviewRow> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
-                if (event.getClickCount() == 2 && !row.isEmpty() && row.getItem().status() == Status.PENDING) {
+                if (event.getClickCount() == 2 && !row.isEmpty() && row.getItem().status() == Status.PENDING && !this.actions.isDisable()) {
                     acceptRows(List.of(row.getItem()));
                 }
             });
@@ -233,7 +236,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         explanation.setStyle("-fx-font-size: 11px; -fx-text-fill: #6b6a65;");
         HBox.setHgrow(explanation, Priority.ALWAYS);
 
-        HBox actions = new HBox(8, acceptButton, rejectButton, moveBackButton, explanation);
+        this.actions = new HBox(8, acceptButton, rejectButton, moveBackButton, explanation);
         actions.setAlignment(Pos.CENTER_LEFT);
         actions.setPadding(new Insets(6));
 
@@ -323,16 +326,28 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
             if (parent != null)
                 parents.put(parent[0], parent[1]);
         }
-        acceptSelected(rows.stream().filter(row -> parentOf(row.signature()) == null).map(ReviewRow::suggestion).toList());
-        if (!parents.isEmpty()) {
-            try {
-                service.acceptFeatureParents(parents);
-            } catch (at.jku.isse.ecco.EccoException e) {
-                this.refused(e.getMessage());
-                return;
+        List<ConstraintMiner.Suggestion> suggestions = rows.stream().filter(row -> parentOf(row.signature()) == null).map(ReviewRow::suggestion).toList();
+        if (suggestions.isEmpty() && parents.isEmpty()) return;
+        // the parents are refused as a whole if one would close a cycle - after the constraints are stored
+        java.util.concurrent.atomic.AtomicReference<at.jku.isse.ecco.EccoException> refusal = new java.util.concurrent.atomic.AtomicReference<>();
+        this.review("Accept suggestions", () -> {
+            if (!suggestions.isEmpty())
+                service.acceptConstraints(suggestions);
+            if (!parents.isEmpty()) {
+                try {
+                    service.acceptFeatureParents(parents);
+                } catch (at.jku.isse.ecco.EccoException e) {
+                    refusal.set(e);
+                }
             }
-            minimizationResults.run();
-        }
+        }, () -> {
+            // the accepted-constraint set changed, which minimization's feature-model reasoning
+            // depends on -- re-run automatically. No-op if a run is already in progress (see MinimizationResults#run).
+            if (!suggestions.isEmpty() || refusal.get() == null)
+                minimizationResults.run();
+            if (refusal.get() != null)
+                this.refused(refusal.get().getMessage());
+        });
     }
 
     /** Says why a decision was refused (a parent that would close a cycle). Package-visible for testing. */
@@ -343,6 +358,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         alert.showAndWait();
     }
 
+    /** Rejecting withdraws an acceptance of the same suggestion, so minimization re-runs too. */
     void rejectRows(List<ReviewRow> rows) {
         List<Map.Entry<String, String>> parents = new ArrayList<>();
         for (ReviewRow row : rows) {
@@ -350,13 +366,17 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
             if (parent != null)
                 parents.add(Map.entry(parent[0], parent[1]));
         }
-        rejectSelected(rows.stream().filter(row -> parentOf(row.signature()) == null).map(ReviewRow::suggestion).toList());
-        if (!parents.isEmpty()) {
-            service.rejectFeatureParents(parents);
-            minimizationResults.run();
-        }
+        List<ConstraintMiner.Suggestion> suggestions = rows.stream().filter(row -> parentOf(row.signature()) == null).map(ReviewRow::suggestion).toList();
+        if (suggestions.isEmpty() && parents.isEmpty()) return;
+        this.review("Reject suggestions", () -> {
+            if (!suggestions.isEmpty())
+                service.rejectConstraints(suggestions);
+            if (!parents.isEmpty())
+                service.rejectFeatureParents(parents);
+        }, minimizationResults::run);
     }
 
+    /** Un-accepting changes the accepted-constraint set too, so minimization re-runs; un-rejecting does not. */
     void moveBackRows(List<ReviewRow> rows) {
         List<Map.Entry<String, String>> parents = new ArrayList<>();
         List<String> signatures = new ArrayList<>();
@@ -367,60 +387,46 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
             else
                 signatures.add(row.signature());
         }
+        List<ConstraintSuggestionPreferences.AcceptedConstraint> parsed = parse(signatures);
+        if (parsed.isEmpty() && parents.isEmpty()) return;
         if (this.status == Status.ACCEPTED) {
-            undoAccepted(signatures);
-            if (!parents.isEmpty()) {
-                service.unacceptFeatureParents(parents.stream().map(Map.Entry::getKey).toList());
-                minimizationResults.run();
-            }
+            this.review("Move back accepted suggestions", () -> {
+                if (!parsed.isEmpty())
+                    service.unacceptConstraints(parsed);
+                if (!parents.isEmpty())
+                    service.unacceptFeatureParents(parents.stream().map(Map.Entry::getKey).toList());
+            }, minimizationResults::run);
         } else {
-            undoRejected(signatures);
-            if (!parents.isEmpty())
-                service.unrejectFeatureParents(parents);
+            this.review("Move back rejected suggestions", () -> {
+                if (!parsed.isEmpty())
+                    service.unrejectConstraints(parsed);
+                if (!parents.isEmpty())
+                    service.unrejectFeatureParents(parents);
+            }, () -> {
+            });
         }
     }
 
     /**
-     * Accept persists real {@link Constraint}s in the repository, all in ONE transaction -- see
-     * {@code EccoService#acceptConstraints}. Deliberately does NOT also call {@link #refresh()} here
-     * (nor do the other review actions): accepting already fires a real
+     * Stores a review decision in the repository, in the background: on the FX thread it waited for
+     * the service's lock behind a commit, the window frozen (NFR-C3). The actions are disabled
+     * meanwhile, and {@code done} runs after it, on the FX thread; a failure is shown. Each service
+     * call is ONE transaction for the whole selection -- see {@code EccoService#acceptConstraints}.
+     * Deliberately does NOT also call {@link #refresh()}: storing a decision already fires a real
      * {@link at.jku.isse.ecco.service.listener.EccoListener} status-changed event through
      * {@code EccoService}, which this view's own {@link #statusChangedEvent} already reacts to by
      * calling {@link #refresh()} (and which {@code FeaturesView} reacts to on its own, since it's a
      * listener too).
      */
-    private void acceptSelected(List<ConstraintMiner.Suggestion> suggestions) {
-        if (suggestions.isEmpty()) return;
-        service.acceptConstraints(suggestions);
-        // the accepted-constraint set just changed, which minimization's feature-model reasoning
-        // depends on -- re-run automatically. No-op if a run is already in progress (see MinimizationResults#run).
-        minimizationResults.run();
-    }
-
-    /**
-     * Stored in the repository in one transaction, like {@link #acceptSelected}, whose status event
-     * refreshes this view. Withdraws an acceptance of the same suggestion, so minimization re-runs too.
-     */
-    private void rejectSelected(List<ConstraintMiner.Suggestion> suggestions) {
-        if (suggestions.isEmpty()) return;
-        service.rejectConstraints(suggestions);
-        minimizationResults.run();
-    }
-
-    /** Batched, one transaction/event for the whole selection -- see {@link #acceptSelected}. */
-    private void undoAccepted(List<String> signatures) {
-        List<ConstraintSuggestionPreferences.AcceptedConstraint> parsed = parse(signatures);
-        if (parsed.isEmpty()) return;
-        service.unacceptConstraints(parsed);
-        // see acceptSelected -- same reasoning, un-accepting also changes the accepted-constraint set.
-        minimizationResults.run();
-    }
-
-    /** Batched, one transaction/event for the whole selection -- see {@link #acceptSelected}. */
-    private void undoRejected(List<String> signatures) {
-        List<ConstraintSuggestionPreferences.AcceptedConstraint> parsed = parse(signatures);
-        if (parsed.isEmpty()) return;
-        service.unrejectConstraints(parsed);
+    private void review(String name, Runnable write, Runnable done) {
+        this.actions.setDisable(true);
+        RepositoryAccess.write(name, write, () -> {
+            this.actions.setDisable(false);
+            done.run();
+        }, failure -> {
+            this.actions.setDisable(false);
+            new ExceptionAlert(failure).show();
+        });
     }
 
     private static List<ConstraintSuggestionPreferences.AcceptedConstraint> parse(List<String> signatures) {

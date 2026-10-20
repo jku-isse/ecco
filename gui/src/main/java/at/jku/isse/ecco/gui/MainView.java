@@ -110,7 +110,7 @@ public class MainView extends BorderPane implements EccoListener {
 				() -> this.openDialog("Fork", new ForkView(eccoService)), false, "Copy a repository, or a part of it, into a new one");
 		// "Close" alone read like closing the window
 		RibbonAction closeAction = new RibbonAction("Close Repository", Feather.X,
-				() -> this.eccoService.close(), true, "Close the open repository");
+				this::closeRepository, true, "Close the open repository");
 
 		RibbonAction commitAction = new RibbonAction("Commit...", Feather.CHECK_CIRCLE,
 				() -> this.openDialog("Commit", new CommitBaseDirView(eccoService)), true, "Commit a variant folder with its configuration");
@@ -537,8 +537,20 @@ public class MainView extends BorderPane implements EccoListener {
 	/** Same action as the Repository tab's Close button; a no-op when there's no open repository to close. */
 	private void closeRepositoryIfOpen() {
 		if (this.eccoService.isInitialized()) {
-			this.eccoService.close();
+			this.closeRepository();
 		}
+	}
+
+	/**
+	 * Closes the repository in the background: on the FX thread, close() waited for the service's
+	 * lock behind a running commit, pull or import, the window frozen until it ended (NFR-C3). The
+	 * views follow the status event close() fires, as they do after a close from anywhere else.
+	 * Quitting is not affected: EccoGui.stop() still closes the repository before the application
+	 * exits, after a close under way here (close() is synchronized and does nothing the second time).
+	 */
+	private void closeRepository() {
+		RepositoryAccess.write("Close repository", this.eccoService::close, () -> {
+		}, failure -> new ExceptionAlert(failure).show());
 	}
 
 

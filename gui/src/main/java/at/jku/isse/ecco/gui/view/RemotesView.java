@@ -5,6 +5,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.RemoteDetailView;
 import at.jku.isse.ecco.service.listener.EccoListener;
@@ -17,6 +18,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 
 import java.util.Collection;
+import java.util.List;
 
 public class RemotesView extends BorderPane implements EccoListener {
 
@@ -114,24 +116,46 @@ public class RemotesView extends BorderPane implements EccoListener {
 		});
 
 
+		// Add and Remove change the repository in the background, the toolbar disabled meanwhile: on
+		// the FX thread they waited for the service's lock behind a commit, the window frozen (NFR-C3)
 		addButton.setOnAction(event -> {
-			try {
-				Remote remote = this.service.addRemote(nameTextField.getText(), addressTextField.getText());
-				this.remotesData.add(remote);
-			} catch (Exception e) {
+			String name = nameTextField.getText();
+			String address = addressTextField.getText();
+			Remote[] added = new Remote[1];
+			toolBar.setDisable(true);
+			RepositoryAccess.write("Add remote", () -> added[0] = this.service.addRemote(name, address), () -> {
+				toolBar.setDisable(false);
+				this.remotesData.add(added[0]);
+			}, e -> {
+				toolBar.setDisable(false);
 				ExceptionAlert alert = new ExceptionAlert(e);
 				alert.setTitle("Remotes Error");
 				// the reason, not always "name already exists": an invalid address fails here too
 				alert.setHeaderText("Error adding remote: " + TaskFailures.reason(e));
 				alert.showAndWait();
-			}
+			});
 		});
 
 		removeButton.setOnAction(event -> {
-			for (Remote remote : remotesTable.getSelectionModel().getSelectedItems()) {
-				this.service.removeRemote(remote.getName());
-				this.remotesData.remove(remote);
-			}
+			List<Remote> selected = List.copyOf(remotesTable.getSelectionModel().getSelectedItems());
+			if (selected.isEmpty())
+				return;
+			// those removed before a failure are gone from the list too
+			List<Remote> removed = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+			toolBar.setDisable(true);
+			RepositoryAccess.write("Remove remotes", () -> {
+				for (Remote remote : selected) {
+					this.service.removeRemote(remote.getName());
+					removed.add(remote);
+				}
+			}, () -> {
+				toolBar.setDisable(false);
+				this.remotesData.removeAll(removed);
+			}, e -> {
+				toolBar.setDisable(false);
+				this.remotesData.removeAll(removed);
+				new ExceptionAlert(e).show();
+			});
 		});
 
 

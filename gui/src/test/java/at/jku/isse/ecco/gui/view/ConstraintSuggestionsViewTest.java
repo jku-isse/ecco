@@ -132,7 +132,7 @@ public class ConstraintSuggestionsViewTest {
                 selectPending(view, MANDATORY_BASE, B_REQUIRES_A);
                 button(view, "Accept").fire();
             });
-            waitUntil("both accepted", () -> pending(view).isEmpty() && accepted(view).size() == 2);
+            waitUntil("both accepted", () -> !view.getBottom().isDisable() && pending(view).isEmpty() && accepted(view).size() == 2);
 
             assertEquals(Set.of(MANDATORY_BASE, B_REQUIRES_A), ids(service.getRepository().getConstraints()));
             assertEquals(1, minimization.runs.get(), "one minimization for the whole selection");
@@ -168,7 +168,7 @@ public class ConstraintSuggestionsViewTest {
                 selectPending(view, MANDATORY_BASE);
                 button(view, "Reject").fire();
             });
-            waitUntil("rejected", () -> pending(view).isEmpty() && rejected(view).equals(List.of(MANDATORY_BASE)));
+            waitUntil("rejected", () -> !view.getBottom().isDisable() && pending(view).isEmpty() && rejected(view).equals(List.of(MANDATORY_BASE)));
             assertEquals(Set.of(MANDATORY_BASE), ids(service.getRepository().getRejectedConstraints()));
             assertEquals(Set.of(), ids(service.getRepository().getConstraints()));
             assertEquals(1, minimization.runs.get(), "a rejection withdraws an acceptance, so minimization runs again");
@@ -179,7 +179,7 @@ public class ConstraintSuggestionsViewTest {
                 select(view, ConstraintSuggestionsView.Status.REJECTED, MANDATORY_BASE);
                 button(view, "Move back to pending").fire();
             });
-            waitUntil("pending again", () -> pending(view).equals(Set.of(MANDATORY_BASE)) && rejected(view).isEmpty());
+            waitUntil("pending again", () -> !view.getBottom().isDisable() && pending(view).equals(Set.of(MANDATORY_BASE)) && rejected(view).isEmpty());
             assertEquals(Set.of(), ids(service.getRepository().getRejectedConstraints()));
             assertEquals(1, minimization.runs.get(), "un-rejecting changes no accepted constraint");
         }
@@ -192,7 +192,7 @@ public class ConstraintSuggestionsViewTest {
             service.acceptConstraints(List.of(mined(service, MANDATORY_BASE)));
             CountingMinimizationResults minimization = new CountingMinimizationResults(service);
             ConstraintSuggestionsView view = show(service, minimization);
-            waitUntil("accepted", () -> pending(view).isEmpty() && accepted(view).equals(List.of(MANDATORY_BASE)));
+            waitUntil("accepted", () -> !view.getBottom().isDisable() && pending(view).isEmpty() && accepted(view).equals(List.of(MANDATORY_BASE)));
 
             onFx(() -> {
                 // nothing selected: nothing happens
@@ -207,7 +207,7 @@ public class ConstraintSuggestionsViewTest {
                 select(view, ConstraintSuggestionsView.Status.ACCEPTED, MANDATORY_BASE);
                 button(view, "Move back to pending").fire();
             });
-            waitUntil("pending again", () -> pending(view).equals(Set.of(MANDATORY_BASE)) && accepted(view).isEmpty());
+            waitUntil("pending again", () -> !view.getBottom().isDisable() && pending(view).equals(Set.of(MANDATORY_BASE)) && accepted(view).isEmpty());
             assertEquals(Set.of(), ids(service.getRepository().getConstraints()));
             assertEquals(1, minimization.runs.get());
         }
@@ -293,7 +293,7 @@ public class ConstraintSuggestionsViewTest {
                 selectPending(view, subfeature);
                 button(view, "Accept").fire();
             });
-            waitUntil("accepted", () -> accepted(view).contains(subfeature));
+            waitUntil("accepted", () -> !view.getBottom().isDisable() && accepted(view).contains(subfeature));
             assertEquals(Map.of("B", "A"), service.getRepository().getFeatureParents());
             assertEquals(Set.of(B_REQUIRES_A), ids(service.getRepository().getConstraints()));
             assertEquals(1, minimization.runs.get());
@@ -303,7 +303,7 @@ public class ConstraintSuggestionsViewTest {
                 select(view, ConstraintSuggestionsView.Status.ACCEPTED, subfeature);
                 button(view, "Move back to pending").fire();
             });
-            waitUntil("pending again", () -> pending(view).contains(subfeature) && !accepted(view).contains(subfeature));
+            waitUntil("pending again", () -> !view.getBottom().isDisable() && pending(view).contains(subfeature) && !accepted(view).contains(subfeature));
             assertEquals(Map.of(), service.getRepository().getFeatureParents());
             assertEquals(Set.of(), ids(service.getRepository().getConstraints()), "its REQUIRES went with it");
 
@@ -311,13 +311,44 @@ public class ConstraintSuggestionsViewTest {
                 selectPending(view, subfeature);
                 button(view, "Reject").fire();
             });
-            waitUntil("rejected", () -> rejected(view).equals(List.of(subfeature)) && !pending(view).contains(subfeature));
+            waitUntil("rejected", () -> !view.getBottom().isDisable() && rejected(view).equals(List.of(subfeature)) && !pending(view).contains(subfeature));
             assertEquals(Map.of("B", Set.of("A")), service.getRepository().getRejectedFeatureParents());
         } finally {
             if (location == null)
                 System.clearProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY);
             else
                 System.setProperty(at.jku.isse.ecco.service.llm.FeatureSuggestionLog.LOCATION_PROPERTY, location);
+        }
+    }
+
+    /**
+     * The review actions store their decision in the background (NFR-C3): while a commit holds the
+     * service's lock, the FX thread goes on - it waited for the lock, the window frozen - and the
+     * decision follows once the lock is free, with the minimization it asks for.
+     */
+    @Test
+    @Timeout(60)
+    public void acceptDoesNotBlockTheFxThreadWhileTheServiceIsLocked(@TempDir Path tmp) throws Exception {
+        try (EccoService service = minedRepository(tmp)) {
+            CountingMinimizationResults minimization = new CountingMinimizationResults(service);
+            ConstraintSuggestionsView view = show(service, minimization);
+            waitUntil("the suggestion", () -> pending(view).equals(Set.of(MANDATORY_BASE)) && !view.getTop().isDisable());
+
+            synchronized (service) {
+                long start = System.nanoTime();
+                onFx(() -> {
+                    selectPending(view, MANDATORY_BASE);
+                    button(view, "Accept").fire();
+                });
+                onFx(() -> {
+                });
+                assertTrue(System.nanoTime() - start < 2_000_000_000L, "the FX thread did not wait for the lock");
+                assertTrue(onFx(() -> view.getBottom().isDisable()), "the actions are disabled while the decision waits");
+                assertEquals(Set.of(), ids(service.getRepository().getConstraints()), "not stored while the lock is held");
+            }
+            waitUntil("accepted", () -> !view.getBottom().isDisable() && pending(view).isEmpty() && accepted(view).equals(List.of(MANDATORY_BASE)));
+            assertEquals(Set.of(MANDATORY_BASE), ids(service.getRepository().getConstraints()));
+            assertEquals(1, minimization.runs.get());
         }
     }
 
