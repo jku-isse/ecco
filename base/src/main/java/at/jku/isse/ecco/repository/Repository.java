@@ -934,6 +934,8 @@ public interface Repository extends Persistable {
 			// for every association in this repository: trim condition, use it to check if matching association already exists, if not create it, add observations based on trimmed condition, copy artifact tree and trim order graphs. (basically current merge implementation)
 			Map<Set<ModuleRevision>, Association.Op> andConditionAssociationMap = new HashMap<>();
 			Map<Set<ModuleRevision>, Association.Op> orConditionAssociationMap = new HashMap<>();
+			// the associations of this repository the subset takes - see the trimming below
+			Set<Association> keptAssociations = Collections.newSetFromMap(new IdentityHashMap<>());
 			for (Association.Op association : this.getAssociations()) {
 				Condition condition = association.computeCondition();
 
@@ -973,6 +975,7 @@ public interface Repository extends Persistable {
 
 				// check if association has at least one module, if not exclude it
 				if (!newModuleRevisions.isEmpty()) {
+					keptAssociations.add(association);
 
 					// check if a new association with equal condition (ignoring negative features without revisions) already exists
 					Association.Op newAssociation = null;
@@ -1032,20 +1035,31 @@ public interface Repository extends Persistable {
 
 			Collection<? extends Association.Op> newAssociations = newRepository.getAssociations();
 
-			// trim sequence graphs to only contain artifacts from the selected associations
+			// trim sequence graphs to only contain artifacts from the selected associations. Every
+			// association's tree was copied on its own, so an artifact several associations share (a
+			// file) has a copy in each, with its own copy of the sequence graph - each must be trimmed,
+			// not only the one under the unique node: the copies are merged into one again, and an
+			// untrimmed one brought back nodes of left-out artifacts, which were then stored without
+			// those artifacts - the repository could not be opened again (ExcludedRevisionsTest). A
+			// graph node of a copy points to the artifact's copy if the same association holds it, else
+			// still to the artifact of this repository; either is kept if its association is.
 			for (Association.Op newAssociation : newAssociations) {
 				newAssociation.getRootNode().traverse((Node.Op node) -> {
 					if (node.getArtifact() != null && node.getArtifact().isOrdered() && node.getArtifact().isSequenced() && node.getArtifact().getPartialOrderGraph() != null) {
-						if (node.isUnique() && node.getArtifact() != null && node.getArtifact().getPartialOrderGraph() != null) {
-							// get all symbols from sequence graph
-							Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getPartialOrderGraph().collectNodes().stream().map(PartialOrderGraph.Node.Op::getArtifact).collect(Collectors.toList());
+						// get all symbols from sequence graph
+						Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getPartialOrderGraph().collectNodes().stream().map(PartialOrderGraph.Node.Op::getArtifact).collect(Collectors.toList());
 
-							// remove symbols that are not contained in the given associations
-							symbols.removeIf(symbol -> symbol != null && !newAssociations.contains(symbol.getContainingNode().getContainingAssociation()));
+						// remove symbols that are not contained in the given associations
+						symbols.removeIf(symbol -> {
+							if (symbol == null)
+								return false;
+							Node containingNode = symbol.getContainingNode();
+							Association containingAssociation = containingNode == null ? null : containingNode.getContainingAssociation();
+							return !(newAssociations.contains(containingAssociation) || keptAssociations.contains(containingAssociation));
+						});
 
-							// trim sequence graph
-							node.getArtifact().getPartialOrderGraph().trim(symbols);
-						}
+						// trim sequence graph
+						node.getArtifact().getPartialOrderGraph().trim(symbols);
 					}
 				});
 			}
