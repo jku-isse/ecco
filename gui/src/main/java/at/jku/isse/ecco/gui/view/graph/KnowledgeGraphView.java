@@ -10,6 +10,7 @@ import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.GraphCameraControls;
+import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.gui.view.KnowledgeGraphLayout;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
@@ -578,15 +579,13 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	private void openDetachedPreview(String associationId) {
 		if (!this.ensureViewersInjected()) return;
 
-		Association association = this.findAssociationById(associationId);
-		if (association == null || association.getRootNode() == null) return;
+		RepositoryAccess.read(this.service, "Association preview", svc -> this.readAssociationPreview(associationId), preview -> {
+			if (preview != null) this.openDetachedPreview(preview);
+		}, failure -> new ExceptionAlert(failure).show());
+	}
 
-		at.jku.isse.ecco.tree.Node contentNode = findRepresentativeContentNode(association.getRootNode());
-		if (contentNode == null) return;
-
-		String pluginId = ArtifactDetailView.getPluginId(contentNode);
-		if (pluginId == null) return;
-
+	private void openDetachedPreview(AssociationPreview preview) {
+		String pluginId = preview.pluginId();
 		AssociationInfoArtifactViewer template = null;
 		for (AssociationInfoArtifactViewer candidate : this.associationInfoArtifactViewers) {
 			if (candidate instanceof Pane && pluginId.equals(candidate.getPluginId())) {
@@ -602,12 +601,10 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		detached.setHighlightSelection(false);
 		// unlike the passive hover preview, this is a real window with room to spare - worth showing
 		// the per-line details panel here (left at its interface-default "on" state).
-		detached.showTree(contentNode);
+		detached.showTree(preview.contentNode());
 
-		at.jku.isse.ecco.tree.Node fileNode = enclosingFileNode(contentNode);
-		PreviewScan scan = scanFileNode(fileNode);
 		Pane pane = (Pane) detached;
-		pane.setPrefSize(previewWidthFor(scan), previewHeightFor(scan));
+		pane.setPrefSize(previewWidthFor(preview.scan()), previewHeightFor(preview.scan()));
 
 		Stage stage = new Stage();
 		stage.setTitle("Association Preview (" + pluginId + ")");
@@ -633,15 +630,27 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		// KnowledgeGraphLayout.compute() happens to use, keys off the same semantic tag the
 		// stylesheet colors nodes by, not an incidental string format.
 		Object uiClass = element.hasAttribute("ui.class") ? element.getAttribute("ui.class") : null;
-		Pane preview;
 		if ("association".equals(uiClass)) {
-			preview = this.buildAssociationPreview(element.getId().substring(2));
+			// the association's tree is read in the background, holding the service's lock - not
+			// here, where it waited for a running commit; shown if the mouse still rests on it
+			if (!this.ensureViewersInjected()) {
+				this.showHoverOverlay(element, null);
+				return;
+			}
+			String associationId = element.getId().substring(2);
+			RepositoryAccess.read(this.service, "Association preview", svc -> this.readAssociationPreview(associationId), preview -> {
+				if (this.view != null && Objects.equals(element, this.hoveredElement))
+					this.showHoverOverlay(element, preview != null ? this.buildAssociationPreview(preview) : null);
+			}, failure -> new ExceptionAlert(failure).show());
 		} else if ("commit".equals(uiClass)) {
-			preview = this.buildCommitPreview(element.getId().substring(2));
+			this.showHoverOverlay(element, this.buildCommitPreview(element.getId().substring(2)));
 		} else {
-			preview = null;
+			this.showHoverOverlay(element, null);
 		}
+	}
 
+	/** Shows {@code preview} for the node, or its label if there is none. */
+	private void showHoverOverlay(GraphicElement element, Pane preview) {
 		if (preview != null) {
 			// dark tooltip chrome (below) reads fine behind a couple of words of plain white text,
 			// but around a code preview it showed as a thick black margin wherever the preview's own
@@ -724,15 +733,19 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	}
 
 	/**
-	 * Finds the real {@link Association} by id, picks one representative content artifact from its
-	 * tree (an association can span multiple files; this deliberately previews just one - see the
-	 * design discussion this feature started from), and returns the matching registered {@link
-	 * AssociationInfoArtifactViewer} (Java/C/Lilypond/Text) showing/highlighting it - or {@code null}
-	 * if the association has no content, or no viewer is registered for its plugin.
+	 * What an association's preview shows: one representative content artifact from its tree (an
+	 * association can span multiple files; this deliberately previews just one - see the design
+	 * discussion this feature started from), its plugin, and the size of its file.
 	 */
-	private Pane buildAssociationPreview(String associationId) {
-		if (!this.ensureViewersInjected()) return null;
+	private record AssociationPreview(at.jku.isse.ecco.tree.Node contentNode, String pluginId, PreviewScan scan) {
+	}
 
+	/**
+	 * Finds the real {@link Association} by id and what its preview shows - or {@code null} if it has
+	 * no content. Walks its tree, so it runs holding the service's lock, off the FX thread
+	 * ({@link RepositoryAccess#read}): a commit changes association trees.
+	 */
+	private AssociationPreview readAssociationPreview(String associationId) {
 		Association association = this.findAssociationById(associationId);
 		if (association == null || association.getRootNode() == null) return null;
 
@@ -742,6 +755,17 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		String pluginId = ArtifactDetailView.getPluginId(contentNode);
 		if (pluginId == null) return null;
 
+		return new AssociationPreview(contentNode, pluginId, scanFileNode(enclosingFileNode(contentNode)));
+	}
+
+	/**
+	 * Returns the registered {@link AssociationInfoArtifactViewer} (Java/C/Lilypond/Text) for the
+	 * preview's plugin showing/highlighting its content - or {@code null} if no viewer is registered
+	 * for its plugin.
+	 */
+	private Pane buildAssociationPreview(AssociationPreview preview) {
+		String pluginId = preview.pluginId();
+		at.jku.isse.ecco.tree.Node contentNode = preview.contentNode();
 		for (AssociationInfoArtifactViewer viewer : this.associationInfoArtifactViewers) {
 			if (viewer instanceof Pane && pluginId.equals(viewer.getPluginId())) {
 				// association-selection colors are Artifacts-tab state, unrelated to hovering here -
@@ -754,9 +778,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 				viewer.setHighlightSelection(false);
 				viewer.showTree(contentNode);
 				Pane pane = (Pane) viewer;
-				at.jku.isse.ecco.tree.Node fileNode = enclosingFileNode(contentNode);
-				PreviewScan scan = scanFileNode(fileNode);
-				pane.setPrefSize(previewWidthFor(scan), previewHeightFor(scan));
+				pane.setPrefSize(previewWidthFor(preview.scan()), previewHeightFor(preview.scan()));
 				return pane;
 			}
 		}
@@ -774,7 +796,8 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 
 	/** Result of {@link #scanFileNode}: what's needed to size the preview, gathered in one bounded walk. */
 	private static final class PreviewScan {
-		double maxTextWidth;
+		/** The scanned leaves' text - measured on the FX thread, by {@link #previewWidthFor}. */
+		final java.util.List<String> texts = new java.util.ArrayList<>();
 		int leafCount;
 	}
 
@@ -797,7 +820,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		ArtifactData data = node.getArtifact() != null ? node.getArtifact().getData() : null;
 		if (data != null && !(data instanceof DirectoryArtifactData) && !(data instanceof PluginArtifactData)) {
 			scan.leafCount++;
-			scan.maxTextWidth = Math.max(scan.maxTextWidth, measureTextWidth(String.valueOf(node.getArtifact())));
+			scan.texts.add(String.valueOf(node.getArtifact()));
 		}
 		for (at.jku.isse.ecco.tree.Node child : node.getChildren()) {
 			if (scan.leafCount >= HOVER_PREVIEW_SCAN_LIMIT) break;
@@ -822,7 +845,10 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	 * one-word line doesn't get a sliver-width preview, and a very long line doesn't get a huge one.
 	 */
 	private static double previewWidthFor(PreviewScan scan) {
-		return Math.max(HOVER_PREVIEW_MIN_WIDTH, Math.min(HOVER_PREVIEW_MAX_WIDTH, scan.maxTextWidth + HOVER_PREVIEW_WIDTH_PADDING));
+		double maxTextWidth = 0;
+		for (String text : scan.texts)
+			maxTextWidth = Math.max(maxTextWidth, measureTextWidth(text));
+		return Math.max(HOVER_PREVIEW_MIN_WIDTH, Math.min(HOVER_PREVIEW_MAX_WIDTH, maxTextWidth + HOVER_PREVIEW_WIDTH_PADDING));
 	}
 
 	private static double measureTextWidth(String text) {
@@ -916,21 +942,25 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	 * Walks the repository via {@link KnowledgeGraphLayout#compute}. Touches only the ecco data
 	 * model (no GraphStream/Swing/JavaFX), so it's safe to call synchronously from any thread -
 	 * notably the commit thread itself, from {@link #statusChangedEvent} - see
-	 * {@code ArtifactGraphView#buildSnapshot()} for the full rationale.
+	 * {@code ArtifactGraphView#buildSnapshot()} for the full rationale. Holds the service's lock
+	 * (NFR-C1b) - the commit thread already does; any other thread waits there for a running commit,
+	 * so it must not be the FX thread.
 	 */
 	private KnowledgeGraphLayout.Snapshot buildSnapshot() {
-		at.jku.isse.ecco.repository.Repository repository = this.service.getRepository();
-		// for hover and click: looked up in the repository on the FX thread, they waited there for a running commit
-		Map<String, Association> associations = new HashMap<>();
-		for (Association association : repository.getAssociations())
-			associations.put(association.getId(), association);
-		Map<String, Commit> commits = new HashMap<>();
-		for (Commit commit : repository.getCommits())
-			commits.put(commit.getId(), commit);
-		this.associationsById = associations;
-		this.commitsById = commits;
-		return KnowledgeGraphLayout.compute(repository, Set.copyOf(this.enabledKinds),
-				this.commitLimit, this.includeConstraints, this.includeComputedVariantAssociationEdges, this.commitLinksAddedOnly);
+		synchronized (this.service) {
+			at.jku.isse.ecco.repository.Repository repository = this.service.getRepository();
+			// for hover and click: looked up in the repository on the FX thread, they waited there for a running commit
+			Map<String, Association> associations = new HashMap<>();
+			for (Association association : repository.getAssociations())
+				associations.put(association.getId(), association);
+			Map<String, Commit> commits = new HashMap<>();
+			for (Commit commit : repository.getCommits())
+				commits.put(commit.getId(), commit);
+			this.associationsById = associations;
+			this.commitsById = commits;
+			return KnowledgeGraphLayout.compute(repository, Set.copyOf(this.enabledKinds),
+					this.commitLimit, this.includeConstraints, this.includeComputedVariantAssociationEdges, this.commitLinksAddedOnly);
+		}
 	}
 
 	/** The associations and commits of the last snapshot, by id - see {@link #buildSnapshot}. */
@@ -1256,13 +1286,25 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	 * See {@code ArtifactGraphView#statusChangedEvent} - the same rationale applies here: this is
 	 * what actually fires after every commit, the snapshot is built synchronously on the calling
 	 * thread for point-in-time correctness across a multi-commit burst, and it's skipped entirely
-	 * while the tab is hidden.
+	 * while the tab is hidden. Fired by a call that does not hold the service's lock -
+	 * {@code setBaseDir()} on the FX thread, the constructor - the snapshot is built in the
+	 * background instead ({@link #refreshGraph()}): here it would wait for a running commit (NFR-C3).
 	 */
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
 			if (!this.tabVisible) {
 				Platform.runLater(() -> this.setDisable(false));
+				return;
+			}
+			if (!Thread.holdsLock(service)) {
+				Platform.runLater(() -> {
+					if (this.viewer == null || this.view == null) {
+						initView();
+					}
+					this.setDisable(false);
+					this.refreshGraph();
+				});
 				return;
 			}
 			this.snapshotGeneration.incrementAndGet();

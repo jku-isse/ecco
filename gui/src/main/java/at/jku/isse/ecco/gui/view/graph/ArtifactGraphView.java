@@ -391,15 +391,19 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 	 * Walks the repository's current associations into a plain-data {@link GraphSnapshot}. Touches
 	 * only the ecco data model (no GraphStream/Swing/JavaFX), so it's safe to call synchronously
 	 * from any thread - notably the commit thread itself, from {@link #statusChangedEvent}, so each
-	 * commit's exact state gets captured before the next commit can run.
+	 * commit's exact state gets captured before the next commit can run. Holds the service's lock
+	 * (NFR-C1b) - the commit thread already does; any other thread waits there for a running commit,
+	 * so it must not be the FX thread.
 	 */
 	private GraphSnapshot buildSnapshot() {
 		GraphSnapshot snapshot = new GraphSnapshot();
-		LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
-		for (Association association : this.service.getRepository().getAssociations()) {
-			compRootNode.addOrigNode(association.getRootNode());
+		synchronized (this.service) {
+			LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
+			for (Association association : this.service.getRepository().getAssociations()) {
+				compRootNode.addOrigNode(association.getRootNode());
+			}
+			this.traverseSnapshot(compRootNode, 0, snapshot);
 		}
-		this.traverseSnapshot(compRootNode, 0, snapshot);
 		return snapshot;
 	}
 
@@ -699,12 +703,26 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 	 * growing one commit at a time. Capturing the snapshot here - before returning control to the
 	 * caller, i.e. before the loop can advance to the next commit - is what makes each queued render
 	 * distinct.
+	 * <p>
+	 * Fired by a call that does not hold the service's lock - {@code setBaseDir()} on the FX thread,
+	 * the constructor - the snapshot is built in the background instead ({@link #refreshGraph()}):
+	 * here it would wait for a running commit, freezing the window (NFR-C3).
 	 */
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
 			if (!this.tabVisible) {
 				Platform.runLater(() -> this.setDisable(false));
+				return;
+			}
+			if (!Thread.holdsLock(service)) {
+				Platform.runLater(() -> {
+					if (this.viewer == null || this.view == null) {
+						initView();
+					}
+					this.setDisable(false);
+					this.refreshGraph();
+				});
 				return;
 			}
 			this.snapshotGeneration.incrementAndGet();

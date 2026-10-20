@@ -8,8 +8,11 @@ import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
 import at.jku.isse.ecco.mining.MinimizationPreferences;
 import at.jku.isse.ecco.mining.ParallelMinimization;
+import at.jku.isse.ecco.module.Condition;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.tree.RootNode;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
@@ -91,10 +94,21 @@ public class MinimizationResults implements EccoListener {
                 // every association concurrently.
                 // fingerprints first: results are only valid for the repository as it was when the run started
                 Map<String, String> bases = service.minimizationBases();
-                List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
+                // then read holding the service's lock - a commit meanwhile changes the counters the
+                // conditions are computed from, and the constraints (NFR-C1b): the configurations, the
+                // accepted constraints and every association's condition. Mined and minimized without
+                // it, from these: that can take minutes, and would hold up every commit meanwhile.
+                List<Set<String>> configs;
+                Set<String> accepted;
+                List<Association> associations = new ArrayList<>();
+                synchronized (service) {
+                    configs = ConfigurationBridge.readConfigurations(service);
+                    accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
+                    for (Association association : service.getRepository().getAssociations())
+                        associations.add(new ConditionSnapshot(association.getId(), association.computeCondition()));
+                }
                 List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(
                         MinimizationPreferences.getMinWitness(), MinimizationPreferences.getConfidence(), null).mine(configs);
-                Set<String> accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
 
                 List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();
                 for (ConstraintMiner.Suggestion suggestion : mined) {
@@ -103,7 +117,6 @@ public class MinimizationResults implements EccoListener {
                     }
                 }
 
-                List<Association> associations = new ArrayList<>(service.getRepository().getAssociations());
                 AtomicInteger completedCount = new AtomicInteger(0);
                 Map<String, String> computed = ParallelMinimization.minimizeAll(associations, acceptedSuggestions, (association, minimizedText) -> {
                     Platform.runLater(() -> minimizedByAssociationId.put(association.getId(), minimizedText));
@@ -163,6 +176,20 @@ public class MinimizationResults implements EccoListener {
 
     @Override
     public void statusChangedEvent(EccoService service) {
+        if (service.isInitialized() && !Thread.holdsLock(service)) {
+            // not from a service call holding the lock - setBaseDir() fires this on the calling
+            // thread, the FX thread: read in the background instead, which waits for a running
+            // commit there, not here (NFR-C3)
+            Thread thread = new Thread(() -> {
+                synchronized (service) {
+                    if (service.isInitialized()) // closed meanwhile: that fired an event of its own
+                        this.statusChangedEvent(service);
+                }
+            }, "Minimization results refresh");
+            thread.setDaemon(true);
+            thread.start();
+            return;
+        }
         if (service.isInitialized()) {
             service.setMinimizedConditionsInCheckout(MinimizationPreferences.isUsedInCheckout());
             if (this.seededFromPersisted) {
@@ -194,6 +221,43 @@ public class MinimizationResults implements EccoListener {
             Thread thread = this.runningThread;
             if (thread != null) thread.interrupt();
             Platform.runLater(minimizedByAssociationId::clear);
+        }
+    }
+
+    /**
+     * An association's id and its condition, computed holding the service's lock - all a
+     * minimization reads of it, so it runs without the lock.
+     */
+    private record ConditionSnapshot(String id, Condition condition) implements Association {
+
+        @Override
+        public String getId() {
+            return this.id;
+        }
+
+        @Override
+        public void setId(String id) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public RootNode getRootNode() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Repository getContainingRepository() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Condition computeCondition() {
+            return this.condition;
+        }
+
+        @Override
+        public String toString() {
+            return this.id;
         }
     }
 
