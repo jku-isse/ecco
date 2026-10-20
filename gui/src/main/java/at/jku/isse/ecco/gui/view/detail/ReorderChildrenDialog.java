@@ -111,37 +111,10 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		setHeaderText("Choose the order for the children of: " + node.getArtifact());
 		setResizable(true);
 
-		List<? extends Node.Op> children = node.getChildren();
-		// setChildren() is also the exact call this dialog's own result gets applied through (see the
-		// class javadoc) - reused here, temporarily, so the code preview can render what the file
-		// would actually look like with the current proposed order, then immediately restored so
-		// nothing about `node` is left mutated for as long as the dialog itself claims (only OK's
-		// result should ever cause a lasting change).
-		List<Node.Op> originalChildren = new ArrayList<>(children);
 		// the code preview (if any) shows the selected row's source (below); its viewer also knows the
 		// source of artifacts that don't hold their text (Python, TypeScript) - shown and sent to the
 		// LLM instead of their labels (a Python statement's label is its serialized bytes)
 		Pane codePreview = findCodePreview(service, node);
-		List<String> sourceTexts = codePreview instanceof ArtifactViewer viewer ? viewer.sourceTexts(children) : List.of();
-		// defensive: the 0-children fallback in ArtifactDiagnostics returns a 1-entry placeholder
-		// list, which would otherwise desync from `children`'s real size (should be unreachable here
-		// now that the real Node is threaded through, but this dialog should never index out of
-		// bounds regardless).
-		ObservableList<ChildEntry> rowData = FXCollections.observableArrayList();
-		// a text file's final newline and format are no lines to move: they stay last (TextFileFormat)
-		List<Node.Op> markers = new ArrayList<>();
-		for (int i = 0; i < children.size(); i++) {
-			if (TextFileFormat.isMarker(children.get(i))) {
-				markers.add(children.get(i));
-				continue;
-			}
-			String source = i < sourceTexts.size() && sourceTexts.get(i) != null && !sourceTexts.get(i).isBlank() ? oneLine(sourceTexts.get(i)) : null;
-			// the text alone: its place is in the # column; the line the adapter recorded is that of the
-			// variant it was committed with - two rows to order said "line 31" both
-			String label = source != null ? source : ArtifactDiagnostics.textOf(children.get(i));
-			String text = source != null ? source : ArtifactDiagnostics.textOf(children.get(i));
-			rowData.add(new ChildEntry(children.get(i), label, text));
-		}
 
 		// used to disable a move that would cross a pair whose order the graph has already fixed -
 		// see the class javadoc. The graph is the repository's, which a commit or a recorded order
@@ -153,9 +126,52 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		reading.setPadding(new Insets(10));
 		getDialogPane().setContent(reading);
 		setResultConverter(buttonType -> null);
-		RepositoryAccess.read(service, "Order graph", svc -> Order.of(node),
-				order -> this.build(node, suggester, originalChildren, codePreview, rowData, markers, order),
-				failure -> reading.setText("The order graph could not be read: " + failure));
+		// the children, their texts and a copy of the file's tree (for the code preview, which shows
+		// the order proposed in it - it was set on the repository's node itself, on the FX thread,
+		// and set back) are read with it
+		RepositoryAccess.read(service, "Order graph", svc -> Read.of(node), read -> {
+			ObservableList<ChildEntry> rowData = FXCollections.observableArrayList();
+			// a text file's final newline and format are no lines to move: they stay last (TextFileFormat)
+			List<Node.Op> markers = new ArrayList<>();
+			List<Node> copies = read.children().stream().map(read.copy()::copyOf).toList();
+			List<String> sourceTexts = codePreview instanceof ArtifactViewer viewer ? viewer.sourceTexts(copies) : List.of();
+			for (int i = 0; i < read.children().size(); i++) {
+				Node.Op child = read.children().get(i);
+				if (read.markers().get(i)) {
+					markers.add(child);
+					continue;
+				}
+				String source = i < sourceTexts.size() && sourceTexts.get(i) != null && !sourceTexts.get(i).isBlank() ? oneLine(sourceTexts.get(i)) : null;
+				// the text alone: its place is in the # column; the line the adapter recorded is that of the
+				// variant it was committed with - two rows to order said "line 31" both
+				String text = source != null ? source : read.texts().get(i);
+				rowData.add(new ChildEntry(child, text, text));
+			}
+			this.build(read, suggester, codePreview, rowData, markers);
+		}, failure -> reading.setText("The order graph could not be read: " + failure));
+	}
+
+	/**
+	 * What the dialog shows of [node], read holding the service's lock: the order graph's say, the
+	 * children with their texts and whether they are markers, the path, and a copy of the file's tree
+	 * for the code preview to show proposed orders in.
+	 */
+	private record Read(Node.Op node, Order order, List<Node.Op> children, List<String> texts, List<Boolean> markers,
+						String path, NodeSnapshot copy) {
+
+		static Read of(Node.Op node) {
+			List<Node.Op> children = new ArrayList<>(node.getChildren());
+			List<String> texts = new ArrayList<>();
+			List<Boolean> markers = new ArrayList<>();
+			for (Node.Op child : children) {
+				texts.add(ArtifactDiagnostics.textOf(child));
+				markers.add(TextFileFormat.isMarker(child));
+			}
+			Node root = node;
+			while (root.getParent() != null)
+				root = root.getParent();
+			return new Read(node, Order.of(node), children, texts, markers, ArtifactDiagnostics.describePath(node), NodeSnapshot.of(root));
+		}
 	}
 
 	/** Whether the dialog is built, with what the order graph says - for tests. */
@@ -166,8 +182,9 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	private boolean built;
 
 	/** Builds the dialog's content, [order] copied from the order graph. */
-	private void build(Node.Op node, OrderSuggester suggester, List<Node.Op> originalChildren, Pane codePreview,
-					   ObservableList<ChildEntry> rowData, List<Node.Op> markers, Order order) {
+	private void build(Read read, OrderSuggester suggester, Pane codePreview,
+					   ObservableList<ChildEntry> rowData, List<Node.Op> markers) {
+		Order order = read.order();
 		// shared by every "this position is fixed" affordance below (row dimming, the # column's
 		// lock icon, and the Move buttons) so there's exactly one tooltip instance/message.
 		Tooltip orderFixedTooltip = new Tooltip("Order fixed by an earlier commit");
@@ -301,12 +318,8 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		Runnable updateCodePreview = () -> {
 			ChildEntry selected = table.getSelectionModel().getSelectedItem();
 			if (selected == null || !(codePreview instanceof ArtifactViewer)) return;
-			node.setChildren(withMarkers(rowData, markers));
-			try {
-				((ArtifactViewer) codePreview).showTree(selected.getNode());
-			} finally {
-				node.setChildren(originalChildren);
-			}
+			read.copy().reorder(read.copy().copyOf(read.node()), withMarkers(rowData, markers).stream().map(read.copy()::copyOf).toList());
+			((ArtifactViewer) codePreview).showTree(read.copy().copyOf(selected.getNode()));
 		};
 
 		// icon-only buttons need a tooltip to stay self-explanatory - the base "Move Up"/"Move Down"
@@ -386,7 +399,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			// a disabled control shows no tooltip: the reason goes next to it
 			suggestStatus.setText("To have an LLM suggest an order, choose a model in Preferences (LLM).");
 		}
-		suggestButton.setOnAction(e -> this.suggestOrder(suggester, node, rowData, order, table, suggestButton, suggestStatus,
+		suggestButton.setOnAction(e -> this.suggestOrder(suggester, read.path(), rowData, order, table, suggestButton, suggestStatus,
 				() -> {
 					updateButtonStates.run();
 					updateCodePreview.run();
@@ -479,7 +492,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	 * user to review, edit, and record with OK. The order graph's fixed precedences always win
 	 * (LlmOrderSuggestionClient#respecting): a suggestion never breaks an order a commit fixed.
 	 */
-	private void suggestOrder(OrderSuggester suggester, Node.Op node, ObservableList<ChildEntry> rowData, Order order,
+	private void suggestOrder(OrderSuggester suggester, String path, ObservableList<ChildEntry> rowData, Order order,
 							  TableView<ChildEntry> table, Button suggestButton, Label status, Runnable afterReorder) {
 		int first = -1, last = -1;
 		for (int i = 0; i < rowData.size(); i++) {
@@ -501,7 +514,6 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		for (int i = 0; i < window.size(); i++)
 			rows.add(new LlmOrderSuggestionClient.Row(window.get(i).getText(), !isRowFixed(from + i, rowData, order)));
 		boolean[][] mustPrecede = mustPrecede(window, order);
-		String path = ArtifactDiagnostics.describePath(node);
 
 		int windowFrom = from;
 		javafx.concurrent.Task<LlmOrderSuggestionClient.Suggestion> task = new javafx.concurrent.Task<>() {

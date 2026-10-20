@@ -34,6 +34,8 @@ public class AssociationInfoImpl implements AssociationInfo {
      * for tinycc's 5,262 associations. Null: computed when asked.
      */
     private String fullCondition;
+    /** What a code viewer shows over a line of the association, computed by the background refresh - null: not. */
+    private String hoverText;
 
     public AssociationInfoImpl(Association association) {
         this(association, null);
@@ -72,6 +74,10 @@ public class AssociationInfoImpl implements AssociationInfo {
         return this.fullCondition;
     }
 
+    public void setHoverText(String hoverText) {
+        this.hoverText = hoverText;
+    }
+
     @Override
     public void addPropertyChangeListener(PropertyChangeListener listener) {
         listeners.add(listener);
@@ -91,6 +97,8 @@ public class AssociationInfoImpl implements AssociationInfo {
                 return selectedProperty().getValue();
             case "numArtifacts":
                 return numArtifactsProperty().getValue();
+            case "hoverText":
+                return this.hoverText;
             default:
                 return null;
         }

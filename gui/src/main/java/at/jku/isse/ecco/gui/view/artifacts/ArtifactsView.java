@@ -542,6 +542,8 @@ public class ArtifactsView extends BorderPane implements EccoListener, at.jku.is
         // per association id, computed here in the background: the artifact count and the full condition as shown
         final Map<String, Integer> numArtifacts = new HashMap<>();
         final Map<String, String> conditions = new HashMap<>();
+        // what the code viewers show when the mouse is over a line of the association (see AssociationColors)
+        final Map<String, String> hoverTexts = new HashMap<>();
         // persisted minimized conditions still valid for the repository as it is now
         final Map<String, String> validMinimized;
 
@@ -581,15 +583,19 @@ public class ArtifactsView extends BorderPane implements EccoListener, at.jku.is
         int max = 1;
         Map<String, Integer> counts = new HashMap<>();
         Map<String, String> conditions = new HashMap<>();
+        Map<String, String> hoverTexts = new HashMap<>();
         for (Association a : associations) {
             int count = a.getRootNode().countArtifacts();
             counts.put(a.getId(), count);
-            conditions.put(a.getId(), a.computeCondition().toDisplayString());
+            at.jku.isse.ecco.module.Condition condition = a.computeCondition();
+            conditions.put(a.getId(), condition.toDisplayString());
+            hoverTexts.put(a.getId(), at.jku.isse.ecco.adapter.view.AssociationColors.hoverText(a.getId(), condition));
             max = Math.max(max, count);
         }
         RefreshResult result = new RefreshResult(associations, max, service.validMinimizedConditions());
         result.numArtifacts.putAll(counts);
         result.conditions.putAll(conditions);
+        result.hoverTexts.putAll(hoverTexts);
         return result;
     }
 
@@ -609,6 +615,7 @@ public class ArtifactsView extends BorderPane implements EccoListener, at.jku.is
             }
             AssociationInfoImpl associationInfo = new AssociationInfoImpl(a, minimizedCondition,
                     result.numArtifacts.getOrDefault(a.getId(), 0), result.conditions.get(a.getId()));
+            associationInfo.setHoverText(result.hoverTexts.get(a.getId()));
             // color is only actually assigned once the association is selected (so the
             // "Highlighted" column and the code viewers stay blank for everything else),
             // but its slot is fixed now so the color stays the same association's color

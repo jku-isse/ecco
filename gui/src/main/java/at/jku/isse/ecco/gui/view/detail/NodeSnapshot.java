@@ -59,6 +59,16 @@ public final class NodeSnapshot {
 		return original == null ? null : this.copies.get(original.getNode());
 	}
 
+	/**
+	 * Puts [children] - copies of the children of [copy], a node of this copy - in this order, to
+	 * show an order not recorded yet: the copy is its maker's, nothing of the repository changes.
+	 */
+	public void reorder(Node copy, List<? extends Node> children) {
+		CopiedNode parent = (CopiedNode) copy;
+		parent.children.clear();
+		parent.children.addAll(children);
+	}
+
 	private void copyChildren(Node original, CopiedNode copy, Predicate<Node> descend) {
 		if (!descend.test(original))
 			return;

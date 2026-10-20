@@ -596,7 +596,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		if (template == null) return;
 
 		AssociationInfoArtifactViewer detached = (AssociationInfoArtifactViewer) this.service.getInjector().getInstance(template.getClass());
-		detached.setAssociationInfos(null);
+		detached.setAssociationInfos(preview.infos());
 		// the node it opens at is only where the association starts - scroll there, don't mark it
 		detached.setHighlightSelection(false);
 		// unlike the passive hover preview, this is a real window with room to spare - worth showing
@@ -737,7 +737,12 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	 * association can span multiple files; this deliberately previews just one - see the design
 	 * discussion this feature started from), its plugin, and the size of its file.
 	 */
-	private record AssociationPreview(at.jku.isse.ecco.tree.Node contentNode, String pluginId, PreviewScan scan) {
+	/**
+	 * [contentNode] is a copy (NodeSnapshot) - the viewer walks it on the FX thread - and [infos]
+	 * carry the hover texts of the associations in it, computed with the copy.
+	 */
+	private record AssociationPreview(at.jku.isse.ecco.tree.Node contentNode, String pluginId, PreviewScan scan,
+									  java.util.Collection<at.jku.isse.ecco.adapter.AssociationInfo> infos) {
 	}
 
 	/**
@@ -755,7 +760,27 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		String pluginId = ArtifactDetailView.getPluginId(contentNode);
 		if (pluginId == null) return null;
 
-		return new AssociationPreview(contentNode, pluginId, scanFileNode(enclosingFileNode(contentNode)));
+		at.jku.isse.ecco.tree.Node root = contentNode;
+		while (root.getParent() != null)
+			root = root.getParent();
+		at.jku.isse.ecco.gui.view.detail.NodeSnapshot copy = at.jku.isse.ecco.gui.view.detail.NodeSnapshot.of(root);
+		// unselected, so the default look - only for the hover texts, which compute conditions
+		java.util.Map<String, at.jku.isse.ecco.adapter.AssociationInfo> infos = new java.util.HashMap<>();
+		collectInfos(root, infos);
+		return new AssociationPreview(copy.copyOf(contentNode), pluginId, scanFileNode(enclosingFileNode(contentNode)), infos.values());
+	}
+
+	private static void collectInfos(at.jku.isse.ecco.tree.Node node, java.util.Map<String, at.jku.isse.ecco.adapter.AssociationInfo> infos) {
+		Association association = node.getContainingAssociation();
+		if (association != null && !infos.containsKey(association.getId())) {
+			at.jku.isse.ecco.module.Condition condition = association.computeCondition();
+			at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl info = new at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl(
+					association, null, 0, condition.toDisplayString());
+			info.setHoverText(at.jku.isse.ecco.adapter.view.AssociationColors.hoverText(association.getId(), condition));
+			infos.put(association.getId(), info);
+		}
+		for (at.jku.isse.ecco.tree.Node child : node.getChildren())
+			collectInfos(child, infos);
 	}
 
 	/**
@@ -769,8 +794,9 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		for (AssociationInfoArtifactViewer viewer : this.associationInfoArtifactViewers) {
 			if (viewer instanceof Pane && pluginId.equals(viewer.getPluginId())) {
 				// association-selection colors are Artifacts-tab state, unrelated to hovering here -
-				// null just means every line/token renders in its adapter's default (unselected) look.
-				viewer.setAssociationInfos(null);
+				// the infos are unselected, so every line/token renders in its adapter's default look;
+				// they bring the hover texts, read with the copy
+				viewer.setAssociationInfos(preview.infos());
 				// this preview is passive (nothing will hover-within-the-hover), so the per-line
 				// details panel Java/C/Lilypond's viewers show below the code can never populate -
 				// omit it rather than reserve dead space for it.

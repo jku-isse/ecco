@@ -75,14 +75,21 @@ public final class AssociationColors {
 
 	/**
 	 * What is shown when the mouse is over a line of [association]: its id and condition, short and
-	 * in full. Once per association (until {@link #set}): it was computed for every line the mouse
-	 * crossed, on the FX thread.
+	 * in full. The association's info brings it when its view read it in the background, holding the
+	 * service's lock (property "hoverText"): computed here, on the FX thread, a commit running
+	 * meanwhile changed the counters under it. Else computed here, once per association (until
+	 * {@link #set}) - it was computed for every line the mouse crossed.
 	 */
 	public String hoverText(Association association) {
-		return this.hoverTexts.computeIfAbsent(association, a -> {
-			Condition condition = a.computeCondition();
-			return a.getId() + " (" + condition.toDisplayString(false) + ")\n" + condition.toDisplayString();
-		});
+		AssociationInfo info = this.infos.get(association.getId());
+		if (info != null && info.getPropertyValue("hoverText") instanceof String text)
+			return text;
+		return this.hoverTexts.computeIfAbsent(association, a -> hoverText(a.getId(), a.computeCondition()));
+	}
+
+	/** The hover text of association [id] with [condition] - see {@link #hoverText(Association)}. */
+	public static String hoverText(String id, Condition condition) {
+		return id + " (" + condition.toDisplayString(false) + ")\n" + condition.toDisplayString();
 	}
 
 	/** The association [node]'s artifact belongs to, null if none (e.g. a node of a composition). */
