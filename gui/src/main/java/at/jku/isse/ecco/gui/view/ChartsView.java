@@ -9,7 +9,6 @@ import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.mining.ModuleConditionBridge;
 import at.jku.isse.ecco.mining.PresenceConditionMinimizer;
@@ -358,11 +357,6 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 			this.refresher.clear();
 			Platform.runLater(() -> this.setDisable(true));
 		}
-	}
-
-	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-
 	}
 
 	@Override

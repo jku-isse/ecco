@@ -115,11 +115,6 @@ public class SettingsView extends BorderPane implements EccoListener {
 	}
 
 	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-
-	}
-
-	@Override
 	public void fileReadEvent(Path file, ArtifactReader reader) {
 
 	}

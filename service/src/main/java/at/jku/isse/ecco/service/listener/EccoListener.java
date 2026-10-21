@@ -3,15 +3,10 @@ package at.jku.isse.ecco.service.listener;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Commit;
 
 public interface EccoListener extends ReadListener, WriteListener, ServerListener {
 
 	public default void statusChangedEvent(EccoService service) {
-		// do nothing
-	}
-
-	public default void commitsChangedEvent(EccoService service, Commit commit) {
 		// do nothing
 	}
 

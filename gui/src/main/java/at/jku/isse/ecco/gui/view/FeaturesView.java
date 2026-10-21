@@ -854,8 +854,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 
 	/**
 	 * See {@link at.jku.isse.ecco.gui.view.graph.ArtifactGraphView#statusChangedEvent} - the same
-	 * rationale applies here: this is what actually fires after every commit (not
-	 * {@code commitsChangedEvent}, which {@link EccoService} never fires), the snapshot is built
+	 * rationale applies here: this is what fires after every commit, the snapshot is built
 	 * synchronously on the calling thread for point-in-time correctness across a multi-commit burst,
 	 * and it's skipped entirely while the tab is hidden.
 	 */

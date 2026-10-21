@@ -105,6 +105,7 @@ class CheckoutService {
      * @return The checkout object.
      */
     Checkout checkout(Configuration configuration) {
+        this.checkCommitted(configuration);
         owner.listeners.setWriteInProgress(true);
         try {
             Checkout checkout = this.compose(configuration);
@@ -189,6 +190,31 @@ class CheckoutService {
         // nodes (artifacts) to write to files
         return new HashSet<>(checkout.getNode().getChildren());
     }
+    /**
+     * Refuses a configuration naming a feature or revision the repository does not have. Parsing
+     * reads an unknown revision id ("A.1", not an id) or name as a new one - right for a commit,
+     * which creates it, but a checkout of it wrote nothing of that feature, without an error (gap #81).
+     */
+    private void checkCommitted(Configuration configuration) {
+        owner.checkInitialized();
+        checkNotNull(configuration);
+        List<String> unknown = owner.readTransaction(null, () -> {
+            Repository.Op repository = owner.repositoryDao.load();
+            List<String> missing = new ArrayList<>();
+            for (FeatureRevision revision : configuration.getFeatureRevisions()) {
+                Feature feature = repository.getFeature(revision.getFeature().getId());
+                if (feature == null)
+                    missing.add("feature " + revision.getFeature().getName() + " was never committed");
+                else if (feature.getRevision(revision.getId()) == null)
+                    missing.add(feature.getName() + " has no revision " + revision.getId());
+            }
+            return missing;
+        });
+        if (!unknown.isEmpty())
+            throw new EccoException("A checkout names committed revisions only: " + String.join(", ", unknown)
+                    + ". A feature name alone is its latest revision; the revisions are listed by `ecco features`.");
+    }
+
     Checkout checkout(Node node) {
         return this.checkout(node, owner.baseDir);
     }

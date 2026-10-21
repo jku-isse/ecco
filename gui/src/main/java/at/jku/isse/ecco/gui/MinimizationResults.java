@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.gui;
 
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.mining.AcceptedConstraints;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
@@ -167,8 +166,7 @@ public class MinimizationResults implements EccoListener {
      * A commit can change any association's condition, or remove a constraint a minimization relied
      * on: keep only the results that are still valid (see EccoService#validMinimizedConditions).
      */
-    @Override
-    public void commitsChangedEvent(EccoService service, Commit commit) {
+    private void dropInvalidated(EccoService service) {
         if (!service.isInitialized() || running.get()) return;
         Map<String, String> valid = service.validMinimizedConditions();
         Platform.runLater(() -> {
@@ -196,9 +194,9 @@ public class MinimizationResults implements EccoListener {
         if (service.isInitialized()) {
             service.setMinimizedConditionsInCheckout(MinimizationPreferences.isUsedInCheckout());
             if (this.seededFromPersisted) {
-                // EccoService never fires commitsChangedEvent - this event is what follows a commit (or
-                // a changed accepted constraint), so drop the results it invalidated here
-                this.commitsChangedEvent(service, null);
+                // this event is what follows a commit (or a changed accepted constraint), so drop the
+                // results it invalidated here
+                this.dropInvalidated(service);
                 return;
             }
             this.seededFromPersisted = true;

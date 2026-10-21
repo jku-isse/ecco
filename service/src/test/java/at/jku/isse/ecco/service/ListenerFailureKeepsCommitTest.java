@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.service;
 
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -33,11 +32,6 @@ public class ListenerFailureKeepsCommitTest {
             service.addListener(new EccoListener() {
                 @Override
                 public void statusChangedEvent(EccoService s) {
-                    throw new IllegalStateException("listener failure");
-                }
-
-                @Override
-                public void commitsChangedEvent(EccoService s, Commit commit) {
                     throw new IllegalStateException("listener failure");
                 }
             });

@@ -683,9 +683,8 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 	}
 
 	/**
-	 * Fires on open/close AND, notably, after every commit too (unlike {@code commitsChangedEvent},
-	 * which {@link EccoService} defines but never actually fires - so this is the only hook that
-	 * makes "refresh automatically when a new commit happens" possible). Only (re)creates the native
+	 * Fires on open/close AND, notably, after every commit too - the only hook that makes "refresh
+	 * automatically when a new commit happens" possible. Only (re)creates the native
 	 * GraphStream viewer the first time the repository becomes initialized; a later call (e.g. from
 	 * a commit) just queues a re-render into the already-open viewer instead of tearing it down and
 	 * recreating it every time. Skips the snapshot and render entirely while {@link #tabVisible} is
