@@ -27,4 +27,30 @@ public class MainExitCodeTest {
         assertEquals(2, Main.run(new String[]{"commit"}));
         assertEquals(2, Main.run(new String[]{"checkout"}));
     }
+
+    /**
+     * IF-C3b: a failed command's error goes to stderr with its cause chain; the stack trace only
+     * with -Decco.debug=true.
+     */
+    @Test
+    public void aFailureIsReportedOnStderrWithItsCausesAndATraceOnlyInDebugMode() {
+        java.io.PrintStream err = System.err;
+        String debug = System.getProperty("ecco.debug");
+        try {
+            for (boolean debugMode : new boolean[]{false, true}) {
+                if (debugMode) System.setProperty("ecco.debug", "true");
+                else System.clearProperty("ecco.debug");
+                java.io.ByteArrayOutputStream captured = new java.io.ByteArrayOutputStream();
+                System.setErr(new java.io.PrintStream(captured, true));
+                assertEquals(1, Main.run(new String[]{"fork", "\u0000invalid"}));
+                String output = captured.toString();
+                org.junit.jupiter.api.Assertions.assertTrue(output.startsWith("ERROR: "), output);
+                org.junit.jupiter.api.Assertions.assertEquals(debugMode, output.contains("\tat "), output);
+            }
+        } finally {
+            System.setErr(err);
+            if (debug == null) System.clearProperty("ecco.debug");
+            else System.setProperty("ecco.debug", debug);
+        }
+    }
 }

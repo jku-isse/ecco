@@ -26,6 +26,48 @@ public class UnavailableAdapterRoutingTest {
 
     private static final String GONE_PLUGIN = "at.jku.isse.ecco.adapter.gone.GonePlugin";
 
+    /**
+     * FR-M6c: a repository's .adapters, once written, stays as it is - enabling another adapter
+     * afterwards does not rewrite it, so the repository keeps reading its files as before.
+     */
+    @Test
+    @Timeout(60)
+    public void theAdaptersFileIsKeptWhenTheEnabledAdaptersChange() throws Exception {
+        Path workDir = Files.createTempDirectory("adapters-file-kept");
+        Path repoDir = workDir.resolve(".ecco");
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repoDir);
+            service.init();
+        }
+        Path adaptersFile = repoDir.resolve(".adapters");
+        List<String> written = Files.readAllLines(adaptersFile);
+
+        java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(at.jku.isse.ecco.service.AdapterPreferences.class);
+        String key = "disabledAdapterPluginIds";
+        String stored = prefs.get(key, null);
+        try {
+            java.util.Set<String> disabled = new java.util.HashSet<>(at.jku.isse.ecco.service.AdapterPreferences.getDisabledPluginIds());
+            // the challenge adapter, off by default, claims *.java too
+            assertTrue(disabled.remove("at.jku.isse.ecco.adapter.challenge.JavaPlugin"), "off by default: " + disabled);
+            at.jku.isse.ecco.service.AdapterPreferences.setDisabledPluginIds(disabled);
+            Path content = Files.createDirectories(workDir.resolve("content"));
+            Files.writeString(content.resolve("Main.java"), "class Main {\n}\n");
+            try (EccoService service = new EccoService()) {
+                service.setRepositoryDir(repoDir);
+                service.open();
+                service.setBaseDir(content);
+                service.commit("java", "A");
+            }
+            assertEquals(written, Files.readAllLines(adaptersFile), "written once, kept");
+        } finally {
+            if (stored != null)
+                prefs.put(key, stored);
+            else
+                prefs.remove(key);
+            prefs.flush();
+        }
+    }
+
     @Test
     @Timeout(30)
     public void aFileRoutedToAnUnavailableAdapterFailsTheCommitInsteadOfFallingThrough() throws Exception {

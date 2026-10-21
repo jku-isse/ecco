@@ -106,4 +106,40 @@ public class MinimizePreviewCommandTest {
             assertTrue(writer.getLines().get(2).startsWith("[" + targetId + "] "));
         }
     }
+
+    /** FR-N7b: a preview writes nothing into the repository - every file as it was, contents and times. */
+    @Test
+    @Timeout(30)
+    public void aPreviewLeavesTheRepositoryUnchanged() throws Exception {
+        Path workDir = Files.createTempDirectory("minimize-preview-unchanged");
+        Path repoDir = workDir.resolve(".ecco");
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repoDir);
+            service.init();
+            for (int i = 0; i < 4; i++) {
+                Path variantDir = Files.createDirectories(workDir.resolve("variant" + i));
+                Files.writeString(variantDir.resolve("core.txt"), "core\n");
+                if (i % 2 == 0)
+                    Files.writeString(variantDir.resolve("extra.txt"), "extra " + i + "\n");
+                service.setBaseDir(variantDir);
+                service.commit("variant " + i, i % 2 == 0 ? "Core, Extra" : "Core");
+            }
+            service.acceptConstraint(Constraint.Kind.MANDATORY, "Core", null);
+            service.close();
+
+            java.util.Map<String, String> before = fingerprint(repoDir);
+            new MinimizePreviewCommand(service, new StringWriter()).run(argsWithId(null));
+            assertEquals(before, fingerprint(repoDir));
+        }
+    }
+
+    private static java.util.Map<String, String> fingerprint(Path dir) throws Exception {
+        java.util.Map<String, String> result = new java.util.TreeMap<>();
+        try (java.util.stream.Stream<Path> paths = Files.walk(dir)) {
+            for (Path p : paths.toList())
+                result.put(dir.relativize(p).toString(), Files.getLastModifiedTime(p) + (Files.isDirectory(p) ? "/"
+                        : " " + java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(p)))));
+        }
+        return result;
+    }
 }

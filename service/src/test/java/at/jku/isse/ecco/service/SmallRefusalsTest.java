@@ -19,8 +19,8 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Refusals and skips that had no test: a feature name with a character a name may not hold
- * (FR-F1b), a feature name two features share (FR-F3), a .config that cannot be read (FR-M3b),
+ * Refusals and skips that had no test: a commit naming no feature (FR-M2, tested through the
+ * GUI only), a feature name with a character a name may not hold (FR-F1b), a feature name two features share (FR-F3), a .config that cannot be read (FR-M3b),
  * the files ECCO itself writes into a working directory (FR-M5b), no enabled adapter (FR-L4b) and
  * a second start of the sync server (FR-D6a).
  */
@@ -56,6 +56,18 @@ public class SmallRefusalsTest {
             service.addRemote("other", other.toString(), Remote.Type.LOCAL);
             assertThrows(EccoException.class, () -> service.pull("other"));
             assertEquals(1, service.getRepository().getFeatures().stream().filter(f -> f.getName().equals("A")).count());
+        }
+    }
+
+    @Test
+    @Timeout(60)
+    public void aCommitNamingNoFeatureIsRefused(@TempDir Path tmp) throws Exception {
+        Path work = tmp.resolve("work");
+        try (EccoService service = init(work)) {
+            Files.writeString(work.resolve("a.txt"), "a\n");
+            EccoException e = assertThrows(EccoException.class, () -> service.commit("no features", ""));
+            assertTrue(messages(e).contains("A commit needs at least one feature"), messages(e));
+            assertTrue(service.getCommits().isEmpty());
         }
     }
 

@@ -59,6 +59,29 @@ public class DispatchReaderReuseTest {
         assertEquals(0, reader.lastReused(), "lines carry VEVOS conditions");
     }
 
+    /** FR-M11c: with -Decco.reuseReadTrees=false every file is read every time. */
+    @Test
+    public void withReuseOffEveryFileIsReadAgain(@TempDir Path tmp) throws Exception {
+        Path content = Files.createDirectories(tmp.resolve("content"));
+        Files.writeString(content.resolve("a.c"), "int a(void) {\n    return 1;\n}\n");
+        SerEntityFactory entityFactory = new SerEntityFactory();
+        DispatchReader reader = new DispatchReader(entityFactory,
+                Set.of(new CReader(entityFactory), new TextReader(entityFactory), new FileReader(entityFactory)),
+                Files.createDirectories(tmp.resolve(".ecco")));
+        reader.init();
+        Path[] all = {Path.of(".")};
+        String previous = System.getProperty("ecco.reuseReadTrees");
+        System.setProperty("ecco.reuseReadTrees", "false");
+        try {
+            reader.read(content, all);
+            reader.read(content, all);
+            assertEquals(0, reader.lastReused());
+        } finally {
+            if (previous == null) System.clearProperty("ecco.reuseReadTrees");
+            else System.setProperty("ecco.reuseReadTrees", previous);
+        }
+    }
+
     @Test
     public void commitsWithAndWithoutReuseCheckOutTheSame(@TempDir Path tmp) throws Exception {
         List<List<String>> versions = List.of(
