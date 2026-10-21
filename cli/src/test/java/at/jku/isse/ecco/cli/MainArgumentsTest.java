@@ -12,7 +12,7 @@ import java.io.PrintStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** IF-C4a: fetch, pull and push use the remote origin when given none. */
+/** IF-C4a: fetch, pull and push use the remote origin when given none; IF-C4b: pull, push and fork take --exclude. */
 public class MainArgumentsTest {
 
     @Test
@@ -30,5 +30,20 @@ public class MainArgumentsTest {
             Namespace parsed = Main.parser.parseArgs(new String[]{command[0]});
             assertEquals(EccoService.ORIGIN_REMOTE_NAME, parsed.getString(command[1]), command[0]);
         }
+    }
+
+    @Test
+    public void pullPushAndForkTakeRevisionsToExclude() throws Exception {
+        PrintStream err = System.err;
+        System.setErr(new PrintStream(new ByteArrayOutputStream()));
+        try {
+            Main.run(new String[]{"no-such-command"});
+        } finally {
+            System.setErr(err);
+        }
+        assertEquals("A.1, B.2", Main.parser.parseArgs(new String[]{PullCommand.PULL, PullCommand.FLAG_EXCLUDE, "A.1, B.2"}).getString(PullCommand.EXCLUDE_KEY));
+        assertEquals("A.1", Main.parser.parseArgs(new String[]{PushCommand.PUSH, "upstream", PushCommand.FLAG_EXCLUDE, "A.1"}).getString(PushCommand.EXCLUDE_KEY));
+        assertEquals("A.1", Main.parser.parseArgs(new String[]{at.jku.isse.ecco.cli.command.fork.ForkCommand.FORK, "localhost:3770",
+                at.jku.isse.ecco.cli.command.fork.ForkCommand.FLAG_EXCLUDE, "A.1"}).getString(at.jku.isse.ecco.cli.command.fork.ForkCommand.EXCLUDE_KEY));
     }
 }

@@ -147,6 +147,7 @@ An alternative flow ends with `ABORT` (the use case ends) or `RESUME STEP n` (th
 | UC-13 | Serve repository for synchronization | Collaborator | GUI | 5 |
 | UC-14 | Commit through the web client | Web-client user | REST | 3 |
 | UC-15 | Download variant through the web client | Web-client user | REST | 3 |
+| UC-16 | Register a remote | Collaborator | GUI | 5 |
 
 The stakeholder use cases are the five listed under [Stakeholders and usage contexts](#stakeholders-and-usage-contexts): 1 feature location, 2 extractive product-line engineering, 3 automated reuse for clone-and-own, 4 reactive product-line engineering, 5 feature-oriented distributed version control.
 
@@ -771,6 +772,20 @@ Postcondition: BASE owns the whole first snapshot.
 
 Postcondition: The commits imported so far stay in the repository.
 
+**Specific alternative flow SA10** (RFS 4)
+
+1. The product-line engineer chooses to import the tagged commits only.
+2. The system takes BASE as the configuration of the first tagged commit, which brings the commits before it, and leaves out the commits after the last tag.
+3. DO
+4. The system asks the LLM service for a suggestion for each commit between the last imported tagged commit and the next one, and imports none of them.
+5. IF the suggestion for such a commit failed THEN the system shows the commit for review, and the product-line engineer's configuration is used for the next tagged commit ENDIF.
+6. The system gives each feature such a commit changed a new revision in the configuration of the next tagged commit.
+7. INCLUDE USE CASE Commit variant for the next tagged commit.
+8. UNTIL the last tagged commit is imported.
+9. RESUME STEP 17.
+
+Postcondition: The repository holds one commit per tagged Git commit - the releases; the commits between were not imported, their changes are new revisions in the next tagged commit, and the summary says how many were left out (IF-G3f/g).
+
 ### UC-11 Fork repository
 
 | | |
@@ -833,7 +848,7 @@ Postcondition: Nothing is created, and the collaborator can retry.
 | | |
 | --- | --- |
 | Brief description | The collaborator pulls features from a remote into this repository or pushes features from this repository into the remote, optionally leaving out feature revisions; fetch only reads the remote's feature list. |
-| Precondition | A repository is open (UC-2). The remote is registered, by default as `origin`. |
+| Precondition | A repository is open (UC-2). The remote is registered (UC-16), by default as `origin`. |
 | Primary actor | Collaborator |
 | Secondary actors | Remote repository |
 | Dependency | None |
@@ -1078,6 +1093,51 @@ Postcondition: The repository is unchanged.
 Postcondition: The repository is unchanged.
 
 
+### UC-16 Register a remote
+
+| | |
+| --- | --- |
+| Brief description | The collaborator registers another repository as a remote of the open one, or changes a registered remote, so that fetch, pull and push (UC-12) can name it. |
+| Precondition | A repository is open (UC-2). |
+| Primary actor | Collaborator |
+| Secondary actors | None |
+| Dependency | None |
+| Generalization | None |
+| Front ends | GUI Collaborate > Remotes (the CLI's `remotes` lists them; a fork registers its origin itself, UC-11) |
+| Realizes | FR-D1, IF-G10 |
+
+**Basic flow**
+
+1. The collaborator enters a name and an address.
+2. The system VALIDATES THAT the address is a local path or a valid `host:port`.
+3. The system VALIDATES THAT no remote has the name.
+4. The system stores the remote.
+5. The system lists the remote.
+
+Postcondition: The remote is registered and can be fetched from, pulled from and pushed to.
+
+**Specific alternative flow SA1** (RFS 1)
+
+1. The collaborator changes the name, address or type of a registered remote instead.
+2. RESUME STEP 2.
+
+Postcondition: The remote keeps what was fetched from it.
+
+**Specific alternative flow SA2** (RFS 2)
+
+1. The system reports "Invalid remote address provided.".
+2. ABORT.
+
+Postcondition: No remote is stored or changed.
+
+**Specific alternative flow SA3** (RFS 3)
+
+1. The system reports "Remote with this name already exists.".
+2. ABORT.
+
+Postcondition: No remote is stored or changed.
+
+
 ## Functional requirements
 
 ### Repository lifecycle
@@ -1216,8 +1276,8 @@ FR-K12 holds because a node that only leads to its association's own nodes contr
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| FR-D1a | Ubiquitous | ECCO shall accept as a remote address a local path to a repository or its `.ecco` directory, or `host:port` with a hostname, an IPv4 address or a bracketed IPv6 address and a port from 1 to 65535. | UC-11 B2, SA1 | `RemoteAddressTest` | |
-| FR-D1b | Unwanted | If a remote is added or renamed under a name another remote already has, then ECCO shall refuse with "Remote with this name already exists.". | - | `UpdateRemoteTest` | Code `RemoteSyncService:106,141` |
+| FR-D1a | Ubiquitous | ECCO shall accept as a remote address a local path to a repository or its `.ecco` directory, or `host:port` with a hostname, an IPv4 address or a bracketed IPv6 address and a port from 1 to 65535. | UC-11 B2, SA1; UC-16 B2, SA2 | `RemoteAddressTest` | |
+| FR-D1b | Unwanted | If a remote is added or renamed under a name another remote already has, then ECCO shall refuse with "Remote with this name already exists.". | UC-16 B3, SA3 | `UpdateRemoteTest` | Code `RemoteSyncService:106,141` |
 | FR-D2a | Event | When the collaborator forks a remote, ECCO shall create a new repository from the remote and register the remote as `origin`. | UC-11 B5, B8, B9 | `ForkReopenTest` | Code ES:663-800 |
 | FR-D2b | Unwanted | If the location of a fork already holds a repository, then ECCO shall refuse the fork with "A repository already exists at the given location" and leave both repositories as they were. | UC-11 B3, SA2 | `ExistingRepositoryRefusalTest` | Code ES:690, ES:791 |
 | FR-D3a | Event | When the collaborator fetches from a remote, ECCO shall read the remote's features and store them with the remote's entry. | UC-12 SA2 | `RemoteSyncCharacterizationTest` | Doc |
@@ -1346,7 +1406,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-C3c | Unwanted | If closing the repository fails after a command, then the CLI shall attach that failure to the command's own error, not show it in its place. | - | `CommitCommandTest` | Code `Command#withOpenRepository`; History 2dc75b70 |
 | IF-C3d | Unwanted | If a command runs out of memory, then the CLI shall say so, with the heap size and how to raise it (`JAVA_OPTS=-Xmx16g`). | UC-3 BA1 | `CommitCommandTest` | History 2dc75b70 |
 | IF-C4a | Ubiquitous | `fetch`, `pull` and `push` shall use the remote `origin` when given none. | UC-12 precondition | `MainArgumentsTest` | Code |
-| IF-C4b | Ubiquitous | `pull`, `push` and `fork` shall take feature revisions to exclude (`--exclude`, FR-D4). | UC-11 B1; UC-12 B1 | - | Code |
+| IF-C4b | Ubiquitous | `pull`, `push` and `fork` shall take feature revisions to exclude (`--exclude`, FR-D4). | UC-11 B1; UC-12 B1 | `MainArgumentsTest`, `PullCommandTest`, `PushCommandTest`, `ForkCommandTest` | Code |
 | IF-C5a | Ubiquitous | `suggest-constraints` and `minimize-preview` shall take `--min-witness` and `--confidence` (defaults in FR-N1b). | UC-8 SA1, SA4; UC-9 SA1 | `SuggestConstraintsCommandTest`, `MinimizePreviewCommandTest` | Code |
 | IF-C5b | Optional | Unless given `--all`, `suggest-constraints` shall leave out accepted and rejected suggestions. | UC-8 SA4 | `SuggestConstraintsCommandTest` | Code |
 | IF-C6 | Event | When `dg` runs, the CLI shall print the association dependency graph as GML on stdout. | UC-7 SA3 | `DependencyGraphCommandTest` | Code |
@@ -1372,8 +1432,8 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-G3c | Optional | Where the user imports unattended, the GUI shall stop only for a failure or an uncertain suggestion. | UC-10 SA2 | `ImportGitViewRetryTest` (GUI) | Code `ImportGitView` |
 | IF-G3d | Event | When the window is closed while a commit is suggested or imported, the GUI shall ask whether to stop the import. | UC-10 GA1 | - | Code `ImportGitView` |
 | IF-G3e | Event | When an import ends, the GUI shall show a summary. | UC-10 B17 | `ImportGitViewConstraintTest` (GUI) | Code `ImportGitView` |
-| IF-G3f | Optional | Where the user imports the tagged commits only, the GUI shall import only those - the first of them as BASE, together with the commits before it - and leave out the commits after the last tag. | - | `ImportGitViewTaggedTest` (GUI) | Code `ImportGitView` |
-| IF-G3g | Optional | Where the user imports the tagged commits only, the GUI shall ask for a suggestion for each commit between two tagged ones without importing it, give a feature it changed a new revision in the next tagged commit, and stop at it only when its suggestion failed. | - | `ImportGitViewTaggedTest` (GUI) | Code `ImportGitView#releaseConfigurationText` |
+| IF-G3f | Optional | Where the user imports the tagged commits only, the GUI shall import only those - the first of them as BASE, together with the commits before it - and leave out the commits after the last tag. | UC-10 SA10 | `ImportGitViewTaggedTest` (GUI) | Code `ImportGitView` |
+| IF-G3g | Optional | Where the user imports the tagged commits only, the GUI shall ask for a suggestion for each commit between two tagged ones without importing it, give a feature it changed a new revision in the next tagged commit, and stop at it only when its suggestion failed. | UC-10 SA10 | `ImportGitViewTaggedTest` (GUI) | Code `ImportGitView#releaseConfigurationText` |
 | IF-G4 | Ubiquitous | The GUI shall let users configure the LLM of Git import (FR-G3a) under Preferences, by URL and model; any OpenAI-compatible endpoint should do. | UC-10 precondition | - | Code `PreferencesView`; Doc |
 | IF-G5a | Ubiquitous | The feature model view shall show the feature model derived from the commits. | UC-8 B1, B7 | `FeaturesViewTest` (GUI) | Code `FeaturesView` |
 | IF-G5b | Event | When the user accepts, rejects or returns mined constraints or suggested subfeatures, the GUI shall store the decision (FR-N4a, FR-N6). | UC-8 B4, B5, SA2, SA3 | `ConstraintSuggestionsViewTest` (GUI) | Code `ConstraintSuggestionsView` |
@@ -1389,7 +1449,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-G8b | Event | When the user reorders the children of an ambiguous order in the dialog, the GUI shall record the order without a commit (FR-K11). | UC-6 B1-B9 | `CheckoutDetailViewRecordOrderTest`, `ReorderChildrenDialogTest` (GUI) | Code `ReorderChildrenDialog` |
 | IF-G8c | Optional | Where a local LLM is configured, the reorder dialog shall suggest an order for review, never across an order earlier commits fixed. | UC-6 SA2 | `ReorderChildrenDialogTest` (GUI), `LlmOrderSuggestionClientTest` (unit) | Code `LlmOrderSuggestionClient` |
 | IF-G9 | Ubiquitous | The GUI shall visualize a knowledge graph (features, commits, variants, associations), the artifact graph, the dependency graph and charts, each exportable. | UC-7 SA3 | `KnowledgeGraphLayoutTest`, `DependencyGraphViewTest`, `ChartsViewTest` (GUI) | Code `view/graph/*`, `ChartsView` |
-| IF-G10a | Ubiquitous | The GUI shall let users add and remove remotes, change a remote's name, address and type (keeping what was fetched from it), and fetch, pull and push. | UC-12 front ends | `RemotesViewTest`, `RemoteDetailViewTest` (GUI), `UpdateRemoteTest` | Code `RemotesView`, `RemoteDetailView`, `EccoService#updateRemote` |
+| IF-G10a | Ubiquitous | The GUI shall let users add and remove remotes, change a remote's name, address and type (keeping what was fetched from it), and fetch, pull and push. | UC-12 front ends; UC-16 | `RemotesViewTest`, `RemoteDetailViewTest` (GUI), `UpdateRemoteTest` | Code `RemotesView`, `RemoteDetailView`, `EccoService#updateRemote` |
 | IF-G10b | Ubiquitous | The GUI shall let users start the sync server on a chosen port, and show the port and a log of the server's connections (who may connect: NFR-S1, NFR-S3). | UC-13 B1-B9 | `ServerViewLogTest` (GUI) | Code `ServerView` |
 | IF-G11 | Ubiquitous | The GUI shall let users enable or disable adapters (effective on the next open) and set the minimization thresholds, the LilyPond paths, and the Python of the Python and LilyPond adapters and LilyPond's lymodel directory when they are not found (AD-9). | - | `PreferencesViewTest` (GUI) | Code `PreferencesView` |
 
@@ -1520,10 +1580,6 @@ Requirements the code does not meet, places where the documentation and the code
 | 8 | Remote sync is unauthenticated; the REST server has hard-coded demo users with plaintext passwords and a default JWT secret, and its roles are never checked. | README; `rest/.../DummyUserDB`, `application.yml` | Security limitation - **hardened 2026-10-03**: the JWT secret key in `application.yml` was misspelled, so tokens were unsigned and a forged unsigned token was accepted for any user - fixed; the server refuses to start without a real secret and a users file (PBKDF2 hashes) outside development mode; the GUI confirms before syncing with other machines. Still open by choice: sync authentication, role checks Next: sync authentication and role checks when the server is used beyond trusted networks. |
 | 55 | Image adapter limits found by its round-trip tests: 16-bit images are stored with 8 bits per channel; transparent pixels lose their colour (transparent white becomes transparent black); interlaced GIFs 2-4 rows high are read with shifted rows (a JDK bug); grayscale pixels committed before 2026-10-14 are stored brightened (gray taken as linear) - a checkout combining such commits with later ones can mix brightened and true gray levels in one image, and the adapter's format is not versioned, so nothing refuses it (re-commit the variants). | `ImageReader`, `ImageUtil` | Limitations - noted 2026-10-14; `ImageRoundTripTest` A truncated JPEG, committed without an error (the decoder filled in the rest), is refused since 2026-10-15 - an image the decoder reads with warnings is stored whole by the file adapter (`ImageRoundTripTest`). Next: 16-bit channels would need another pixel format (a format change). |
 | 56 | Repositories committed with the first C++ format (checkout-only): a `case` on its own line loses the block under it when another variant has a same-line `case` (`CaseBlockArtifactData.equals` ignores `sameline`) - inherited from that adapter, the old build checks out the same. | `LegacyCppWriter` | Data loss in retired data - noted 2026-10-14; `LegacyCppWriterTest` (disabled case) Next: none unless such a repository is in use - fixing it would change how old repositories check out. |
-| 66 | Functional requirements no use case realizes: FR-L5; FR-F4, FR-F5b; FR-M3b, FR-M6b/c, FR-M7b, FR-M8b, FR-M10c/d, FR-M11b/c, FR-M12b; FR-K2b, FR-K3c, FR-K7c/d, FR-K10c; FR-D1b (no use case registers a remote), FR-D6c; FR-P2a; and IF-G3f/g (importing tagged commits only, which UC-10 does not describe). | [Functional requirements](#functional-requirements), column *Use case* | Traceability - found by the EARS rewrite 2026-10-20 |
-| 67 | Functional requirements no acceptance test checks: FR-L2 for `init` (only a failed fork is tested), FR-L4a (no way to configure the storage plugin from a test);  FR-M1 (only by tests that commit on the way), FR-M10a; FR-K5e (unreachable, see the note under the checkout requirements), FR-K7d, FR-K10c;  FR-D4b (reachable only through cross references), FR-D8d; FR-G3c; FR-P2a. | [Functional requirements](#functional-requirements), column *Acceptance test* | Traceability - found by the EARS rewrite 2026-10-20; FR-L1b, FR-K3a, FR-M10c, FR-D2b, FR-D4a, FR-G1a and NFR-R4 got tests 2026-10-20 (the one for FR-D4a found #79); FR-M2, FR-M6c, FR-M11c, FR-N1c, FR-N2, FR-N7b, FR-D2a and FR-G1b got tests 2026-10-21 |
-| 68 | Functional requirements checked only on one class or only through the GUI: FR-K2b (cycles only), FR-K6 (unreachable, see the note under the checkout requirements); FR-G2a-c (extracting a Git tree), FR-G3a. | Tests marked *(unit)* or *(GUI)* | Traceability - found by the EARS rewrite 2026-10-20; FR-K2a, FR-K7b, FR-N1a/b, FR-N3 and FR-N7a linked to or given service, CLI or GUI tests 2026-10-20; FR-K1b got one 2026-10-21: two accepted traces that disagree with the learned conditions in a configuration never committed, a different checkout under each strategy |
-| 77 | Adapter, interface and non-functional requirements no acceptance test checks: AD-1a, AD-2a/b, AD-9c; IF-C4b, IF-C7, IF-G3a, IF-G3d, IF-G4, IF-G7, IF-G8a, IF-R1b; NFR-V3a. No test checks a performance requirement's time. (The design constraints NFR-R2, NFR-R6, NFR-B5 and the build requirements NFR-B1, NFR-B2, NFR-B4 are not for acceptance tests; 45 of the 115 rows have no use case, mostly cross-cutting ones - adapter contract, concurrency, build - that no single scenario realizes.) | [Artifact adapter](#artifact-adapter-requirements), [interface](#interface-requirements) and [non-functional requirements](#non-functional-requirements) | Traceability - found by the EARS rewrite 2026-10-20 |
 | 84 | A fork's checkouts are the files of its origin's - also after the same further commits in both - but its warnings are not: `subset()` copies only the module revisions an association's condition names, with flattened counts, so the fork no longer knows an interaction it never needs for a condition was committed, and warns MISSING for it with the advice to commit it (A's first revision alone, committed in the origin, after A' and B). The origin, in turn, warns SURPLUS for A with a trace id even for a configuration committed exactly so. Content is unaffected (checked for every combination of A, B, C and of A's two revisions, before and after further commits). | `Repository#subset`, `#merge`; `CheckoutService` warnings | Misleading warnings - to decide: carrying the counted module revisions over in `subset()` and `merge()` is a core change |
 
 ### Closed gaps
@@ -1609,3 +1665,7 @@ Fixed, done another way, resolved, or settled by a decision - in the order they 
 | 80 | `EccoListener#commitsChangedEvent` is never fired: listeners hear of a commit only through `statusChangedEvent`. A full fork checks out the same files as its origin but with other warnings (MISSING instead of SURPLUS in `ExcludedRevisionsTest`'s history) - noticed, not investigated. | `EccoListener`; `Repository#subset` | Dead code - closed 2026-10-21: the method is removed (nothing outside this repository used it; firing it would have run never-run GUI overrides, a second minimization per commit); the fork's warnings investigated, see #84 |
 | 81 | A configuration naming a revision that does not exist reads it as a new revision (FR-F2b): a checkout of `A.1` - not an id - writes nothing of A, without an error, while an exclusion naming it is refused ("Feature revision with id does not exist"). Found writing `ExcludedRevisionsTest`. | `ConfigurationParser#parseConfigurationString`, `#parseFeatureRevisionsString` | Usability - closed 2026-10-21: a checkout refuses it, naming it (FR-K13) |
 | 85 | Git import lists every commit reachable from HEAD in commit-time order (`git log`), not the first-parent line: for a history with merges it imports the commits of merged branches interleaved with the main line, each a whole snapshot, so features switch back and forth between branch states. The diffs are taken against the first parent. The recovered requirement (FR-G1b) and UC-10 step 3 said "along first parents" - they now say what the code does. | `GitHistoryReader#listCommits` | Behaviour - fixed 2026-10-21: `listCommits` walks HEAD's first parents (`RevWalk#setFirstParent`); FR-G1b and UC-10 step 3 say so again |
+| 66 | Functional requirements no use case realizes: FR-L5; FR-F4, FR-F5b; FR-M3b, FR-M6b/c, FR-M7b, FR-M8b, FR-M10c/d, FR-M11b/c, FR-M12b; FR-K2b, FR-K3c, FR-K7c/d, FR-K10c; FR-D1b (no use case registers a remote), FR-D6c; FR-P2a; and IF-G3f/g (importing tagged commits only, which UC-10 does not describe). | [Functional requirements](#functional-requirements), column *Use case* | Traceability - accepted 2026-10-21: what is left are rules no user scenario shows on its own - refusals and guards inside a step (FR-M3b, FR-M7b, FR-M8b), storage and reading internals (FR-M6b/c, FR-M10c/d, FR-M11b/c, FR-P2a, FR-K2b, FR-K3c, FR-K7c/d, FR-K10c) and rules every configuration or session obeys (FR-L5, FR-F4, FR-F5b, FR-M12b, FR-D6c). FR-D1b got UC-16, IF-G3f/g UC-10 SA10. |
+| 67 | Functional requirements no acceptance test checks: FR-L2 for `init` (only a failed fork is tested), FR-L4a (no way to configure the storage plugin from a test);  FR-M1 (only by tests that commit on the way), FR-M10a; FR-K5e (unreachable, see the note under the checkout requirements), FR-K7d, FR-K10c;  FR-D4b (reachable only through cross references), FR-D8d; FR-G3c; FR-P2a. | [Functional requirements](#functional-requirements), column *Acceptance test* | Traceability - accepted 2026-10-21: the rest are structural and run by every test that commits or opens (FR-M1, FR-M10a, FR-P2a), unreachable with the adapters and settings in use (FR-K5e, FR-D4b), would need fault injection, old data or an old server (FR-K7d, FR-K10c, FR-D8d, FR-L2 for init, FR-L4a), or a GUI decision the import tests go through (FR-G3c). |
+| 68 | Functional requirements checked only on one class or only through the GUI: FR-K2b (cycles only), FR-K6 (unreachable, see the note under the checkout requirements); FR-G2a-c (extracting a Git tree), FR-G3a. | Tests marked *(unit)* or *(GUI)* | Traceability - accepted 2026-10-21: one class is the right level for extracting a Git tree and building the LLM request (FR-G2a-c, FR-G3a) and for the order graph's own check (FR-K2b); FR-K6 cannot be reached (see the note under the checkout requirements). |
+| 77 | Adapter, interface and non-functional requirements no acceptance test checks: AD-1a, AD-2a/b, AD-9c; IF-C4b, IF-C7, IF-G3a, IF-G3d, IF-G4, IF-G7, IF-G8a, IF-R1b; NFR-V3a. No test checks a performance requirement's time. (The design constraints NFR-R2, NFR-R6, NFR-B5 and the build requirements NFR-B1, NFR-B2, NFR-B4 are not for acceptance tests; 45 of the 115 rows have no use case, mostly cross-cutting ones - adapter contract, concurrency, build - that no single scenario realizes.) | [Artifact adapter](#artifact-adapter-requirements), [interface](#interface-requirements) and [non-functional requirements](#non-functional-requirements) | Traceability - accepted 2026-10-21: the rest are structural and run by every test (AD-1a, AD-2a/b, NFR-V3a), depend on the machine (AD-9c: a Python module installed while ECCO runs), are checked by the build (IF-C7), or are GUI and REST details whose breaking shows at once (IF-G3a, IF-G3d, IF-G4, IF-G7, IF-G8a, IF-R1b); performance has recorded baselines, no timing tests - they fail at random on a laptop. IF-C3b, IF-C4a/b and IF-C5b got tests. |
