@@ -362,7 +362,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				return;
 			}
 
-			// listCommits() walks the WHOLE reachable git history via JGit - synchronous on the FX
+			// listCommits() walks the whole first-parent history via JGit - synchronous on the FX
 			// thread here used to freeze the entire app (no spinner, no way to tell it was even doing
 			// anything) for any repo with a large-enough history or a slow disk; a background Task
 			// keeps the window responsive and shows the small spinner next to the button instead.
@@ -373,7 +373,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 			Task<List<GitCommitInfo>> loadCommitsTask = new Task<>() {
 				@Override
 				protected List<GitCommitInfo> call() {
-					// listCommits() returns newest-first (matching plain "git log"); shown oldest-first
+					// listCommits() returns newest-first (as "git log --first-parent"); shown oldest-first
 					// here instead, since that's both the order the user reads a history top-to-bottom
 					// as "what happened" and the exact order the import itself has to process in
 					List<GitCommitInfo> commits = ImportGitView.this.gitHistoryReader.listCommits(selectedPath);

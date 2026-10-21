@@ -57,6 +57,42 @@ public class GitHistoryReaderTest {
 		assertTrue(commits.get(0).getId().startsWith(commits.get(0).getShortId()));
 	}
 
+	/**
+	 * FR-G1b, gap #85: the history is HEAD's first-parent line - a merged branch's commits are left
+	 * out (the merge commit brings their work); listed as every reachable commit, the import went
+	 * back and forth between the branches.
+	 */
+	@Test
+	@Timeout(30)
+	public void listCommits_followsFirstParents_leavingOutMergedBranches() throws Exception {
+		Path repoDir = Files.createTempDirectory("git-history-reader-test");
+
+		try (Git git = Git.init().setInitialBranch("main").setDirectory(repoDir.toFile()).call()) {
+			Files.writeString(repoDir.resolve("a.txt"), "a\n");
+			git.add().addFilepattern(".").call();
+			git.commit().setMessage("main 1").setAuthor("Test", "test@example.com").call();
+
+			git.checkout().setCreateBranch(true).setName("side").call();
+			Files.writeString(repoDir.resolve("b.txt"), "b\n");
+			git.add().addFilepattern(".").call();
+			org.eclipse.jgit.revwalk.RevCommit side = git.commit().setMessage("side 1").setAuthor("Test", "test@example.com").call();
+
+			git.checkout().setName("main").call();
+			Files.writeString(repoDir.resolve("c.txt"), "c\n");
+			git.add().addFilepattern(".").call();
+			git.commit().setMessage("main 2").setAuthor("Test", "test@example.com").call();
+			git.merge().include(side).setMessage("merge side").setFastForward(org.eclipse.jgit.api.MergeCommand.FastForwardMode.NO_FF).call();
+		}
+
+		List<GitCommitInfo> commits = reader.listCommits(repoDir);
+
+		assertEquals(List.of("merge side", "main 2", "main 1"), commits.stream().map(GitCommitInfo::getMessage).toList());
+		// the merge commit's tree has the branch's work
+		Path tree = Files.createTempDirectory("git-history-reader-merge");
+		reader.extractCommitTree(repoDir, commits.get(0).getId(), tree);
+		assertEquals("b\n", Files.readString(tree.resolve("b.txt")));
+	}
+
 	@Test
 	@Timeout(30)
 	public void extractCommitTree_reproducesExactContentAtThatCommit_notLaterChanges() throws Exception {

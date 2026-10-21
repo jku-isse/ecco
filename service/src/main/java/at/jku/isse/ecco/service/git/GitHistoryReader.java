@@ -3,7 +3,6 @@ package at.jku.isse.ecco.service.git;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.SourcePosition;
 import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
-import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.Edit;
 import org.eclipse.jgit.diff.EditList;
@@ -54,21 +53,29 @@ public final class GitHistoryReader {
 	private static final int MAX_DIFF_LINES = 400;
 
 	/**
-	 * Commits reachable from HEAD, newest first (matching normal {@code git log} order) - the
+	 * The commits of HEAD's first-parent line, newest first (as {@code git log --first-parent}) - the
 	 * import dialog's range picker shows them in this order and lets the user select a
 	 * contiguous range by row index; callers that need to actually apply commits should process
 	 * that selection oldest-first (reverse this list), since later ecco commits must build on
-	 * earlier ones.
+	 * earlier ones. The commits of a merged branch are left out: the merge commit's tree brings
+	 * their work, and each commit is diffed against its first parent. Every reachable commit, by
+	 * commit time, imported the branches interleaved with the main line - each a whole snapshot, so
+	 * features went back and forth between the branches' states (gap #85).
 	 */
 	public List<GitCommitInfo> listCommits(Path repoDir) {
 		try (Repository repository = openRepository(repoDir);
-			 Git git = new Git(repository)) {
+			 RevWalk revWalk = new RevWalk(repository)) {
+			ObjectId head = repository.resolve(org.eclipse.jgit.lib.Constants.HEAD);
+			if (head == null)
+				throw new EccoException("Error reading commit history from " + repoDir + ": it has no commits.");
+			revWalk.setFirstParent(true);
+			revWalk.markStart(revWalk.parseCommit(head));
 			List<GitCommitInfo> commits = new ArrayList<>();
-			for (RevCommit commit : git.log().call()) {
+			for (RevCommit commit : revWalk) {
 				commits.add(toCommitInfo(commit));
 			}
 			return commits;
-		} catch (IOException | org.eclipse.jgit.api.errors.GitAPIException e) {
+		} catch (IOException e) {
 			throw new EccoException("Error reading commit history from " + repoDir, e);
 		}
 	}
