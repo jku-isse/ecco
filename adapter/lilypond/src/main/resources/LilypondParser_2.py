@@ -403,19 +403,7 @@ def symbol(node):
             return "Text"
         return "Text.Music.Pitch.Drum" if in_drums(node) else "Name.Type"
     if parent == "pitch":
-        if in_markup(node):
-            return "Text"
-        if in_drums(node):
-            return "Text.Music.Pitch.Drum"
-        before = previous_word(node)
-        if before == "\\repeat":
-            return "Name.Type"
-        if before == "\\clef":
-            return "Name.Symbol"
-        if word not in NOTE_NAMES:
-            # in \chordmode, what follows a chord's : (c:m7 - tree-sitter knows no chord mode)
-            return "Text" if in_chords(node) else "Name.Variable"
-        return "Text.Music.Rest" if word in RESTS else "Text.Music.Pitch"
+        return pitch_word(node, word)
     if parent == "music_call":
         return "Text.Music.Pitch"     # \relative c'' - the reference pitch
     if parent == "assignment_lhs":
@@ -431,6 +419,24 @@ def symbol(node):
     if parent == "property_call":
         return "Name.Symbol"
     return "Name.Variable"
+
+
+def pitch_word(node, word):
+    """A note's word - a pitch's name, or r, R, s and q, which the grammar reads as rest nodes
+    (since 2026-10) and before as a pitch's name: sent as they were then."""
+    if in_markup(node):
+        return "Text"
+    if in_drums(node):
+        return "Text.Music.Pitch.Drum"
+    before = previous_word(node)
+    if before == "\\repeat":
+        return "Name.Type"
+    if before == "\\clef":
+        return "Name.Symbol"
+    if word not in NOTE_NAMES:
+        # in \chordmode, what follows a chord's : (c:m7 - tree-sitter knows no chord mode)
+        return "Text" if in_chords(node) else "Name.Variable"
+    return "Text.Music.Rest" if word in RESTS else "Text.Music.Pitch"
 
 
 def named_field(node):
@@ -583,6 +589,8 @@ def action(node):
         return escaped_word(node)
     if t == "symbol":
         return symbol(node)
+    if t in REST_NODES:
+        return pitch_word(node, text(node))
     if t == "punctuation":
         return punctuation(node)
     if t == "unsigned_integer":
@@ -694,14 +702,16 @@ def contexts_of_value(node):
 # --------------------------------------------------------------------------------------------------
 # Tokens that are more than one leaf.
 
-NOTE_PARTS = {"pitch", "duration"}
+# r, R, s and q as the grammar reads them (a pitch's name before 2026-10)
+REST_NODES = {"rest", "multi_measure_rest", "spacer", "chord_repetition"}
+NOTE_PARTS = {"pitch", "duration"} | REST_NODES
 
 
 def note(event):
     """A note or rest as ONE token (musical tokens): its pitch and duration as written, with its
     meaning; post-events stay tokens of their own."""
     parts = [c for c in event.children if c.type in NOTE_PARTS]
-    if not parts or parts[0].type != "pitch":
+    if not parts or parts[0].type == "duration":
         return False
     first = parts[0]
     joined_end = end(first)
@@ -710,8 +720,11 @@ def note(event):
             break
         joined_end = end(c)
     pos = start(first)
-    name = first.child_by_field_name("name")
-    act = symbol(name) if name is not None else "Text.Music.Pitch"
+    if first.type in REST_NODES:
+        act = pitch_word(first, text(first))
+    else:
+        name = first.child_by_field_name("name")
+        act = symbol(name) if name is not None else "Text.Music.Pitch"
     if act not in ("Text.Music.Pitch", "Text.Music.Rest"):
         return False
     token(pos, s[pos:joined_end], act, meanings.get(pos))
@@ -785,8 +798,8 @@ def walk(node):
         tempo_range(node)
     elif t in ("octave_marks", "octave_check") and node.child_count:
         token(start(node), text(node), action(node.children[0]))
-    elif t == "event" and MUSICAL and node.child_by_field_name("pitch") is not None and not in_markup(node) \
-            and note(node):
+    elif t == "event" and MUSICAL and not in_markup(node) and any(
+            node.child_by_field_name(f) is not None for f in ("pitch", "rest", "repetition")) and note(node):
         pass
     elif t == "chord" and MUSICAL:
         children = node.children
