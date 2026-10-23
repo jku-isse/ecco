@@ -392,6 +392,16 @@ def escaped_word(node):
 def symbol(node):
     parent = node.parent.type if node.parent is not None else ""
     word = text(node)
+    if parent == "pitch" and called_pitch(node.parent) == "music_call":
+        return "Text.Music.Pitch"     # \relative c'' - the reference pitch
+    if parent == "command_call" and named_field(node) == "type":
+        # \repeat volta: read as a note's word before (a drum's in \drummode), or a syllable in
+        # lyric mode
+        if in_lyric_mode(node):
+            return "Text.Lyric.LyricText"
+        if in_markup(node):
+            return "Text"
+        return "Text.Music.Pitch.Drum" if in_drums(node) else "Name.Type"
     if parent == "pitch":
         if in_markup(node):
             return "Text"
@@ -496,6 +506,9 @@ def punctuation(node):
 
 def number(node):
     parent = node.parent.type if node.parent is not None else ""
+    if parent == "command_call" and named_field(node) == "count":
+        # \repeat volta 2: read as the duration of a note before (of a syllable in lyric mode)
+        return "Text" if MUSICAL and in_lyric_mode(node) else "Literal.Number.Duration"
     if node.prev_sibling is not None and text(node.prev_sibling) == ":":
         return "Literal.Number"     # c4:32, c:7
     if parent in ("post_event",):
@@ -512,6 +525,55 @@ def number(node):
     if parent in ("assignment", "property_call", "chord"):
         return "Literal.Number"
     return "Literal.Number.Duration"
+
+
+# --------------------------------------------------------------------------------------------------
+# Command arguments the grammar names (since 2026-10: \relative's pitch, \repeat's type and count,
+# \partial's duration...). They are sent as the tokens they were when the grammar read them as loose
+# words and numbers, so a file reads the same as in commits made before (lybar-2).
+
+def called_pitch(pitch):
+    r"""The call a pitch is the argument of ("music_call": \relative, \fixed, \transpose;
+    "command_call": \key, \transposition...), or None for a note's pitch."""
+    p = pitch.parent
+    return p.type if p is not None and p.type in ("music_call", "command_call") else None
+
+
+def in_lyric_mode(node):
+    p = node.parent
+    while p is not None and p.type not in ("expression_block", "parallel_music"):
+        p = p.parent
+    return p is not None and is_lyrics(p)
+
+
+def argument_duration(node):
+    r"""\skip 1*3/4: the length, its dots, `*` and the factors, a fraction as one token."""
+    pos = start(node)
+    after_star = False
+    for m in re.finditer(r"\\?[A-Za-z]+|\d+/\d+|\d+|\.|\*|\s+", text(node)):
+        p = pos + m.start()
+        piece = m.group(0)
+        if piece.isspace():
+            continue
+        if piece == ".":
+            token(p, piece, "Literal.Number.Duration.Dot")
+        elif piece == "*":
+            token(p, piece, "Literal.Number.Duration")
+            after_star = True
+        elif "/" in piece:
+            token(p, piece, "Literal.Number.Fraction")
+        else:
+            token(p, piece, "Literal.Number.Duration.Scaling" if after_star else "Literal.Number.Duration")
+
+
+def tempo_range(node):
+    r"""\tempo 4 = 58-60: the first number as a value, then a fingering's - and number."""
+    first, dash, second = node.child_by_field_name("from"), node.children[1], node.child_by_field_name("to")
+    push(start(first), "LilyPond.list")
+    token(start(first), text(first), "Literal.Number")
+    pop(1)
+    token(start(dash), text(dash), "Delimiter.Direction")
+    token(start(second), text(second), "Literal.Number.Fingering")
 
 
 def action(node):
@@ -708,6 +770,19 @@ def walk(node):
         # one token, a number however it is signed: as parce's sign the writer kept the next word
         # from it (#-3b)
         token(start(node), text(node), "Literal.String" if t != "scheme_number" else "Literal.Number.Decimal")
+    elif t == "octave_marks" and called_pitch(node.parent) == "music_call":
+        # \relative c'': each mark its own token (those \relative's token holds already sent)
+        for c in node.children:
+            if start(c) >= last:
+                token(start(c), text(c), "Text.Music.Pitch.Octave")
+    elif t == "pitch" and MUSICAL and called_pitch(node) == "command_call" \
+            and symbol(node.child_by_field_name("name")) in ("Text.Music.Pitch", "Text.Music.Rest"):
+        # \transposition bes, - one token with its meaning, as the note it was read as
+        token(start(node), text(node), symbol(node.child_by_field_name("name")), meanings.get(start(node)))
+    elif t == "duration" and node.parent is not None and node.parent.type == "command_call":
+        argument_duration(node)
+    elif t == "tempo_range":
+        tempo_range(node)
     elif t in ("octave_marks", "octave_check") and node.child_count:
         token(start(node), text(node), action(node.children[0]))
     elif t == "event" and MUSICAL and node.child_by_field_name("pitch") is not None and not in_markup(node) \
@@ -737,15 +812,28 @@ def walk(node):
                 walk(c)
     elif t == "music_call" and MUSICAL and call_name(node) == "relative":
         for c in node.children:
-            if c.type == "symbol":
-                # the reference pitch with its octave marks, as one token with its meaning
-                pos = start(c)
-                stop = end(c)
-                nxt = c.next_sibling
-                while nxt is not None and nxt.type == "punctuation" and start(nxt) == stop:
-                    stop = end(nxt)
-                    nxt = nxt.next_sibling
+            if c.type in ("symbol", "pitch"):
+                # the reference pitch with the octave marks written against it, as one token with its
+                # meaning (a symbol and loose marks before the grammar named the pitch)
+                name = c.child_by_field_name("name") if c.type == "pitch" else c
+                marks = c.child_by_field_name("octave") if c.type == "pitch" else None
+                following = marks.children if marks is not None else []
+                if c.type == "symbol":
+                    nxt, following = c.next_sibling, []
+                    while nxt is not None and nxt.type == "punctuation":
+                        following.append(nxt)
+                        nxt = nxt.next_sibling
+                pos = start(name)
+                stop = end(name)
+                for mark in following:
+                    if start(mark) != stop:
+                        break
+                    stop = end(mark)
                 token(pos, s[pos:stop], "Text.Music.Pitch", meanings.get(pos))
+                if c.type == "pitch":
+                    for mark in following:
+                        if start(mark) >= last:
+                            token(start(mark), text(mark), "Text.Music.Pitch.Octave")
             elif start(c) >= last:
                 walk(c)
     elif node.child_count == 0:
