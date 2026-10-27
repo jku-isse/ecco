@@ -102,16 +102,26 @@ public class RemotesView extends BorderPane implements EccoListener {
 
 		// remote details view
 		RemoteDetailView remoteDetailView = new RemoteDetailView(service);
-		// the saved remote takes the place of the one shown - at once, without asking the service (which
-		// waits for its lock): the detail pane reports "Saved." after this reselects the remote
-		remoteDetailView.setOnRemoteChanged(changed -> {
-			Remote shown = remotesTable.getSelectionModel().getSelectedItem();
-			int index = shown == null ? -1 : this.remotesData.indexOf(shown);
+		// the saved or fetched remote takes the place of its row - the same remote (a save renames it
+		// in place), or else the one of its name before - at once, without asking the service (which
+		// waits for its lock): the detail pane reports "Saved." after this reselects the remote. It
+		// took the place of the one selected when the task ended, so a remote picked meanwhile was
+		// gone from the list and the saved one listed twice; that one stays selected
+		remoteDetailView.setOnRemoteChanged((name, changed) -> {
+			int index = -1;
+			for (int i = 0; i < this.remotesData.size() && index < 0; i++)
+				if (this.remotesData.get(i) == changed)
+					index = i;
+			for (int i = 0; i < this.remotesData.size() && index < 0; i++)
+				if (this.remotesData.get(i).getName().equals(name))
+					index = i;
+			boolean selected = index >= 0 && remotesTable.getSelectionModel().getSelectedIndices().contains(index);
 			if (index >= 0)
 				this.remotesData.set(index, changed);
 			else
 				this.remotesData.add(changed);
-			remotesTable.getSelectionModel().select(changed);
+			if (selected)
+				remotesTable.getSelectionModel().select(changed);
 		});
 
 

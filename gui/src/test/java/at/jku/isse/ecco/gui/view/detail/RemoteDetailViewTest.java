@@ -138,7 +138,7 @@ public class RemoteDetailViewTest {
             RemoteDetailView view = onFx(() -> new RemoteDetailView(service));
             List<String> changed = new ArrayList<>();
             Parent grid = onFx(() -> {
-                view.setOnRemoteChanged(remote -> changed.add(remote.getName()));
+                view.setOnRemoteChanged((name, remote) -> changed.add(remote.getName()));
                 view.showRemote(service.getRemote("origin"));
                 return grid(view);
             });
@@ -170,7 +170,7 @@ public class RemoteDetailViewTest {
             RemoteDetailView view = onFx(() -> new RemoteDetailView(service));
             List<String> changed = new ArrayList<>();
             Parent grid = onFx(() -> {
-                view.setOnRemoteChanged(remote -> changed.add(remote.getName()));
+                view.setOnRemoteChanged((name, remote) -> changed.add(remote.getName()));
                 view.showRemote(service.getRemote("origin"));
                 return grid(view);
             });
@@ -199,7 +199,7 @@ public class RemoteDetailViewTest {
             RemoteDetailView view = onFx(() -> new RemoteDetailView(service));
             List<String> changed = new ArrayList<>();
             Parent grid = onFx(() -> {
-                view.setOnRemoteChanged(remote -> changed.add(remote.getName()));
+                view.setOnRemoteChanged((name, remote) -> changed.add(remote.getName()));
                 view.showRemote(service.getRemote("upstream"));
                 return grid(view);
             });
@@ -243,7 +243,7 @@ public class RemoteDetailViewTest {
             RemoteDetailView view = onFx(() -> new RemoteDetailView(service));
             List<String> changed = new ArrayList<>();
             onFx(() -> {
-                view.setOnRemoteChanged(remote -> changed.add(remote.getName()));
+                view.setOnRemoteChanged((name, remote) -> changed.add(remote.getName()));
                 view.showRemote(service.getRemote("upstream"));
                 button(toolBar(view), "Fetch").fire();
             });

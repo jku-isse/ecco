@@ -210,6 +210,38 @@ public class RemotesViewTest {
         }
     }
 
+    /**
+     * A Save that ends after another remote was picked replaces the saved remote's row, and the one
+     * picked stays selected and shown: it replaced the row selected when the Save ended - the remote
+     * picked was gone from the list, the saved one listed twice (under its old and new name).
+     */
+    @Test
+    @Timeout(60)
+    public void aSaveEndingAfterAnotherRemoteWasPickedReplacesTheSavedOne(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            service.addRemote("origin", "localhost:3770", Remote.Type.REMOTE);
+            service.addRemote("other", "localhost:3771", Remote.Type.REMOTE);
+            RemotesView view = onFx(() -> new RemotesView(service));
+            waitUntil("both remotes", () -> table(view).getItems().size() == 2);
+            RemoteDetailView detail = onFx(() -> (RemoteDetailView) find(view, n -> n instanceof RemoteDetailView));
+            onFx(() -> select(view, "origin"));
+
+            synchronized (service) { // the save waits, as behind a commit
+                onFx(() -> {
+                    ((TextField) find(detail, n -> n instanceof TextField)).setText("upstream");
+                    button(detail, "Save").fire();
+                });
+                onFx(() -> select(view, "other"));
+            }
+
+            waitUntil("the save", () -> names(view).contains("upstream"));
+            assertEquals(List.of("other", "upstream"), onFx(() -> table(view).getItems().stream().map(Remote::getName).sorted().toList()));
+            assertEquals("other", onFx(() -> table(view).getSelectionModel().getSelectedItem().getName()));
+            assertEquals("other", onFx(() -> ((TextField) find(detail, n -> n instanceof TextField)).getText()));
+            assertFalse(onFx(() -> detail.getTop().isDisable()), "the remote shown can be saved");
+        }
+    }
+
     // --- helpers -------------------------------------------------------------------------------------
 
     /**

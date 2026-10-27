@@ -13,7 +13,7 @@ import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 public class RemoteDetailView extends BorderPane {
 
@@ -31,7 +31,7 @@ public class RemoteDetailView extends BorderPane {
 	private TreeView<FeatureInfo> featuresTreeView;
 	private final Label statusLabel = new Label();
 
-	private Consumer<Remote> onRemoteChanged = remote -> {
+	private BiConsumer<String, Remote> onRemoteChanged = (name, remote) -> {
 	};
 
 
@@ -96,8 +96,11 @@ public class RemoteDetailView extends BorderPane {
 		this.showRemote(null);
 	}
 
-	/** Called with the remote after Save or Fetch changed it, e.g. to update a list of remotes. */
-	public void setOnRemoteChanged(Consumer<Remote> onRemoteChanged) {
+	/**
+	 * Called with the name the remote had and the remote after Save or Fetch changed it, e.g. to
+	 * update a list of remotes - also when another remote is shown by then.
+	 */
+	public void setOnRemoteChanged(BiConsumer<String, Remote> onRemoteChanged) {
 		this.onRemoteChanged = onRemoteChanged;
 	}
 
@@ -116,7 +119,7 @@ public class RemoteDetailView extends BorderPane {
 			protected Remote call() {
 				return RemoteDetailView.this.service.updateRemote(name, newName, address, type);
 			}
-		}, "Saving...", "Saved.");
+		}, name, "Saving...", "Saved.");
 	}
 
 	/** Fetches the shown remote's features in the background and shows them. */
@@ -128,33 +131,44 @@ public class RemoteDetailView extends BorderPane {
 				RemoteDetailView.this.service.fetch(name);
 				return RemoteDetailView.this.service.getRemote(name);
 			}
-		}, "Fetching...", "Fetched.");
+		}, name, "Fetching...", "Fetched.");
 	}
 
 	/**
 	 * Runs {@code task} on a daemon thread (it must not keep the application from quitting) and
 	 * shows the remote it returns with {@code done}; {@code null} = the remote was removed meanwhile.
+	 * If another remote was picked meanwhile (which enables the toolbar again), that one stays shown:
+	 * the remote is only reported as changed, a failure named in the status.
 	 */
-	private void run(Task<Remote> task, String working, String done) {
+	private void run(Task<Remote> task, String name, String working, String done) {
+		Remote started = this.currentRemote;
 		this.toolBar.setDisable(true);
 		this.statusLabel.setText(working);
 		task.setOnSucceeded(event -> {
 			Remote remote = task.getValue();
+			boolean stillShown = this.currentRemote == started;
 			if (remote == null) {
 				// removed while this ran: there is nothing to show or to report as changed
-				this.showRemote(null);
-				this.statusLabel.setText("The remote no longer exists.");
+				if (stillShown) {
+					this.showRemote(null);
+					this.statusLabel.setText("The remote no longer exists.");
+				}
 				return;
 			}
 			// the list's update reselects the remote, which shows it again and cleared the status:
 			// report first, then show it with its status
-			this.onRemoteChanged.accept(remote);
-			this.showRemote(remote);
-			this.statusLabel.setText(done);
+			this.onRemoteChanged.accept(name, remote);
+			if (stillShown) {
+				this.showRemote(remote);
+				this.statusLabel.setText(done);
+			}
 		});
 		task.setOnFailed(event -> {
-			this.toolBar.setDisable(false);
-			this.statusLabel.setText(TaskFailures.reason(task.getException()));
+			if (this.currentRemote == started) {
+				this.toolBar.setDisable(false);
+				this.statusLabel.setText(TaskFailures.reason(task.getException()));
+			} else
+				this.statusLabel.setText("'" + name + "': " + TaskFailures.reason(task.getException()));
 		});
 		Thread thread = new Thread(task, "remote " + working);
 		thread.setDaemon(true);
