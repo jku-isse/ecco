@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Set;
 
 public class EccoUtil {
@@ -54,29 +55,65 @@ public class EccoUtil {
 	 * @return The copied tree.
 	 */
 	public static Node.Op deepCopyTree(Node.Op node, EntityFactory entityFactory) {
-		Set<Artifact.Op<?>> touchedSourceArtifacts = Collections.newSetFromMap(new IdentityHashMap<>());
-		Node.Op node2 = EccoUtil.deepCopyTreeRec(node, entityFactory, touchedSourceArtifacts);
+		TreeCopy treeCopy = new TreeCopy(entityFactory);
+		Node.Op node2 = treeCopy.copy(node);
+		treeCopy.finish(List.of(node2));
+		return node2;
+	}
 
-		// updateArtifactReferences() (both here and PartialOrderGraph.Op.copy(), called from within
-		// deepCopyTreeRec() above) still needs every touched source artifact's replacingArtifact -
-		// e.g. a copied artifact's own sequence graph nodes are wired directly to the SOURCE line
-		// artifacts by PartialOrderGraph.Op.copy(), and only get redirected to their copies here.
-		Trees.updateArtifactReferences(node2);
+	/**
+	 * Deep copies of several trees in one context - the trees of a repository's associations: an
+	 * artifact several of them hold (the file a node of each association is, the heading a unique node
+	 * of one and a non-unique node of another hold) gets one copy, held by the copied trees as the
+	 * artifact is by the trees copied. Copied one at a time, each tree got a copy of its own, with its
+	 * own copy of the order graph, and an order graph node of one copy pointed to a line held under
+	 * the other - subset() and merge() could not join those, and a fork of a history of nested ordered
+	 * artifacts could not be opened again (ForkNestedOrderTest).
+	 * <p>
+	 * {@link #copy} the trees, then {@link #finish} with the copies.
+	 */
+	public static final class TreeCopy {
 
-		// replacingArtifact is only meant as a "have I already copied this artifact" cache scoped to
-		// THIS deepCopyTree() call (see its javadoc on Artifact.Op) - clearing it now, once fully
-		// consumed above, stops it from leaking into a LATER, unrelated deepCopyTree()/Trees.slice()
-		// call that happens to encounter the same (e.g. shared/non-unique) source artifact object
-		// again. Left uncleared, a subsequent call would either wrongly treat the source as "already
-		// copied" (reusing a copy instance that belongs to a different, unrelated copy operation) or
-		// trip Trees.slice()'s "replacing artifact should not itself have a replacing artifact" guard
-		// - both observed in practice via fork()+local-commit()+push() (see
-		// RemoteSyncCharacterizationTest/ReplacingArtifactLeakRegressionTest).
-		for (Artifact.Op<?> touchedSourceArtifact : touchedSourceArtifacts) {
-			touchedSourceArtifact.setReplacingArtifact(null);
+		private final EntityFactory entityFactory;
+		private final Set<Artifact.Op<?>> touchedSourceArtifacts = Collections.newSetFromMap(new IdentityHashMap<>());
+
+		public TreeCopy(EntityFactory entityFactory) {
+			this.entityFactory = entityFactory;
 		}
 
-		return node2;
+		/** A deep copy of the tree; an artifact copied before in this context is held by its copy. */
+		public Node.Op copy(Node.Op node) {
+			return EccoUtil.deepCopyTreeRec(node, this.entityFactory, this.touchedSourceArtifacts);
+		}
+
+		/**
+		 * Points the copied trees' references and order graph nodes at the copies, and ends the
+		 * context.
+		 *
+		 * @param copies trees holding every copy made - the copies themselves, or what they were merged into
+		 */
+		public void finish(Iterable<? extends Node.Op> copies) {
+			// updateArtifactReferences() (both here and PartialOrderGraph.Op.copy(), called from within
+			// deepCopyTreeRec()) still needs every touched source artifact's replacingArtifact -
+			// e.g. a copied artifact's own sequence graph nodes are wired directly to the SOURCE line
+			// artifacts by PartialOrderGraph.Op.copy(), and only get redirected to their copies here.
+			for (Node.Op copy : copies)
+				Trees.updateArtifactReferences(copy);
+
+			// replacingArtifact is only meant as a "have I already copied this artifact" cache scoped to
+			// THIS copy (see its javadoc on Artifact.Op) - clearing it now, once fully consumed above,
+			// stops it from leaking into a LATER, unrelated copy or Trees.slice() call that happens to
+			// encounter the same (e.g. shared/non-unique) source artifact object again. Left uncleared,
+			// a subsequent call would either wrongly treat the source as "already copied" (reusing a
+			// copy instance that belongs to a different, unrelated copy operation) or trip
+			// Trees.slice()'s "replacing artifact should not itself have a replacing artifact" guard
+			// - both observed in practice via fork()+local-commit()+push() (see
+			// RemoteSyncCharacterizationTest/ReplacingArtifactLeakRegressionTest).
+			for (Artifact.Op<?> touchedSourceArtifact : this.touchedSourceArtifacts) {
+				touchedSourceArtifact.setReplacingArtifact(null);
+			}
+			this.touchedSourceArtifacts.clear();
+		}
 	}
 
 	private static Node.Op deepCopyTreeRec(Node.Op node, EntityFactory entityFactory, Set<Artifact.Op<?>> touchedSourceArtifacts) {

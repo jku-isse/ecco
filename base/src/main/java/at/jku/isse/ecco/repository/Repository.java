@@ -938,6 +938,9 @@ public interface Repository extends Persistable {
 			Set<Association> keptAssociations = Collections.newSetFromMap(new IdentityHashMap<>());
 			// every artifact of this repository copied into the subset -> its copy (see redirectToCopies())
 			Map<Artifact.Op<?>, Artifact.Op<?>> copies = new IdentityHashMap<>();
+			// the associations' trees are copied in one context: an artifact several of them hold keeps
+			// one copy (see EccoUtil.TreeCopy)
+			EccoUtil.TreeCopy treeCopy = new EccoUtil.TreeCopy(entityFactory);
 			for (Association.Op association : this.getAssociations()) {
 				Condition condition = association.computeCondition();
 
@@ -1025,7 +1028,7 @@ public interface Repository extends Persistable {
 					RootNode.Op copiedRootNode = entityFactory.createRootNode();
 					// clone tree
 					for (Node.Op childNode : association.getRootNode().getChildren()) {
-						Node.Op copiedChildNode = EccoUtil.deepCopyTree(childNode, entityFactory);
+						Node.Op copiedChildNode = treeCopy.copy(childNode);
 						recordCopies(childNode, copiedChildNode, copies);
 						copiedRootNode.addChild(copiedChildNode);
 						copiedChildNode.setParent(copiedRootNode);
@@ -1037,15 +1040,13 @@ public interface Repository extends Persistable {
 			}
 
 			Collection<? extends Association.Op> newAssociations = newRepository.getAssociations();
+			treeCopy.finish(newAssociations.stream().map(Association.Op::getRootNode).toList());
 
 			// trim sequence graphs to only contain artifacts from the selected associations. Every
-			// association's tree was copied on its own, so an artifact several associations share (a
-			// file) has a copy in each, with its own copy of the sequence graph - each must be trimmed,
-			// not only the one under the unique node: the copies are merged into one again, and an
-			// untrimmed one brought back nodes of left-out artifacts, which were then stored without
-			// those artifacts - the repository could not be opened again (ExcludedRevisionsTest). A
-			// graph node of a copy points to the artifact's copy if the same association holds it, else
-			// still to the artifact of this repository; either is kept if its association is.
+			// ordered artifact's graph is trimmed, not only the one under a unique node: an untrimmed one
+			// kept nodes of left-out artifacts, which were then stored without those artifacts - the
+			// repository could not be opened again (ExcludedRevisionsTest). A graph node is kept if the
+			// association holding its artifact is.
 			for (Association.Op newAssociation : newAssociations) {
 				newAssociation.getRootNode().traverse((Node.Op node) -> {
 					if (node.getArtifact() != null && node.getArtifact().isOrdered() && node.getArtifact().isSequenced() && node.getArtifact().getPartialOrderGraph() != null) {
@@ -1288,21 +1289,33 @@ public interface Repository extends Persistable {
 				}
 			}
 
+			// copy the other repository's artifact trees, all in one context: an artifact several of its
+			// associations hold keeps one copy (see EccoUtil.TreeCopy)
+			EccoUtil.TreeCopy treeCopy = new EccoUtil.TreeCopy(this.getEntityFactory());
+			Map<Association.Op, RootNode.Op> copiedRootNodes = new LinkedHashMap<>();
+			for (Association.Op otherAssociation : otherRepository.getAssociations()) {
+				RootNode.Op copiedRootNode = this.getEntityFactory().createRootNode();
+				for (Node.Op otherChildNode : otherAssociation.getRootNode().getChildren()) {
+					Node.Op copiedChildNode = treeCopy.copy(otherChildNode);
+					copiedRootNode.addChild(copiedChildNode);
+					copiedChildNode.setParent(copiedRootNode);
+				}
+				copiedRootNodes.put(otherAssociation, copiedRootNode);
+			}
+			treeCopy.finish(copiedRootNodes.values());
+
 			// for every association in other repository
 			for (Association.Op otherAssociation : otherRepository.getAssociations()) {
 				// prepare new associations for commit
 				Association.Op association = this.getEntityFactory().createAssociation();
 				association.setId(UUID.randomUUID().toString());
 
-				// copy artifact tree
-				RootNode.Op copiedRootNode = this.getEntityFactory().createRootNode();
+				// its copied artifact tree
+				RootNode.Op copiedRootNode = copiedRootNodes.get(otherAssociation);
+				// a copy an association extracted before was matched to an artifact of this repository
+				// (Trees.slice() replaced it): this tree holds that artifact too
+				adoptReplacingArtifacts(copiedRootNode);
 				association.setRootNode(copiedRootNode); // TODO: have association implementation take care of creating root node in constructor.
-				// clone tree
-				for (Node.Op otherChildNode : otherAssociation.getRootNode().getChildren()) {
-					Node.Op copiedChildNode = EccoUtil.deepCopyTree(otherChildNode, this.getEntityFactory());
-					copiedRootNode.addChild(copiedChildNode);
-					copiedChildNode.setParent(copiedRootNode);
-				}
 
 
 				// set association counter
@@ -1350,6 +1363,27 @@ public interface Repository extends Persistable {
 			this.invalidateMainTree();
 		}
 
+
+		/**
+		 * Lets each node of the tree hold the artifact that replaced its own - the end of its
+		 * replacing chain - for a tree whose artifacts were matched while extracting another tree that
+		 * holds them too (merge()).
+		 */
+		private static void adoptReplacingArtifacts(Node.Op node) {
+			Artifact.Op<?> artifact = node.getArtifact();
+			if (artifact != null && artifact.hasReplacingArtifact()) {
+				Artifact.Op<?> replacing = artifact.getReplacingArtifact();
+				while (replacing.hasReplacingArtifact())
+					replacing = replacing.getReplacingArtifact();
+				node.setArtifact(replacing);
+				if (node.isUnique())
+					replacing.setContainingNode(node);
+			}
+			if (node.getArtifact() != null)
+				node.getArtifact().updateArtifactReferences();
+			for (Node.Op child : node.getChildren())
+				adoptReplacingArtifacts(child);
+		}
 
 		/**
 		 * Points every partial order graph node at an artifact that a tree node actually holds.
