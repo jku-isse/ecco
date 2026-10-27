@@ -1039,6 +1039,31 @@ public interface Repository extends Persistable {
 				}
 			}
 
+			// and the modules no kept association's condition has - configurations committed (a module
+			// revision is one combination of features of a commit), counted once like the others: a
+			// checkout of the subset looks them up, and without them warned that they were MISSING where
+			// one of this repository did not (ForkModulesTest)
+			for (int order = 0; order <= newRepository.getMaxOrder(); order++) {
+				for (Module module : this.getModules(order)) {
+					if (Arrays.stream(module.getPos()).anyMatch(feature -> newRepository.getFeature(feature.getId()) == null))
+						continue;
+					Feature[] newNegFeatures = Arrays.stream(module.getNeg()).map(feature -> newRepository.getFeature(feature.getId())).filter(Objects::nonNull).toArray(Feature[]::new);
+					for (ModuleRevision moduleRevision : module.getRevisions()) {
+						if (Arrays.stream(moduleRevision.getPos()).anyMatch(featureRevision -> newRepository.getFeature(featureRevision.getFeature().getId()).getRevision(featureRevision.getId()) == null))
+							continue;
+						Module newModule = newRepository.getModule(module.getPos(), newNegFeatures);
+						if (newModule == null) {
+							newModule = newRepository.addModule(Arrays.stream(module.getPos()).map(feature -> newRepository.getFeature(feature.getId())).toArray(Feature[]::new), newNegFeatures);
+							newModule.incCount();
+						}
+						if (newModule.getRevision(moduleRevision.getPos(), newModule.getNeg()) == null) {
+							ModuleRevision newModuleRevision = newModule.addRevision(Arrays.stream(moduleRevision.getPos()).map(featureRevision -> newRepository.getFeature(featureRevision.getFeature().getId()).getRevision(featureRevision.getId())).toArray(FeatureRevision[]::new), newModule.getNeg());
+							newModuleRevision.incCount();
+						}
+					}
+				}
+			}
+
 			Collection<? extends Association.Op> newAssociations = newRepository.getAssociations();
 			treeCopy.finish(newAssociations.stream().map(Association.Op::getRootNode).toList());
 
