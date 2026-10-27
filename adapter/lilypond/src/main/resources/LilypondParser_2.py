@@ -404,8 +404,6 @@ def symbol(node):
         return "Text.Music.Pitch.Drum" if in_drums(node) else "Name.Type"
     if parent == "pitch":
         return pitch_word(node, word)
-    if parent == "music_call":
-        return "Text.Music.Pitch"     # \relative c'' - the reference pitch
     if parent == "assignment_lhs":
         assignment = node.parent.parent
         if assignment.parent is not None and assignment.parent.type == "lilypond_program":
@@ -554,32 +552,61 @@ def in_lyric_mode(node):
 
 def argument_duration(node):
     r"""\skip 1*3/4: the length, its dots, `*` and the factors, a fraction as one token."""
-    pos = start(node)
     after_star = False
-    for m in re.finditer(r"\\?[A-Za-z]+|\d+/\d+|\d+|\.|\*|\s+", text(node)):
-        p = pos + m.start()
-        piece = m.group(0)
-        if piece.isspace():
+    # the pieces between the comments (a comment is a child, sent as a comment)
+    spans, pos = [], start(node)
+    for c in node.children:
+        if c.type in ("comment", "scheme_comment"):
+            spans.append((pos, start(c)))
+            spans.append(c)
+            pos = end(c)
+    spans.append((pos, end(node)))
+    for span in spans:
+        if not isinstance(span, tuple):
+            walk(span)
             continue
-        if piece == ".":
-            token(p, piece, "Literal.Number.Duration.Dot")
-        elif piece == "*":
-            token(p, piece, "Literal.Number.Duration")
-            after_star = True
-        elif "/" in piece:
-            token(p, piece, "Literal.Number.Fraction")
-        else:
-            token(p, piece, "Literal.Number.Duration.Scaling" if after_star else "Literal.Number.Duration")
+        base = span[0]
+        for m in re.finditer(r"\\?[A-Za-z]+|\d+/\d+|\d+|\.|\*|\s+", s[span[0]:span[1]]):
+            p = base + m.start()
+            piece = m.group(0)
+            if piece.isspace():
+                continue
+            if piece == ".":
+                token(p, piece, "Literal.Number.Duration.Dot")
+            elif piece == "*":
+                token(p, piece, "Literal.Number.Duration")
+                after_star = True
+            elif "/" in piece:
+                token(p, piece, "Literal.Number.Fraction")
+            else:
+                token(p, piece, "Literal.Number.Duration.Scaling" if after_star else "Literal.Number.Duration")
 
 
 def tempo_range(node):
     r"""\tempo 4 = 58-60: the first number as a value, then a fingering's - and number."""
-    first, dash, second = node.child_by_field_name("from"), node.children[1], node.child_by_field_name("to")
-    push(start(first), "LilyPond.list")
-    token(start(first), text(first), "Literal.Number")
-    pop(1)
-    token(start(dash), text(dash), "Delimiter.Direction")
-    token(start(second), text(second), "Literal.Number.Fingering")
+    first, second = node.child_by_field_name("from"), node.child_by_field_name("to")
+    dash = None
+    for c in node.children:
+        if c.id == first.id:
+            before = node.prev_sibling
+            if before is not None and before.type in ("comment", "scheme_comment"):
+                # a comment between the = and the number: a loose number, as before
+                token(start(first), text(first), "Literal.Number.Duration")
+                continue
+            push(start(first), "LilyPond.list")
+            token(start(first), text(first), "Literal.Number")
+            pop(1)
+        elif c.id == second.id:
+            # a fingering only when written right against the dash, else a duration
+            fingering = dash is not None and end(dash) == start(second)
+            token(start(second), text(second), "Literal.Number.Fingering" if fingering else "Literal.Number.Duration")
+        elif c.type in ("comment", "scheme_comment"):
+            walk(c)
+        elif dash is None and text(c) == "-":
+            dash = c
+            token(start(dash), text(dash), "Delimiter.Direction")
+        else:
+            walk(c)
 
 
 def action(node):
@@ -787,7 +814,10 @@ def walk(node):
         # \relative c'': each mark its own token (those \relative's token holds already sent)
         for c in node.children:
             if start(c) >= last:
-                token(start(c), text(c), "Text.Music.Pitch.Octave")
+                if c.type in ("comment", "scheme_comment"):
+                    walk(c)
+                else:
+                    token(start(c), text(c), "Text.Music.Pitch.Octave")
     elif t == "pitch" and MUSICAL and called_pitch(node) == "command_call" \
             and symbol(node.child_by_field_name("name")) in ("Text.Music.Pitch", "Text.Music.Rest"):
         # \transposition bes, - one token with its meaning, as the note it was read as
@@ -839,14 +869,17 @@ def walk(node):
                 pos = start(name)
                 stop = end(name)
                 for mark in following:
-                    if start(mark) != stop:
+                    if start(mark) != stop or mark.type in ("comment", "scheme_comment"):
                         break
                     stop = end(mark)
                 token(pos, s[pos:stop], "Text.Music.Pitch", meanings.get(pos))
                 if c.type == "pitch":
                     for mark in following:
                         if start(mark) >= last:
-                            token(start(mark), text(mark), "Text.Music.Pitch.Octave")
+                            if mark.type in ("comment", "scheme_comment"):
+                                walk(mark)
+                            else:
+                                token(start(mark), text(mark), "Text.Music.Pitch.Octave")
             elif start(c) >= last:
                 walk(c)
     elif node.child_count == 0:
