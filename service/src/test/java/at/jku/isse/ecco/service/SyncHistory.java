@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -33,7 +34,39 @@ final class SyncHistory {
         }
     }
 
+    private static final String[] FEATURES = {"A", "B", "C", "D"};
+
     private SyncHistory() {
+    }
+
+    /**
+     * Random steps for the search tests: on the features known so far (all of A-D when [own] is null,
+     * which also makes them known) and [own], a feature of the side's own; a line changes now and then
+     * without a new revision, as in real histories.
+     */
+    static List<Step> randomSteps(Random random, Map<String, Integer> version, Set<String> known, String own, int length) {
+        List<Step> steps = new ArrayList<>();
+        for (int i = 0; i < length; i++) {
+            List<String> pool = new ArrayList<>(own == null ? List.of(FEATURES) : known);
+            if (own != null)
+                pool.add(own);
+            List<String> configuration = new ArrayList<>();
+            for (String feature : pool)
+                if (random.nextInt(2) == 0)
+                    configuration.add(feature);
+            if (configuration.isEmpty())
+                configuration.add(pool.get(0));
+            if (own == null)
+                known.addAll(configuration);
+            List<String> lines = new ArrayList<>();
+            for (String feature : configuration) {
+                if (random.nextInt(4) == 0)
+                    version.merge(feature, 1, Integer::sum);
+                lines.add(feature.toLowerCase() + version.getOrDefault(feature, 0));
+            }
+            steps.add(new Step(String.join(", ", configuration), String.join("|", lines)));
+        }
+        return steps;
     }
 
     static List<Step> steps(String... steps) {

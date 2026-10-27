@@ -983,6 +983,66 @@ public interface Repository extends Persistable {
 			target.invalidateMainTree();
 		}
 
+		/**
+		 * Commits, in this repository, a commit of another repository - its configuration and the
+		 * associations that hold its content there - as committing that content here would: the
+		 * associations' trees, copied in one context (EccoUtil.TreeCopy) and joined into one, are the
+		 * commit's tree as read, every node its own; each ordered artifact keeps its order graph,
+		 * trimmed to the artifacts of the commit, so the order is the one recorded there (written to
+		 * files and read again, a partial order came back as one of its orders). Pull and push replay
+		 * the commits one side does not have, so a repository after them is one with the same commits
+		 * made in order - merging associations counted the history both share twice
+		 * (DivergedSyncTest).
+		 *
+		 * @return the commit made here, its id and the rest still to be set by the caller
+		 */
+		default Commit replay(Configuration configuration, Collection<? extends Association.Op> associations, String committer) {
+			checkNotNull(configuration);
+			checkNotNull(associations);
+			EntityFactory entityFactory = this.getEntityFactory();
+
+			EccoUtil.TreeCopy treeCopy = new EccoUtil.TreeCopy(entityFactory);
+			RootNode.Op rootNode = entityFactory.createRootNode();
+			for (Association.Op association : associations) {
+				RootNode.Op copiedRootNode = entityFactory.createRootNode();
+				for (Node.Op child : association.getRootNode().getChildren()) {
+					Node.Op copiedChild = treeCopy.copy(child);
+					copiedRootNode.addChild(copiedChild);
+					copiedChild.setParent(copiedRootNode);
+				}
+				rootNode.merge(copiedRootNode);
+			}
+			treeCopy.finish(List.of(rootNode));
+
+			// as read: every node its own, every order graph over the commit's artifacts only
+			Set<Artifact.Op<?>> artifacts = Collections.newSetFromMap(new IdentityHashMap<>());
+			rootNode.traverse((Node.Op node) -> {
+				if (node.getArtifact() != null)
+					artifacts.add(node.getArtifact());
+			});
+			rootNode.traverse((Node.Op node) -> {
+				node.setUnique(true);
+				Artifact.Op<?> artifact = node.getArtifact();
+				if (artifact == null)
+					return;
+				artifact.setContainingNode(node);
+				if (artifact.getPartialOrderGraph() != null) {
+					List<Artifact.Op<?>> symbols = new ArrayList<>();
+					for (PartialOrderGraph.Node.Op graphNode : artifact.getPartialOrderGraph().collectNodes())
+						if (graphNode.getArtifact() != null && artifacts.contains(graphNode.getArtifact()))
+							symbols.add(graphNode.getArtifact());
+					artifact.getPartialOrderGraph().trim(symbols);
+				}
+			});
+
+			Set<Node.Op> nodes = new LinkedHashSet<>();
+			for (Node.Op child : rootNode.getChildren()) {
+				child.setParent(null);
+				nodes.add(child);
+			}
+			return this.extract(configuration, nodes, committer);
+		}
+
 		private static Feature[] targetFeatures(Repository.Op target, Feature[] features) {
 			return Arrays.stream(features).map(feature -> target.getFeature(feature.getId())).toArray(Feature[]::new);
 		}

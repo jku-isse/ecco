@@ -28,7 +28,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class DivergedSyncSearchTest {
 
     private static final int SEEDS = 40;
-    private static final String[] FEATURES = {"A", "B", "C", "D"};
 
     @Test
     @Timeout(1200)
@@ -38,9 +37,9 @@ public class DivergedSyncSearchTest {
             Random random = new Random(seed);
             Map<String, Integer> version = new HashMap<>();
             Set<String> known = new LinkedHashSet<>();
-            List<Step> base = history(random, version, known, null, 1 + random.nextInt(3));
-            List<Step> a = history(random, version, known, "E", 1 + random.nextInt(2));
-            List<Step> b = history(random, version, known, "F", 1 + random.nextInt(2));
+            List<Step> base = randomSteps(random, version, known, null, 1 + random.nextInt(3));
+            List<Step> a = randomSteps(random, version, known, "E", 1 + random.nextInt(2));
+            List<Step> b = randomSteps(random, version, known, "F", 1 + random.nextInt(2));
 
             Path root = tmp.resolve("seed-" + seed);
             Path ra = commit(root.resolve("a"), base);
@@ -59,31 +58,5 @@ public class DivergedSyncSearchTest {
                 wrong.add("seed " + seed + " pushed to: " + base + " " + a + " " + b);
         }
         assertEquals(List.of(), wrong);
-    }
-
-    /** steps on features known so far (all four for the base) and the side's own new one */
-    private static List<Step> history(Random random, Map<String, Integer> version, Set<String> known, String own, int length) {
-        List<Step> steps = new ArrayList<>();
-        for (int i = 0; i < length; i++) {
-            List<String> pool = new ArrayList<>(own == null ? List.of(FEATURES) : known);
-            if (own != null)
-                pool.add(own);
-            List<String> configuration = new ArrayList<>();
-            for (String feature : pool)
-                if (random.nextInt(2) == 0)
-                    configuration.add(feature);
-            if (configuration.isEmpty())
-                configuration.add(pool.get(0));
-            if (own == null)
-                known.addAll(configuration);
-            List<String> lines = new ArrayList<>();
-            for (String feature : configuration) {
-                if (random.nextInt(4) == 0)
-                    version.merge(feature, 1, Integer::sum);
-                lines.add(feature.toLowerCase() + version.getOrDefault(feature, 0));
-            }
-            steps.add(new Step(String.join(", ", configuration), String.join("|", lines)));
-        }
-        return steps;
     }
 }

@@ -825,6 +825,44 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
+    /**
+     * Commits [commits] of [source] here, in their order, as committing their content would - each
+     * keeping its id, date and message (Repository.Op#replay) - in one transaction.
+     */
+    synchronized void replay(Repository.Op source, List<? extends Commit> commits) {
+        this.checkInitialized();
+        try {
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            Repository.Op repository = this.repositoryDao.load();
+            for (Commit commit : commits) {
+                // a merge commit has no configuration and nothing to replay
+                if (commit.getConfiguration() == null)
+                    continue;
+                List<Association.Op> associations = new ArrayList<>();
+                for (Association association : commit.getAssociations())
+                    associations.add((Association.Op) association);
+                repository.addFeatureRevisions(commit.getConfiguration().getFeatureRevisions());
+                Commit replayed = repository.replay(commit.getConfiguration(), associations, commit.getUsername());
+                replayed.setId(commit.getId());
+                replayed.setDate(commit.getDate());
+                replayed.setCommitMessage(commit.getCommitMessage());
+                // a variant for each configuration committed, as a commit records (CommitService)
+                if (repository.getVariants().stream().noneMatch(variant -> variant.getConfiguration().equals(replayed.getConfiguration()))) {
+                    Variant variant = this.entityFactory.createVariant("Commit", replayed.getConfiguration(), UUID.randomUUID().toString());
+                    variant.setDescription(commit.getCommitMessage());
+                    repository.addVariant(variant);
+                }
+            }
+            repository.setRetroactiveConditions();
+            repository.invalidateMainTree();
+            this.repositoryDao.store(repository);
+            this.transactionStrategy.end();
+        } catch (RuntimeException | Error e) {
+            this.rollbackIfTransactionActive();
+            throw e;
+        }
+    }
+
     public synchronized void fork(Path originRepositoryDir) {
         this.fork(originRepositoryDir, "");
     }
