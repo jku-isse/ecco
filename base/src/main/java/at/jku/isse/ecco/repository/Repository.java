@@ -886,6 +886,111 @@ public interface Repository extends Persistable {
 		}
 
 
+		/**
+		 * Copies this repository into {@code target}, a repository just initialized: its features,
+		 * constraints and parents, its modules and associations with their exact counts, and its commits
+		 * with their ids, configurations, dates, messages and associations - what a fork of everything is.
+		 * {@link #subset} instead rebuilt each association's counts from its condition, counted once, and a
+		 * {@link #merge} into the empty repository recorded a merge commit per association: the fork lost
+		 * its commits and counts, and a later pull could neither tell which commits both have nor count
+		 * the history they share once (ForkCopyTest, DivergedSyncTest).
+		 */
+		default void copyInto(Repository.Op target) {
+			checkNotNull(target);
+			checkArgument(target.getAssociations().isEmpty() && target.getCommits().isEmpty(), "A repository is copied into an empty one only.");
+			this.checkArtifactFormats();
+			EntityFactory entityFactory = target.getEntityFactory();
+			target.setMaxOrder(this.getMaxOrder());
+
+			for (Feature feature : this.getFeatures()) {
+				Feature newFeature = target.addFeature(feature.getId(), feature.getName());
+				newFeature.setDescription(feature.getDescription());
+				for (FeatureRevision featureRevision : feature.getRevisions())
+					newFeature.addRevision(featureRevision.getId()).setDescription(featureRevision.getDescription());
+			}
+			for (Constraint constraint : this.getConstraints())
+				target.addConstraint(constraint.getKind(), constraint.getFeatureA(), constraint.getFeatureB());
+			for (Constraint constraint : this.getRejectedConstraints())
+				target.addRejectedConstraint(constraint.getKind(), constraint.getFeatureA(), constraint.getFeatureB());
+			this.getFeatureParents().forEach(target::setFeatureParent);
+			this.getRejectedFeatureParents().forEach((feature, parents) -> parents.forEach(parent -> target.addRejectedFeatureParent(feature, parent)));
+
+			// modules and module revisions, with their counts
+			for (int order = 0; order <= this.getMaxOrder(); order++) {
+				for (Module module : this.getModules(order)) {
+					Module newModule = target.getModule(targetFeatures(target, module.getPos()), targetFeatures(target, module.getNeg()));
+					if (newModule == null)
+						newModule = target.addModule(targetFeatures(target, module.getPos()), targetFeatures(target, module.getNeg()));
+					newModule.setCount(module.getCount());
+					for (ModuleRevision moduleRevision : module.getRevisions()) {
+						ModuleRevision newModuleRevision = newModule.getRevision(targetFeatureRevisions(target, moduleRevision.getPos()), newModule.getNeg());
+						if (newModuleRevision == null)
+							newModuleRevision = newModule.addRevision(targetFeatureRevisions(target, moduleRevision.getPos()), newModule.getNeg());
+						newModuleRevision.setCount(moduleRevision.getCount());
+					}
+				}
+			}
+
+			// associations, with their counts and their trees - copied in one context (see EccoUtil.TreeCopy)
+			EccoUtil.TreeCopy treeCopy = new EccoUtil.TreeCopy(entityFactory);
+			Map<String, Association.Op> newAssociations = new LinkedHashMap<>();
+			for (Association.Op association : this.getAssociations()) {
+				Association.Op newAssociation = entityFactory.createAssociation();
+				newAssociation.setId(association.getId());
+				newAssociation.getCounter().setCount(association.getCounter().getCount());
+				for (ModuleCounter moduleCounter : association.getCounter().getChildren()) {
+					Module module = moduleCounter.getObject();
+					Module newModule = target.getModule(targetFeatures(target, module.getPos()), targetFeatures(target, module.getNeg()));
+					for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
+						ModuleRevision moduleRevision = moduleRevisionCounter.getObject();
+						newAssociation.addObservation(newModule.getRevision(targetFeatureRevisions(target, moduleRevision.getPos()), newModule.getNeg()), moduleRevisionCounter.getCount());
+					}
+				}
+				RootNode.Op newRootNode = entityFactory.createRootNode();
+				for (Node.Op child : association.getRootNode().getChildren()) {
+					Node.Op newChild = treeCopy.copy(child);
+					newRootNode.addChild(newChild);
+					newChild.setParent(newRootNode);
+				}
+				newAssociation.setRootNode(newRootNode);
+				newAssociations.put(association.getId(), newAssociation);
+			}
+			treeCopy.finish(newAssociations.values().stream().map(Association.Op::getRootNode).toList());
+			for (Association.Op newAssociation : newAssociations.values()) {
+				Trees.checkConsistency(newAssociation.getRootNode());
+				target.addAssociation(newAssociation);
+			}
+
+			// commits, in their order
+			for (Commit commit : this.getCommits()) {
+				Commit newCommit = entityFactory.createCommit(commit.getUsername());
+				newCommit.setId(commit.getId());
+				newCommit.setDate(commit.getDate());
+				newCommit.setCommitMessage(commit.getCommitMessage());
+				if (commit.getConfiguration() != null)
+					newCommit.setConfiguration(entityFactory.createConfiguration(targetFeatureRevisions(target, commit.getConfiguration().getFeatureRevisions())));
+				for (Association association : commit.getAssociations()) {
+					Association.Op newAssociation = newAssociations.get(association.getId());
+					if (newAssociation != null)
+						newCommit.addAssociation(newAssociation);
+				}
+				target.addCommit(newCommit);
+			}
+
+			// finish like a commit does (CommitService): the copied nodes' feature traces need their
+			// retroactive conditions, and the main tree is built from the new associations
+			target.setRetroactiveConditions();
+			target.invalidateMainTree();
+		}
+
+		private static Feature[] targetFeatures(Repository.Op target, Feature[] features) {
+			return Arrays.stream(features).map(feature -> target.getFeature(feature.getId())).toArray(Feature[]::new);
+		}
+
+		private static FeatureRevision[] targetFeatureRevisions(Repository.Op target, FeatureRevision[] featureRevisions) {
+			return Arrays.stream(featureRevisions).map(featureRevision -> target.getFeature(featureRevision.getFeature().getId()).getRevision(featureRevision.getId())).toArray(FeatureRevision[]::new);
+		}
+
 		default Repository.Op subset(Collection<FeatureRevision> deselected, int maxOrder, EntityFactory entityFactory) {
 			checkNotNull(deselected);
 			checkArgument(maxOrder <= this.getMaxOrder());

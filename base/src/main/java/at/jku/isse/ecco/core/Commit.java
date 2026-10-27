@@ -36,6 +36,11 @@ public interface Commit extends Persistable {
 
 	public Date getDate();
 
+	/** The date it was made - for a copy of it, which keeps it (Repository.Op#copyInto). */
+	public default void setDate(Date date) {
+		throw new UnsupportedOperationException("A commit of this kind keeps the date it was created at.");
+	}
+
 	public boolean containsAssociation(Association association);
 
 	public void addAssociation(Association association);

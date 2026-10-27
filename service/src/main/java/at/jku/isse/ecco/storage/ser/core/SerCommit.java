@@ -97,6 +97,11 @@ public class SerCommit implements Commit {
 	}
 
 	@Override
+	public void setDate(Date date) {
+		committingDate = date;
+	}
+
+	@Override
 	public boolean containsAssociation(final Association association) {
 		return associationIds.contains(association.getId());
 	}

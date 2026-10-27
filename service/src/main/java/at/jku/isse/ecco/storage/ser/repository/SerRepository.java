@@ -366,9 +366,13 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	@Override
 	public void addCommit(final Commit commit) {
-		do {        //sets id
-			commit.setId(UUID.randomUUID().toString());
-		} while(getCommits().contains(commit));        //Just to make sure no Id is given twice
+		// a new commit gets an id; a copied one keeps its own (Repository.Op#copyInto), so a later pull
+		// can tell which commits both repositories have
+		if (commit.getId() == null || getCommits().contains(commit)) {
+			do {
+				commit.setId(UUID.randomUUID().toString());
+			} while (getCommits().contains(commit));        //Just to make sure no Id is given twice
+		}
 		commits.add(commit);
 		// wire up the association resolver immediately - extract() calls addAssociation() on this
 		// commit shortly after, within the same transaction, well before any reload would otherwise

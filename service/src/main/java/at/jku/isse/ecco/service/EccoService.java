@@ -801,16 +801,29 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             originService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
             Repository.Op originRepository = originService.repositoryDao.load();
-            subsetOriginRepository = originRepository.subset(originService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), originRepository.getMaxOrder(), this.entityFactory);
+            Collection<FeatureRevision> deselected = originService.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
+            if (deselected.isEmpty()) {
+                // a fork of everything is a copy, commits and counts included (Repository.Op#copyInto)
+                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                Repository.Op repository = this.repositoryDao.load();
+                originRepository.copyInto(repository);
+                this.repositoryDao.store(repository);
+                this.transactionStrategy.end();
+                subsetOriginRepository = null;
+            } else {
+                subsetOriginRepository = originRepository.subset(deselected, originRepository.getMaxOrder(), this.entityFactory);
+            }
 
             originService.transactionStrategy.end();
         } catch (Error e) {
+            this.rollbackIfTransactionActive();
             originService.rollbackIfTransactionActive();
             this.abandonNewRepository(e);
             throw e;
         } catch (Exception e) {
             // quietly: open() itself may have failed, with no transaction (or strategy) to roll back -
             // an unconditional rollback() then replaced the real error
+            this.rollbackIfTransactionActive();
             originService.rollbackIfTransactionActive();
             this.abandonNewRepository(e);
 
@@ -823,10 +836,12 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         try {
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
-            // merge into this repository
-            Repository.Op repository = this.repositoryDao.load();
-            repository.merge(subsetOriginRepository);
-            this.repositoryDao.store(repository);
+            // merge into this repository, unless it is a copy already
+            if (subsetOriginRepository != null) {
+                Repository.Op repository = this.repositoryDao.load();
+                repository.merge(subsetOriginRepository);
+                this.repositoryDao.store(repository);
+            }
 
             // after fork add used remote as default origin remote
             Remote remote = this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, originRepositoryDir.toString(), Remote.Type.LOCAL);
@@ -850,16 +865,31 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         try {
             origService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
             Repository.Op originRepository = (Repository.Op) origService.getRepository();
-            subsetOriginRepository = originRepository.subset(origService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), originRepository.getMaxOrder(), this.entityFactory);
+            Collection<FeatureRevision> deselected = origService.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
+            Repository.Op repository = (Repository.Op) this.getRepository();
+            if (deselected.isEmpty() && repository.getAssociations().isEmpty() && repository.getCommits().isEmpty()) {
+                // a fork of everything into an empty repository is a copy (Repository.Op#copyInto)
+                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                originRepository.copyInto(repository);
+                this.repositoryDao.store(repository);
+                this.transactionStrategy.end();
+                subsetOriginRepository = null;
+            } else {
+                subsetOriginRepository = originRepository.subset(deselected, originRepository.getMaxOrder(), this.entityFactory);
+            }
             origService.transactionStrategy.end();
         } catch (Error e) {
+            this.rollbackIfTransactionActive();
             origService.rollbackIfTransactionActive();
             throw e;
         } catch (Exception e) {
             // otherwise the ORIGIN's read transaction stays open, breaking that service for good
+            this.rollbackIfTransactionActive();
             origService.rollbackIfTransactionActive();
             throw new EccoException("Error during local fork.", e);
         }
+        if (subsetOriginRepository == null)
+            return;
 
         try {
             Repository.Op repository = (Repository.Op) this.getRepository();

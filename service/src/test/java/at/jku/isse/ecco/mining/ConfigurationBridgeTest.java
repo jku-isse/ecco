@@ -44,12 +44,17 @@ public class ConfigurationBridgeTest {
 			serviceA.init();
 			serviceA.setBaseDir(xDir);
 			serviceA.commit("commit x", "X");
+			Files.writeString(xDir.resolve("w.txt"), "w\n");
+			serviceA.commit("commit x and w", "X, W");
 
 			try (EccoService serviceB = new EccoService()) {
 				serviceB.setRepositoryDir(repoBDir);
-				// fork() -> Repository.merge() -> extract(Association.Op, Commit) per merged
-				// association -- this is what produces a null-configuration MERGE commit in B.
-				serviceB.fork(repoADir);
+				// a fork leaving W out goes through Repository.merge() -> extract(Association.Op, Commit)
+				// per merged association -- this is what produces null-configuration MERGE commits in B
+				// (a fork of everything copies the commits instead, configurations included)
+				serviceB.fork(repoADir, "W." + serviceA.getRepository().getFeatures().stream()
+						.filter(feature -> feature.getName().equals("W")).findFirst().orElseThrow().getLatestRevision().getId());
+				assertTrue(serviceB.getCommits().stream().anyMatch(commit -> commit.getConfiguration() == null), "the fork has merge commits");
 
 				Path yDir = workDir.resolve("y");
 				Files.createDirectories(yDir);
