@@ -153,6 +153,20 @@ public class CheckoutViewTest {
     }
 
     @Test
+    @Timeout(60)
+    public void aCheckoutOfAClosedRepositoryEndsWithAnError(@TempDir Path tmp) throws Exception {
+        EccoService service = twoVariants(tmp);
+        ScriptedCheckoutView view = show(service);
+        service.close();
+
+        // the check reads nothing then - the dialog stayed on "Checking out ..." for good
+        checkout(view, tmp.resolve("out"), "BASE, A");
+        waitUntil("checkout failed", () -> view.button("Done") != null);
+        assertTrue(onFx(() -> view.toolBarStyles().contains("error")));
+        assertEquals(List.of(), view.clearAsked);
+    }
+
+    @Test
     @Timeout(120)
     public void aConstraintViolationIsShownWhileTypingAndAskedAboutBeforeCheckingOut(@TempDir Path tmp) throws Exception {
         try (EccoService service = coreExcludesExtra(tmp)) {

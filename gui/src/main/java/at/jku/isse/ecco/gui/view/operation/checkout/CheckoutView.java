@@ -293,7 +293,8 @@ public class CheckoutView extends OperationView implements EccoListener {
             RepositoryAccess.read(this.service, "checkout check", s -> {
                 s.checkCheckoutConfiguration(configurationString);
                 return configurationString.isBlank() ? "" : ConstraintWarnings.describe(s, configurationString);
-            }, violations -> this.checkout(baseDir, baseDirTextField.getText(), configurationString, violations), this::checkoutFailed);
+            }, violations -> this.checkout(baseDir, baseDirTextField.getText(), configurationString, violations), this::checkoutFailed,
+                    () -> this.checkoutFailed(new IllegalStateException("The repository is not open.")));
         });
 
 
