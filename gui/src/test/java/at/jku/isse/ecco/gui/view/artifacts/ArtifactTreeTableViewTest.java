@@ -314,6 +314,31 @@ public class ArtifactTreeTableViewTest {
         }
     }
 
+    /**
+     * With the repository closed, a read of the tree or of a level ends all the same, and a level is
+     * read when opened again: they were dropped, the table stayed reading, and the item marked as
+     * reading its children never read them again.
+     */
+    @Test
+    @Timeout(60)
+    public void aReadOfAClosedRepositoryEnds(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFeatures(tmp)) {
+            Association a = association(service, "a.txt");
+            ArtifactTreeTableView view = shown(service, a.getRootNode());
+            TreeItem<ArtifactTreeTableView.NodeWrapper> file = onFx(() -> item(view, "a.txt"));
+            ArtifactTreeTableView.NodeTreeItem unread = onFx(() -> view.new NodeTreeItem(file.getValue()));
+
+            service.close();
+            onFx(() -> view.setRootNode(a.getRootNode()));
+            read(view);
+            assertTrue(onFx(() -> unread.getChildren().isEmpty()));
+            Thread.sleep(300); // the read of the level skipped
+
+            service.open();
+            waitUntil("the level, read when opened again", () -> !unread.getChildren().isEmpty());
+        }
+    }
+
     // --- helpers -------------------------------------------------------------------------------------
 
     /** A table showing [root] - read in the background, holding the service's lock. */

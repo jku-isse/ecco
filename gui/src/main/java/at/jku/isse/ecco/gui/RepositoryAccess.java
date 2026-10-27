@@ -33,17 +33,29 @@ public final class RepositoryAccess {
 	 * @param read reads the repository; must not touch the scene graph
 	 */
 	public static <T> void read(EccoService service, String name, Function<EccoService, T> read, Consumer<T> apply, Consumer<Throwable> failed) {
+		read(service, name, read, apply, failed, () -> {
+		});
+	}
+
+	/**
+	 * {@link #read(EccoService, String, Function, Consumer, Consumer)}, running {@code skipped} on the
+	 * FX thread when nothing was read because the repository is not open (or was closed meanwhile) -
+	 * for a caller that marks itself as reading until {@code apply} or {@code failed} runs: neither
+	 * ran then, and the mark stayed for good (a tree item never opened again, OK never enabled).
+	 */
+	public static <T> void read(EccoService service, String name, Function<EccoService, T> read, Consumer<T> apply, Consumer<Throwable> failed, Runnable skipped) {
 		start(name, () -> {
 			T result;
 			try {
 				synchronized (service) {
-					if (!service.isInitialized())
+					if (!service.isInitialized()) {
+						Platform.runLater(skipped);
 						return;
+					}
 					result = read.apply(service);
 				}
 			} catch (Throwable t) {
-				if (!TaskFailures.repositoryClosed(t))
-					Platform.runLater(() -> failed.accept(t));
+				Platform.runLater(TaskFailures.repositoryClosed(t) ? skipped : () -> failed.accept(t));
 				return;
 			}
 			Platform.runLater(() -> apply.accept(result));

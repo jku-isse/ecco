@@ -60,6 +60,12 @@ public class FeatureTogglePanelTest {
                 .map(r -> r.getFeature().getName() + "." + r.getId()).collect(Collectors.toSet());
     }
 
+    /** The [index]th configuration reported - its latest revisions are read in the background. */
+    private static Configuration reported(List<Configuration> reported, int index) throws Exception {
+        waitUntil("configuration " + index, () -> reported.size() > index);
+        return reported.get(index);
+    }
+
     /** Every commit has A (so A re-mines as MANDATORY); B never comes without C, C does without B (so B REQUIRES C). */
     private static EccoService constrained(Path tmp) throws Exception {
         EccoService service = repository(tmp.resolve("repo"));
@@ -83,12 +89,48 @@ public class FeatureTogglePanelTest {
             assertTrue(reported.isEmpty());
 
             onFx(() -> box(panel, "A").fire());
-            assertEquals(Set.of("A.2"), revisions(reported.get(0)));
+            assertEquals(Set.of("A.2"), revisions(reported(reported, 0)));
             onFx(() -> box(panel, "c").fire());
-            assertEquals(Set.of("A.2", "c.1"), revisions(reported.get(1)));
+            assertEquals(Set.of("A.2", "c.1"), revisions(reported(reported, 1)));
             onFx(() -> box(panel, "A").fire());
-            assertEquals(Set.of("c.1"), revisions(reported.get(2)));
+            assertEquals(Set.of("c.1"), revisions(reported(reported, 2)));
             assertEquals(3, reported.size());
+        }
+    }
+
+    /**
+     * A revision committed after the features were read is the one a ticked feature stands for: the
+     * latest revisions were taken from that read, re-read only when the pane was docked again, and
+     * ticking A reported A.1 - so the tree showed A.1's associations, not the latest.
+     */
+    @Test
+    @Timeout(60)
+    public void aToggleTakesARevisionCommittedSinceTheFeaturesWereRead(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
+            List<Configuration> reported = new CopyOnWriteArrayList<>();
+            FeatureTogglePanel panel = panel(service, reported::add);
+
+            commit(service, tmp.resolve("v2"), "A.2", Map.of("a.txt", "a2\n"));
+            onFx(() -> box(panel, "A").fire());
+            assertEquals(Set.of("A.2"), revisions(reported(reported, 0)));
+        }
+    }
+
+    /**
+     * With the repository closed, a read of the features ends all the same: it was dropped, the panel
+     * counted it as running for good, and a configuration picked meanwhile was parked for ever.
+     */
+    @Test
+    @Timeout(60)
+    public void aReadOfAClosedRepositoryEnds(@TempDir Path tmp) throws Exception {
+        try (EccoService service = constrained(tmp)) {
+            Configuration picked = service.parseConfigurationString("B.1");
+            service.close();
+            FeatureTogglePanel panel = onFx(() -> new FeatureTogglePanel(service, c -> { }));
+            onFx(() -> panel.showConfiguration(picked));
+            waitUntil("the read ended", () -> !panel.reading());
+            assertEquals(List.of(), onFx(() -> boxes(panel)));
         }
     }
 
@@ -107,7 +149,7 @@ public class FeatureTogglePanelTest {
             });
 
             onFx(() -> box(panel, "D").fire());
-            assertEquals(Set.of("A.1", "D.1"), revisions(reported.get(0)));
+            assertEquals(Set.of("A.1", "D.1"), revisions(reported(reported, 0)));
         }
     }
 
@@ -121,11 +163,11 @@ public class FeatureTogglePanelTest {
             FeatureTogglePanel panel = panel(service, reported::add);
 
             onFx(() -> box(panel, "B").fire());
-            assertEquals(Set.of("B.1", "C.1"), revisions(reported.get(0)));
+            assertEquals(Set.of("B.1", "C.1"), revisions(reported(reported, 0)));
             assertTrue(onFx(() -> box(panel, "C").isSelected()));
 
             onFx(() -> box(panel, "C").fire());
-            assertEquals(Set.of(), revisions(reported.get(1)));
+            assertEquals(Set.of(), revisions(reported(reported, 1)));
             assertFalse(onFx(() -> box(panel, "B").isSelected()));
         }
     }

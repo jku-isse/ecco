@@ -218,6 +218,10 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 						return;
 					this.reading = false;
 					new ExceptionAlert(failure).show();
+				},
+				() -> {
+					if (request == this.requests)
+						this.reading = false;
 				});
 	}
 
@@ -331,7 +335,8 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 						failure -> {
 							this.readingChildren = false;
 							new ExceptionAlert(failure).show();
-						});
+						},
+						() -> this.readingChildren = false); // the repository closed: read again when asked again
 			}
 			return super.getChildren();
 		}

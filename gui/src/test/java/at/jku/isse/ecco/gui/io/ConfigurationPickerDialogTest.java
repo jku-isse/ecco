@@ -104,6 +104,26 @@ public class ConfigurationPickerDialogTest {
         }
     }
 
+    /**
+     * With the repository closed, the reads of the features and of the string end all the same, and
+     * say so: they were dropped, the dialog stayed reading and parsing for good, OK disabled without
+     * a word.
+     */
+    @Test
+    @Timeout(60)
+    public void aReadOfAClosedRepositoryEnds(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoRevisionsOfA(tmp)) {
+            service.close();
+            ConfigurationPickerDialog dialog = onFx(() -> new ConfigurationPickerDialog(service, "A.1"));
+            waitUntil("the features", () -> !dialog.reading());
+            Picker picker = onFx(() -> Picker.of(dialog));
+            parsed(picker);
+            assertTrue(onFx(() -> dialog.getDialogPane().lookupButton(ButtonType.OK).isDisabled()));
+            assertTrue(onFx(() -> findAll(dialog.getDialogPane().getContent(), n -> n instanceof Label l
+                    && l.isVisible() && l.getText().contains("not open")).size() == 1));
+        }
+    }
+
     private static EccoService twoRevisionsOfA(Path tmp) throws Exception {
         EccoService service = repository(tmp.resolve("repo"));
         commit(service, tmp.resolve("v1"), "A.1, b.1", Map.of("a.txt", "a\n"));

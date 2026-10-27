@@ -19,7 +19,6 @@ import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,9 +42,11 @@ import java.util.Set;
  * not change how an already-built {@link Configuration} gets composed (that's a separate, already
  * existing mechanism -- surplus-module suppression in {@code EccoService#compose}).
  *
- * <p>The features, their latest revisions and the accepted constraints are read in the background,
- * holding the service's lock ({@link RepositoryAccess}): read on the FX thread, the window froze
- * while a commit ran, and a commit adding a feature meanwhile failed the copy of the features.
+ * <p>The features and the accepted constraints are read in the background, holding the service's
+ * lock ({@link RepositoryAccess}): read on the FX thread, the window froze while a commit ran, and a
+ * commit adding a feature meanwhile failed the copy of the features. So is each ticked feature's
+ * latest revision, at every toggle: taken from the last read of the features, a revision committed
+ * since was not seen until the pane was docked again, and a ticked feature stood for the one before.
  */
 public class FeatureTogglePanel extends VBox {
 
@@ -69,8 +70,6 @@ public class FeatureTogglePanel extends VBox {
 	private final ConfigurationChangeListener listener;
 	/** By feature name, sorted. */
 	private final Map<String, CheckBox> checkBoxesByFeature = new LinkedHashMap<>();
-	/** Each feature's latest revision, as last read: the one a ticked feature stands for. */
-	private final Map<String, FeatureRevision> latestRevisions = new HashMap<>();
 	private final VBox rowsContainer = new VBox(4);
 	private final TextField filterField = new TextField();
 	/** The features to tick once they are read - {@link #showConfiguration} before that. */
@@ -79,6 +78,8 @@ public class FeatureTogglePanel extends VBox {
 	private int reading;
 	/** Counts the reads: one overtaken by a later one shows nothing. */
 	private int requested;
+	/** Counts the toggles: the configuration of one overtaken by a later toggle is not reported. */
+	private int toggles;
 
 	public FeatureTogglePanel(EccoService service, ConfigurationChangeListener listener) {
 		super(8);
@@ -104,20 +105,17 @@ public class FeatureTogglePanel extends VBox {
 		this.read();
 	}
 
-	/** What the panel shows of the repository: its features with their latest revisions, and the accepted constraints. */
-	private record Snapshot(List<String> features, Map<String, FeatureRevision> latestRevisions, List<ConstraintMiner.Suggestion> acceptedSuggestions) {
+	/** What the panel shows of the repository: its features, and the accepted constraints. */
+	private record Snapshot(List<String> features, List<ConstraintMiner.Suggestion> acceptedSuggestions) {
 
 		/** Holding the service's lock. */
 		static Snapshot of(EccoService service) {
 			List<Feature> features = new ArrayList<>(service.getRepository().getFeatures());
 			features.sort(Comparator.comparing(Feature::getName, String.CASE_INSENSITIVE_ORDER));
 			List<String> names = new ArrayList<>();
-			Map<String, FeatureRevision> latest = new HashMap<>();
-			for (Feature feature : features) {
+			for (Feature feature : features)
 				names.add(feature.getName());
-				latest.put(feature.getName(), feature.getLatestRevision());
-			}
-			return new Snapshot(names, latest, service.acceptedSuggestions(service.getRepository()));
+			return new Snapshot(names, service.acceptedSuggestions(service.getRepository()));
 		}
 	}
 
@@ -132,6 +130,10 @@ public class FeatureTogglePanel extends VBox {
 		}, failure -> {
 			this.reading--;
 			new ExceptionAlert(failure).show();
+		}, () -> {
+			this.reading--; // the repository is not open: nothing to show, nor to tick
+			if (!this.reading())
+				this.pendingConfiguration = null;
 		});
 	}
 
@@ -140,7 +142,7 @@ public class FeatureTogglePanel extends VBox {
 		return this.reading > 0;
 	}
 
-	/** Adds a checkbox for each feature not shown yet, and takes the latest revisions and the constraints read. */
+	/** Adds a checkbox for each feature not shown yet, and takes the constraints read. */
 	private void show(Snapshot snapshot) {
 		for (String feature : snapshot.features())
 			if (!this.checkBoxesByFeature.containsKey(feature))
@@ -149,7 +151,6 @@ public class FeatureTogglePanel extends VBox {
 		for (String feature : snapshot.features())
 			sorted.add(this.checkBoxesByFeature.get(feature));
 		this.rowsContainer.getChildren().setAll(sorted);
-		this.latestRevisions.putAll(snapshot.latestRevisions());
 		this.acceptedSuggestions = snapshot.acceptedSuggestions();
 		if (this.pendingConfiguration != null) {
 			this.tick(this.pendingConfiguration);
@@ -177,7 +178,7 @@ public class FeatureTogglePanel extends VBox {
 			for (Map.Entry<String, CheckBox> entry : this.checkBoxesByFeature.entrySet()) {
 				entry.getValue().setSelected(selected.contains(entry.getKey()));
 			}
-			this.listener.configurationChanged(this.buildConfiguration());
+			this.report(selected);
 		});
 		return checkBox;
 	}
@@ -211,7 +212,7 @@ public class FeatureTogglePanel extends VBox {
 
 	/**
 	 * Picks up constraint changes made elsewhere (e.g. accepted in the Feature Model tab), and
-	 * features and revisions committed since - called when the panel is shown again.
+	 * features committed since - called when the panel is shown again.
 	 */
 	public void reloadConstraints() {
 		this.read();
@@ -241,17 +242,21 @@ public class FeatureTogglePanel extends VBox {
 		}
 	}
 
-	/** The ticked features, each at its latest revision as read. */
-	private Configuration buildConfiguration() {
+	/** Reports the [ticked] features, each at its latest revision now - read in the background. */
+	private void report(Set<String> ticked) {
+		int toggle = ++this.toggles;
+		RepositoryAccess.read(this.service, "Configuration", service -> configuration(service, ticked), configuration -> {
+			if (toggle == this.toggles) // else overtaken by a later toggle
+				this.listener.configurationChanged(configuration);
+		}, failure -> new ExceptionAlert(failure).show());
+	}
+
+	/** The [ticked] features, each at its latest revision - holding the service's lock. */
+	private static Configuration configuration(EccoService service, Set<String> ticked) {
 		List<FeatureRevision> selectedRevisions = new ArrayList<>();
-		for (Map.Entry<String, CheckBox> entry : this.checkBoxesByFeature.entrySet()) {
-			if (entry.getValue().isSelected()) {
-				FeatureRevision latest = this.latestRevisions.get(entry.getKey());
-				if (latest != null) {
-					selectedRevisions.add(latest);
-				}
-			}
-		}
-		return this.service.getEntityFactory().createConfiguration(selectedRevisions.toArray(new FeatureRevision[0]));
+		for (Feature feature : service.getRepository().getFeatures())
+			if (ticked.contains(feature.getName()) && feature.getLatestRevision() != null)
+				selectedRevisions.add(feature.getLatestRevision());
+		return service.getEntityFactory().createConfiguration(selectedRevisions.toArray(new FeatureRevision[0]));
 	}
 }

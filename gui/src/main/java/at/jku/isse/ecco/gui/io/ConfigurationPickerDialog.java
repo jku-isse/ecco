@@ -160,7 +160,7 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 		}, failure -> {
 			this.reading = false;
 			new at.jku.isse.ecco.gui.ExceptionAlert(failure).show();
-		});
+		}, () -> this.reading = false); // the repository closed: nothing to show
 
 		ScrollPane scrollPane = new ScrollPane(rowsContainer);
 		scrollPane.setFitToWidth(true);
@@ -220,6 +220,11 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 				return;
 			this.parsing = false;
 			this.showProblem("Could not be read: " + failure.getMessage());
+		}, () -> {
+			if (parse != this.parses)
+				return;
+			this.parsing = false;
+			this.showProblem("Could not be read: the repository is not open.");
 		});
 	}
 
