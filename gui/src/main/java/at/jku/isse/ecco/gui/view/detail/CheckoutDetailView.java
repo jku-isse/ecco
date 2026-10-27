@@ -388,23 +388,37 @@ public class CheckoutDetailView extends BorderPane {
 		Optional<ApplyFixDialog.Result> resultOpt = dialog.showAndWait();
 		if (resultOpt.isEmpty()) return;
 		ApplyFixDialog.Result result = resultOpt.get();
-		// before the commit, as Commit does: checked after it, it could find nothing - the committed
-		// configuration is the exception to every rule it violates
-		List<String> violations;
-		try {
-			violations = this.service.checkConstraintViolations(this.service.parseConfigurationString(result.getConfigurationString()));
-		} catch (RuntimeException e) {
-			violations = List.of();
-		}
-		if (!violations.isEmpty() && !this.confirmDespiteViolations(violations))
-			return;
-		Path checkoutBaseDirToReplay = this.currentBaseDir;
+		this.commitFix(result.getDirectory(), result.getConfigurationString(), result.getCommitMessage());
+	}
 
+	/**
+	 * Commits [directory] as [configurationString], after the constraints were checked - before the
+	 * commit, as Commit does: checked after it, it could find nothing - the committed configuration
+	 * is the exception to every rule it violates. Checked in the background, holding the service's
+	 * lock: on the FX thread the window froze behind a commit or checkout running meanwhile.
+	 * Package-visible for testing.
+	 */
+	void commitFix(Path directory, String configurationString, String commitMessage) {
+		Path checkoutBaseDirToReplay = this.currentBaseDir;
+		at.jku.isse.ecco.gui.RepositoryAccess.read(this.service, "Constraint check", service -> {
+			try {
+				return service.checkConstraintViolations(service.parseConfigurationString(configurationString));
+			} catch (RuntimeException e) {
+				return List.<String>of();
+			}
+		}, violations -> {
+			if (!violations.isEmpty() && !this.confirmDespiteViolations(violations))
+				return;
+			this.startFixCommit(directory, configurationString, commitMessage, checkoutBaseDirToReplay);
+		}, failure -> new ExceptionAlert(failure).show());
+	}
+
+	private void startFixCommit(Path directory, String configurationString, String commitMessage, Path checkoutBaseDirToReplay) {
 		Task<Commit> commitTask = new Task<Commit>() {
 			@Override
 			public Commit call() {
-				CheckoutDetailView.this.service.setBaseDir(result.getDirectory());
-				return CheckoutDetailView.this.service.commit(result.getCommitMessage(), result.getConfigurationString());
+				CheckoutDetailView.this.service.setBaseDir(directory);
+				return CheckoutDetailView.this.service.commit(commitMessage, configurationString);
 			}
 
 			@Override

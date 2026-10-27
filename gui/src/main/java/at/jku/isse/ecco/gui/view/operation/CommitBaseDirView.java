@@ -108,7 +108,16 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 
 		Label configurationLabel = new Label("Configuration: ");
 		gridPane.add(configurationLabel, 0, row, 1, 1);
-		TextField configurationField = new TextField(this.lastCommitConfigurationString());
+		TextField configurationField = new TextField();
+		// read in the background, holding the service's lock: on the FX thread (Cmd+K, the ribbon) the
+		// window froze behind a commit or checkout running meanwhile; filled in unless typed in by then
+		at.jku.isse.ecco.gui.RepositoryAccess.read(this.service, "Last commit's configuration", CommitBaseDirView::lastCommitConfigurationString,
+				configuration -> {
+					if (configurationField.getText().isEmpty())
+						configurationField.setText(configuration);
+				}, failure -> {
+					// only a default: the field stays empty
+				});
 		configurationField.setPromptText(COMMIT_CONFIGURATION_HINT + BLANK_READS_CONFIG_FILE);
 		// it was filled in without a word: check it is this variant's
 		configurationField.setTooltip(new Tooltip("Filled with the previous commit's configuration - make it this variant's.\n"
@@ -137,10 +146,10 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 	 * getFeatureRevisionString}), which is needlessly precise for a default suggestion here: per
 	 * {@code EccoService#parseConfigurationString}, a bare feature name already resolves to that
 	 * feature's latest revision, which is what "the configuration of the last commit" means in
-	 * practice for a field the user is about to re-commit from anyway.
+	 * practice for a field the user is about to re-commit from anyway. Holding the service's lock.
 	 */
-	private String lastCommitConfigurationString() {
-		List<Commit> commits = new ArrayList<>(this.service.getCommits());
+	private static String lastCommitConfigurationString(EccoService service) {
+		List<Commit> commits = new ArrayList<>(service.getCommits());
 		if (commits.isEmpty()) return "";
 		Configuration configuration = commits.get(commits.size() - 1).getConfiguration();
 		if (configuration == null) return "";

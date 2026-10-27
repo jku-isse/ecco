@@ -49,6 +49,8 @@ public class CommitBaseDirViewTest {
             CommitViewTest.Shown<CommitBaseDirView> shown = show(() -> new CommitBaseDirView(service));
             try {
                 List<TextField> fields = onFx(() -> fields(shown.view()));
+                // read in the background
+                waitUntil("the default configuration", () -> !fields.get(2).getText().isEmpty());
                 assertEquals(work.toString(), fields.get(0).getText());
                 assertFalse(fields.get(0).isEditable(), "the folder is always the base directory");
                 assertEquals("", fields.get(1).getText(), "no default message");
@@ -56,6 +58,38 @@ public class CommitBaseDirViewTest {
                 assertEquals(Set.of("BASE", "B"), Set.of(fields.get(2).getText().split(", ")));
             } finally {
                 shown.close();
+            }
+        }
+    }
+
+    /**
+     * Opened while a commit holds the service's lock, the view does not freeze the window: the default
+     * configuration is read in the background, once the lock is free - and does not replace one typed
+     * meanwhile. The constructor read the commits on the FX thread, which waited for the lock.
+     */
+    @Test
+    @Timeout(60)
+    public void theDefaultConfigurationIsReadOffTheFxThread(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "BASE, A", Map.of("f.txt", "a\n"));
+            service.setBaseDir(Files.createDirectories(tmp.resolve("work")));
+            CommitViewTest.Shown<CommitBaseDirView> shown;
+            CommitViewTest.Shown<CommitBaseDirView> typed;
+            synchronized (service) { // as a commit running
+                // onFx fails after 10 s if the FX thread waits for the lock
+                shown = show(() -> new CommitBaseDirView(service));
+                typed = show(() -> new CommitBaseDirView(service));
+                assertEquals("", onFx(() -> fields(shown.view()).get(2).getText()), "not read while the lock is held");
+                onFx(() -> fields(typed.view()).get(2).setText("BASE, B"));
+            }
+            try {
+                waitUntil("the default configuration", () -> !fields(shown.view()).get(2).getText().isEmpty());
+                assertEquals(Set.of("BASE", "A"), Set.of(onFx(() -> fields(shown.view()).get(2).getText()).split(", ")));
+                Thread.sleep(300);
+                assertEquals("BASE, B", onFx(() -> fields(typed.view()).get(2).getText()), "typed meanwhile: kept");
+            } finally {
+                shown.close();
+                typed.close();
             }
         }
     }
