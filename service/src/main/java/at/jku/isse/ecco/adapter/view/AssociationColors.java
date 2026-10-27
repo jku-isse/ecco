@@ -9,7 +9,6 @@ import javafx.scene.paint.Color;
 import java.beans.PropertyChangeListener;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
@@ -26,7 +25,6 @@ public final class AssociationColors {
 
 	private final Map<String, AssociationInfo> infos = new HashMap<>();
 	private final Map<String, PropertyChangeListener> listeners = new HashMap<>();
-	private final Map<Association, String> hoverTexts = new IdentityHashMap<>();
 	private final BiConsumer<String, Color> recolor;
 
 	/**
@@ -39,7 +37,6 @@ public final class AssociationColors {
 
 	/** Takes [associationInfos] (may be null: none) in place of those before, which are no longer listened to. */
 	public void set(Collection<AssociationInfo> associationInfos) {
-		this.hoverTexts.clear();
 		for (Map.Entry<String, AssociationInfo> entry : this.infos.entrySet())
 			entry.getValue().removePropertyChangeListener(this.listeners.get(entry.getKey()));
 		this.infos.clear();
@@ -75,16 +72,15 @@ public final class AssociationColors {
 
 	/**
 	 * What is shown when the mouse is over a line of [association]: its id and condition, short and
-	 * in full. The association's info brings it when its view read it in the background, holding the
-	 * service's lock (property "hoverText"): computed here, on the FX thread, a commit running
-	 * meanwhile changed the counters under it. Else computed here, once per association (until
-	 * {@link #set}) - it was computed for every line the mouse crossed.
+	 * in full. The association's info brings it, read by its view in the background, holding the
+	 * service's lock (property "hoverText"); without one, the id alone. It was computed here then, on
+	 * the FX thread, while a commit running meanwhile changed the counters under it.
 	 */
 	public String hoverText(Association association) {
 		AssociationInfo info = this.infos.get(association.getId());
 		if (info != null && info.getPropertyValue("hoverText") instanceof String text)
 			return text;
-		return this.hoverTexts.computeIfAbsent(association, a -> hoverText(a.getId(), a.computeCondition()));
+		return association.getId();
 	}
 
 	/** The hover text of association [id] with [condition] - see {@link #hoverText(Association)}. */

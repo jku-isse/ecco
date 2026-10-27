@@ -332,6 +332,30 @@ public class ArtifactDetailViewTest {
         }
     }
 
+    /**
+     * Shown without the Artifacts view's infos (the Commits tab, a commit comparison), the viewers get
+     * the hover texts read with the node, holding the service's lock: they computed the conditions
+     * themselves when the mouse was over a line - on the FX thread, while a commit changed the counters.
+     */
+    @Test
+    @Timeout(60)
+    public void withoutInfosTheViewersGetTheHoverTextsReadWithTheNode(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFiles(tmp)) {
+            Node file = association(service, "a.txt").getRootNode().getChildren().get(0).getChildren().get(0);
+            Association lines = at.jku.isse.ecco.adapter.view.AssociationColors.associationOf(file.getChildren().get(0));
+            ArtifactDetailView view = onFx(() -> new ArtifactDetailView(service));
+            onFx(() -> view.showTree(file));
+            read(view);
+
+            Object viewer = onFx(() -> tab(view, "Code").getContent());
+            java.lang.reflect.Field field = viewer.getClass().getDeclaredField("colors");
+            field.setAccessible(true);
+            at.jku.isse.ecco.adapter.view.AssociationColors colors = (at.jku.isse.ecco.adapter.view.AssociationColors) field.get(viewer);
+            assertEquals(at.jku.isse.ecco.adapter.view.AssociationColors.hoverText(lines.getId(), lines.computeCondition()),
+                    onFx(() -> colors.hoverText(lines)));
+        }
+    }
+
     // --- helpers -------------------------------------------------------------------------------------
 
     /** Waits until the node last asked for is read and shown - in the background, holding the service's lock. */

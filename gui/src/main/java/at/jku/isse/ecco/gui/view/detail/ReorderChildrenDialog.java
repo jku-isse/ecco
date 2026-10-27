@@ -130,6 +130,8 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		// the order proposed in it - it was set on the repository's node itself, on the FX thread,
 		// and set back) are read with it
 		RepositoryAccess.read(service, "Order graph", svc -> Read.of(node), read -> {
+			if (codePreview instanceof AssociationInfoArtifactViewer viewer)
+				viewer.setAssociationInfos(read.hoverTexts());
 			ObservableList<ChildEntry> rowData = FXCollections.observableArrayList();
 			// a text file's final newline and format are no lines to move: they stay last (TextFileFormat)
 			List<Node.Op> markers = new ArrayList<>();
@@ -154,10 +156,11 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	/**
 	 * What the dialog shows of [node], read holding the service's lock: the order graph's say, the
 	 * children with their texts and whether they are markers, the path, and a copy of the file's tree
-	 * for the code preview to show proposed orders in.
+	 * for the code preview to show proposed orders in, with the hover texts of the file's associations
+	 * (computed by the preview on the FX thread, while a commit changed the counters under it).
 	 */
 	private record Read(Node.Op node, Order order, List<Node.Op> children, List<String> texts, List<Boolean> markers,
-						String path, NodeSnapshot copy) {
+						String path, NodeSnapshot copy, java.util.Collection<at.jku.isse.ecco.adapter.AssociationInfo> hoverTexts) {
 
 		static Read of(Node.Op node) {
 			List<Node.Op> children = new ArrayList<>(node.getChildren());
@@ -170,7 +173,13 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			Node root = node;
 			while (root.getParent() != null)
 				root = root.getParent();
-			return new Read(node, Order.of(node), children, texts, markers, ArtifactDiagnostics.describePath(node), NodeSnapshot.of(root));
+			NodeSnapshot copy = NodeSnapshot.of(root);
+			// the preview shows the file: its node is the plugin's
+			Node file = node;
+			while (file.getParent() != null && !(file.getArtifact() != null && file.getArtifact().getData() instanceof at.jku.isse.ecco.adapter.dispatch.PluginArtifactData))
+				file = file.getParent();
+			return new Read(node, Order.of(node), children, texts, markers, ArtifactDiagnostics.describePath(node), copy,
+					at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl.hoverTexts(copy.copyOf(file)));
 		}
 	}
 
@@ -628,7 +637,8 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	 * Guice multibinding + plugin-id lookup {@code ArtifactDetailView#getArtifactViewers} uses), and
 	 * returns it ready to embed, or {@code null} if none is registered for this adapter (e.g. plain
 	 * text) or the service isn't initialized. Association-highlighting info is irrelevant here (this
-	 * dialog isn't the live Artifacts panel), so it's initialized with none.
+	 * dialog isn't the live Artifacts panel), so it's initialized with none - the hover texts come
+	 * with the order graph ({@link Read}).
 	 */
 	/** [source] on one line - its whitespace runs (line breaks, indentation) as one space - and shortened. */
 	static String oneLine(String source) {

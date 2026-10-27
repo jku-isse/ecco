@@ -55,6 +55,12 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	private record CachedCopy(Node root, String pluginId, long changes, NodeSnapshot snapshot) {
 	}
 
+	/** The hover texts read with the last copy, when no infos were set (see {@link AssociationInfoImpl#hoverTexts}). */
+	private volatile CachedHoverTexts cachedHoverTexts;
+
+	private record CachedHoverTexts(NodeSnapshot snapshot, Collection<AssociationInfo> infos) {
+	}
+
 	@Inject
 	private Set<ArtifactViewer> artifactViewers;
 	@Inject
@@ -169,11 +175,13 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		}
 		long request = ++this.requests;
 		Set<String> viewable = this.viewerPluginIds();
+		// without the Artifacts view's infos (the Commits tab, a commit comparison), the hover texts are read too
+		boolean hoverTexts = this.associationInfos == null;
 		this.reading = true;
 		Tab infoTab = this.openDetailsTabs.get("info");
 		if (infoTab != null)
 			infoTab.setContent(infoLabel("Reading the node..."));
-		RepositoryAccess.read(this.service, "Artifact details", svc -> this.read(node, firstViewable, viewable),
+		RepositoryAccess.read(this.service, "Artifact details", svc -> this.read(node, firstViewable, viewable, hoverTexts),
 				details -> {
 					if (request != this.requests)
 						return;
@@ -190,11 +198,14 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 
 	/** What the tabs show of a node (the original, not a copy), read holding the service's lock. */
 	private record Details(Node node, String described, Association association, String condition, String flags,
-						   PartialOrderGraph pog, String pluginId, NodeSnapshot copy, Node viewed) {
+						   PartialOrderGraph pog, String pluginId, NodeSnapshot copy, Node viewed, Collection<AssociationInfo> hoverTexts) {
 	}
 
-	/** Reads [node] (or the first node below it of a plugin in [viewable]) - holding the service's lock. */
-	private Details read(Node node, boolean firstViewable, Set<String> viewable) {
+	/**
+	 * Reads [node] (or the first node below it of a plugin in [viewable]), and with [hoverTexts] the
+	 * hover texts of the copy's associations - holding the service's lock.
+	 */
+	private Details read(Node node, boolean firstViewable, Set<String> viewable, boolean hoverTexts) {
 		Node live = node.getNode();
 		if (firstViewable) {
 			Node found = firstWithViewer(live, viewable);
@@ -225,7 +236,14 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		PartialOrderGraph graph = live.getArtifact() != null ? live.getArtifact().getPartialOrderGraph() : null;
 		String pluginId = getPluginId(live);
 		NodeSnapshot copy = pluginId != null && viewable.contains(pluginId) ? this.viewerCopy(live, pluginId) : null;
-		return new Details(live, text.toString(), association, condition, flags.toString(), graph, pluginId, copy, copy == null ? null : copy.copyOf(live));
+		Collection<AssociationInfo> infos = null;
+		if (copy != null && hoverTexts) {
+			CachedHoverTexts cached = this.cachedHoverTexts;
+			if (cached == null || cached.snapshot() != copy)
+				this.cachedHoverTexts = cached = new CachedHoverTexts(copy, AssociationInfoImpl.hoverTexts(copy.root()));
+			infos = cached.infos();
+		}
+		return new Details(live, text.toString(), association, condition, flags.toString(), graph, pluginId, copy, copy == null ? null : copy.copyOf(live), infos);
 	}
 
 	/**
@@ -412,7 +430,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 
 			try {
 				if (v instanceof AssociationInfoArtifactViewer) {
-					((AssociationInfoArtifactViewer)v).setAssociationInfos(associationInfos);
+					((AssociationInfoArtifactViewer)v).setAssociationInfos(associationInfos != null ? associationInfos : details.hoverTexts());
 				}
 				v.showTree(details.viewed());
 				t.setContent((Pane) v);
@@ -544,6 +562,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		this.repositoryChanges.incrementAndGet();
 		if (!service.isInitialized()) {
 			this.cachedCopy = null;
+			this.cachedHoverTexts = null;
 			// initialized is read and written by injected() on the FX thread
 			Platform.runLater(() -> {
 				initialized = false;

@@ -145,6 +145,32 @@ public class AssociationInfoImpl implements AssociationInfo {
         return this.minimizedCondition;
     }
 
+    /**
+     * Infos of the associations of the artifacts in [tree] - a copy a code viewer shows - that only
+     * bring their hover texts (unselected: the default look), for a viewer shown without the
+     * Artifacts view's infos (commit, commit comparison, reorder dialog): it computed the conditions
+     * itself, on the FX thread, while a commit changed the counters under it. Computes the
+     * conditions: call holding the service's lock.
+     */
+    public static java.util.Collection<AssociationInfo> hoverTexts(at.jku.isse.ecco.tree.Node tree) {
+        java.util.Map<Association, AssociationInfo> infos = new java.util.IdentityHashMap<>();
+        java.util.ArrayDeque<at.jku.isse.ecco.tree.Node> open = new java.util.ArrayDeque<>();
+        open.push(tree);
+        while (!open.isEmpty()) {
+            at.jku.isse.ecco.tree.Node node = open.pop();
+            Association association = at.jku.isse.ecco.adapter.view.AssociationColors.associationOf(node);
+            if (association != null && !infos.containsKey(association)) {
+                Condition condition = association.computeCondition();
+                AssociationInfoImpl info = new AssociationInfoImpl(association, null, 0, condition.toDisplayString());
+                info.setHoverText(at.jku.isse.ecco.adapter.view.AssociationColors.hoverText(association.getId(), condition));
+                infos.put(association, info);
+            }
+            for (at.jku.isse.ecco.tree.Node child : node.getChildren())
+                open.push(child);
+        }
+        return new java.util.ArrayList<>(infos.values());
+    }
+
     private void onPropertyChanged(String propertyName, Object oldValue, Object newValue) {
         listeners.forEach(pcl -> pcl.propertyChange(
                 new PropertyChangeEvent(this, propertyName, oldValue, newValue)));

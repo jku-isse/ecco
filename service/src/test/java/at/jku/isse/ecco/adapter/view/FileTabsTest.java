@@ -142,6 +142,29 @@ public class FileTabsTest {
         assertEquals(AssociationColors.NONE, colors.colorFor(selected));
     }
 
+    /**
+     * The hover text is the info's, read by its view holding the service's lock; without one it is the
+     * id alone - the condition was computed here, on the FX thread, while a commit changed the counters.
+     */
+    @Test
+    public void theHoverTextIsTheInfosElseTheIdWithoutComputingTheCondition() {
+        Association onlyItsId = (Association) java.lang.reflect.Proxy.newProxyInstance(Association.class.getClassLoader(),
+                new Class<?>[]{Association.class}, (proxy, method, args) -> switch (method.getName()) {
+                    case "getId" -> "x";
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "equals" -> proxy == args[0];
+                    default -> throw new AssertionError(method.getName() + " on the FX thread");
+                });
+        AssociationColors colors = new AssociationColors((id, color) -> {
+        });
+        assertEquals("x", colors.hoverText(onlyItsId));
+
+        Info info = new Info(onlyItsId, false, Color.TRANSPARENT);
+        info.set("hoverText", "x (A)\nA");
+        colors.set(List.of(info));
+        assertEquals("x (A)\nA", colors.hoverText(onlyItsId));
+    }
+
     private static class Info implements AssociationInfo {
         private final Association association;
         private final Map<String, Object> values = new HashMap<>();

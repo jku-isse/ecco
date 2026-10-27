@@ -400,6 +400,34 @@ public class ReorderChildrenDialogTest {
         }
     }
 
+    /**
+     * The code preview gets the hover texts of the file's associations read with the order graph,
+     * holding the service's lock: it computed the conditions itself when the mouse was over a line -
+     * on the FX thread, while a commit changed the counters.
+     */
+    @Test
+    @Timeout(60)
+    public void theCodePreviewGetsTheHoverTextsReadWithTheOrderGraph(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "BASE, A", Map.of("f.txt", "a\nb\n"));
+            commit(service, tmp.resolve("v2"), "BASE, B", Map.of("f.txt", "a\nc\n"));
+            Node.Op file = orderWarning(service, tmp.resolve("out"), "BASE, A, B");
+
+            Fixture d = fixture(() -> new ReorderChildrenDialog(service, file));
+            javafx.scene.Node preview = onFx(() -> find(d.dialog.getDialogPane().getContent(), n -> n instanceof at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer));
+            assertNotNull(preview, "a code preview");
+            java.lang.reflect.Field field = preview.getClass().getDeclaredField("colors");
+            field.setAccessible(true);
+            at.jku.isse.ecco.adapter.view.AssociationColors colors = (at.jku.isse.ecco.adapter.view.AssociationColors) field.get(preview);
+            for (Node line : file.getChildren()) {
+                at.jku.isse.ecco.core.Association association = at.jku.isse.ecco.adapter.view.AssociationColors.associationOf(line);
+                if (association != null)
+                    assertEquals(at.jku.isse.ecco.adapter.view.AssociationColors.hoverText(association.getId(), association.computeCondition()),
+                            onFx(() -> colors.hoverText(association)));
+            }
+        }
+    }
+
     /** The text under the button. */
     private static String status(Button button) {
         for (javafx.scene.Node sibling : button.getParent().getChildrenUnmodifiable())
