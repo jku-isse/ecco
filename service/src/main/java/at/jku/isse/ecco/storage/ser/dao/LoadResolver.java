@@ -107,7 +107,7 @@ public final class LoadResolver {
 	 * strings all the way down), so no id surrogate is needed - resolving is just replacing each
 	 * counter's reference with the repository's own lookup result.
 	 */
-	static void resolveModuleReferences(SerRepository repo) {
+	public static void resolveModuleReferences(SerRepository repo) {
 		// counters read in compact form are built on the repository's modules right away; only
 		// those read in the old form hold copies to replace
 		CompactCounters.Resolved resolved = new CompactCounters.Resolved(repo);

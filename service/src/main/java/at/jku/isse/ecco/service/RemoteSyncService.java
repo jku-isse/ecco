@@ -359,6 +359,23 @@ public class RemoteSyncService {
 
                             break;
                         }
+                        case "CLONE": { // a fork of everything: the repository as it is (Repository.Op#copyInto)
+                            byte[] payload;
+                            synchronized (owner) {
+                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                                try {
+                                    payload = SyncObjectStreams.writeCopy(owner.repositoryDao.load());
+                                } finally {
+                                    owner.transactionStrategy.end();
+                                }
+                            }
+                            oos.writeObject(payload.length);
+                            oos.writeObject(payload);
+                            // see the FETCH case for why both are necessary
+                            oos.flush();
+                            sChannel.shutdownOutput();
+                            break;
+                        }
                         case "PULL": { // if pull, send data
                             // retrieve deselection
                             String deselectedFeatureRevisionsString = (String) ois.readObject();

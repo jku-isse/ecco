@@ -84,6 +84,52 @@ final class SyncHistory {
         return dir;
     }
 
+    /** a fork over a loopback socket, from a server serving origin */
+    static Path forkOverTheNetwork(Path origin, Path dir) throws Exception {
+        Files.createDirectories(dir);
+        withServer(origin, port -> {
+            try (EccoService service = new EccoService()) {
+                service.setRepositoryDir(dir.resolve(".ecco"));
+                service.fork("localhost", port, "");
+            }
+        });
+        return dir;
+    }
+
+    interface WithPort {
+        void run(int port) throws Exception;
+    }
+
+    /** serves the repository while running the body, then stops and closes it */
+    static void withServer(Path repository, WithPort body) throws Exception {
+        int port;
+        try (java.net.ServerSocket socket = new java.net.ServerSocket(0)) {
+            port = socket.getLocalPort();
+        }
+        EccoService server = open(repository);
+        Thread thread = new Thread(() -> server.startServer(port), "test-ecco-server");
+        thread.start();
+        try {
+            // serverRunning() is set before the port is bound: wait until it takes a connection
+            long deadline = System.currentTimeMillis() + 10_000;
+            while (true) {
+                try (java.net.Socket probe = new java.net.Socket("localhost", port)) {
+                    break;
+                } catch (java.io.IOException e) {
+                    if (System.currentTimeMillis() > deadline)
+                        throw e;
+                    Thread.sleep(20);
+                }
+            }
+            body.run(port);
+        } finally {
+            if (server.serverRunning())
+                server.stopServer();
+            thread.join(10_000);
+            server.close();
+        }
+    }
+
     static void pull(Path repository, Path from) {
         try (EccoService service = open(repository)) {
             if (service.getRemotes().stream().noneMatch(remote -> remote.getName().equals("from")))

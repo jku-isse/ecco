@@ -701,9 +701,39 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         // factory, which was null here: every fork over the network failed
         this.init();
         Repository.Op copiedRepository;
-        try (SocketChannel sChannel = SocketChannel.open()) {
+        // a fork of everything is a copy, commits and counts included (Repository.Op#copyInto); from a
+        // server too old to send one, a merge as before
+        Repository.Op originCopy = null;
+        try {
             if (originSettings != null)
                 this.replaceSettings(originSettings);
+            if (deselectedFeatureRevisionsString == null || deselectedFeatureRevisionsString.isBlank())
+                originCopy = this.receiveCopy(hostname, port);
+        } catch (Error e) {
+            this.abandonNewRepository(e);
+            throw e;
+        } catch (Exception e) {
+            this.abandonNewRepository(e);
+            throw new EccoException("Error during remote fork.", e);
+        }
+        if (originCopy != null) {
+            try {
+                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                Repository.Op repository = this.repositoryDao.load();
+                originCopy.copyInto(repository);
+                this.repositoryDao.store(repository);
+                this.remoteDao.storeRemote(this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE));
+                this.transactionStrategy.end();
+            } catch (Error e) {
+                this.abandonNewRepository(e);
+                throw e;
+            } catch (Exception e) {
+                this.abandonNewRepository(e);
+                throw new EccoException("Error during remote fork.", e);
+            }
+            return;
+        }
+        try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
             if (RemoteSyncService.connect(sChannel, new InetSocketAddress(hostname, port))) {
                 ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
@@ -759,6 +789,39 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         } catch (Exception e) {
             this.abandonNewRepository(e);
             throw new EccoException("Error during remote fork.", e);
+        }
+    }
+
+    /**
+     * The repository of the server at [hostname]:[port] as it is (its CLONE request); null from a server
+     * too old to know the request, which closes the connection without an answer.
+     */
+    private Repository.Op receiveCopy(String hostname, int port) throws IOException, ClassNotFoundException {
+        try (SocketChannel sChannel = SocketChannel.open()) {
+            sChannel.configureBlocking(true);
+            if (!RemoteSyncService.connect(sChannel, new InetSocketAddress(hostname, port)))
+                throw new EccoException("Error connecting to remote: " + hostname + ":" + port);
+            ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
+            ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
+            ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
+            oos.writeObject("CLONE");
+            oos.flush();
+
+            int size;
+            try {
+                size = (Integer) ois.readObject();
+            } catch (EOFException e) {
+                LOGGER.warning("The server at " + hostname + ":" + port + " is too old to send a copy of its repository: forked by merging, without its commits.");
+                return null;
+            }
+            progressInputStream.setMaxBytes(size);
+            progressInputStream.resetProgress();
+            progressInputStream.addListener(this);
+            try {
+                return SyncObjectStreams.readCopy((byte[]) ois.readObject());
+            } finally {
+                progressInputStream.removeListener(this);
+            }
         }
     }
 

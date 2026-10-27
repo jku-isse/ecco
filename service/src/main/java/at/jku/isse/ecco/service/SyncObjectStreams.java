@@ -2,8 +2,18 @@ package at.jku.isse.ecco.service;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.counter.ModuleCounter;
+import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.storage.ser.core.SerCommit;
+import at.jku.isse.ecco.storage.ser.counter.CompactCounters;
+import at.jku.isse.ecco.storage.ser.dao.LoadResolver;
+import at.jku.isse.ecco.storage.ser.module.SerModuleRevision;
+import at.jku.isse.ecco.storage.ser.repository.SerRepository;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputFilter;
@@ -76,5 +86,41 @@ public final class SyncObjectStreams {
 		Collection<Artifact.Op<?>> artifacts = (Collection<Artifact.Op<?>>) ois.readObject();
 		repository.resolveArtifacts(artifacts);
 		return repository;
+	}
+
+	/**
+	 * A repository as it is, for a fork of everything (CLONE): the repository with its commits, its
+	 * associations and their artifacts, written as {@link #writeRepository} writes them but with the
+	 * associations' counters in their compact form, as in an association file (CompactCounters) - the
+	 * exact counts of a repository of many features are millions of entries (1.9 million in one of 47
+	 * variants), too many to send one object each. The compact form refers to the repository's list
+	 * of counted module revisions, so every counted one is put on that list before the repository is
+	 * written.
+	 */
+	static byte[] writeCopy(Repository.Op repository) throws IOException {
+		SerRepository serRepository = (SerRepository) repository;
+		for (Association.Op association : repository.getAssociations())
+			for (ModuleCounter moduleCounter : association.getCounter().getChildren())
+				for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren())
+					serRepository.countedIndex((SerModuleRevision) moduleRevisionCounter.getObject());
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+		try (CompactCounters.Stream oos = new CompactCounters.Stream(bytes, serRepository)) {
+			writeRepository(oos, repository);
+		}
+		return bytes.toByteArray();
+	}
+
+	/** Reads a repository written by {@link #writeCopy}, resolved as a load resolves one. */
+	static Repository.Op readCopy(byte[] bytes) throws IOException, ClassNotFoundException {
+		try (ObjectInputStream ois = newObjectInputStream(new ByteArrayInputStream(bytes))) {
+			Repository.Op repository = readRepository(ois);
+			if (repository instanceof SerRepository serRepository) {
+				for (Commit commit : serRepository.getCommits())
+					if (commit instanceof SerCommit serCommit)
+						serCommit.setAssociationResolver(serRepository);
+				LoadResolver.resolveModuleReferences(serRepository);
+			}
+			return repository;
+		}
 	}
 }
