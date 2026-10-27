@@ -56,4 +56,25 @@ public class UnknownRevisionCheckoutTest {
             assertEquals(2, service.getRepository().getFeatures().iterator().next().getRevisions().size());
         }
     }
+
+    @Test
+    @Timeout(60)
+    public void anAmbiguousRevisionPrefixIsReportedAsAmbiguous(@TempDir Path tmp) throws Exception {
+        Path work = Files.createDirectories(tmp.resolve("work"));
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(work.resolve(".ecco"));
+            service.init();
+            service.setBaseDir(work);
+            Files.writeString(work.resolve("a.txt"), "a\n");
+            service.commit("a1", "A.abcdef01");
+            Files.writeString(work.resolve("a.txt"), "a2\n");
+            service.commit("a2", "A.abcdef02");
+
+            service.setBaseDir(Files.createDirectories(tmp.resolve("out")));
+            // two revisions start with the 7 displayed characters: not "A has no revision abcdef0"
+            EccoException ambiguous = assertThrows(EccoException.class, () -> service.checkout("A.abcdef0"));
+            assertTrue(ambiguous.getMessage().contains("A.abcdef0 is ambiguous: 2 revisions start with it"), ambiguous.getMessage());
+            assertFalse(ambiguous.getMessage().contains("has no revision"), ambiguous.getMessage());
+        }
+    }
 }

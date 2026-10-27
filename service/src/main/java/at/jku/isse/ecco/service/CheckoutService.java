@@ -205,8 +205,15 @@ class CheckoutService {
                 Feature feature = repository.getFeature(revision.getFeature().getId());
                 if (feature == null)
                     missing.add("feature " + revision.getFeature().getName() + " was never committed");
-                else if (feature.getRevision(revision.getId()) == null)
-                    missing.add(feature.getName() + " has no revision " + revision.getId());
+                else if (feature.getRevision(revision.getId()) == null) {
+                    // a displayed (7-character) id more than one revision starts with: the parser
+                    // did not guess, and "has no revision" sent the user looking for a typo
+                    long matching = revision.getId().length() < 7 ? 0
+                            : feature.getRevisions().stream().filter(r -> r.getId().startsWith(revision.getId())).count();
+                    missing.add(matching > 1
+                            ? feature.getName() + "." + revision.getId() + " is ambiguous: " + matching + " revisions start with it - give more of its id"
+                            : feature.getName() + " has no revision " + revision.getId());
+                }
             }
             return missing;
         });
