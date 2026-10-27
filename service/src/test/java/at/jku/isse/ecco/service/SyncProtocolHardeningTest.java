@@ -164,6 +164,12 @@ public class SyncProtocolHardeningTest {
 							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 							out.writeObject("OK");
 							out.flush();
+						} else if (request.equals("COMMIT_IDS")) {
+							// it has none of the client's commits, and no merge commits
+							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+							out.writeObject(new java.util.ArrayList<String>());
+							out.writeObject(false);
+							out.flush();
 						} else {
 							socket.getInputStream().readAllBytes(); // the push, never answered
 						}

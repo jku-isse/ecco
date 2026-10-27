@@ -4,6 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.feature.Feature;
@@ -376,6 +377,84 @@ public class RemoteSyncService {
                             sChannel.shutdownOutput();
                             break;
                         }
+                        case "COMMIT_IDS": { // before a push of commits: which this repository has
+                            ArrayList<String> ids;
+                            boolean mergeCommits;
+                            synchronized (owner) {
+                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                                try {
+                                    Repository.Op repository = owner.repositoryDao.load();
+                                    ids = commitIds(repository);
+                                    mergeCommits = repository.hasMergeCommits();
+                                } finally {
+                                    owner.transactionStrategy.end();
+                                }
+                            }
+                            oos.writeObject(ids);
+                            oos.writeObject(mergeCommits);
+                            oos.flush();
+                            sChannel.shutdownOutput();
+                            break;
+                        }
+                        case "PULL_COMMITS": { // the commits a client does not have, to replay (Repository.Op#replay)
+                            @SuppressWarnings("unchecked")
+                            List<String> have = (List<String>) ois.readObject();
+                            String deselectedFeatureRevisionsString = (String) ois.readObject();
+                            Object reply;
+                            synchronized (owner) {
+                                Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
+                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                                try {
+                                    Repository.Op repository = owner.repositoryDao.load();
+                                    // a repository with merge commits cannot be replayed: the client merges instead
+                                    reply = repository.hasMergeCommits() ? MERGE
+                                            : SyncObjectStreams.writeCopy(owner.copyOfCommits(repository, repository.commitsMissingIn(have, deselected)));
+                                } finally {
+                                    owner.transactionStrategy.end();
+                                }
+                            }
+                            if (reply instanceof byte[] payload) {
+                                oos.writeObject(payload.length);
+                                oos.writeObject(payload);
+                            } else {
+                                oos.writeObject(reply);
+                            }
+                            oos.flush();
+                            sChannel.shutdownOutput();
+                            break;
+                        }
+                        case "PUSH_COMMITS": { // commits this repository does not have, to replay (Repository.Op#replay)
+                            Repository.Op commits = SyncObjectStreams.readCopy((byte[]) ois.readObject());
+                            @SuppressWarnings("unchecked")
+                            Map<String, String> pushedSettings = (Map<String, String>) ois.readObject();
+                            String pushedFrom = (String) ois.readObject();
+                            String reply;
+                            synchronized (owner) {
+                                try {
+                                    owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                                    Repository.Op repository = owner.repositoryDao.load();
+                                    Map<String, String> takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(commits), pushedSettings,
+                                            owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
+                                    owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
+                                    owner.repositoryDao.store(repository);
+                                    owner.endTakingOverSettings(takeOver);
+                                    reply = "OK";
+                                } catch (RuntimeException e) {
+                                    owner.rollbackIfTransactionActive();
+                                    LOGGER.warning("Push refused: " + messages(e));
+                                    owner.listeners.fireServerEvent("Push refused: " + messages(e));
+                                    reply = messages(e);
+                                }
+                            }
+                            try {
+                                oos.writeObject(reply);
+                                oos.flush();
+                                sChannel.shutdownOutput();
+                            } catch (IOException e) {
+                                LOGGER.fine("The pushing client did not wait for the answer: " + e);
+                            }
+                            break;
+                        }
                         case "PULL": { // if pull, send data
                             // retrieve deselection
                             String deselectedFeatureRevisionsString = (String) ois.readObject();
@@ -617,6 +696,110 @@ public class RemoteSyncService {
         }
     }
 
+    /** A server's answer to PULL_COMMITS when it has merge commits: the client merges instead. */
+    static final String MERGE = "MERGE";
+
+    private static final String MERGING = " has merge commits (a fork, pull or push of an older version): merged, not replayed"
+            + " - a line can be lost where a configuration was committed again with other content";
+
+    static ArrayList<String> commitIds(Repository.Op repository) {
+        ArrayList<String> ids = new ArrayList<>();
+        for (Commit commit : repository.getCommits())
+            ids.add(commit.getId());
+        return ids;
+    }
+
+    /**
+     * The remote's commits this repository does not have ([have]), as a repository of their own to
+     * replay (PULL_COMMITS); null if the remote has merge commits or is too old to know the request.
+     */
+    Repository.Op receiveCommits(Remote remote, ArrayList<String> have, String deselectedFeatureRevisionsString) throws IOException, ClassNotFoundException {
+        try (SocketChannel sChannel = SocketChannel.open()) {
+            sChannel.configureBlocking(true);
+            if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
+                throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + remote.getAddress());
+            ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
+            ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
+            oos.writeObject("PULL_COMMITS");
+            oos.writeObject(have);
+            oos.writeObject(deselectedFeatureRevisionsString);
+            oos.flush();
+
+            // opened after the request is sent: it waits for the answer's stream header
+            ObjectInputStream ois;
+            Object reply;
+            try {
+                ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
+                reply = ois.readObject();
+            } catch (EOFException e) {
+                LOGGER.warning("Remote '" + remote.getName() + "' is too old to send commits: merged, not replayed.");
+                return null;
+            }
+            if (MERGE.equals(reply)) {
+                LOGGER.warning("Remote '" + remote.getName() + "'" + MERGING);
+                return null;
+            }
+            progressInputStream.setMaxBytes((Integer) reply);
+            progressInputStream.resetProgress();
+            progressInputStream.addListener(owner);
+            try {
+                return SyncObjectStreams.readCopy((byte[]) ois.readObject());
+            } finally {
+                progressInputStream.removeListener(owner);
+            }
+        }
+    }
+
+    /** The ids of the remote's commits (COMMIT_IDS); null if it has merge commits or is too old to know the request. */
+    private ArrayList<String> remoteCommitIds(Remote remote) throws IOException, ClassNotFoundException {
+        try (SocketChannel sChannel = SocketChannel.open()) {
+            sChannel.configureBlocking(true);
+            if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
+                throw new EccoException("Error connecting to remote: " + remote.getAddress());
+            ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
+            oos.writeObject("COMMIT_IDS");
+            oos.flush();
+            try {
+                // opened after the request is sent: it waits for the answer's stream header
+                ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream());
+                @SuppressWarnings("unchecked")
+                ArrayList<String> ids = (ArrayList<String>) ois.readObject();
+                if ((Boolean) ois.readObject()) {
+                    LOGGER.warning("Remote '" + remote.getName() + "'" + MERGING);
+                    return null;
+                }
+                return ids;
+            } catch (EOFException e) {
+                LOGGER.warning("Remote '" + remote.getName() + "' is too old to take commits: merged, not replayed.");
+                return null;
+            }
+        }
+    }
+
+    /** Sends [commits] (a repository of their own) for the remote to replay (PUSH_COMMITS) - see {@link #sendPush} for [answers]. */
+    private void sendPushCommits(Remote remote, Repository.Op commits, Map<String, String> settings, boolean answers) throws IOException, ClassNotFoundException {
+        byte[] payload = SyncObjectStreams.writeCopy(commits);
+        try (SocketChannel sChannel = SocketChannel.open()) {
+            sChannel.configureBlocking(true);
+            if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
+                throw new EccoException("Error connecting to remote: " + remote.getAddress());
+            ProgressOutputStream pos = new ProgressOutputStream(sChannel.socket().getOutputStream());
+            ObjectOutputStream oos = new ObjectOutputStream(pos);
+            oos.writeObject("PUSH_COMMITS");
+            pos.setMaxBytes(payload.length);
+            pos.resetProgress();
+            pos.addListener(owner);
+            oos.writeObject(payload);
+            oos.writeObject(new HashMap<>(settings));
+            oos.writeObject(remote.getName());
+            // see sendPush for why both are necessary
+            oos.flush();
+            sChannel.shutdownOutput();
+            pos.removeListener(owner);
+            this.readPushReply(sChannel, remote, answers);
+        }
+    }
+
     public void pull(String remoteName) {
         this.pull(remoteName, "");
     }
@@ -747,24 +930,29 @@ public class RemoteSyncService {
             sChannel.shutdownOutput();
             pos.removeListener(owner);
 
-            // whether the remote merged it. A server from before reads only the repository and
-            // answers nothing - it may reset the connection over the settings it did not read
-            Object reply;
-            try {
-                reply = SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream()).readObject();
-            } catch (java.net.SocketTimeoutException e) {
-                throw new EccoException("Remote '" + remote.getName() + "' did not answer the push within " + READ_TIMEOUT_MILLIS / 1000
-                        + " seconds: not known whether it merged it - fetch from it to see, before pushing again.", e);
-            } catch (EOFException | SocketException e) {
-                if (answers)
-                    throw new EccoException("Remote '" + remote.getName() + "' closed the connection without answering the push: "
-                            + "not known whether it merged it - fetch from it to see, before pushing again.", e);
-                LOGGER.warning("Remote '" + remote.getName() + "' does not answer a push (an older ECCO): not known whether it merged it.");
-                return;
-            }
-            if (!"OK".equals(reply))
-                throw new EccoException("Remote '" + remote.getName() + "' did not merge the push: " + reply);
+            this.readPushReply(sChannel, remote, answers);
         }
+    }
+
+    /** Whether the remote merged or replayed the push: its answer, or none from an older server ([answers] false). */
+    private void readPushReply(SocketChannel sChannel, Remote remote, boolean answers) throws IOException, ClassNotFoundException {
+        // whether the remote merged it. A server from before reads only the repository and
+        // answers nothing - it may reset the connection over the settings it did not read
+        Object reply;
+        try {
+            reply = SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream()).readObject();
+        } catch (java.net.SocketTimeoutException e) {
+            throw new EccoException("Remote '" + remote.getName() + "' did not answer the push within " + READ_TIMEOUT_MILLIS / 1000
+                    + " seconds: not known whether it merged it - fetch from it to see, before pushing again.", e);
+        } catch (EOFException | SocketException e) {
+            if (answers)
+                throw new EccoException("Remote '" + remote.getName() + "' closed the connection without answering the push: "
+                        + "not known whether it merged it - fetch from it to see, before pushing again.", e);
+            LOGGER.warning("Remote '" + remote.getName() + "' does not answer a push (an older ECCO): not known whether it merged it.");
+            return;
+        }
+        if (!"OK".equals(reply))
+            throw new EccoException("Remote '" + remote.getName() + "' did not merge the push: " + reply);
     }
 
     /**
@@ -797,7 +985,28 @@ public class RemoteSyncService {
             } else if (remote.getType() == Remote.Type.REMOTE) {
 
                 Map<String, String> remoteSettings = this.remoteSettings(remote);
-                try (SocketChannel sChannel = SocketChannel.open()) {
+                // the remote's commits this repository does not have, replayed (Repository.Op#replay) -
+                // merged as before where either repository has merge commits or the remote is too old
+                Repository.Op repository = owner.repositoryDao.load();
+                Repository.Op commits;
+                try {
+                    if (repository.hasMergeCommits()) {
+                        LOGGER.warning("This repository" + MERGING);
+                        commits = null;
+                    } else {
+                        commits = this.receiveCommits(remote, commitIds(repository), deselectedFeatureRevisionsString);
+                    }
+                } catch (Exception e) {
+                    throw new EccoException("Error during remote pull.", e);
+                }
+                if (commits != null) {
+                    OperationCancelledException.check(cancelled);
+                    if (remoteSettings != null)
+                        takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(commits), remoteSettings,
+                                owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
+                    owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
+                    owner.repositoryDao.store(repository);
+                } else try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
                     if (RemoteSyncService.connect(sChannel, socketAddressOf(remote))) {
                         ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
@@ -826,7 +1035,6 @@ public class RemoteSyncService {
                         OperationCancelledException.check(cancelled);
 
                         // merge into this repository - if both read the files the same way
-                        Repository.Op repository = owner.repositoryDao.load();
                         if (remoteSettings != null)
                             takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(copiedRepository), remoteSettings,
                                     owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
@@ -842,7 +1050,11 @@ public class RemoteSyncService {
             } else if (remote.getType() == Remote.Type.LOCAL) {
                 // open parent repository - try-with-resources so a failure below still closes
                 // parentService instead of leaking whatever open()/init() acquired indefinitely.
-                Repository.Op subsetParentRepository;
+                Repository.Op repository = owner.repositoryDao.load();
+                // the parent's commits this repository does not have, to replay (Repository.Op#replay) -
+                // or, where either repository has merge commits, the subset to merge as before
+                Repository.Op commits = null;
+                Repository.Op subsetParentRepository = null;
                 Map<String, String> parentSettings;
                 try (EccoService parentService = new EccoService()) {
                     parentService.setRepositoryDir(EccoService.resolveRepositoryDir(Paths.get(remote.getAddress())));
@@ -850,12 +1062,17 @@ public class RemoteSyncService {
                     parentService.open();
                     parentSettings = parentService.repositorySettings();
 
-                    // create subset repository
                     try {
                         parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
                         Repository.Op parentRepository = parentService.repositoryDao.load();
-                        subsetParentRepository = parentRepository.subset(parentService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), parentRepository.getMaxOrder(), owner.entityFactory);
+                        Collection<FeatureRevision> deselected = parentService.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
+                        if (parentRepository.hasMergeCommits() || repository.hasMergeCommits()) {
+                            LOGGER.warning((repository.hasMergeCommits() ? "This repository" : "Remote '" + remote.getName() + "'") + MERGING);
+                            subsetParentRepository = parentRepository.subset(deselected, parentRepository.getMaxOrder(), owner.entityFactory);
+                        } else {
+                            commits = owner.copyOfCommits(parentRepository, parentRepository.commitsMissingIn(commitIds(repository), deselected));
+                        }
 
                         parentService.transactionStrategy.end();
                     } catch (Error e) {
@@ -869,11 +1086,14 @@ public class RemoteSyncService {
                 }
 
                 OperationCancelledException.check(cancelled);
-                // merge into this repository - if both read the files the same way
-                Repository.Op repository = owner.repositoryDao.load();
-                takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(subsetParentRepository), parentSettings,
+                // into this repository - if both read the files the same way
+                Repository.Op received = commits != null ? commits : subsetParentRepository;
+                takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(received), parentSettings,
                         owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
-                repository.merge(subsetParentRepository);
+                if (commits != null)
+                    owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
+                else
+                    repository.merge(subsetParentRepository);
                 owner.repositoryDao.store(repository);
             }
 
@@ -923,10 +1143,40 @@ public class RemoteSyncService {
                 throw new EccoException("Remote '" + remoteName + "' does not exist.");
             } else if (remote.getType() == Remote.Type.REMOTE) {
 
-                // compute subset repository using mem entity factory
+                // this repository's commits the remote does not have, for it to replay (Repository.Op#replay) -
+                // the subset to merge as before where either repository has merge commits or the remote is too old
                 owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                 Repository.Op repository = owner.repositoryDao.load();
-                Repository.Op subsetRepository = repository.subset(owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), owner.entityFactory);
+                Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
+                ArrayList<String> remoteIds;
+                try {
+                    if (repository.hasMergeCommits()) {
+                        LOGGER.warning("This repository" + MERGING);
+                        remoteIds = null;
+                    } else {
+                        remoteIds = this.remoteCommitIds(remote);
+                    }
+                } catch (Exception e) {
+                    owner.transactionStrategy.end();
+                    throw new EccoException("Error during remote push.", e);
+                }
+                if (remoteIds != null) {
+                    Repository.Op commits = owner.copyOfCommits(repository, repository.commitsMissingIn(remoteIds, deselected));
+                    owner.transactionStrategy.end();
+                    // the last chance: the server replays what it gets
+                    OperationCancelledException.check(cancelled);
+                    boolean answers = this.mergeSettingsIntoRemote(remote, EccoService.pluginsWithFiles(commits));
+                    try {
+                        this.sendPushCommits(remote, commits, owner.repositorySettings(), answers);
+                    } catch (EccoException e) {
+                        throw e;
+                    } catch (Exception e) {
+                        throw new EccoException("Error during remote push.", e);
+                    }
+                    owner.transactionStrategy.end();
+                    return;
+                }
+                Repository.Op subsetRepository = repository.subset(deselected, repository.getMaxOrder(), owner.entityFactory);
                 owner.transactionStrategy.end();
                 // the last chance: the server merges what it gets
                 OperationCancelledException.check(cancelled);
@@ -948,20 +1198,32 @@ public class RemoteSyncService {
                     parentService.setRepositoryDir(EccoService.resolveRepositoryDir(Paths.get(remote.getAddress())));
                     parentService.open();
 
-                    // create subset repository
                     Repository.Op repository = owner.repositoryDao.load();
-                    Repository.Op subsetRepository = repository.subset(owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), parentService.entityFactory);
+                    Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
                     OperationCancelledException.check(cancelled);
 
-                    // merge into parent repository - if both read the files the same way
+                    // into parent repository - if both read the files the same way: this repository's
+                    // commits it does not have, replayed (Repository.Op#replay), or, where either has merge
+                    // commits, the subset merged as before
                     try {
                         parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
                         Repository.Op parentRepository = parentService.repositoryDao.load();
-                        Map<String, String> takeOver = parentService.settingsToTakeOver(EccoService.pluginsWithFiles(subsetRepository),
+                        Repository.Op commits = null;
+                        Repository.Op subsetRepository = null;
+                        if (repository.hasMergeCommits() || parentRepository.hasMergeCommits()) {
+                            LOGGER.warning((repository.hasMergeCommits() ? "This repository" : "Remote '" + remote.getName() + "'") + MERGING);
+                            subsetRepository = repository.subset(deselected, repository.getMaxOrder(), parentService.entityFactory);
+                        } else {
+                            commits = parentService.copyOfCommits(repository, repository.commitsMissingIn(commitIds(parentRepository), deselected));
+                        }
+                        Map<String, String> takeOver = parentService.settingsToTakeOver(EccoService.pluginsWithFiles(commits != null ? commits : subsetRepository),
                                 owner.repositorySettings(), parentService.repositorySettings(), EccoService.pluginsWithFiles(parentRepository),
                                 "push to '" + remote.getName() + "'");
-                        parentRepository.merge(subsetRepository);
+                        if (commits != null)
+                            parentService.replayInto(parentRepository, commits, new ArrayList<>(commits.getCommits()));
+                        else
+                            parentRepository.merge(subsetRepository);
                         parentService.repositoryDao.store(parentRepository);
 
                         // the last chance: what follows writes the remote

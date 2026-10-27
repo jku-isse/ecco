@@ -4,6 +4,7 @@ import at.jku.isse.ecco.service.EccoService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import at.jku.isse.ecco.repository.Repository;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,17 +45,15 @@ public class ConfigurationBridgeTest {
 			serviceA.init();
 			serviceA.setBaseDir(xDir);
 			serviceA.commit("commit x", "X");
-			Files.writeString(xDir.resolve("w.txt"), "w\n");
-			serviceA.commit("commit x and w", "X, W");
 
 			try (EccoService serviceB = new EccoService()) {
 				serviceB.setRepositoryDir(repoBDir);
-				// a fork leaving W out goes through Repository.merge() -> extract(Association.Op, Commit)
-				// per merged association -- this is what produces null-configuration MERGE commits in B
-				// (a fork of everything copies the commits instead, configurations included)
-				serviceB.fork(repoADir, "W." + serviceA.getRepository().getFeatures().stream()
-						.filter(feature -> feature.getName().equals("W")).findFirst().orElseThrow().getLatestRevision().getId());
-				assertTrue(serviceB.getCommits().stream().anyMatch(commit -> commit.getConfiguration() == null), "the fork has merge commits");
+				serviceB.fork(repoADir);
+				// a merge commit, without a configuration, as a fork or pull of an older version recorded
+				// one for each association it merged (a fork now copies the commits, configurations included)
+				Repository.Op repositoryB = (Repository.Op) serviceB.getRepository();
+				repositoryB.addCommit(repositoryB.getEntityFactory().createCommit(Repository.MERGE));
+				assertTrue(serviceB.getCommits().stream().anyMatch(commit -> commit.getConfiguration() == null), "the fork has a merge commit");
 
 				Path yDir = workDir.resolve("y");
 				Files.createDirectories(yDir);
@@ -65,9 +64,9 @@ public class ConfigurationBridgeTest {
 				List<Set<String>> configs = assertDoesNotThrow(() -> ConfigurationBridge.readConfigurations(serviceB),
 						"a MERGE commit's null configuration must not crash readConfigurations()");
 
-				assertEquals(1, configs.size(),
-						"only the real 'Y' commit has a configuration to contribute -- the merge commit(s) from forking must be skipped");
-				assertTrue(configs.get(0).contains("Y"));
+				assertEquals(2, configs.size(),
+						"only the real commits, X (copied by the fork) and Y, have a configuration to contribute -- the merge commit must be skipped");
+				assertTrue(configs.stream().anyMatch(config -> config.contains("Y")));
 			}
 		}
 	}

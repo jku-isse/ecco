@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.service;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
@@ -15,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Pulling again with nothing new changes nothing: a pull sent the whole remote, and merging it added
  * every count again, as if each of its commits had been made once more.
  */
-@Disabled("commit-replay sync, step 4")
 public class RepeatedPullTest {
 
     private static final List<Step> HISTORY = steps("A=a", "A, B=a|b");

@@ -146,10 +146,11 @@ public class NetworkSyncSharedFileTest {
         Path localWithoutC = localFork(origin, tmp.resolve("local-without-c"), c1);
         Path localWithoutA1 = localFork(origin, tmp.resolve("local-without-a1"), a1);
 
+        // the commits without C: A's second revision came only with C, and is left out with it
         Map<String, String> withoutC = new LinkedHashMap<>();
         withoutC.put(a1, "a\n");
         withoutC.put(a1 + ", " + b1, "a\nb\n");
-        withoutC.put(a2 + ", " + b1, checkoutOf(localWithoutC, a2 + ", " + b1, tmp.resolve("local-c-a2b1")));
+        assertEquals(withoutC.get(a1 + ", " + b1), checkoutOf(localWithoutC, a1 + ", " + b1, tmp.resolve("local-c-a1b1")));
         assertCheckouts(pulled, withoutC, tmp.resolve("co-pulled"));
         assertCheckouts(server, withoutC, tmp.resolve("co-server"));
         try (EccoService service = open(pulled)) {

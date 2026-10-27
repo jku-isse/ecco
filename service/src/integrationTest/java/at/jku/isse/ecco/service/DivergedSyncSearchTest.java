@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.service;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
@@ -24,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * side and F on the fork's; a line changes now and then without a new revision, as in real histories.
  * The search that found DivergedSyncTest's history: 33 of 200 histories lost lines.
  */
-@Disabled("commit-replay sync, step 4")
 public class DivergedSyncSearchTest {
 
     private static final int SEEDS = 40;

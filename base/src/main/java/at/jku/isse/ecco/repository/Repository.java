@@ -896,6 +896,28 @@ public interface Repository extends Persistable {
 		 * the history they share once (ForkCopyTest, DivergedSyncTest).
 		 */
 		default void copyInto(Repository.Op target) {
+			this.copyInto(target, new ArrayList<>(this.getAssociations()), new ArrayList<>(this.getCommits()));
+		}
+
+		/**
+		 * Copies [commits] of this repository into {@code target}, a repository just initialized, as
+		 * {@link #copyInto(Repository.Op)} copies all of them: with the associations holding their
+		 * content, and every feature and module - what a pull or push sends of the commits the other
+		 * side does not have, to be replayed there ({@link #replay}).
+		 */
+		default void copyCommitsInto(Repository.Op target, List<? extends Commit> commits) {
+			Set<String> ids = new HashSet<>();
+			for (Commit commit : commits)
+				for (Association association : commit.getAssociations())
+					ids.add(association.getId());
+			List<Association.Op> associations = new ArrayList<>();
+			for (Association.Op association : this.getAssociations())
+				if (ids.contains(association.getId()))
+					associations.add(association);
+			this.copyInto(target, associations, commits);
+		}
+
+		private void copyInto(Repository.Op target, List<? extends Association.Op> associations, List<? extends Commit> commits) {
 			checkNotNull(target);
 			checkArgument(target.getAssociations().isEmpty() && target.getCommits().isEmpty(), "A repository is copied into an empty one only.");
 			this.checkArtifactFormats();
@@ -934,7 +956,7 @@ public interface Repository extends Persistable {
 			// associations, with their counts and their trees - copied in one context (see EccoUtil.TreeCopy)
 			EccoUtil.TreeCopy treeCopy = new EccoUtil.TreeCopy(entityFactory);
 			Map<String, Association.Op> newAssociations = new LinkedHashMap<>();
-			for (Association.Op association : this.getAssociations()) {
+			for (Association.Op association : associations) {
 				Association.Op newAssociation = entityFactory.createAssociation();
 				newAssociation.setId(association.getId());
 				newAssociation.getCounter().setCount(association.getCounter().getCount());
@@ -956,13 +978,25 @@ public interface Repository extends Persistable {
 				newAssociations.put(association.getId(), newAssociation);
 			}
 			treeCopy.finish(newAssociations.values().stream().map(Association.Op::getRootNode).toList());
+			// copying some commits only, a graph node can hold an artifact of an association not copied:
+			// each order graph is trimmed to the artifacts copied, or the copy refers to artifacts it
+			// does not have (sent over the network, they could not be resolved)
+			Set<Artifact.Op<?>> copied = Collections.newSetFromMap(new IdentityHashMap<>());
+			for (Association.Op newAssociation : newAssociations.values())
+				newAssociation.getRootNode().traverse((Node.Op node) -> {
+					if (node.getArtifact() != null)
+						copied.add(node.getArtifact());
+				});
+			for (Artifact.Op<?> artifact : copied)
+				if (artifact.getPartialOrderGraph() != null)
+					trimTo(artifact.getPartialOrderGraph(), copied);
 			for (Association.Op newAssociation : newAssociations.values()) {
 				Trees.checkConsistency(newAssociation.getRootNode());
 				target.addAssociation(newAssociation);
 			}
 
 			// commits, in their order
-			for (Commit commit : this.getCommits()) {
+			for (Commit commit : commits) {
 				Commit newCommit = entityFactory.createCommit(commit.getUsername());
 				newCommit.setId(commit.getId());
 				newCommit.setDate(commit.getDate());
@@ -987,9 +1021,9 @@ public interface Repository extends Persistable {
 		 * Commits, in this repository, a commit of another repository - its configuration and the
 		 * associations that hold its content there - as committing that content here would: the
 		 * associations' trees, copied in one context (EccoUtil.TreeCopy) and joined into one, are the
-		 * commit's tree as read, every node its own; each ordered artifact keeps its order graph,
-		 * trimmed to the artifacts of the commit, so the order is the one recorded there (written to
-		 * files and read again, a partial order came back as one of its orders). Pull and push replay
+		 * commit's tree as read, every node its own, the children of an ordered artifact in the order
+		 * of its order graph there, trimmed to the commit's artifacts (written to files and read again,
+		 * their order came back as the checkout's, other than committed). Pull and push replay
 		 * the commits one side does not have, so a repository after them is one with the same commits
 		 * made in order - merging associations counted the history both share twice
 		 * (DivergedSyncTest).
@@ -1014,7 +1048,11 @@ public interface Repository extends Persistable {
 			}
 			treeCopy.finish(List.of(rootNode));
 
-			// as read: every node its own, every order graph over the commit's artifacts only
+			// as read: every node its own, the children of an ordered artifact in their order, and no
+			// order graph or sequence number yet - the commit is aligned with this repository's own order
+			// graphs, as a commit of the files is. The other repository's sequence numbers mean nothing
+			// here: kept, a line of it was taken for an equal line here with the same number (a "}" of
+			// another position) and one of the two was lost
 			Set<Artifact.Op<?>> artifacts = Collections.newSetFromMap(new IdentityHashMap<>());
 			rootNode.traverse((Node.Op node) -> {
 				if (node.getArtifact() != null)
@@ -1027,20 +1065,124 @@ public interface Repository extends Persistable {
 					return;
 				artifact.setContainingNode(node);
 				if (artifact.getPartialOrderGraph() != null) {
-					List<Artifact.Op<?>> symbols = new ArrayList<>();
-					for (PartialOrderGraph.Node.Op graphNode : artifact.getPartialOrderGraph().collectNodes())
-						if (graphNode.getArtifact() != null && artifacts.contains(graphNode.getArtifact()))
-							symbols.add(graphNode.getArtifact());
-					artifact.getPartialOrderGraph().trim(symbols);
+					trimTo(artifact.getPartialOrderGraph(), artifacts);
+					inOrder(node, artifact.getPartialOrderGraph());
+					artifact.setPartialOrderGraph(null);
 				}
 			});
+			for (Artifact.Op<?> artifact : artifacts)
+				artifact.setSequenceNumber(PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER);
 
 			Set<Node.Op> nodes = new LinkedHashSet<>();
 			for (Node.Op child : rootNode.getChildren()) {
 				child.setParent(null);
 				nodes.add(child);
 			}
-			return this.extract(configuration, nodes, committer);
+			return this.extract(this.adoptConfiguration(configuration), nodes, committer);
+		}
+
+		/**
+		 * Whether a commit has no configuration: one a merge recorded for each association it merged -
+		 * a fork or pull of an older version - which replaying cannot repeat. Pull and push then merge,
+		 * as before.
+		 */
+		default boolean hasMergeCommits() {
+			return this.getCommits().stream().anyMatch(commit -> commit.getConfiguration() == null);
+		}
+
+		/**
+		 * This repository's commits whose ids are not in [ids], in their order, leaving out those with a
+		 * [deselected] revision in their configuration - what a pull or push replays on the side that
+		 * has [ids].
+		 */
+		default List<Commit> commitsMissingIn(Collection<String> ids, Collection<FeatureRevision> deselected) {
+			Set<String> have = new HashSet<>(ids);
+			Set<String> left = new HashSet<>();
+			for (FeatureRevision featureRevision : deselected)
+				left.add(featureRevision.getFeature().getId() + "." + featureRevision.getId());
+			List<Commit> missing = new ArrayList<>();
+			for (Commit commit : this.getCommits()) {
+				if (commit.getConfiguration() == null || have.contains(commit.getId()))
+					continue;
+				if (Arrays.stream(commit.getConfiguration().getFeatureRevisions()).anyMatch(featureRevision -> left.contains(featureRevision.getFeature().getId() + "." + featureRevision.getId())))
+					continue;
+				missing.add(commit);
+			}
+			return missing;
+		}
+
+		/**
+		 * [configuration], of another repository, on this repository's features: a feature this
+		 * repository has by id or, made on its own on both sides, by name is the same feature; a
+		 * revision it has is the same revision. The rest are added when committed.
+		 */
+		default Configuration adoptConfiguration(Configuration configuration) {
+			List<FeatureRevision> featureRevisions = new ArrayList<>();
+			for (FeatureRevision featureRevision : configuration.getFeatureRevisions()) {
+				Feature feature = this.getFeature(featureRevision.getFeature().getId());
+				if (feature == null)
+					feature = this.getFeatures().stream().filter(candidate -> candidate.getName().equals(featureRevision.getFeature().getName())).findFirst().orElse(null);
+				if (feature == null) {
+					featureRevisions.add(featureRevision);
+					continue;
+				}
+				FeatureRevision revision = feature.getRevision(featureRevision.getId());
+				if (revision == null) {
+					revision = feature.addRevision(featureRevision.getId());
+					revision.setDescription(featureRevision.getDescription());
+				}
+				featureRevisions.add(revision);
+			}
+			return this.getEntityFactory().createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
+		}
+
+		/**
+		 * Puts the children of [node] in the order of [graph], its artifact's order graph: a topological
+		 * order, ties by sequence number; children the graph does not hold last, as they were.
+		 */
+		@SuppressWarnings("unchecked")
+		private static void inOrder(Node.Op node, PartialOrderGraph.Op graph) {
+			Map<Artifact.Op<?>, Node.Op> childByArtifact = new IdentityHashMap<>();
+			for (Node.Op child : node.getChildren())
+				if (child.getArtifact() != null)
+					childByArtifact.put(child.getArtifact(), child);
+			Map<PartialOrderGraph.Node.Op, Integer> inDegree = new IdentityHashMap<>();
+			for (PartialOrderGraph.Node.Op graphNode : graph.collectNodes()) {
+				inDegree.putIfAbsent(graphNode, 0);
+				for (PartialOrderGraph.Node.Op next : graphNode.getNext())
+					inDegree.merge(next, 1, Integer::sum);
+			}
+			PriorityQueue<PartialOrderGraph.Node.Op> ready = new PriorityQueue<>(Comparator.comparingInt(PartialOrderGraph.Node.Op::getSequenceNumber));
+			inDegree.forEach((graphNode, degree) -> {
+				if (degree == 0)
+					ready.add(graphNode);
+			});
+			List<Node.Op> ordered = new ArrayList<>();
+			Set<Node.Op> placed = Collections.newSetFromMap(new IdentityHashMap<>());
+			while (!ready.isEmpty()) {
+				PartialOrderGraph.Node.Op graphNode = ready.poll();
+				Node.Op child = graphNode.getArtifact() == null ? null : childByArtifact.get(graphNode.getArtifact());
+				if (child != null && placed.add(child))
+					ordered.add(child);
+				for (PartialOrderGraph.Node.Op next : graphNode.getNext())
+					if (inDegree.merge(next, -1, Integer::sum) == 0)
+						ready.add(next);
+			}
+			for (Node.Op child : node.getChildren())
+				if (!placed.contains(child))
+					ordered.add(child);
+			List<Node.Op> children = (List<Node.Op>) node.getChildren();
+			children.clear();
+			children.addAll(ordered);
+		}
+
+		/** Removes from [graph] the nodes holding none of [artifacts] (by identity), keeping the order of the rest. */
+		private static void trimTo(PartialOrderGraph.Op graph, Set<Artifact.Op<?>> artifacts) {
+			List<Artifact.Op<?>> symbols = new ArrayList<>();
+			for (PartialOrderGraph.Node.Op graphNode : graph.collectNodes())
+				if (graphNode.getArtifact() != null && artifacts.contains(graphNode.getArtifact()))
+					symbols.add(graphNode.getArtifact());
+			graph.trim(symbols);
 		}
 
 		private static Feature[] targetFeatures(Repository.Op target, Feature[] features) {
@@ -1385,15 +1527,12 @@ public interface Repository extends Persistable {
 				checkArtifactFormats(child);
 		}
 
-		default void merge(Repository.Op otherRepository) {
-			checkNotNull(otherRepository);
-			this.checkArtifactFormats();
-			otherRepository.checkArtifactFormats();
-			List<FeatureRevision> otherRevisions = new ArrayList<>();
-			for (Feature otherFeature : otherRepository.getFeatures())
-				otherRevisions.addAll(otherFeature.getRevisions());
-			FeatureLiterals.checkDistinct(this.getFeatures(), otherRevisions);
-
+		/**
+		 * Takes over the other repository's decisions this one has not made: its accepted and rejected
+		 * constraint suggestions and feature parents - what a merge, pull or push brings along besides
+		 * the content.
+		 */
+		default void mergeDecisions(Repository.Op otherRepository) {
 			// copy every constraint from other repository into this one that doesn't already exist
 			// here (by natural kind|a|b id). Kept deliberately independent of the module/association
 			// counter-copying logic below (which has known fragility under certain conditions -- see
@@ -1423,6 +1562,18 @@ public interface Repository extends Persistable {
 				if (!parent.equals(this.getFeatureParents().get(feature)))
 					this.addRejectedFeatureParent(feature, parent);
 			}));
+		}
+
+		default void merge(Repository.Op otherRepository) {
+			checkNotNull(otherRepository);
+			this.checkArtifactFormats();
+			otherRepository.checkArtifactFormats();
+			List<FeatureRevision> otherRevisions = new ArrayList<>();
+			for (Feature otherFeature : otherRepository.getFeatures())
+				otherRevisions.addAll(otherFeature.getRevisions());
+			FeatureLiterals.checkDistinct(this.getFeatures(), otherRevisions);
+
+			this.mergeDecisions(otherRepository);
 
 			// extract every association. treat it as if it was an input product. only that there is no configuration.
 

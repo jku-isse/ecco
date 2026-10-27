@@ -37,13 +37,14 @@ public class SmallRefusalsTest {
     }
 
     /**
-     * Two features of one name come only from merging two repositories, and a merge refuses
-     * features whose names conditions could not tell apart (FR-F6) - so the ambiguity FR-F3 rejects
-     * cannot arise in a repository of this version: the pull is refused first.
+     * A feature made on its own in two repositories, with the same name, is one feature after a pull:
+     * the pull replays the other repository's commits on this one's features (Repository.Op#
+     * adoptConfiguration). It refused the pull, as two features of one name (FR-F6) - names that
+     * conditions cannot tell apart, "a-b" and "a_b", still are.
      */
     @Test
     @Timeout(60)
-    public void twoFeaturesOfOneNameCannotArise(@TempDir Path tmp) throws Exception {
+    public void aFeatureOfTheSameNameMadeOnBothSidesIsOneFeatureAfterAPull(@TempDir Path tmp) throws Exception {
         Path other = tmp.resolve("other");
         try (EccoService service = init(other)) {
             Files.writeString(other.resolve("o.txt"), "o\n");
@@ -54,8 +55,9 @@ public class SmallRefusalsTest {
             Files.writeString(work.resolve("w.txt"), "w\n");
             service.commit("w", "A");
             service.addRemote("other", other.toString(), Remote.Type.LOCAL);
-            assertThrows(EccoException.class, () -> service.pull("other"));
+            service.pull("other");
             assertEquals(1, service.getRepository().getFeatures().stream().filter(f -> f.getName().equals("A")).count());
+            assertEquals(2, service.getCommits().size());
         }
     }
 

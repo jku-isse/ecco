@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.service;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
@@ -19,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * order it is "b0 e0" - the pulled associations' counts were rebuilt from their conditions only, and
  * the history both share was counted twice.
  */
-@Disabled("commit-replay sync, step 4")
 public class DivergedSyncTest {
 
     private static final List<Step> BASE = steps("B=b0");

@@ -704,11 +704,16 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         // a fork of everything is a copy, commits and counts included (Repository.Op#copyInto); from a
         // server too old to send one, a merge as before
         Repository.Op originCopy = null;
+        Repository.Op originCommits = null;
         try {
             if (originSettings != null)
                 this.replaceSettings(originSettings);
             if (deselectedFeatureRevisionsString == null || deselectedFeatureRevisionsString.isBlank())
                 originCopy = this.receiveCopy(hostname, port);
+            else
+                // leaving revisions out: the origin's commits without them, to replay
+                originCommits = this.remoteSyncService.receiveCommits(this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE),
+                        new ArrayList<>(), deselectedFeatureRevisionsString);
         } catch (Error e) {
             this.abandonNewRepository(e);
             throw e;
@@ -716,11 +721,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.abandonNewRepository(e);
             throw new EccoException("Error during remote fork.", e);
         }
-        if (originCopy != null) {
+        if (originCopy != null || originCommits != null) {
             try {
                 this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                 Repository.Op repository = this.repositoryDao.load();
-                originCopy.copyInto(repository);
+                if (originCopy != null)
+                    originCopy.copyInto(repository);
+                else
+                    this.replayInto(repository, originCommits, new ArrayList<>(originCommits.getCommits()));
                 this.repositoryDao.store(repository);
                 this.remoteDao.storeRemote(this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE));
                 this.transactionStrategy.end();
@@ -834,33 +842,49 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         try {
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
             Repository.Op repository = this.repositoryDao.load();
-            for (Commit commit : commits) {
-                // a merge commit has no configuration and nothing to replay
-                if (commit.getConfiguration() == null)
-                    continue;
-                List<Association.Op> associations = new ArrayList<>();
-                for (Association association : commit.getAssociations())
-                    associations.add((Association.Op) association);
-                repository.addFeatureRevisions(commit.getConfiguration().getFeatureRevisions());
-                Commit replayed = repository.replay(commit.getConfiguration(), associations, commit.getUsername());
-                replayed.setId(commit.getId());
-                replayed.setDate(commit.getDate());
-                replayed.setCommitMessage(commit.getCommitMessage());
-                // a variant for each configuration committed, as a commit records (CommitService)
-                if (repository.getVariants().stream().noneMatch(variant -> variant.getConfiguration().equals(replayed.getConfiguration()))) {
-                    Variant variant = this.entityFactory.createVariant("Commit", replayed.getConfiguration(), UUID.randomUUID().toString());
-                    variant.setDescription(commit.getCommitMessage());
-                    repository.addVariant(variant);
-                }
-            }
-            repository.setRetroactiveConditions();
-            repository.invalidateMainTree();
+            this.replayInto(repository, source, commits);
             this.repositoryDao.store(repository);
             this.transactionStrategy.end();
         } catch (RuntimeException | Error e) {
             this.rollbackIfTransactionActive();
             throw e;
         }
+    }
+
+    /**
+     * Commits [commits] of [source] in [repository] (this service's, loaded in a write transaction), in
+     * their order - see {@link #replay} - and takes over the decisions of [source] it has not made
+     * (Repository.Op#mergeDecisions); stored by the caller.
+     */
+    void replayInto(Repository.Op repository, Repository.Op source, List<? extends Commit> commits) {
+        repository.mergeDecisions(source);
+        for (Commit commit : commits) {
+            // a merge commit has no configuration and nothing to replay
+            if (commit.getConfiguration() == null)
+                continue;
+            List<Association.Op> associations = new ArrayList<>();
+            for (Association association : commit.getAssociations())
+                associations.add((Association.Op) association);
+            Commit replayed = repository.replay(commit.getConfiguration(), associations, commit.getUsername());
+            replayed.setId(commit.getId());
+            replayed.setDate(commit.getDate());
+            replayed.setCommitMessage(commit.getCommitMessage());
+            // a variant for each configuration committed, as a commit records (CommitService)
+            if (repository.getVariants().stream().noneMatch(variant -> variant.getConfiguration().equals(replayed.getConfiguration()))) {
+                Variant variant = this.entityFactory.createVariant("Commit", replayed.getConfiguration(), UUID.randomUUID().toString());
+                variant.setDescription(commit.getCommitMessage());
+                repository.addVariant(variant);
+            }
+        }
+        repository.setRetroactiveConditions();
+        repository.invalidateMainTree();
+    }
+
+    /** [commits] of [repository], with the associations holding their content, as a repository of their own - to send or replay. */
+    Repository.Op copyOfCommits(Repository.Op repository, List<? extends Commit> commits) {
+        Repository.Op copy = this.entityFactory.createRepository();
+        repository.copyCommitsInto(copy, commits);
+        return copy;
     }
 
     public synchronized void fork(Path originRepositoryDir) {
@@ -908,6 +932,15 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                 Repository.Op repository = this.repositoryDao.load();
                 originRepository.copyInto(repository);
+                this.repositoryDao.store(repository);
+                this.transactionStrategy.end();
+                subsetOriginRepository = null;
+            } else if (!originRepository.hasMergeCommits()) {
+                // a fork leaving revisions out: the origin's commits without them, replayed (Repository.Op#replay)
+                Repository.Op commits = this.copyOfCommits(originRepository, originRepository.commitsMissingIn(List.of(), deselected));
+                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                Repository.Op repository = this.repositoryDao.load();
+                this.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                 this.repositoryDao.store(repository);
                 this.transactionStrategy.end();
                 subsetOriginRepository = null;
@@ -972,6 +1005,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 // a fork of everything into an empty repository is a copy (Repository.Op#copyInto)
                 this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                 originRepository.copyInto(repository);
+                this.repositoryDao.store(repository);
+                this.transactionStrategy.end();
+                subsetOriginRepository = null;
+            } else if (!originRepository.hasMergeCommits() && !repository.hasMergeCommits()) {
+                // the origin's commits this repository does not have, without the revisions left out, replayed (Repository.Op#replay)
+                Repository.Op commits = this.copyOfCommits(originRepository, originRepository.commitsMissingIn(RemoteSyncService.commitIds(repository), deselected));
+                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                this.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                 this.repositoryDao.store(repository);
                 this.transactionStrategy.end();
                 subsetOriginRepository = null;

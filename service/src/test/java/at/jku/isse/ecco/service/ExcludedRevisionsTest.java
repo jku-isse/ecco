@@ -18,12 +18,10 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Fork, pull and push can leave feature revisions out (FR-D4a): a feature left without revisions is
- * dropped, and so is what only the left-out revisions explain, while the rest checks out as before.
- * A selection that leaves an association without an artifact it depends on is refused (FR-D4b) -
- * but subset() copies each association's tree whole, so only a cross reference between artifacts
- * could be left dangling, and no adapter in use records one: leaving out the feature that brought a
- * file keeps the other features' lines of it.
+ * Fork, pull and push can leave feature revisions out (FR-D4a): every commit with a left-out revision
+ * is left out, the others are replayed (Repository.Op#replay) - a feature left without commits is
+ * dropped, and so is what only the left-out commits held, also lines of other features, while the
+ * rest checks out as committed.
  */
 public class ExcludedRevisionsTest {
 
@@ -123,25 +121,41 @@ public class ExcludedRevisionsTest {
 
     @Test
     @Timeout(120)
-    public void leavingOutTheFeatureThatBroughtAFileKeepsTheOtherFeaturesLinesOfIt(@TempDir Path tmp) throws Exception {
+    public void leavingOutAFeatureLeavesOutEveryCommitWithIt(@TempDir Path tmp) throws Exception {
         Origin o = origin(tmp);
         Map<String, String> originBefore = DirectoryFingerprint.of(o.dir().resolve(".ecco"));
 
+        // every commit has A: leaving out all of A leaves out all of them - B too, which never came without A
         Path forked = Files.createDirectories(tmp.resolve("forked"));
         try (EccoService service = new EccoService()) {
             service.setRepositoryDir(forked.resolve(".ecco"));
             service.fork(o.dir(), o.allRevisionsOfA());
         }
         try (EccoService service = open(forked)) {
-            assertEquals(Set.of("B"), revisions(service).keySet());
-            // a.txt keeps B's line; its first line and its final newline were A's
-            Map<String, String> files = checkout(service, o.revisionOfB(), tmp.resolve("forked-b"));
-            assertEquals(Set.of("a.txt", "b.txt"), files.keySet());
-            assertEquals("b", files.get("a.txt"));
-            assertEquals("b\n", files.get("b.txt"));
+            assertEquals(Set.of(), revisions(service).keySet());
+            assertEquals(0, service.getCommits().size());
         }
 
-        assertEquals(originBefore, DirectoryFingerprint.of(o.dir().resolve(".ecco")));
+        // B committed once without A: that commit is kept, and checks out as committed
+        try (EccoService service = open(o.dir())) {
+            service.setBaseDir(o.dir());
+            Files.writeString(o.dir().resolve("a.txt"), "b\n");
+            Files.writeString(o.dir().resolve("b.txt"), "b\n");
+            service.commit("b alone", o.revisionOfB());
+        }
+        Path forkedAgain = Files.createDirectories(tmp.resolve("forked-again"));
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(forkedAgain.resolve(".ecco"));
+            service.fork(o.dir(), o.allRevisionsOfA());
+        }
+        try (EccoService service = open(forkedAgain)) {
+            assertEquals(Set.of("B"), revisions(service).keySet());
+            Map<String, String> files = checkout(service, o.revisionOfB(), tmp.resolve("forked-b"));
+            assertEquals(Map.of("a.txt", "b\n", "b.txt", "b\n"), files);
+        }
+
+        Files.writeString(o.dir().resolve("a.txt"), "a2\n");
+        Files.delete(o.dir().resolve("b.txt"));
     }
 
     /**
