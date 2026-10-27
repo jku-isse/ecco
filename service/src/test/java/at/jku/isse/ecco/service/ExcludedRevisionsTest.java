@@ -144,6 +144,90 @@ public class ExcludedRevisionsTest {
         assertEquals(originBefore, DirectoryFingerprint.of(o.dir().resolve(".ecco")));
     }
 
+    /**
+     * Five commits, four features, one file: 1 "A" a; 2 "A, B" a b; 3 "A', B, C" a2 b c; 4 "A, B', C"
+     * a2 b2 c; 5 "A, B, C, D" x a2 b2 c. Leaving out the first revision of a feature, the last commit's
+     * feature, or two revisions at once: each fork is reopened and the commits it still explains check
+     * out as committed.
+     */
+    @Test
+    @Timeout(180)
+    public void leavingOutFirstLastAndSeveralRevisions(@TempDir Path tmp) throws Exception {
+        Path origin = Files.createDirectories(tmp.resolve("origin"));
+        String a1, a2, b1, b2, c1, d1;
+        try (EccoService service = init(origin)) {
+            Files.writeString(origin.resolve("a.txt"), "a\n");
+            service.commit("1", "A");
+            a1 = latestRevision(service, "A");
+            Files.writeString(origin.resolve("a.txt"), "a\nb\n");
+            service.commit("2", "A, B");
+            b1 = latestRevision(service, "B");
+            Files.writeString(origin.resolve("a.txt"), "a2\nb\nc\n");
+            service.commit("3", "A', B, C");
+            a2 = latestRevision(service, "A");
+            c1 = latestRevision(service, "C");
+            Files.writeString(origin.resolve("a.txt"), "a2\nb2\nc\n");
+            service.commit("4", "A, B', C");
+            b2 = latestRevision(service, "B");
+            Files.writeString(origin.resolve("a.txt"), "x\na2\nb2\nc\n");
+            service.commit("5", "A, B, C, D");
+            d1 = latestRevision(service, "D");
+        }
+        String commit2 = a1 + ", " + b1, commit3 = a2 + ", " + b1 + ", " + c1, commit4 = a2 + ", " + b2 + ", " + c1;
+
+        // the first revision of A
+        Path forked = fork(origin, tmp.resolve("without-a1"), a1);
+        try (EccoService service = open(forked)) {
+            assertEquals(Set.of("A", "B", "C", "D"), revisions(service).keySet());
+            assertEquals(1, revisions(service).get("A").size());
+            assertEquals(Map.of("a.txt", "a2\nb\nc\n"), checkout(service, commit3, tmp.resolve("without-a1-3")));
+            assertEquals(Map.of("a.txt", "a2\nb2\nc\n"), checkout(service, commit4, tmp.resolve("without-a1-4")));
+        }
+
+        // the first revision of B
+        forked = fork(origin, tmp.resolve("without-b1"), b1);
+        try (EccoService service = open(forked)) {
+            assertEquals(1, revisions(service).get("B").size());
+            assertEquals(Map.of("a.txt", "a2\nb2\nc\n"), checkout(service, commit4, tmp.resolve("without-b1-4")));
+            assertEquals(Map.of("a.txt", "a\n"), checkout(service, a1, tmp.resolve("without-b1-1")));
+        }
+
+        // the last commit (its only feature D)
+        forked = fork(origin, tmp.resolve("without-d1"), d1);
+        try (EccoService service = open(forked)) {
+            assertEquals(Set.of("A", "B", "C"), revisions(service).keySet());
+            assertEquals(Map.of("a.txt", "a\n"), checkout(service, a1, tmp.resolve("without-d1-1")));
+            assertEquals(Map.of("a.txt", "a\nb\n"), checkout(service, commit2, tmp.resolve("without-d1-2")));
+            assertEquals(Map.of("a.txt", "a2\nb\nc\n"), checkout(service, commit3, tmp.resolve("without-d1-3")));
+            assertEquals(Map.of("a.txt", "a2\nb2\nc\n"), checkout(service, commit4, tmp.resolve("without-d1-4")));
+        }
+
+        // two revisions of different features at once
+        forked = fork(origin, tmp.resolve("without-a1-b2"), a1 + ", " + b2);
+        try (EccoService service = open(forked)) {
+            assertEquals(1, revisions(service).get("A").size());
+            assertEquals(1, revisions(service).get("B").size());
+            assertEquals(Map.of("a.txt", "a2\nb\nc\n"), checkout(service, commit3, tmp.resolve("without-a1-b2-3")));
+        }
+
+        // two features at once, the last two that came
+        forked = fork(origin, tmp.resolve("without-c1-d1"), c1 + ", " + d1);
+        try (EccoService service = open(forked)) {
+            assertEquals(Set.of("A", "B"), revisions(service).keySet());
+            assertEquals(Map.of("a.txt", "a\n"), checkout(service, a1, tmp.resolve("without-c1-d1-1")));
+            assertEquals(Map.of("a.txt", "a\nb\n"), checkout(service, commit2, tmp.resolve("without-c1-d1-2")));
+        }
+    }
+
+    private static Path fork(Path origin, Path dir, String excluded) throws Exception {
+        Files.createDirectories(dir);
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(dir.resolve(".ecco"));
+            service.fork(origin, excluded);
+        }
+        return dir;
+    }
+
     private static String latestRevision(EccoService service, String feature) {
         return service.getRepository().getFeatures().stream().filter(f -> f.getName().equals(feature))
                 .findFirst().orElseThrow().getLatestRevision().toString();

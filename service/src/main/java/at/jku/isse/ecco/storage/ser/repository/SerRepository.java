@@ -173,6 +173,12 @@ public final class SerRepository implements Repository, Repository.Op {
 					throw new at.jku.isse.ecco.EccoException("Could not resolve node artifact " + artifactId + " among the artifacts received.");
 				}
 				serNode.resolveArtifact(artifact);
+				// and its containing node, the unique node holding it - derived like a load does
+				// (LoadResolver.resolveNodeArtifacts); left null, the receiver's copy() took every
+				// graph node pointing to an artifact of another association for one of a left-out
+				// association and trimmed it
+				if (node.isUnique() && artifact instanceof at.jku.isse.ecco.storage.ser.artifact.SerArtifact<?> serArtifact)
+					serArtifact.resolveContainingNode(node);
 			}
 		}
 		for (Node.Op child : node.getChildren()) {

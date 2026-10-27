@@ -936,6 +936,8 @@ public interface Repository extends Persistable {
 			Map<Set<ModuleRevision>, Association.Op> orConditionAssociationMap = new HashMap<>();
 			// the associations of this repository the subset takes - see the trimming below
 			Set<Association> keptAssociations = Collections.newSetFromMap(new IdentityHashMap<>());
+			// every artifact of this repository copied into the subset -> its copy (see redirectToCopies())
+			Map<Artifact.Op<?>, Artifact.Op<?>> copies = new IdentityHashMap<>();
 			for (Association.Op association : this.getAssociations()) {
 				Condition condition = association.computeCondition();
 
@@ -1024,6 +1026,7 @@ public interface Repository extends Persistable {
 					// clone tree
 					for (Node.Op childNode : association.getRootNode().getChildren()) {
 						Node.Op copiedChildNode = EccoUtil.deepCopyTree(childNode, entityFactory);
+						recordCopies(childNode, copiedChildNode, copies);
 						copiedRootNode.addChild(copiedChildNode);
 						copiedChildNode.setParent(copiedRootNode);
 					}
@@ -1064,6 +1067,14 @@ public interface Repository extends Persistable {
 				});
 			}
 
+			// the kept graph nodes that still point to an artifact of this repository (a line another
+			// association holds) now point to its copy - the subset is self-contained. A graph node
+			// pointing outside it worked only where merge() repaired it next (a local fork, pull or
+			// push); over the network only the artifacts in the trees are sent (collectArtifacts()),
+			// and the receiver could not resolve those nodes (NetworkSyncSharedFileTest).
+			redirectToCopies(newAssociations, copies);
+			newRepository.repairPartialOrderGraphArtifacts();
+
 			// check consistency of copied trees
 			for (Association.Op newAssociation : newAssociations) {
 				Trees.checkConsistency(newAssociation.getRootNode());
@@ -1077,6 +1088,63 @@ public interface Repository extends Persistable {
 
 
 			return newRepository;
+		}
+
+		/** Records each artifact of the source tree -> the artifact of the same node of its deep copy; a unique node's copy wins. */
+		private static void recordCopies(Node.Op source, Node.Op copy, Map<Artifact.Op<?>, Artifact.Op<?>> copies) {
+			Deque<Node.Op> sources = new ArrayDeque<>();
+			Deque<Node.Op> targets = new ArrayDeque<>();
+			sources.push(source);
+			targets.push(copy);
+			while (!sources.isEmpty()) {
+				Node.Op s = sources.pop();
+				Node.Op t = targets.pop();
+				if (s.getArtifact() != null && t.getArtifact() != null) {
+					if (s.isUnique())
+						copies.put(s.getArtifact(), t.getArtifact());
+					else
+						copies.putIfAbsent(s.getArtifact(), t.getArtifact());
+				}
+				List<? extends Node.Op> sourceChildren = s.getChildren();
+				List<? extends Node.Op> copyChildren = t.getChildren();
+				for (int i = 0; i < Math.min(sourceChildren.size(), copyChildren.size()); i++) {
+					sources.push(sourceChildren.get(i));
+					targets.push(copyChildren.get(i));
+				}
+			}
+		}
+
+		/**
+		 * Points every partial order graph node of the given associations' trees that holds a source
+		 * artifact to that artifact's copy, if a tree of the given associations holds the copy (merging
+		 * a copied tree into an existing association can keep the existing equal artifact instead -
+		 * repairPartialOrderGraphArtifacts() finds that one).
+		 */
+		private static void redirectToCopies(Collection<? extends Association.Op> associations, Map<Artifact.Op<?>, Artifact.Op<?>> copies) {
+			Set<Artifact.Op<?>> live = Collections.newSetFromMap(new IdentityHashMap<>());
+			List<Artifact.Op<?>> ordered = new ArrayList<>();
+			for (Association.Op association : associations) {
+				Deque<Node.Op> stack = new ArrayDeque<>();
+				stack.push(association.getRootNode());
+				while (!stack.isEmpty()) {
+					Node.Op node = stack.pop();
+					Artifact.Op<?> artifact = node.getArtifact();
+					if (artifact != null && live.add(artifact) && artifact.getPartialOrderGraph() != null)
+						ordered.add(artifact);
+					for (Node.Op child : node.getChildren())
+						stack.push(child);
+				}
+			}
+			for (Artifact.Op<?> artifact : ordered) {
+				for (PartialOrderGraph.Node.Op graphNode : artifact.getPartialOrderGraph().collectNodes()) {
+					Artifact.Op<?> target = graphNode.getArtifact();
+					if (target == null || live.contains(target))
+						continue;
+					Artifact.Op<?> copy = copies.get(target);
+					if (copy != null && live.contains(copy))
+						graphNode.setArtifact(copy);
+				}
+			}
 		}
 
 		/**
