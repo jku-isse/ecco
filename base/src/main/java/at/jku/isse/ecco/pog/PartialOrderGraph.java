@@ -661,6 +661,10 @@ public interface PartialOrderGraph extends Persistable {
 			Map<PartialOrderGraph.Node.Op, PartialOrderGraph.Node.Op> matches = new HashMap<>();
 			matches.put(other.getHead(), this.getTail());
 			matches.put(other.getTail(), this.getTail());
+			// every node of the other graph -> its copy
+			Map<PartialOrderGraph.Node.Op, PartialOrderGraph.Node.Op> copies = new IdentityHashMap<>();
+			copies.put(other.getHead(), this.getHead());
+			copies.put(other.getTail(), this.getTail());
 
 			Stack<PartialOrderGraph.Node.Op[]> stack = new Stack<>();
 			stack.push(new Node.Op[]{this.getHead(), other.getHead()});
@@ -675,11 +679,38 @@ public interface PartialOrderGraph extends Persistable {
 						leftChild = this.createNode(rightChild.getArtifact());
 						leftChild.setSequenceNumber(rightChild.getSequenceNumber());
 						matches.put(rightChild, leftChild);
+						copies.put(rightChild, leftChild);
 						stack.push(new Node.Op[]{leftChild, rightChild});
 					}
 					nodes[0].addChild(leftChild);
 				}
 			}
+
+			// each node's neighbours in the other graph's order: the walk above added a node's previous
+			// nodes in the order it reached them, and merging aligns by walking these lists - two equal
+			// lines (two "}") were matched the other way round in a copy, and the next commit lost one
+			// (a fork's next commit gave other associations than its origin's)
+			copies.forEach((original, copy) -> {
+				inOrderOf(copy.getPrevious(), original.getPrevious(), copies);
+				inOrderOf(copy.getNext(), original.getNext(), copies);
+			});
+		}
+
+		/** Puts [nodes] in the order of [order]'s copies, if they are those copies. */
+		@SuppressWarnings("unchecked")
+		private static void inOrderOf(Collection<? extends Node.Op> neighbours, Collection<? extends Node.Op> order, Map<Node.Op, Node.Op> copies) {
+			Collection<Node.Op> nodes = (Collection<Node.Op>) neighbours;
+			List<Node.Op> ordered = new ArrayList<>();
+			for (Node.Op node : order)
+				ordered.add(copies.get(node));
+			if (ordered.size() != nodes.size() || ordered.contains(null))
+				return;
+			Set<Node.Op> same = Collections.newSetFromMap(new IdentityHashMap<>());
+			same.addAll(nodes);
+			if (!same.containsAll(ordered))
+				return;
+			nodes.clear();
+			nodes.addAll(ordered);
 		}
 
 
