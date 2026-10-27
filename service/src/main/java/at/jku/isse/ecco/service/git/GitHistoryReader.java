@@ -82,22 +82,62 @@ public final class GitHistoryReader {
 
 	/**
 	 * The tags of the clone by the commit each names (an annotated tag peeled to its commit), the
-	 * names of a commit's tags sorted - a tag of a tree or blob is passed over.
+	 * names of a commit's tags sorted - a tag of a tree or blob is passed over. A tag of a commit off
+	 * HEAD's first-parent line (see {@link #listCommits}) - a release tagged on a release branch, then
+	 * merged - is the tag of the first commit of that line that has it, the merge bringing it in, so
+	 * the release is imported there: under the tagged commit, which is not listed, it was dropped and
+	 * its work folded into the next tag of the line. A tag of a commit HEAD does not reach stays with it.
 	 */
 	public Map<String, List<String>> listTags(Path repoDir) {
 		try (Repository repository = openRepository(repoDir);
 			 RevWalk revWalk = new RevWalk(repository)) {
+			List<ObjectId> line = firstParentLineOldestFirst(repository);
+			Set<ObjectId> onLine = new java.util.HashSet<>(line);
 			Map<String, List<String>> tags = new LinkedHashMap<>();
 			for (org.eclipse.jgit.lib.Ref ref : repository.getRefDatabase().getRefsByPrefix(org.eclipse.jgit.lib.Constants.R_TAGS)) {
 				org.eclipse.jgit.revwalk.RevObject target = revWalk.peel(revWalk.parseAny(ref.getObjectId()));
-				if (target instanceof RevCommit commit)
-					tags.computeIfAbsent(commit.getId().name(), id -> new ArrayList<>()).add(ref.getName().substring(org.eclipse.jgit.lib.Constants.R_TAGS.length()));
+				if (target instanceof RevCommit commit) {
+					ObjectId on = onLine.contains(commit) ? commit : firstContaining(revWalk, line, commit);
+					tags.computeIfAbsent(on.name(), id -> new ArrayList<>()).add(ref.getName().substring(org.eclipse.jgit.lib.Constants.R_TAGS.length()));
+				}
 			}
 			tags.values().forEach(names -> names.sort(null));
 			return tags;
 		} catch (IOException e) {
 			throw new EccoException("Error reading the tags of " + repoDir, e);
 		}
+	}
+
+	/** HEAD's first-parent line, oldest first; empty without commits. */
+	private static List<ObjectId> firstParentLineOldestFirst(Repository repository) throws IOException {
+		List<ObjectId> line = new ArrayList<>();
+		ObjectId head = repository.resolve(org.eclipse.jgit.lib.Constants.HEAD);
+		if (head == null)
+			return line;
+		try (RevWalk walk = new RevWalk(repository)) {
+			walk.setFirstParent(true);
+			walk.markStart(walk.parseCommit(head));
+			for (RevCommit commit : walk)
+				line.add(commit.copy());
+		}
+		java.util.Collections.reverse(line);
+		return line;
+	}
+
+	/**
+	 * The first commit of [line] (oldest first) that has [commit] as an ancestor, [commit] itself if
+	 * none has. Each commit of the line has those before it as ancestors, so a binary search.
+	 */
+	private static ObjectId firstContaining(RevWalk revWalk, List<ObjectId> line, RevCommit commit) throws IOException {
+		int low = 0, high = line.size(); // the answer is in [low, high], high meaning none
+		while (low < high) {
+			int middle = (low + high) >>> 1;
+			if (revWalk.isMergedInto(commit, revWalk.parseCommit(line.get(middle))))
+				high = middle;
+			else
+				low = middle + 1;
+		}
+		return low < line.size() ? line.get(low) : commit;
 	}
 
 	/**

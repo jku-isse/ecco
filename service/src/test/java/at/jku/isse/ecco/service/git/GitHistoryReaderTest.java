@@ -299,4 +299,52 @@ public class GitHistoryReaderTest {
 
 		assertEquals(java.util.Map.of(first, List.of("v1.0"), second, List.of("latest", "v2.0")), reader.listTags(repoDir));
 	}
+
+	/**
+	 * A release tagged on a release branch and merged with --no-ff: the tagged commit is not on the
+	 * first-parent line listCommits lists, so the tag is the merge commit's - the first commit of the
+	 * line that has the tagged one - and the release is imported there, not dropped.
+	 */
+	@Test
+	@Timeout(30)
+	public void listTags_aTagOffTheFirstParentLineIsTheTagOfTheMergeBringingItIn() throws Exception {
+		Path repoDir = Files.createTempDirectory("git-history-reader-test");
+		String main1, merge, unmerged;
+		try (Git git = Git.init().setInitialBranch("main").setDirectory(repoDir.toFile()).call()) {
+			Files.writeString(repoDir.resolve("a.txt"), "a\n");
+			git.add().addFilepattern(".").call();
+			main1 = git.commit().setMessage("main 1").setAuthor("Test", "test@example.com").call().getId().name();
+			git.tag().setName("v0.9").setAnnotated(false).call();
+
+			git.checkout().setCreateBranch(true).setName("release").call();
+			Files.writeString(repoDir.resolve("b.txt"), "b\n");
+			git.add().addFilepattern(".").call();
+			git.commit().setMessage("release 1").setAuthor("Test", "test@example.com").call();
+			git.tag().setName("v1.0").setMessage("release 1.0").setTagger(new PersonIdent("Test", "test@example.com")).call();
+			Files.writeString(repoDir.resolve("b.txt"), "b2\n");
+			git.add().addFilepattern(".").call();
+			org.eclipse.jgit.revwalk.RevCommit release = git.commit().setMessage("release 2").setAuthor("Test", "test@example.com").call();
+
+			git.checkout().setName("main").call();
+			Files.writeString(repoDir.resolve("c.txt"), "c\n");
+			git.add().addFilepattern(".").call();
+			git.commit().setMessage("main 2").setAuthor("Test", "test@example.com").call();
+			merge = git.merge().include(release).setMessage("merge release").setFastForward(org.eclipse.jgit.api.MergeCommand.FastForwardMode.NO_FF).call().getNewHead().name();
+			Files.writeString(repoDir.resolve("c.txt"), "c2\n");
+			git.add().addFilepattern(".").call();
+			git.commit().setMessage("main 3").setAuthor("Test", "test@example.com").call();
+
+			// a branch never merged: HEAD does not reach its tag
+			git.checkout().setCreateBranch(true).setName("experiment").setStartPoint(main1).call();
+			Files.writeString(repoDir.resolve("d.txt"), "d\n");
+			git.add().addFilepattern(".").call();
+			unmerged = git.commit().setMessage("experiment").setAuthor("Test", "test@example.com").call().getId().name();
+			git.tag().setName("try").setAnnotated(false).call();
+			git.checkout().setName("main").call();
+		}
+
+		List<String> line = reader.listCommits(repoDir).stream().map(GitCommitInfo::getId).toList();
+		assertTrue(line.contains(merge) && line.contains(main1));
+		assertEquals(java.util.Map.of(main1, List.of("v0.9"), merge, List.of("v1.0"), unmerged, List.of("try")), reader.listTags(repoDir));
+	}
 }
