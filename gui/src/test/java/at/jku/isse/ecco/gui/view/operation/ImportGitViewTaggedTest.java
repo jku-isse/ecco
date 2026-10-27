@@ -192,6 +192,41 @@ public class ImportGitViewTaggedTest {
         service.close();
     }
 
+    /**
+     * The commits between tagged ones are logged with the next tagged commit, when it is imported:
+     * logged at once, those of a run stopped before it stayed in the log and counted for their
+     * features, which were never committed - and a second run logged them again.
+     */
+    @Test
+    @Timeout(90)
+    public void commitsBetweenAreLoggedOnlyWithTheNextTaggedCommitImported(@TempDir Path tmp) throws Exception {
+        Path log = tmp.resolve("suggestions.jsonl");
+        System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, log.toString());
+        Map<String, List<String>> tags = new LinkedHashMap<>();
+        Path clone = history(tmp.resolve("clone"), tags);
+        List<GitCommitInfo> commits = oldestFirst(clone);
+        EccoService service = repository(tmp.resolve("repo"));
+
+        // stopped at b, after a was folded: only v0 is logged
+        ImportGitView view = start(service, clone, tags, commits.subList(0, 7), true, Set.of("b"), Collections.synchronizedList(new ArrayList<>()));
+        waitFor(view, "Review Commit (2 of 7)");
+        clickButton(view, "Import");
+        waitFor(view, "Review Commit (4 of 7)");
+        clickButton(view, "Stop");
+        waitFor(view, FINISHED);
+        assertEquals(List.of("v0"), Files.readAllLines(log).stream().map(e -> field(e, "message")).toList());
+        assertNull(ImportedFeatureTraces.fromLog(log, service.getRepositoryDir().toString(), clone, new GitHistoryReader(), null).files().get("A"),
+                "A was never committed");
+
+        // the rest, again from a: logged once each, with v1 and v2
+        ImportGitView second = start(service, clone, tags, commits.subList(2, 7), false, Set.of(), Collections.synchronizedList(new ArrayList<>()));
+        waitFor(second, FINISHED);
+        List<String> entries = Files.readAllLines(log);
+        assertEquals(List.of("v0", "a", "b", "v1", "a2", "v2"), entries.stream().map(e -> field(e, "message")).toList());
+        assertEquals(List.of("reviewed", "folded", "folded", "auto", "folded", "auto"), entries.stream().map(e -> field(e, "outcome")).toList());
+        service.close();
+    }
+
     @Test
     public void aTaggedCommitRevisesWhatTheCommitsSinceTheLastImportRevised() {
         // A imported and revised since, B imported and not, N new since: only imported ones get a new revision

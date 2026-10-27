@@ -187,6 +187,13 @@ public class ImportGitView extends OperationView implements EccoListener {
 	/** Commits suggested but not imported, their features gone into the next tagged one - for the summary. */
 	private int foldedCount;
 	/**
+	 * The log entries of the commits folded since the last import, written with the next tagged
+	 * commit once it is imported: written at once, those of a run stopped (or failing, or gone
+	 * back from) before it stayed in the log and counted for features never committed, and a run
+	 * again over them wrote them again. FX thread only.
+	 */
+	private final List<FeatureSuggestionLog.Entry> foldedEntries = new ArrayList<>();
+	/**
 	 * Whether the repository has no commit yet - read once when the run starts, cleared by its first
 	 * import. Asking the service for each commit, on the FX thread, waited for its lock while a view
 	 * read the repository in the background (the Charts' absorbed modules took minutes on a zip4j
@@ -606,6 +613,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.importedCount = 0;
 		this.skippedCount = 0;
 		this.foldedCount = 0;
+		this.foldedEntries.clear();
 		this.revisedSinceImport.clear();
 		this.repositoryEmpty = this.service.getCommits().isEmpty();
 		this.runEnded = false;
@@ -1220,6 +1228,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 				ImportGitView.this.importedCount++;
 				ImportGitView.this.repositoryEmpty = false;
 				ImportGitView.this.revisedSinceImport.clear();
+				ImportGitView.this.foldedEntries.forEach(FeatureSuggestionLog::append);
+				ImportGitView.this.foldedEntries.clear();
 				ImportGitView.this.recordSuggestionOutcome(commit, configurationText, commitChanges.get());
 				applyConfigurationToRunning(ImportGitView.this.runningFeatures, configurationText);
 				ImportGitView.this.knownFeatures.addAll(ImportGitView.this.runningFeatures);
@@ -1296,13 +1306,18 @@ public class ImportGitView extends OperationView implements EccoListener {
 		thread.start();
 	}
 
-	/** {@link #foldOneCommit} found what the commit changed ([changes], null if not): it is logged, and the run goes on. */
+	/**
+	 * {@link #foldOneCommit} found what the commit changed ([changes], null if not): it is kept for
+	 * the next tagged commit, logged with it (see {@link #foldedEntries}), and the run goes on.
+	 */
 	private void folded(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm, boolean reviewEach, String configurationText, ImportedFeatureTraces.Changes changes) {
+		if (this.runEnded)
+			return;
 		GitCommitInfo commit = commitsOldestFirst.get(index);
 		FeatureSuggestionLog.Entry entry = this.pendingSuggestion;
 		if (entry != null && entry.commitId().equals(commit.getId())) {
 			this.pendingSuggestion = null;
-			FeatureSuggestionLog.append(entry.folded().committedAs(configurationText).withChanges(changes));
+			this.foldedEntries.add(entry.folded().committedAs(configurationText).withChanges(changes));
 		}
 		for (String token : markedTokens(configurationText))
 			if (token.endsWith("'"))
@@ -1311,8 +1326,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.foldedCount++;
 		this.logArea.appendText(String.format("Suggested %s (%s) -> [%s], for the next tagged commit.%n", commit.getShortId(), commit.getMessage(),
 				configurationText == null || configurationText.isEmpty() ? "(no configuration)" : configurationText));
-		if (!this.runEnded)
-			this.processNextCommit(commitsOldestFirst, index + 1, useLlm, reviewEach);
+		this.processNextCommit(commitsOldestFirst, index + 1, useLlm, reviewEach);
 	}
 
 	/**
