@@ -1925,6 +1925,19 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
+     * Refuses, as {@link #checkout(String)} does before writing anything, a configuration that cannot
+     * be parsed or names a feature or revision never committed - for a caller with something to do
+     * before the checkout: the GUI deleted the folder's contents first, then the checkout was refused.
+     *
+     * @return the parsed configuration
+     */
+    public synchronized Configuration checkCheckoutConfiguration(String configurationString) {
+        Configuration configuration = this.parseConfigurationString(configurationString);
+        this.checkoutService.checkCommitted(configuration);
+        return configuration;
+    }
+
+    /**
      * Retrieves associations needed to compose a configuration.
      *
      * @param configurationString The configuration string for that associations shall be retrieved.

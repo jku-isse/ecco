@@ -195,7 +195,7 @@ class CheckoutService {
      * reads an unknown revision id ("A.1", not an id) or name as a new one - right for a commit,
      * which creates it, but a checkout of it wrote nothing of that feature, without an error (gap #81).
      */
-    private void checkCommitted(Configuration configuration) {
+    void checkCommitted(Configuration configuration) {
         owner.checkInitialized();
         checkNotNull(configuration);
         List<String> unknown = owner.readTransaction(null, () -> {

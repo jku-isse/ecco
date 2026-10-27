@@ -7,6 +7,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
+import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
@@ -286,35 +287,13 @@ public class CheckoutView extends OperationView implements EccoListener {
             Path baseDir = Paths.get(baseDirTextField.getText());
             String configurationString = configurationStringTextField.getText();
 
-            try {
-                // the user is free to type/pick a directory that doesn't exist yet (a brand-new
-                // checkout target) - Directory.isEmpty() (and the writer after it) both require it
-                // to already exist, so create it here rather than surfacing a raw NoSuchFileException.
-                if (!Files.exists(baseDir)) {
-                    Files.createDirectories(baseDir);
-                }
-                if (!Directory.isEmpty(baseDir) && !this.confirmClearDirectory(baseDir)) {
-                    this.step1(baseDirTextField.getText(), configurationString);
-                    return;
-                }
-            } catch (IOException e) {
-                this.checkoutFailed(e);
-                return;
-            }
-
-            if (!confirmProceedDespiteViolations(configurationString, "check out")) {
-                this.step1(baseDirTextField.getText(), configurationString);
-                return;
-            }
-
-            this.service.setBaseDir(baseDir);
-            this.currentBaseDir = baseDir;
-            this.logData.clear();
-            this.service.addListener(this);
-
-            Task<Checkout> checkoutTask = new CheckoutTask(this, service, configurationString);
-            this.track(checkoutTask, "The checkout");
-            new Thread(checkoutTask).start();
+            // the configuration is checked - and its constraint violations asked about - before the
+            // folder's contents are deleted: deleted first, a typo ("A, Z") was refused afterwards
+            // and an emptied folder was all that was left (FR-K13)
+            RepositoryAccess.read(this.service, "checkout check", s -> {
+                s.checkCheckoutConfiguration(configurationString);
+                return configurationString.isBlank() ? "" : ConstraintWarnings.describe(s, configurationString);
+            }, violations -> this.checkout(baseDir, baseDirTextField.getText(), configurationString, violations), this::checkoutFailed);
         });
 
 
@@ -324,22 +303,46 @@ public class CheckoutView extends OperationView implements EccoListener {
     }
 
     /**
-     * Checks the configuration against accepted constraints and, if it violates any, asks the user
-     * to confirm before proceeding -- constraint violations are advisory (see
-     * {@code EccoService#checkConstraintViolations}), never a hard block, so the user can still choose
-     * to {@code actionVerb} anyway.
-     *
-     * @return true if there were no violations, or the user confirmed anyway; false to abort.
+     * Checks out the configuration, checked to name committed features and revisions only, into
+     * {@code baseDir} - asking about its constraint {@code violations}, if any, and then about
+     * deleting the folder's contents.
      */
-    private boolean confirmProceedDespiteViolations(String configurationString, String actionVerb) {
-        if (configurationString == null || configurationString.isBlank() || !this.service.isInitialized()) return true;
-        String description = ConstraintWarnings.describe(this.service, configurationString);
-        if (description.isEmpty()) return true;
-        return this.askToProceedAnyway(description, actionVerb);
+    private void checkout(Path baseDir, String baseDirText, String configurationString, String violations) {
+        if (!violations.isEmpty() && !this.askToProceedAnyway(violations, "check out")) {
+            this.step1(baseDirText, configurationString);
+            return;
+        }
+
+        try {
+            // the user is free to type/pick a directory that doesn't exist yet (a brand-new
+            // checkout target) - Directory.isEmpty() (and the writer after it) both require it
+            // to already exist, so create it here rather than surfacing a raw NoSuchFileException.
+            if (!Files.exists(baseDir)) {
+                Files.createDirectories(baseDir);
+            }
+            if (!Directory.isEmpty(baseDir) && !this.confirmClearDirectory(baseDir)) {
+                this.step1(baseDirText, configurationString);
+                return;
+            }
+        } catch (IOException e) {
+            this.checkoutFailed(e);
+            return;
+        }
+
+        this.service.setBaseDir(baseDir);
+        this.currentBaseDir = baseDir;
+        this.logData.clear();
+        this.service.addListener(this);
+
+        Task<Checkout> checkoutTask = new CheckoutTask(this, service, configurationString);
+        this.track(checkoutTask, "The checkout");
+        new Thread(checkoutTask).start();
     }
 
     /**
-     * Asks whether to {@code actionVerb} despite the constraint violations in {@code description}.
+     * Asks whether to {@code actionVerb} despite the constraint violations in {@code description} --
+     * constraint violations are advisory (see {@code EccoService#checkConstraintViolations}), never a
+     * hard block.
      * Package-visible for testing.
      *
      * @return true if the user confirmed.

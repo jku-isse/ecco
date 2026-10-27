@@ -97,8 +97,8 @@ public class CheckoutViewTest {
             ScriptedCheckoutView view = show(service);
             view.clearAnswer = false;
             checkout(view, out, "BASE, A");
+            waitUntil("back on the first step", () -> STEP1.equals(view.header()));
             assertEquals(List.of(out), view.clearAsked);
-            assertEquals(STEP1, onFx(() -> view.header()));
             assertEquals(List.of(out.toString(), "BASE, A"), onFx(() -> List.of(view.baseDir().getText(), view.configuration().getText())),
                     "the entered directory and configuration are kept");
             assertTrue(Files.exists(out.resolve("keep.txt")));
@@ -123,6 +123,36 @@ public class CheckoutViewTest {
     }
 
     @Test
+    @Timeout(60)
+    public void aConfigurationThatCannotBeCheckedOutLeavesANonEmptyDirectoryAlone(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoVariants(tmp)) {
+            Path out = Files.createDirectories(tmp.resolve("out"));
+            Files.writeString(out.resolve("keep.txt"), "keep\n");
+
+            // a typo: Z was never committed - refused before the contents are deleted, not after
+            for (String configuration : List.of("BASE, A, Z", "BASE, A, (")) {
+                ScriptedCheckoutView view = show(service);
+                checkout(view, out, configuration);
+                waitUntil("checkout failed", () -> view.button("Done") != null);
+                assertTrue(onFx(() -> view.toolBarStyles().contains("error")), configuration);
+                assertEquals(List.of(), view.clearAsked, configuration + ": not asked to delete the contents");
+                assertEquals("keep\n", Files.readString(out.resolve("keep.txt")), configuration);
+            }
+
+            // declining a constraint violation after deleting the contents emptied the folder for nothing
+            try (EccoService constrained = coreExcludesExtra(tmp.resolve("constrained"))) {
+                ScriptedCheckoutView view = show(constrained);
+                view.proceedAnswer = false;
+                checkout(view, out, "Core, Extra");
+                waitUntil("asked about the violation", () -> view.violationsAsked.size() == 1);
+                waitUntil("back on the first step", () -> STEP1.equals(view.header()));
+                assertEquals(List.of(), view.clearAsked);
+                assertEquals("keep\n", Files.readString(out.resolve("keep.txt")));
+            }
+        }
+    }
+
+    @Test
     @Timeout(120)
     public void aConstraintViolationIsShownWhileTypingAndAskedAboutBeforeCheckingOut(@TempDir Path tmp) throws Exception {
         try (EccoService service = coreExcludesExtra(tmp)) {
@@ -142,10 +172,10 @@ public class CheckoutViewTest {
             Path out = tmp.resolve("out");
             view.proceedAnswer = false;
             checkout(view, out, "Core, Extra");
+            waitUntil("back on the first step", () -> STEP1.equals(view.header()));
             assertEquals(1, view.violationsAsked.size());
             assertTrue(view.violationsAsked.get(0).startsWith(VIOLATION) && view.violationsAsked.get(0).contains("EXCLUDES"), view.violationsAsked.toString());
             assertTrue(view.violationsAsked.get(0).endsWith(" / check out"));
-            assertEquals(STEP1, onFx(() -> view.header()));
             assertFalse(Files.exists(out.resolve("core.txt")));
             assertEquals("Core, Extra", onFx(() -> view.configuration().getText()));
             waitUntil("the warning, back on the first step", () -> view.warning().getText().startsWith(VIOLATION));
