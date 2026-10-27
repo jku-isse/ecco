@@ -28,9 +28,11 @@ import java.util.Map;
 /**
  * After a repository's artifacts and associations were read, each from its own file: the
  * references between them, which their files carry as ids (or not at all), are made object
- * references again - see {@link SerTransactionStrategy}'s loading.
+ * references again - see {@link SerTransactionStrategy}'s loading. A repository received over the
+ * wire is resolved by the same {@link #resolveArtifacts} (see {@link SerRepository#resolveArtifacts}):
+ * it had its own copy, which drifted - it set no containing node and left references unresolved.
  */
-final class LoadResolver {
+public final class LoadResolver {
 
 	private LoadResolver() {
 	}
@@ -60,21 +62,31 @@ final class LoadResolver {
 				artifactsById.put(artifactId, artifact);
 			}
 		}
+		resolveArtifacts(repo.getAssociations(), artifactsById, "after loading all associations");
+	}
 
-		for (Association.Op association : repo.getAssociations()) {
+	/**
+	 * Resolves the associations' node artifacts, the artifacts' containing nodes, their references
+	 * (uses/usedBy) and their order graphs' nodes against {@code artifactsById} - the repository's
+	 * artifact store on a load, the artifacts received with it over the wire.
+	 *
+	 * @param where for the error naming an artifact not found ("after loading all associations")
+	 */
+	public static void resolveArtifacts(Iterable<? extends Association.Op> associations, Map<String, Artifact.Op<?>> artifactsById, String where) {
+		for (Association.Op association : associations) {
 			if (association.getRootNode() != null) {
-				resolveNodeArtifacts(association.getRootNode(), artifactsById);
+				resolveNodeArtifacts(association.getRootNode(), artifactsById, where);
 			}
 		}
 
 		for (Artifact.Op<?> artifact : artifactsById.values()) {
 			if (!(artifact instanceof SerArtifact<?> serArtifact)) continue;
 
-			resolveReferences(serArtifact.getUses(), artifactsById);
-			resolveReferences(serArtifact.getUsedBy(), artifactsById);
+			resolveReferences(serArtifact.getUses(), artifactsById, where);
+			resolveReferences(serArtifact.getUsedBy(), artifactsById, where);
 
 			if (serArtifact.getPartialOrderGraph() != null) {
-				resolvePartialOrderGraph(serArtifact.getPartialOrderGraph(), artifactsById);
+				resolvePartialOrderGraph(serArtifact.getPartialOrderGraph(), artifactsById, where);
 			}
 		}
 	}
@@ -132,7 +144,7 @@ final class LoadResolver {
 	 * can be a foreign, side-channel-serialized reference for the same reason
 	 * SerArtifact.containingNode was - resolved here against the same global artifact-id index.
 	 */
-	private static void resolvePartialOrderGraph(PartialOrderGraph.Op graph, Map<String, Artifact.Op<?>> artifactsById) {
+	private static void resolvePartialOrderGraph(PartialOrderGraph.Op graph, Map<String, Artifact.Op<?>> artifactsById, String where) {
 		for (PartialOrderGraph.Node.Op node : graph.collectNodes()) {
 			if (!(node instanceof SerPartialOrderGraphNode serNode)) continue;
 
@@ -141,20 +153,20 @@ final class LoadResolver {
 
 			Artifact.Op<?> artifact = artifactsById.get(artifactId);
 			if (artifact == null) {
-				throw new EccoException("Could not resolve POG node artifact " + artifactId + " after loading all associations.");
+				throw new EccoException("Could not resolve POG node artifact " + artifactId + " " + where + ".");
 			}
 			serNode.resolveArtifact(artifact);
 		}
 	}
 
-	private static void resolveNodeArtifacts(Node.Op node, Map<String, Artifact.Op<?>> artifactsById) {
+	private static void resolveNodeArtifacts(Node.Op node, Map<String, Artifact.Op<?>> artifactsById, String where) {
 		if (node instanceof SerNode serNode) {
 
 			String artifactId = serNode.getArtifactId();
 			if (artifactId != null) {
 				Artifact.Op<?> artifact = artifactsById.get(artifactId);
 				if (artifact == null) {
-					throw new EccoException("Could not resolve node artifact " + artifactId + " after loading all associations.");
+					throw new EccoException("Could not resolve node artifact " + artifactId + " " + where + ".");
 				}
 				serNode.resolveArtifact(artifact);
 				// an artifact's containing node is the unique node holding it - derived here rather than
@@ -165,18 +177,18 @@ final class LoadResolver {
 			}
 		}
 		for (Node.Op child : node.getChildren()) {
-			resolveNodeArtifacts(child, artifactsById);
+			resolveNodeArtifacts(child, artifactsById, where);
 		}
 	}
 
-	private static void resolveReferences(Iterable<ArtifactReference.Op> references, Map<String, Artifact.Op<?>> artifactsById) {
+	private static void resolveReferences(Iterable<ArtifactReference.Op> references, Map<String, Artifact.Op<?>> artifactsById, String where) {
 		for (ArtifactReference.Op reference : references) {
 			if (!(reference instanceof SerArtifactReference serReference)) continue;
 
 			Artifact.Op<?> source = artifactsById.get(serReference.getSourceId());
 			Artifact.Op<?> target = artifactsById.get(serReference.getTargetId());
 			if (source == null || target == null) {
-				throw new EccoException("Could not resolve artifact reference (source=" + serReference.getSourceId() + ", target=" + serReference.getTargetId() + ") after loading all associations.");
+				throw new EccoException("Could not resolve artifact reference (source=" + serReference.getSourceId() + ", target=" + serReference.getTargetId() + ") " + where + ".");
 			}
 			serReference.resolveReferences(source, target);
 		}

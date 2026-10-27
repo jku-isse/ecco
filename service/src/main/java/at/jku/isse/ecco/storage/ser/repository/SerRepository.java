@@ -133,11 +133,10 @@ public final class SerRepository implements Repository, Repository.Op {
 	}
 
 	/**
-	 * Resolves each association's node artifact references against the given artifacts -- the same
-	 * per-artifact-file-load resolution {@link at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy}
-	 * performs for a normal load (see its {@code resolveCrossAssociationReferences}), but for artifacts
-	 * received as a companion payload alongside this repository over a raw socket instead. Call after
-	 * {@link #restoreAssociations}, since it walks {@link #getAssociations()}.
+	 * Resolves the associations' node artifacts, containing nodes, references and order graphs
+	 * against the artifacts received with this repository over the wire, as a load resolves them
+	 * against the artifact store ({@link at.jku.isse.ecco.storage.ser.dao.LoadResolver#resolveArtifacts}).
+	 * Call after {@link #restoreAssociations}, since it walks {@link #getAssociations()}.
 	 */
 	@Override
 	public void resolveArtifacts(Collection<? extends Artifact.Op<?>> artifacts) {
@@ -147,58 +146,7 @@ public final class SerRepository implements Repository, Repository.Op {
 				artifactsById.put(serArtifact.getStorageId(), artifact);
 			}
 		}
-		for (Association.Op association : this.getAssociations()) {
-			resolveArtifactsRec(association.getRootNode(), artifactsById);
-		}
-		// Same gap SerTransactionStrategy.resolveCrossAssociationReferences()'s resolvePartialOrderGraph()
-		// closes for a normal DAO load: a PartialOrderGraph's own nodes (SerPartialOrderGraphNode.artifact)
-		// are transient too (see its field javadoc), carrying only an artifactId, and get merged across
-		// nodes that can belong to different associations (Trees.slice()) -- so they need the same
-		// resolution pass the tree nodes just above got, or Trees.slice()'s later ordered-artifact
-		// handling (PartialOrderGraph.merge()) sees a node with a null getArtifact() despite a real,
-		// already-assigned sequence number, and its node-count consistency check fails.
-		for (Artifact.Op<?> artifact : artifactsById.values()) {
-			if (artifact.getPartialOrderGraph() != null) {
-				resolvePartialOrderGraphArtifacts(artifact.getPartialOrderGraph(), artifactsById);
-			}
-		}
-	}
-
-	private static void resolveArtifactsRec(Node.Op node, Map<String, Artifact.Op<?>> artifactsById) {
-		if (node instanceof at.jku.isse.ecco.storage.ser.tree.SerNode serNode) {
-			String artifactId = serNode.getArtifactId();
-			if (artifactId != null) {
-				Artifact.Op<?> artifact = artifactsById.get(artifactId);
-				if (artifact == null) {
-					throw new at.jku.isse.ecco.EccoException("Could not resolve node artifact " + artifactId + " among the artifacts received.");
-				}
-				serNode.resolveArtifact(artifact);
-				// and its containing node, the unique node holding it - derived like a load does
-				// (LoadResolver.resolveNodeArtifacts); left null, the receiver's copy() took every
-				// graph node pointing to an artifact of another association for one of a left-out
-				// association and trimmed it
-				if (node.isUnique() && artifact instanceof at.jku.isse.ecco.storage.ser.artifact.SerArtifact<?> serArtifact)
-					serArtifact.resolveContainingNode(node);
-			}
-		}
-		for (Node.Op child : node.getChildren()) {
-			resolveArtifactsRec(child, artifactsById);
-		}
-	}
-
-	private static void resolvePartialOrderGraphArtifacts(at.jku.isse.ecco.pog.PartialOrderGraph.Op graph, Map<String, Artifact.Op<?>> artifactsById) {
-		for (at.jku.isse.ecco.pog.PartialOrderGraph.Node.Op node : graph.collectNodes()) {
-			if (!(node instanceof at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraphNode serNode)) continue;
-
-			String artifactId = serNode.getArtifactId();
-			if (artifactId == null) continue; // head/tail sentinel nodes have no artifact
-
-			Artifact.Op<?> artifact = artifactsById.get(artifactId);
-			if (artifact == null) {
-				throw new at.jku.isse.ecco.EccoException("Could not resolve POG node artifact " + artifactId + " among the artifacts received.");
-			}
-			serNode.resolveArtifact(artifact);
-		}
+		at.jku.isse.ecco.storage.ser.dao.LoadResolver.resolveArtifacts(this.getAssociations(), artifactsById, "among the artifacts received");
 	}
 
 	/**

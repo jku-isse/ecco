@@ -382,15 +382,7 @@ public class RemoteSyncService {
                             ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
                             new ObjectOutputStream(byteOutputStream).writeObject(subsetRepository);
                             oos.writeObject(byteOutputStream.size());
-                            oos.writeObject(subsetRepository);
-                            // associations are their own independently-persisted entities behind a
-                            // transient index (see Repository.Op#restoreAssociations) -- not part of
-                            // subsetRepository's own serialized form, so send them as a companion payload
-                            // for the receiving end to restore. Same for artifacts (Repository.Op#
-                            // collectArtifacts/#resolveArtifacts) -- each node only carries an artifactId
-                            // surrogate for its (possibly shared) artifact.
-                            oos.writeObject(new ArrayList<Association.Op>(subsetRepository.getAssociations()));
-                            oos.writeObject(new ArrayList<Artifact.Op<?>>(subsetRepository.collectArtifacts()));
+                            SyncObjectStreams.writeRepository(oos, subsetRepository);
                             // see the FETCH case above for why this flush is necessary -- confirmed via a
                             // 8x-repeated stress test that without it, the client's final readObject() for
                             // this payload hangs forever in ~50% of runs.
@@ -402,13 +394,7 @@ public class RemoteSyncService {
                         }
                         case "PUSH": { // if push, receive data
                             // retrieve repository
-                            Repository.Op subsetRepository = (Repository.Op) ois.readObject();
-                            @SuppressWarnings("unchecked")
-                            Collection<Association.Op> pushedAssociations = (Collection<Association.Op>) ois.readObject();
-                            subsetRepository.restoreAssociations(pushedAssociations);
-                            @SuppressWarnings("unchecked")
-                            Collection<Artifact.Op<?>> pushedArtifacts = (Collection<Artifact.Op<?>>) ois.readObject();
-                            subsetRepository.resolveArtifacts(pushedArtifacts);
+                            Repository.Op subsetRepository = SyncObjectStreams.readRepository(ois);
                             // the settings the files were read with; a client from before sends none,
                             // after asking with MERGE_SETTINGS
                             Map<String, String> pushedSettings = null;
@@ -723,11 +709,7 @@ public class RemoteSyncService {
             pos.resetProgress();
 
             pos.addListener(owner);
-            oos.writeObject(subsetRepository);
-            // associations and artifacts travel as companion payloads -- see
-            // Repository.Op#restoreAssociations/#collectArtifacts/#resolveArtifacts.
-            oos.writeObject(new ArrayList<Association.Op>(subsetRepository.getAssociations()));
-            oos.writeObject(new ArrayList<Artifact.Op<?>>(subsetRepository.collectArtifacts()));
+            SyncObjectStreams.writeRepository(oos, subsetRepository);
             // the settings the files were read with, for the remote to check
             oos.writeObject(new HashMap<>(settings));
             oos.writeObject(remote.getName());
@@ -817,15 +799,7 @@ public class RemoteSyncService {
                         progressInputStream.addListener(owner);
 
                         // retrieve remote repository
-                        Repository.Op subsetRepository = (Repository.Op) ois.readObject();
-                        // associations and artifacts travel as companion payloads -- see
-                        // Repository.Op#restoreAssociations/#collectArtifacts/#resolveArtifacts.
-                        @SuppressWarnings("unchecked")
-                        Collection<Association.Op> pulledAssociations = (Collection<Association.Op>) ois.readObject();
-                        subsetRepository.restoreAssociations(pulledAssociations);
-                        @SuppressWarnings("unchecked")
-                        Collection<Artifact.Op<?>> pulledArtifacts = (Collection<Artifact.Op<?>>) ois.readObject();
-                        subsetRepository.resolveArtifacts(pulledArtifacts);
+                        Repository.Op subsetRepository = SyncObjectStreams.readRepository(ois);
 
                         progressInputStream.removeListener(owner);
 

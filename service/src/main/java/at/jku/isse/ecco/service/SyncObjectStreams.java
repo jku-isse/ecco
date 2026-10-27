@@ -1,9 +1,16 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.repository.Repository;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputFilter;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.logging.Logger;
 
 /**
@@ -44,5 +51,30 @@ public final class SyncObjectStreams {
 		ObjectInputStream ois = new ObjectInputStream(in);
 		ois.setObjectInputFilter(FILTER);
 		return ois;
+	}
+
+	/**
+	 * Writes a repository - a subset to fetch, pull, push or fork - as the peer reads it with
+	 * {@link #readRepository}: the repository, then its associations and artifacts, which are not part
+	 * of its own serialized form (associations are held behind a transient index, a node holds only
+	 * its artifact's id - see Repository.Op#restoreAssociations/#collectArtifacts/#resolveArtifacts).
+	 * All three go through the one stream, so what they share stays one object.
+	 */
+	static void writeRepository(ObjectOutputStream oos, Repository.Op repository) throws IOException {
+		oos.writeObject(repository);
+		oos.writeObject(new ArrayList<Association.Op>(repository.getAssociations()));
+		oos.writeObject(new ArrayList<Artifact.Op<?>>(repository.collectArtifacts()));
+	}
+
+	/** Reads a repository written by {@link #writeRepository}, its associations restored and its artifacts resolved. */
+	static Repository.Op readRepository(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+		Repository.Op repository = (Repository.Op) ois.readObject();
+		@SuppressWarnings("unchecked")
+		Collection<Association.Op> associations = (Collection<Association.Op>) ois.readObject();
+		repository.restoreAssociations(associations);
+		@SuppressWarnings("unchecked")
+		Collection<Artifact.Op<?>> artifacts = (Collection<Artifact.Op<?>>) ois.readObject();
+		repository.resolveArtifacts(artifacts);
+		return repository;
 	}
 }

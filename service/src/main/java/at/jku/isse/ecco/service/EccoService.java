@@ -722,15 +722,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 progressInputStream.addListener(this);
 
                 // retrieve remote repository
-                Repository.Op subsetRepository = (Repository.Op) ois.readObject();
-                // associations and artifacts travel as companion payloads -- see
-                // Repository.Op#restoreAssociations/#collectArtifacts/#resolveArtifacts.
-                @SuppressWarnings("unchecked")
-                Collection<Association.Op> pulledAssociations = (Collection<Association.Op>) ois.readObject();
-                subsetRepository.restoreAssociations(pulledAssociations);
-                @SuppressWarnings("unchecked")
-                Collection<Artifact.Op<?>> pulledArtifacts = (Collection<Artifact.Op<?>>) ois.readObject();
-                subsetRepository.resolveArtifacts(pulledArtifacts);
+                Repository.Op subsetRepository = SyncObjectStreams.readRepository(ois);
 
                 progressInputStream.removeListener(this);
 
