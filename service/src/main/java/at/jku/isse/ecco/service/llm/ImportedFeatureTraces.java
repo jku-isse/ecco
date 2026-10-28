@@ -467,9 +467,8 @@ public final class ImportedFeatureTraces {
 			LOGGER.log(Level.WARNING, "Could not read " + log, e);
 			return imported;
 		}
-		for (String line : lines) {
+		for (JsonNode entry : lastEntryPerCommit(lines)) {
 			try {
-				JsonNode entry = MAPPER.readTree(line);
 				if (!eccoRepository.equals(entry.path("eccoRepository").asText(null))
 						|| !gitRepository.toString().equals(entry.path("gitRepository").asText(null))
 						|| "skipped".equals(entry.path("outcome").asText()))
@@ -479,11 +478,32 @@ public final class ImportedFeatureTraces {
 				if (!labels.isEmpty())
 					imported.record(gitRepository.toString(), labels, relationLabels(before, suggestion, committed), changes(entry, gitRepository, reader, dispatchReader));
 				imported.recordParents(keptParents(parents(entry), committed));
+			} catch (RuntimeException e) {
+				LOGGER.log(Level.FINE, "Passed over a suggestion log entry: " + entry, e);
+			}
+		}
+		return imported;
+	}
+
+	/**
+	 * The log's entries, the last one of each commit in the place of its first: a commit asked about
+	 * again - Back, Choose again, or an import run again - has an entry for each time, and recorded
+	 * for each, its changes counted that often (votes of a feature model suggestion included).
+	 */
+	private static Collection<JsonNode> lastEntryPerCommit(List<String> lines) {
+		Map<String, JsonNode> entries = new LinkedHashMap<>();
+		for (String line : lines) {
+			try {
+				JsonNode entry = MAPPER.readTree(line);
+				String commit = entry.path("commit").asText(null);
+				String key = commit == null ? "line\0" + entries.size()
+						: entry.path("eccoRepository").asText("") + "\0" + entry.path("gitRepository").asText("") + "\0" + commit;
+				entries.put(key, entry);
 			} catch (IOException | RuntimeException e) {
 				LOGGER.log(Level.FINE, "Passed over a suggestion log line: " + line, e);
 			}
 		}
-		return imported;
+		return entries.values();
 	}
 
 	/**
@@ -496,9 +516,8 @@ public final class ImportedFeatureTraces {
 		if (!Files.isRegularFile(log))
 			return imported;
 		try {
-			for (String line : Files.readAllLines(log, StandardCharsets.UTF_8)) {
+			for (JsonNode entry : lastEntryPerCommit(Files.readAllLines(log, StandardCharsets.UTF_8))) {
 				try {
-					JsonNode entry = MAPPER.readTree(line);
 					if (!eccoRepository.equals(entry.path("eccoRepository").asText(null)) || "skipped".equals(entry.path("outcome").asText())
 							|| !entry.path("positions").isObject())
 						continue;
@@ -507,8 +526,8 @@ public final class ImportedFeatureTraces {
 					if (!labels.isEmpty())
 						imported.record(entry.path("gitRepository").asText(""), labels, relationLabels(before, suggestion, committed), logged(entry));
 					imported.recordParents(keptParents(parents(entry), committed));
-				} catch (IOException | RuntimeException e) {
-					LOGGER.log(Level.FINE, "Passed over a suggestion log line: " + line, e);
+				} catch (RuntimeException e) {
+					LOGGER.log(Level.FINE, "Passed over a suggestion log entry: " + entry, e);
 				}
 			}
 		} catch (IOException e) {

@@ -90,6 +90,25 @@ public class ImportedFeatureTracesTest {
 		assertEquals(Map.of("A", Set.of("a.c#add")), traces.positions());
 	}
 
+	/**
+	 * A commit asked about again - Back, Choose again, or the import run again - has an entry for
+	 * each time; only the last counts, or its changes counted that often.
+	 */
+	@Test
+	public void aCommitLoggedAgainCountsOnceAsItsLastEntrySays(@TempDir Path tmp) throws Exception {
+		Path log = tmp.resolve("log.jsonl");
+		Files.writeString(log, String.join("\n",
+				"{\"eccoRepository\":\"/e\",\"gitRepository\":\"/g\",\"commit\":\"c1\",\"before\":\"\",\"suggestion\":\"A\",\"committed\":\"A\",\"outcome\":\"reviewed\",\"positions\":{\"a.c\":[\"add\"]}}",
+				"{\"eccoRepository\":\"/e\",\"gitRepository\":\"/g\",\"commit\":\"c2\",\"before\":\"A\",\"suggestion\":\"B\",\"committed\":\"A, B\",\"outcome\":\"reviewed\",\"positions\":{\"b.c\":[\"x\"]}}",
+				"{\"eccoRepository\":\"/e\",\"gitRepository\":\"/g\",\"commit\":\"c2\",\"before\":\"A\",\"suggestion\":\"C\",\"committed\":\"A, C\",\"outcome\":\"reviewed\",\"positions\":{\"b.c\":[\"x\"]}}",
+				"{\"eccoRepository\":\"/e\",\"gitRepository\":\"/g\",\"commit\":\"c1\",\"before\":\"\",\"suggestion\":\"A\",\"committed\":\"A\",\"outcome\":\"skipped\",\"positions\":{\"a.c\":[\"add\"]}}") + "\n");
+
+		ImportedFeatureTraces traces = ImportedFeatureTraces.fromLog(log, "/e", Path.of("/g"), new GitHistoryReader(), null);
+
+		assertEquals(Map.of("C", Set.of("b.c#x")), traces.positions(), "c1 skipped at last, c2 committed as C");
+		assertEquals(traces.positions(), ImportedFeatureTraces.fromLog(log, "/e").positions());
+	}
+
 	private static ImportedFeatureTraces.Changes changed(String path, List<String> positions, boolean added) {
 		return new ImportedFeatureTraces.Changes(Map.of(path, positions), added ? Set.of(path) : Set.of(), Map.of());
 	}
