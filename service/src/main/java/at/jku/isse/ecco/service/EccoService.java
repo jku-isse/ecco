@@ -854,14 +854,22 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     /**
      * Commits [commits] of [source] in [repository] (this service's, loaded in a write transaction), in
      * their order - see {@link #replay} - and takes over the decisions of [source] it has not made
-     * (Repository.Op#mergeDecisions); stored by the caller.
+     * (Repository.Op#mergeDecisions); stored by the caller. A commit [repository] already has is left
+     * out: two pushes that asked for the commits missing before either was taken in send the same.
      */
     void replayInto(Repository.Op repository, Repository.Op source, List<? extends Commit> commits) {
+        // as a commit and a merge do (the source was checked when copied: Repository.Op#copyCommitsInto)
+        repository.checkArtifactFormats();
         repository.mergeDecisions(source);
+        Set<String> had = new HashSet<>();
+        for (Commit commit : repository.getCommits())
+            had.add(commit.getId());
+        boolean replayedAny = false;
         for (Commit commit : commits) {
             // a merge commit has no configuration and nothing to replay
-            if (commit.getConfiguration() == null)
+            if (commit.getConfiguration() == null || !had.add(commit.getId()))
                 continue;
+            replayedAny = true;
             List<Association.Op> associations = new ArrayList<>();
             for (Association association : commit.getAssociations())
                 associations.add((Association.Op) association);
@@ -876,8 +884,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 repository.addVariant(variant);
             }
         }
-        repository.setRetroactiveConditions();
-        repository.invalidateMainTree();
+        if (replayedAny) {
+            repository.setRetroactiveConditions();
+            repository.invalidateMainTree();
+        }
     }
 
     /** [commits] of [repository], with the associations holding their content, as a repository of their own - to send or replay. */

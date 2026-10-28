@@ -74,6 +74,29 @@ public class ForkCopyTest {
         assertEquals(checkouts(origin, HISTORY, tmp.resolve("co-origin")), checkouts(fork, HISTORY, tmp.resolve("co-fork")));
     }
 
+    /**
+     * A server too old to know COMMIT_IDS and PULL_COMMITS closes the connection with the commit ids
+     * sent still unread: the pull is then made by merging, as before.
+     */
+    @Test
+    @Timeout(120)
+    public void aPullFromAServerTooOldToSendCommitsIsMerged(@TempDir Path tmp) throws Exception {
+        Path origin = commit(tmp.resolve("origin"), HISTORY);
+        Path local = commit(tmp.resolve("local"), steps("D=d"));
+        try (EccoService originService = open(origin); ServerSocket server = new ServerSocket(0)) {
+            Thread thread = new Thread(() -> serveAsAnOlderServer(server, originService), "older-server");
+            thread.start();
+            try (EccoService service = open(local)) {
+                service.addRemote("older", "localhost:" + server.getLocalPort(), at.jku.isse.ecco.core.Remote.Type.REMOTE);
+                service.pull("older");
+            }
+            server.close();
+            thread.join(10_000);
+        }
+
+        assertEquals(checkouts(origin, HISTORY, tmp.resolve("co-origin")), checkouts(local, HISTORY, tmp.resolve("co-local")));
+    }
+
     /** answers PULL as a server did before CLONE; closes the connection on anything else, as it did on what it did not know */
     private static void serveAsAnOlderServer(ServerSocket server, EccoService origin) {
         while (!server.isClosed()) {

@@ -11,6 +11,7 @@
     - **A feature made on both sides with the same name** is one feature (FR-D3f) - the pull was refused (gap #87).
     - **Repositories with merge commits** - forked, pulled or pushed to by an older version - and **servers of an older version** merge as before, with a warning (FR-D3e).
     - **Order graphs copied** keep every node's neighbours in order: a fork of tinycc lost a "}" in its next commit where the origin kept it (gap #88). The warnings a fork gives are its origin's (gap #84).
+    - **From the review of these changes**: a pull from a server too old for the new requests failed ("Broken pipe", "Connection reset") instead of merging - it asks for the commit ids alone first, and a server that answered them and then closes the connection is an error, not an older one to merge with silently (FR-D3g); a commit the receiver already has - two pushes asking before either was taken in - is left out, not counted twice (FR-D3h); a pull or push into a repository of a retired adapter format is refused, as a commit is; a pull or push sends the commits without the repository's modules and counts, which a replay derives again (one commit of fer 2.7 MB, the whole repository 13.5 MB); nothing new to take in recomputes nothing.
     - `DivergedSyncTest`, `RepeatedPullTest`, `ForkCopyTest`, `ReplayTest`, `PartialOrderGraphCopyTest`; random searches `DivergedSyncSearchTest`, `ReplaySearchTest`, `ForkThenCommitSearchTest`. Checked on fer, tinycc, javatasktracker and zip4j, locally and over a socket.
 
   * **Smaller review items**:

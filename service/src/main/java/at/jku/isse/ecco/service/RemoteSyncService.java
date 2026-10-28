@@ -714,6 +714,11 @@ public class RemoteSyncService {
      * replay (PULL_COMMITS); null if the remote has merge commits or is too old to know the request.
      */
     Repository.Op receiveCommits(Remote remote, ArrayList<String> have, String deselectedFeatureRevisionsString) throws IOException, ClassNotFoundException {
+        // asked first, alone: a server too old for PULL_COMMITS closes the connection on the command,
+        // and the ids and the deselection sent after it, unread, reset it ("Broken pipe", "Connection
+        // reset") - which a failing server cannot be told from
+        if (this.remoteCommitIds(remote) == null)
+            return null;
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
             if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
@@ -732,8 +737,8 @@ public class RemoteSyncService {
                 ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
                 reply = ois.readObject();
             } catch (EOFException e) {
-                LOGGER.warning("Remote '" + remote.getName() + "' is too old to send commits: merged, not replayed.");
-                return null;
+                // it answered COMMIT_IDS, so it knows the request: it failed
+                throw new EccoException("Remote '" + remote.getName() + "' closed the connection without sending its commits - its log tells why.", e);
             }
             if (MERGE.equals(reply)) {
                 LOGGER.warning("Remote '" + remote.getName() + "'" + MERGING);
@@ -770,7 +775,7 @@ public class RemoteSyncService {
                 }
                 return ids;
             } catch (EOFException e) {
-                LOGGER.warning("Remote '" + remote.getName() + "' is too old to take commits: merged, not replayed.");
+                LOGGER.warning("Remote '" + remote.getName() + "' is too old to exchange commits: merged, not replayed.");
                 return null;
             }
         }

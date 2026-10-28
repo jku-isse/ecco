@@ -188,6 +188,45 @@ public class SyncProtocolHardeningTest {
 	}
 
 	/**
+	 * A server that told the ids of its commits knows PULL_COMMITS: closing the connection without
+	 * sending them - failing on the request - is an error, not an older ECCO to merge with instead.
+	 */
+	@Test
+	@Timeout(120)
+	public void aPullTheServerDoesNotAnswerIsAnError() throws Exception {
+		try (java.net.ServerSocket fake = new java.net.ServerSocket(0, 50, InetAddress.getLoopbackAddress());
+			 EccoService client = newRepository("sync-hardening-client")) {
+			Thread serving = new Thread(() -> {
+				while (!fake.isClosed()) {
+					try (Socket socket = fake.accept()) {
+						java.io.ObjectInputStream in = new java.io.ObjectInputStream(socket.getInputStream());
+						String request = (String) in.readObject();
+						if (request.equals("COMMIT_IDS")) {
+							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+							out.writeObject(new java.util.ArrayList<String>());
+							out.writeObject(false);
+							out.flush();
+						} else if (request.equals("PULL_COMMITS")) {
+							in.readObject();
+							in.readObject();
+							// failed: closed unanswered
+						}
+						// SETTINGS: closed unanswered, as an older server did
+					} catch (Exception ignored) {
+					}
+				}
+			}, "fake-ecco-server");
+			serving.setDaemon(true);
+			serving.start();
+			commitText(client);
+			client.addRemote("origin", "localhost:" + fake.getLocalPort(), Remote.Type.REMOTE);
+
+			EccoException thrown = assertThrows(EccoException.class, () -> client.pull("origin"));
+			assertTrue(messages(thrown).contains("without sending its commits"), messages(thrown));
+		}
+	}
+
+	/**
 	 * The settings question before a push changes nothing on the server: it wrote the pusher's
 	 * settings at once - a push that then failed, or was cancelled, left them.
 	 */

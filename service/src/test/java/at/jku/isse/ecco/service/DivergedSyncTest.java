@@ -7,6 +7,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import static at.jku.isse.ecco.service.SyncHistory.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,6 +55,32 @@ public class DivergedSyncTest {
         List<Step> all = concat(BASE, A, B);
         assertEquals(checkouts(commit(tmp.resolve("base-b-a"), concat(BASE, B, A)), all, tmp.resolve("co-bba")), checkouts(b, all, tmp.resolve("co-b")), "pulled");
         assertEquals(checkouts(commit(tmp.resolve("base-a-b"), concat(BASE, A, B)), all, tmp.resolve("co-bab")), checkouts(a, all, tmp.resolve("co-a")), "pushed to");
+    }
+
+    /**
+     * Two pushes that asked for the commits missing before either was taken in send the same
+     * commits: the second is taken in as nothing new, not as the same commits once more.
+     */
+    @Test
+    @Timeout(120)
+    public void commitsPushedTwiceAreTakenInOnce(@TempDir Path tmp) throws Exception {
+        Path a = commit(tmp.resolve("a"), BASE);
+        Path b = fork(a, tmp.resolve("b"));
+        commitInto(b, B);
+        Repository.Op stale;
+        try (EccoService service = open(b); EccoService origin = open(a)) {
+            Repository.Op repository = (Repository.Op) service.getRepository();
+            stale = service.copyOfCommits(repository, repository.commitsMissingIn(RemoteSyncService.commitIds((Repository.Op) origin.getRepository()), List.of()));
+        }
+        push(b, a);
+        List<String> commits = commits(a);
+        Map<String, Integer> counts = moduleCounts(a);
+        try (EccoService service = open(a)) {
+            service.replay(stale, new java.util.ArrayList<>(stale.getCommits()));
+        }
+
+        assertEquals(commits, commits(a));
+        assertEquals(counts, moduleCounts(a));
     }
 
     /**

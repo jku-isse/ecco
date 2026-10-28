@@ -896,14 +896,15 @@ public interface Repository extends Persistable {
 		 * the history they share once (ForkCopyTest, DivergedSyncTest).
 		 */
 		default void copyInto(Repository.Op target) {
-			this.copyInto(target, new ArrayList<>(this.getAssociations()), new ArrayList<>(this.getCommits()));
+			this.copyInto(target, new ArrayList<>(this.getAssociations()), new ArrayList<>(this.getCommits()), true);
 		}
 
 		/**
 		 * Copies [commits] of this repository into {@code target}, a repository just initialized, as
 		 * {@link #copyInto(Repository.Op)} copies all of them: with the associations holding their
-		 * content, and every feature and module - what a pull or push sends of the commits the other
-		 * side does not have, to be replayed there ({@link #replay}).
+		 * content and every feature, but without modules and counts, which a replay derives again - what
+		 * a pull or push sends of the commits the other side does not have, to be replayed there
+		 * ({@link #replay}). The modules of a repository of many features are millions.
 		 */
 		default void copyCommitsInto(Repository.Op target, List<? extends Commit> commits) {
 			Set<String> ids = new HashSet<>();
@@ -914,10 +915,10 @@ public interface Repository extends Persistable {
 			for (Association.Op association : this.getAssociations())
 				if (ids.contains(association.getId()))
 					associations.add(association);
-			this.copyInto(target, associations, commits);
+			this.copyInto(target, associations, commits, false);
 		}
 
-		private void copyInto(Repository.Op target, List<? extends Association.Op> associations, List<? extends Commit> commits) {
+		private void copyInto(Repository.Op target, List<? extends Association.Op> associations, List<? extends Commit> commits, boolean counts) {
 			checkNotNull(target);
 			checkArgument(target.getAssociations().isEmpty() && target.getCommits().isEmpty(), "A repository is copied into an empty one only.");
 			this.checkArtifactFormats();
@@ -930,15 +931,11 @@ public interface Repository extends Persistable {
 				for (FeatureRevision featureRevision : feature.getRevisions())
 					newFeature.addRevision(featureRevision.getId()).setDescription(featureRevision.getDescription());
 			}
-			for (Constraint constraint : this.getConstraints())
-				target.addConstraint(constraint.getKind(), constraint.getFeatureA(), constraint.getFeatureB());
-			for (Constraint constraint : this.getRejectedConstraints())
-				target.addRejectedConstraint(constraint.getKind(), constraint.getFeatureA(), constraint.getFeatureB());
-			this.getFeatureParents().forEach(target::setFeatureParent);
-			this.getRejectedFeatureParents().forEach((feature, parents) -> parents.forEach(parent -> target.addRejectedFeatureParent(feature, parent)));
+			// into an empty repository: all of them
+			target.mergeDecisions(this);
 
 			// modules and module revisions, with their counts
-			for (int order = 0; order <= this.getMaxOrder(); order++) {
+			for (int order = 0; counts && order <= this.getMaxOrder(); order++) {
 				for (Module module : this.getModules(order)) {
 					Module newModule = target.getModule(targetFeatures(target, module.getPos()), targetFeatures(target, module.getNeg()));
 					if (newModule == null)
@@ -959,8 +956,9 @@ public interface Repository extends Persistable {
 			for (Association.Op association : associations) {
 				Association.Op newAssociation = entityFactory.createAssociation();
 				newAssociation.setId(association.getId());
-				newAssociation.getCounter().setCount(association.getCounter().getCount());
-				for (ModuleCounter moduleCounter : association.getCounter().getChildren()) {
+				if (counts)
+					newAssociation.getCounter().setCount(association.getCounter().getCount());
+				for (ModuleCounter moduleCounter : counts ? association.getCounter().getChildren() : List.<ModuleCounter>of()) {
 					Module module = moduleCounter.getObject();
 					Module newModule = target.getModule(targetFeatures(target, module.getPos()), targetFeatures(target, module.getNeg()));
 					for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
@@ -1013,7 +1011,8 @@ public interface Repository extends Persistable {
 
 			// finish like a commit does (CommitService): the copied nodes' feature traces need their
 			// retroactive conditions, and the main tree is built from the new associations
-			target.setRetroactiveConditions();
+			if (counts)
+				target.setRetroactiveConditions();
 			target.invalidateMainTree();
 		}
 

@@ -97,7 +97,7 @@ public class CppRoundTripTest {
 
     /**
      * A repository committed with the first C++ adapter holds its artifacts; adding to it would mix
-     * both formats, so a commit is refused with an explanation - checkouts still work.
+     * both formats, so a commit and a pull are refused with an explanation - checkouts still work.
      */
     @Test
     @Timeout(120)
@@ -112,9 +112,26 @@ public class CppRoundTripTest {
             service.commit("first", "A");
             // what the first adapter stored
             SerEntityFactory entityFactory = new SerEntityFactory();
-            for (Association association : service.getRepository().getAssociations())
+            for (Association association : service.getRepository().getAssociations()) {
                 for (Node file : association.getRootNode().getChildren())
                     ((Node.Op) file).addChild(entityFactory.createNode(entityFactory.createArtifact(new LineArtifactData("int legacy;"))));
+                ((at.jku.isse.ecco.repository.Repository.Op) service.getRepository()).addAssociation((Association.Op) association);
+            }
+            service.store();
+
+            // not pulled into - its commits committed again
+            Path other = Files.createDirectories(work.resolve("other"));
+            Path otherContent = Files.createDirectories(work.resolve("other-content"));
+            Files.writeString(otherContent.resolve("main.cpp"), "int main() {\n    return 2;\n}\n");
+            try (EccoService otherService = new EccoService()) {
+                otherService.setRepositoryDir(other.resolve(".ecco"));
+                otherService.init();
+                otherService.setBaseDir(otherContent);
+                otherService.commit("other", "C");
+            }
+            service.addRemote("other", other.toString(), at.jku.isse.ecco.core.Remote.Type.LOCAL);
+            EccoException pullRefused = assertThrows(EccoException.class, () -> service.pull("other"));
+            assertTrue(messagesOf(pullRefused).contains("re-create the repository"), messagesOf(pullRefused));
 
             Files.writeString(content.resolve("main.cpp"), "int main() {\n    return 1;\n}\n");
             EccoException refused = assertThrows(EccoException.class, () -> service.commit("second", "A, B"));
@@ -126,6 +143,13 @@ public class CppRoundTripTest {
             service.checkout("A");
             assertTrue(Files.exists(out.resolve("main.cpp")), "checkouts still work");
         }
+    }
+
+    private static String messagesOf(Throwable thrown) {
+        StringBuilder messages = new StringBuilder();
+        for (Throwable cause = thrown; cause != null; cause = cause.getCause())
+            messages.append(cause.getMessage()).append(" / ");
+        return messages.toString();
     }
 
     /**
