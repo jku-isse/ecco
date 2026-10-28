@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+  * **LilyPond: markup in LilyPond embedded in Scheme reads as markup** - in a markup function's body (`#{ \markup \small \upright #text #}`) the markup commands were read as a builtin and a variable, and markup words as notes (`c4.`, `(poco` split): lymodel's tokens take `#{ #}` as part of the Scheme around it, so its markup was never found. 5 of 986 corpus files read differently, all there; the fer variants not at all. No parser version: a repository holding such a file sees those tokens change once, at its next commit (`LilypondParseTest`).
+
   * **Artifact packs are compacted by bytes**: a pack is rewritten once less than half of its bytes are still current - it was once less than half of its artifacts were. A file's own artifact holds its order graph, a node per line, and every commit changing the file writes it again: in tinycc 324 such copies, 0.2% of the artifacts, were about 6 MB of the 25 MB of packs, and every pack was still current by count. An artifact's bytes are what it takes in its pack's stream, counted when a pack is read or written - nothing more is stored, the format is unchanged. On a copy of tinycc two commits leave 23.6 MB of packs instead of 25.8 MB, in the same time, with every configuration checked out as before (`ArtifactPackTest`).
 
   * **Pull and push exchange commits**: a repository after a pull or push is one with the same commits made in order - its own first, then the other side's it did not have (FR-D3b/c). A pull or push of histories that diverged after a fork lost lines no order of the commits loses - "B, E" checked out "e0" where committing in order gives "b0 e0" (gap #86) - and a second pull counted everything again.

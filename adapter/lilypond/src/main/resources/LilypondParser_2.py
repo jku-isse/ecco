@@ -245,10 +245,24 @@ def merged(spans):
 
 def markup_spans():
     r"""A \markup or \markuplist with its arguments, as far as lymodel finds them (by each markup
-    command's number of arguments)."""
-    toks = tokenize(s)
-    return merged((t.pos, toks[markup_span(toks, i)].end) for i, t in enumerate(toks)
-                  if str(t) in ("\\markup", "\\markuplist"))
+    command's number of arguments) - also in LilyPond embedded in Scheme (`#{ \markup \bold #x #}`
+    in a markup function), which lymodel's tokens take as part of the Scheme around it: tokenized
+    on its own, its markup commands were read as a builtin and a variable."""
+    spans = []
+
+    def add(written, offset):
+        toks = tokenize(written)
+        spans.extend((offset + t.pos, offset + toks[markup_span(toks, i)].end) for i, t in enumerate(toks)
+                     if str(t) in ("\\markup", "\\markuplist"))
+
+    add(s, 0)
+    stack = [tree.root_node]
+    while stack:
+        n = stack.pop()
+        if n.type == "scheme_embedded_lilypond_text":
+            add(text(n), start(n))
+        stack.extend(n.children)
+    return merged(spans)
 
 
 def argument_after(node):
@@ -287,7 +301,8 @@ def markup_text(node):
     if node.type in MARKUP_STRUCTURE or not in_markup(node):
         return False
     p = node.parent
-    while p is not None:
+    # Scheme in a markup is no markup text - unless it embeds LilyPond again (`#{ \markup { } #}`)
+    while p is not None and p.type != "scheme_embedded_lilypond_text":
         if p.type == "embedded_scheme":
             return False
         p = p.parent

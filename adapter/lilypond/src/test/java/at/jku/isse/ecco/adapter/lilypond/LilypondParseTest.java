@@ -120,6 +120,24 @@ public class LilypondParseTest {
 				texts(tokens).toString());
 	}
 
+	/**
+	 * Markup in LilyPond embedded in Scheme - a markup function's body - reads as markup does
+	 * elsewhere: lymodel's tokens took it as part of the Scheme around it, and its commands were read
+	 * as a builtin and a variable, its words as notes.
+	 */
+	@Test
+	void markupInLilyPondEmbeddedInSchemeIsReadAsMarkup() throws Exception {
+		List<DefaultTokenArtifactData> tokens = tokens("#(define-markup-command (remark layout props text) (markup?)\n"
+				+ "  (interpret-markup layout props #{ \\markup \\small \\upright #text #}))\n"
+				+ "#(define-markup-command (tip layout props) ()\n"
+				+ "  (interpret-markup layout props #{ \\markup \\line { (poco a poco) c4. } #}))\n");
+		assertEquals("Name.Function.Markup", action(tokens, "\\small"));
+		assertEquals("Name.Function.Markup", action(tokens, "\\upright"));
+		assertEquals("Name.Function.Markup", action(tokens, "\\line"));
+		assertEquals("Text", action(tokens, "(poco"));
+		assertEquals("Text", action(tokens, "c4."));
+	}
+
 	@Test
 	void notesAfterDrumsAreDrums() throws Exception {
 		List<DefaultTokenArtifactData> tokens = tokens("{ \\drums { bd4 sn } }\ndr = \\drummode { hh8 }\n");
