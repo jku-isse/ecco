@@ -11,6 +11,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
@@ -103,7 +104,8 @@ public class ForkView extends OperationView {
 		gridPane.add(excludeLabel, 0, row, 1, 1);
 
 		TextField excludeTextField = new TextField();
-		excludeTextField.setPromptText("feature revisions to leave out, e.g. Video.3f2a9c1 (optional)");
+		excludeTextField.setPromptText("feature revisions to leave out, e.g. Video.3f2a9c1 (optional) - with every commit holding one");
+		excludeTextField.setTooltip(new Tooltip(TransferView.LEFT_OUT));
 		excludeLabel.setLabelFor(excludeTextField);
 		gridPane.add(excludeTextField, 1, row, 2, 1);
 		row++;

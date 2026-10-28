@@ -39,6 +39,9 @@ public abstract class TransferView extends OperationView {
 	/** True while the tree and the field update each other, so neither echoes back. */
 	private boolean syncing;
 
+	/** what leaving a revision out does (FR-D4a) */
+	static final String LEFT_OUT = "Every commit whose configuration holds a revision left out is left out - with the lines only such commits hold, also other features' lines committed with it.";
+
 	protected TransferView(EccoService service) {
 		super();
 		this.service = service;
@@ -49,6 +52,7 @@ public abstract class TransferView extends OperationView {
 
 		// the field writes the tree too - only the tree wrote the field
 		this.deselectionTextField.setPromptText("Feature revisions to leave out, comma-separated - or untick them below");
+		this.deselectionTextField.setTooltip(new Tooltip(LEFT_OUT));
 		this.deselectionTextField.textProperty().addListener((observable, oldValue, newValue) -> this.tickFromField());
 
 		// filled once here, not in stepRemote(): going back to that step appended every remote again
@@ -213,7 +217,8 @@ public abstract class TransferView extends OperationView {
 		tree.setShowRoot(false);
 		tree.setEditable(false);
 
-		TitledPane titledPane = new TitledPane("Features - ticked ones are " + (this.verb().equals("Pull") ? "pulled" : "pushed"), tree);
+		TitledPane titledPane = new TitledPane("Features - commits with an unticked one are not " + (this.verb().equals("Pull") ? "pulled" : "pushed"), tree);
+		titledPane.setTooltip(new Tooltip(LEFT_OUT));
 		titledPane.setCollapsible(false);
 		titledPane.setMaxWidth(Double.MAX_VALUE);
 		titledPane.setMaxHeight(Double.MAX_VALUE);
