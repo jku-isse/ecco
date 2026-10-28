@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.gui.ConstraintWarnings;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.LatestRefresh;
 import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Variant;
@@ -55,10 +56,21 @@ public class VariantsView extends BorderPane implements EccoListener {
      */
     private boolean writing;
 
+    /** The variants, read once more however often asked meanwhile, the latest state only - see {@link #refresh()}. */
+    private final LatestRefresh<List<VariantsInfo>> variantsRefresh;
+
 
     public VariantsView(EccoService service) {
         super();
         this.service = service;
+        this.variantsRefresh = new LatestRefresh<>("Variants refresh", service, this::readVariants, infos -> {
+            this.variantsDataSelected.setAll(infos);
+            this.toolBar.setDisable(this.writing);
+            this.refreshDerivedInfoBatch(infos);
+        }, failure -> {
+            this.toolBar.setDisable(this.writing);
+            new ExceptionAlert(failure).show();
+        });
 
         this.toolBar = new ToolBar();
         this.setTop(this.toolBar);
@@ -428,6 +440,7 @@ public class VariantsView extends BorderPane implements EccoListener {
                 this.refresh();
             });
         } else {
+            this.variantsRefresh.clear();
             Platform.runLater(() -> {
                 this.setDisable(true);
                 this.variantsDataSelected.clear();
@@ -444,30 +457,22 @@ public class VariantsView extends BorderPane implements EccoListener {
     private void refresh() {
         this.toolBar.setDisable(true);
 
-        // clear() and the add-loop must happen TOGETHER, once the background load completes -- not
-        // clear-now/add-later, which left a window where other code touching variantsDataSelected
-        // (e.g. the table's own selection-changed listener) could interleave and produce duplicate
-        // rows, or the freshly-added variant getting raced away entirely.
-        // The variants are read holding the service's lock (a commit adds one meanwhile), and what
-        // the table shows of them is read along - see VariantsInfo.
-        // A failure is surfaced rather than silently swallowed. A repository closed while the
-        // refresh was under way (a checkout or commit fires it, and Close can follow at once) is no
-        // error: the view is being disabled anyway. This showed a modal "Service is not initialized"
-        // dialog.
-        RepositoryAccess.read(this.service, "Variants refresh", service -> {
-            List<VariantsInfo> infos = new ArrayList<>();
-            for (Variant variant : service.getRepository().getVariants())
-                infos.add(new VariantsInfo(variant));
-            return infos;
-        }, infos -> {
-            this.variantsDataSelected.setAll(infos);
-            this.toolBar.setDisable(this.writing);
-            this.refreshDerivedInfoBatch(infos);
-        }, failure -> {
-            this.toolBar.setDisable(this.writing);
-            if (this.service.isInitialized())
-                new ExceptionAlert(failure).show();
-        });
+        // clear() and the add-loop happen together, once the read completes - clear-now/add-later
+        // left a window where other code touching variantsDataSelected (the table's own
+        // selection-changed listener) interleaved: duplicate rows, or a freshly added variant raced
+        // away. The variants are read holding the service's lock (a commit adds one meanwhile), with
+        // what the table shows of them (VariantsInfo). One read at a time, the latest state only
+        // (LatestRefresh): every event started one, and an import of many commits piled them up - an
+        // older read finishing after a newer one showed the variants before it. A repository closed
+        // meanwhile applies nothing (no "Service is not initialized" dialog).
+        this.variantsRefresh.request();
+    }
+
+    private List<VariantsInfo> readVariants(EccoService service) {
+        List<VariantsInfo> infos = new ArrayList<>();
+        for (Variant variant : service.getRepository().getVariants())
+            infos.add(new VariantsInfo(variant));
+        return infos;
     }
 
     /**

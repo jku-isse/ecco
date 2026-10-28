@@ -760,14 +760,34 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		String pluginId = ArtifactDetailView.getPluginId(contentNode);
 		if (pluginId == null) return null;
 
-		at.jku.isse.ecco.tree.Node root = contentNode;
-		while (root.getParent() != null)
+		// only what the preview shows is copied: the file around the content node, and the path down
+		// to it - the whole tree, every file of the association, was copied and its conditions
+		// computed on every hover
+		at.jku.isse.ecco.tree.Node file = enclosingFileNode(contentNode);
+		if (file == null)
+			file = contentNode;
+		java.util.Set<at.jku.isse.ecco.tree.Node> path = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+		at.jku.isse.ecco.tree.Node root = file;
+		path.add(root);
+		while (root.getParent() != null) {
 			root = root.getParent();
-		at.jku.isse.ecco.gui.view.detail.NodeSnapshot copy = at.jku.isse.ecco.gui.view.detail.NodeSnapshot.of(root);
+			path.add(root);
+		}
+		at.jku.isse.ecco.tree.Node shown = file;
+		at.jku.isse.ecco.gui.view.detail.NodeSnapshot copy = at.jku.isse.ecco.gui.view.detail.NodeSnapshot.of(root,
+				node -> path.contains(node) || within(node, shown));
 		// unselected, so the default look - only for the hover texts, which compute conditions
 		java.util.Map<String, at.jku.isse.ecco.adapter.AssociationInfo> infos = new java.util.HashMap<>();
-		collectInfos(root, infos);
+		collectInfos(file, infos);
 		return new AssociationPreview(copy.copyOf(contentNode), pluginId, scanFileNode(enclosingFileNode(contentNode)), infos.values());
+	}
+
+	/** Whether [node] is [ancestor] or below it. */
+	private static boolean within(at.jku.isse.ecco.tree.Node node, at.jku.isse.ecco.tree.Node ancestor) {
+		for (at.jku.isse.ecco.tree.Node n = node; n != null; n = n.getParent())
+			if (n == ancestor)
+				return true;
+		return false;
 	}
 
 	private static void collectInfos(at.jku.isse.ecco.tree.Node node, java.util.Map<String, at.jku.isse.ecco.adapter.AssociationInfo> infos) {

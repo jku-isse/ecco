@@ -91,6 +91,45 @@ public class GraphViewsLockTest {
         }
     }
 
+    /**
+     * A hover preview copies the file it shows and the path to it, not every file of the
+     * association - the whole tree was copied, and its conditions computed, on every hover.
+     */
+    @Test
+    @Timeout(60)
+    public void anAssociationPreviewCopiesOnlyTheFileItShows(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a1\na2\n", "b.txt", "b1\nb2\n"));
+            KnowledgeGraphView view = onFx(() -> new KnowledgeGraphView(service));
+            waitUntil("the associations are known", () -> !associationsById(view).isEmpty());
+            Association association = service.getRepository().getAssociations().iterator().next();
+            Method read = KnowledgeGraphView.class.getDeclaredMethod("readAssociationPreview", String.class);
+            read.setAccessible(true);
+            Object preview;
+            synchronized (service) {
+                preview = read.invoke(view, association.getId());
+            }
+            Method contentNode = preview.getClass().getDeclaredMethod("contentNode");
+            contentNode.setAccessible(true);
+            at.jku.isse.ecco.tree.Node root = (at.jku.isse.ecco.tree.Node) contentNode.invoke(preview);
+            while (root.getParent() != null)
+                root = root.getParent();
+            List<String> lines = new java.util.ArrayList<>();
+            collectLeaves(root, lines);
+            assertTrue(lines.equals(List.of("a1", "a2")) || lines.equals(List.of("b1", "b2")), "one file's lines: " + lines);
+        }
+    }
+
+    private static void collectLeaves(at.jku.isse.ecco.tree.Node node, List<String> lines) {
+        if (node.getChildren().isEmpty() && node.getArtifact() != null) {
+            String line = String.valueOf(node.getArtifact().getData()).trim();
+            if (line.matches("[ab][12]"))
+                lines.add(line);
+        }
+        for (at.jku.isse.ecco.tree.Node child : node.getChildren())
+            collectLeaves(child, lines);
+    }
+
     /** The minimization results' status change reads the stored results - also not on the FX thread. */
     @Test
     @Timeout(60)
