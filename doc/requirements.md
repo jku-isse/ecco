@@ -790,14 +790,14 @@ Postcondition: The repository holds one commit per tagged Git commit - the relea
 
 | | |
 | --- | --- |
-| Brief description | The collaborator creates a new repository from a remote one, optionally leaving out feature revisions. |
+| Brief description | The collaborator creates a new repository from a remote one - its commits, optionally leaving out those with excluded feature revisions. |
 | Precondition | The session has no open repository. |
 | Primary actor | Collaborator |
 | Secondary actors | Remote repository |
 | Dependency | None |
 | Generalization | None |
 | Front ends | CLI `fork <remote> [--exclude ...]`; GUI Repositories > Fork; REST fork with deselected features |
-| Realizes | FR-D1, FR-D2, FR-D4, FR-D5, FR-D7, FR-D8, FR-L2, FR-N4, IF-R2 |
+| Realizes | FR-D1, FR-D2, FR-D3, FR-D4, FR-D5, FR-D7, FR-D8, FR-L2, FR-N4, IF-R2 |
 
 **Basic flow**
 
@@ -805,13 +805,13 @@ Postcondition: The repository holds one commit per tagged Git commit - the relea
 2. The system VALIDATES THAT the remote is a local path or a valid `host:port`.
 3. The system VALIDATES THAT the target location holds no repository.
 4. The system gives the new repository the origin's settings (`.ecco/.settings`), so that it reads files the way the origin's history was read.
-5. The system reads the remote repository's features, associations and constraints.
-6. The system VALIDATES THAT the exclusion leaves no unresolved dependencies.
-7. The system drops the features left without revisions and the modules that contain excluded features.
+5. The system reads the remote repository's commits, with the associations that hold them, its features and its constraints.
+6. The system leaves out every commit whose configuration holds an excluded revision.
+7. IF nothing is excluded THEN the system copies the remote repository - its commits, modules and associations with their counts ELSE the system commits the remaining commits into the new repository again, in their order, keeping their ids, dates and messages ENDIF.
 8. The system stores the result as the new repository.
 9. The system registers the remote as `origin`.
 
-Postcondition: The new repository holds the remote's content without the excluded revisions; reopened, the new repository checks out the same content as the remote. The remote repository is unchanged (FR-D7).
+Postcondition: The new repository holds the remote's commits except those with an excluded revision; reopened, it checks out every configuration as committing these commits in order would - without exclusions, as the remote does. The remote repository is unchanged (FR-D7).
 
 **Specific alternative flow SA1** (RFS 2)
 
@@ -827,13 +827,24 @@ Postcondition: Nothing is created.
 
 Postcondition: The existing repository is unchanged.
 
-**Specific alternative flow SA3** (RFS 6)
+**Specific alternative flow SA3** (RFS SA4 4)
 
 1. The system removes the half-created repository.
 2. The system reports "Unresolved dependencies in selection.".
 3. ABORT.
 
 Postcondition: Nothing is created.
+
+**Specific alternative flow SA4** (RFS 5-7)
+
+1. IF the remote has merge commits (a fork, pull or push of an older version made them) and revisions are excluded, or the remote is a sync server too old to send its commits THEN the system warns that it merges instead of copying ENDIF.
+2. The system reads the remote repository's features, associations and constraints.
+3. The system drops the features left without revisions and the modules that contain excluded features.
+4. The system VALIDATES THAT the exclusion leaves no unresolved dependencies.
+5. The system merges the result into the new repository, one merge commit per association.
+6. RESUME STEP 8.
+
+Postcondition: The new repository checks out the remote's content without the excluded revisions, but holds none of its commits.
 
 **Bounded alternative flow BA1** (RFS 4-9)
 
@@ -847,7 +858,7 @@ Postcondition: Nothing is created, and the collaborator can retry.
 
 | | |
 | --- | --- |
-| Brief description | The collaborator pulls features from a remote into this repository or pushes features from this repository into the remote, optionally leaving out feature revisions; fetch only reads the remote's feature list. |
+| Brief description | The collaborator pulls the commits of a remote this repository does not have, or pushes this repository's commits the remote does not have, optionally leaving out those with excluded feature revisions; fetch only reads the remote's feature list. |
 | Precondition | A repository is open (UC-2). The remote is registered (UC-16), by default as `origin`. |
 | Primary actor | Collaborator |
 | Secondary actors | Remote repository |
@@ -861,26 +872,26 @@ Postcondition: Nothing is created, and the collaborator can retry.
 1. The collaborator requests a pull from a remote, with the feature revisions to exclude.
 2. The system VALIDATES THAT the remote is registered.
 3. The system VALIDATES THAT both repositories read the files the pull merges the same way, as their `.ecco/.settings` say.
-4. The system reads the remote repository.
-5. The system VALIDATES THAT the exclusion leaves no unresolved dependencies.
-6. The system drops the excluded revisions and the modules that contain the excluded features.
-7. The system VALIDATES THAT this repository holds no artifacts in a retired adapter format.
-8. The system merges the selection into this repository in one transaction.
+4. The system reads the ids of the remote's commits.
+5. The system reads the remote's commits this repository does not have, with the associations that hold them, leaving out every commit whose configuration holds an excluded revision.
+6. The system VALIDATES THAT this repository holds no artifacts in a retired adapter format.
+7. The system takes over the remote's accepted and rejected constraints and feature parents.
+8. The system commits the commits read into this repository again, after its own and in their order, keeping their ids, dates and messages, in one transaction; a feature of a name this repository has is that feature.
 9. The system reports success.
 
-Postcondition: This repository holds the union of both repositories' selected content, with accepted constraints merged without duplicates; reopened, this repository checks out the pulled content as the remote does. The remote repository is unchanged.
+Postcondition: This repository holds its own commits followed by the remote's it did not have and that hold no excluded revision; reopened, it checks out every configuration as committing them in that order would. Pulling again changes nothing. The remote repository is unchanged.
 
 **Specific alternative flow SA1** (RFS 1)
 
 1. The collaborator requests a push to the remote instead.
 2. IF the remote has neither a plugin's settings nor files of the plugin THEN the system gives the remote this repository's settings for the plugin ELSE IF the two repositories read the files the push merges differently THEN the system reports the differing settings and ABORT ENDIF ENDIF.
-3. The system reads this repository.
-4. The system VALIDATES THAT the exclusion leaves no unresolved dependencies.
+3. The system reads the ids of the remote's commits.
+4. The system reads this repository's commits the remote does not have, leaving out every commit whose configuration holds an excluded revision.
 5. IF this repository or the remote holds artifacts in a retired adapter format THEN the system reports it as in SA5 and ABORT ENDIF.
-6. The system merges the selection into the remote repository; a sync server compares the settings again in the transaction that merges the push, and answers whether it merged it.
+6. The system commits them into the remote repository after its own, as in steps 7 and 8; a sync server compares the settings again in the transaction that commits the push, and answers whether it did.
 7. RESUME STEP 9.
 
-Postcondition: The remote repository holds the union of both repositories' selected content; this repository is unchanged.
+Postcondition: The remote repository holds its own commits followed by this repository's it did not have and that hold no excluded revision; this repository is unchanged.
 
 **Specific alternative flow SA2** (RFS 1)
 
@@ -898,7 +909,7 @@ Postcondition: The associations of both repositories are unchanged.
 
 Postcondition: Both repositories are unchanged.
 
-**Specific alternative flow SA4** (RFS 5)
+**Specific alternative flow SA4** (RFS SA7 3)
 
 1. The system rolls back the transaction.
 2. The system reports "Unresolved dependencies in selection.".
@@ -939,6 +950,17 @@ Postcondition: Both repositories are unchanged (FR-D9).
 
 Postcondition: Both repositories are unchanged, or this repository reads the plugin's files as the remote does.
 
+**Specific alternative flow SA7** (RFS 4-8, SA1 3-6)
+
+1. IF one of the repositories has merge commits (a fork, pull or push of an older version made them), or the remote is a sync server too old to exchange commits THEN the system warns that it merges instead, and that a line can be lost where a configuration was committed again with other content ENDIF.
+2. The system reads the sending repository and drops the excluded revisions and the modules that contain the excluded features.
+3. The system VALIDATES THAT the exclusion leaves no unresolved dependencies.
+4. The system VALIDATES THAT the two repositories have no feature of the same name (FR-F6).
+5. The system merges the selection into the receiving repository in one transaction, one merge commit per association.
+6. RESUME STEP 9.
+
+Postcondition: The receiving repository holds the union of both repositories' selected content.
+
 ### UC-13 Serve repository for synchronization
 
 | | |
@@ -961,7 +983,7 @@ Postcondition: Both repositories are unchanged, or this repository reads the plu
 5. The system shows "Server running on port P" with a log.
 6. DO
 7. A remote repository sends a fork, fetch, pull or push request.
-8. The system answers the request, deserializing only allow-listed classes and, for a push, comparing the settings in the transaction that merges the push.
+8. The system answers the request, deserializing only allow-listed classes and, for a push, comparing the settings in the transaction that commits or merges the push.
 9. The system logs the time of the connection and the request.
 10. UNTIL the collaborator stops the server.
 11. The system stops the server.
@@ -1165,12 +1187,12 @@ Postcondition: No remote is stored or changed.
 | FR-F4 | Ubiquitous | ECCO shall not persist revisions when it parses a configuration. | - | `ParseConfigurationPhantomRevisionTest` | |
 | FR-F5a | Unwanted | If a configuration selects two revisions of one feature, by name or by id, then ECCO shall reject it as "selected twice". | UC-3 SA1; UC-5 SA1 | `ConfigurationGrammarTest` | Code REPO:509-516 |
 | FR-F5b | Ubiquitous | ECCO shall read a revision named twice in a configuration as that revision once. | - | `ConfigurationGrammarTest` | |
-| FR-F6 | Unwanted | If a commit or pull would add a feature or revision whose logic variable (`.` and `-` read as `_`) is another's - `shopping-cart` next to `shopping_cart`, `A.B_1` next to `A_B.1`, `A_1` next to `A.1` - then ECCO shall refuse it, because conditions could not tell the two apart. | UC-3 SA1 | `FeatureVariableCollisionTest` | Code `FeatureLiterals.checkDistinct` |
+| FR-F6 | Unwanted | If a commit or pull would add a feature or revision whose logic variable (`.` and `-` read as `_`) is another's - `shopping-cart` next to `shopping_cart`, `A.B_1` next to `A_B.1`, `A_1` next to `A.1` - then ECCO shall refuse it, because conditions could not tell the two apart. A feature of a pull or push of the same name as one here is that feature (FR-D3f), except in a merge (UC-12 SA7), which refuses it too. | UC-3 SA1; UC-12 SA7 | `FeatureVariableCollisionTest` | Code `FeatureLiterals.checkDistinct` |
 | FR-F7a | Ubiquitous | ECCO shall read `[<id>]` in a configuration as the feature's name, in every form (`[<id>]`, `[<id>]'`, `[<id>].<rev>`). | UC-3 B3; UC-5 B2 | `UnknownFeatureIdTest` | |
 | FR-F7b | Unwanted | If `[<id>]` names no existing feature, then ECCO shall reject the configuration. | UC-3 SA1; UC-5 SA1 | `UnknownFeatureIdTest` | |
 | FR-F8 | Unwanted | If a configuration names a feature that starts with `-` and does not exist (`A, -B`), then ECCO shall reject it with a hint to leave the feature out instead. | UC-3 SA1; UC-5 SA1 | `ConfigurationGrammarTest` | Code `ConfigurationParser:173-177` |
 
-FR-F3 can only meet a repository made before FR-F6 (51523c0d): a merge now refuses a second feature of a name, so two cannot arise.
+FR-F3 can only meet a repository made before FR-F6 (51523c0d): a pull or push takes a feature of the same name as the one already there, and a merge refuses it, so two cannot arise.
 
 ### Commit
 
@@ -1191,7 +1213,7 @@ FR-F3 can only meet a repository made before FR-F6 (51523c0d): a merge now refus
 | FR-M7b | Unwanted | If a line of `.adapters` is malformed, then ECCO shall reject it, naming the line. | - | `UnavailableAdapterRoutingTest` | |
 | FR-M8a | Unwanted | If a file cannot be read, then ECCO shall fail the commit instead of committing the file empty. | UC-3 BA1 | `UnreadableFileCommitTest` | |
 | FR-M8b | Unwanted | If the working directory contains a symlink loop, then ECCO shall skip the loop. | - | `SymlinkLoopCommitTest` | |
-| FR-M9 | - | Moved to [NFR-V1](#compatibility-and-evolution) (a commit or merge into a repository of a retired adapter format is refused) and NFR-V2 (it still checks out). | UC-3 B7, SA2; UC-12 B7, SA5 | `CppRoundTripTest` | |
+| FR-M9 | - | Moved to [NFR-V1](#compatibility-and-evolution) (a commit or merge into a repository of a retired adapter format is refused) and NFR-V2 (it still checks out). | UC-3 B7, SA2; UC-12 B6, SA5 | `CppRoundTripTest` | |
 | FR-M10a | Ubiquitous | ECCO shall run a commit in one read-write transaction. | UC-3 B5, B11 | - | Code `CommitService` |
 | FR-M10b | Unwanted | If a commit fails, also with an `Error` such as `OutOfMemoryError`, then ECCO shall roll back its transaction. | UC-3 BA1 | `ErrorRollbackTest` | History 2dc75b70 |
 | FR-M10c | Unwanted | If a listener fails after a transaction is committed, then ECCO shall keep the transaction committed. | - | `ListenerFailureKeepsCommitTest` | Code `ListenerRegistry:76-82` |
@@ -1254,7 +1276,7 @@ FR-K12 holds because a node that only leads to its association's own nodes contr
 | FR-N2 | Ubiquitous | ECCO shall apply a mined constraint only once it is accepted. | UC-8 B3-B5 | `UnacceptedConstraintsTest` | Code `ConstraintMiner` |
 | FR-N3 | Ubiquitous | ECCO shall mine constraints per feature, so that revisions of one feature are never mutually exclusive. | UC-8 B2 | `ConstraintMinerTest` (unit), `SuggestConstraintsCommandTest` | Code `ConfigurationBridge` |
 | FR-N4a | Event | When the product-line engineer accepts or rejects a suggestion, ECCO shall store the decision in the repository and withdraw an opposite decision on the same suggestion. | UC-8 B5, SA2 | `RejectedConstraintsTest` | |
-| FR-N4b | Event | When a fork, pull or push merges two repositories, ECCO shall carry the accepted and rejected constraints over without duplicates, the receiving repository keeping its own decision. | UC-11 B5; UC-12 B8, SA1 | `ConstraintPersistenceMergeTest`, `RejectedConstraintsTest` | |
+| FR-N4b | Event | When a fork, pull or push joins two repositories, ECCO shall carry the accepted and rejected constraints and the feature parents over without duplicates, the receiving repository keeping its own decision. | UC-11 B5; UC-12 B7, SA1, SA7 | `ConstraintPersistenceMergeTest`, `RejectedConstraintsTest` | |
 | FR-N4c | Event | When a repository is opened on a machine that holds rejections kept by an earlier version, ECCO shall move them into the repository, except for suggestions the repository has accepted. | UC-8 SA5 | `RejectedConstraintsTest` | |
 | FR-N5 | State | While re-mining no longer yields an accepted constraint, ECCO shall not trust it. | UC-8 B7, post | `AcceptedConstraintStaleReMineTest` | |
 | FR-N6 | Event | When the product-line engineer accepts, rejects or returns several constraints at once, ECCO shall store them in one transaction and fire one event. | UC-8 B5, SA2, SA3 | `ConstraintBatchAcceptTest` | Code `ConstraintService:84-122`; History 04825b26 |
@@ -1279,19 +1301,26 @@ FR-K12 holds because a node that only leads to its association's own nodes contr
 | FR-D1a | Ubiquitous | ECCO shall accept as a remote address a local path to a repository or its `.ecco` directory, or `host:port` with a hostname, an IPv4 address or a bracketed IPv6 address and a port from 1 to 65535. | UC-11 B2, SA1; UC-16 B2, SA2 | `RemoteAddressTest` | |
 | FR-D1b | Unwanted | If a remote is added or renamed under a name another remote already has, then ECCO shall refuse with "Remote with this name already exists.". | UC-16 B3, SA3 | `UpdateRemoteTest` | Code `RemoteSyncService:106,141` |
 | FR-D2a | Event | When the collaborator forks a remote, ECCO shall create a new repository from the remote and register the remote as `origin`. | UC-11 B5, B8, B9 | `ForkReopenTest` | Code ES:663-800 |
+| FR-D2c | Event | When a fork excludes nothing, ECCO shall copy the remote: its commits with their ids, configurations, dates and messages, its modules and associations with their counts - locally and from a sync server. | UC-11 B7 | `ForkCopyTest`, `ForkThenCommitSearchTest` | History 45f6d9f6, 6b3f2a8e |
 | FR-D2b | Unwanted | If the location of a fork already holds a repository, then ECCO shall refuse the fork with "A repository already exists at the given location" and leave both repositories as they were. | UC-11 B3, SA2 | `ExistingRepositoryRefusalTest` | Code ES:690, ES:791 |
 | FR-D3a | Event | When the collaborator fetches from a remote, ECCO shall read the remote's features and store them with the remote's entry. | UC-12 SA2 | `RemoteSyncCharacterizationTest` | Doc |
-| FR-D3b | Event | When the collaborator pulls from a remote, ECCO shall merge the remote into this repository. | UC-12 B1-B9 | `RemoteSyncCharacterizationTest` | Doc |
-| FR-D3c | Event | When the collaborator pushes to a remote, ECCO shall merge this repository into the remote. | UC-12 SA1 | `RemoteSyncCharacterizationTest` | Doc |
+| FR-D3b | Event | When the collaborator pulls from a remote, ECCO shall commit the remote's commits this repository does not have into it again, after its own and in their order, so that it checks out every configuration as committing them in that order would. | UC-12 B1-B9 | `DivergedSyncTest`, `RepeatedPullTest`, `DivergedSyncSearchTest`, `RemoteSyncCharacterizationTest` | History fe0fe44c |
+| FR-D3c | Event | When the collaborator pushes to a remote, ECCO shall commit this repository's commits the remote does not have into the remote again, after the remote's own and in their order. | UC-12 SA1 | `DivergedSyncTest`, `DivergedSyncSearchTest`, `RemoteSyncCharacterizationTest` | History fe0fe44c |
 | FR-D3d | Unwanted | If a fetch, pull or push names a remote that is not registered, then ECCO shall refuse with "Remote '\<name\>' does not exist.". | UC-12 B2, SA3 | `RemoteSyncCharacterizationTest` | |
-| FR-D4a | Event | When a fork, pull or push excludes feature revisions, ECCO shall drop the features left without revisions and the modules that contain an excluded feature, and keep the rest as it checks out in the source. | UC-11 B7; UC-12 B6, SA1 | `ExcludedRevisionsTest`, `FetchPullLeaveRemoteUnchangedTest` | Doc; Code REPO:887-1075 |
-| FR-D4b | Unwanted | If an exclusion leaves an artifact without an artifact it references, then ECCO shall refuse the fork, pull or push with "Unresolved dependencies in selection.". | UC-11 B6, SA3; UC-12 B5, SA4, SA1 | - | Code REPO `subset`, `DependencyGraph` |
-| FR-D4c | Event | When an exclusion leaves out the feature that brought a file, ECCO shall keep the other features' lines of the file. | - | `ExcludedRevisionsTest` | |
+| FR-D3e | Unwanted | If one of the repositories has merge commits, or the remote is a sync server too old to exchange commits, then ECCO shall merge the repositories as before, and warn that it does. | UC-11 SA4; UC-12 SA7 | `DivergedSyncTest`, `ForkCopyTest` (older server) | Code `RemoteSyncService` |
+| FR-D3f | Event | When a pull or push commits a commit whose configuration names a feature by a name the receiving repository has, ECCO shall take it as that feature, adding the revision if the feature lacks it. | UC-12 B8, SA1 | `SmallRefusalsTest` | Code `Repository#adoptConfiguration` |
+| FR-D4a | Event | When a fork, pull or push excludes feature revisions, ECCO shall leave out every commit whose configuration holds an excluded revision, and keep the others as committed in the source. | UC-11 B6; UC-12 B5, SA1 | `ExcludedRevisionsTest`, `NetworkSyncSharedFileTest`, `FetchPullLeaveRemoteUnchangedTest` | History fe0fe44c |
+| FR-D4b | Unwanted | If, in a merge, an exclusion leaves an artifact without an artifact it references, then ECCO shall refuse the fork, pull or push with "Unresolved dependencies in selection.". | UC-11 SA4, SA3; UC-12 SA7, SA4 | - | Code REPO `subset`, `DependencyGraph` |
+| FR-D4c | Event | When a merge's exclusion leaves out the feature that brought a file, ECCO shall keep the other features' lines of the file. | UC-11 SA4; UC-12 SA7 | `ExcludedRevisionsTest` | |
+| FR-D4d | Event | When a merge (UC-11 SA4, UC-12 SA7) excludes feature revisions, ECCO shall drop the features left without revisions and the modules that contain an excluded feature, and keep the rest as it checks out in the source. | UC-11 SA4; UC-12 SA7 | - | Code REPO `subset` |
+
+FR-D4a leaves out whole commits: a line only commits with an excluded revision held - also one of another feature, committed together with it - is not in the result. Excluding the only revision of a feature every commit has gives an empty fork.
 
 FR-D4b is reachable only through a cross reference between artifacts (`Artifact#getUses`), which no adapter in use records (only the retired Java 6/8 readers did): `subset()` copies each association's tree whole, so a line never loses its file (FR-D4c).
 | FR-D5 | - | Moved to [NFR-R3](#reliability-and-data-integrity) (a fork or pull, reopened, checks out what the source does). | UC-11 post; UC-12 post | `ForkReopenTest` | |
 | FR-D6a | Unwanted | If the sync server is started while it is running, then ECCO shall refuse with "Server is already running.". | UC-13 B3, SA1 | `SmallRefusalsTest` | Code `RemoteSyncService:240` |
 | FR-D6b | Event | When the sync server deserializes a request, it shall accept only allow-listed classes. | UC-13 B8 | `RemoteSyncServerHardeningTest` | Code `SyncObjectStreams` |
+| FR-D6e | Ubiquitous | The sync server shall answer the requests `SETTINGS`, `MERGE_SETTINGS`, `FETCH`, `CLONE` (the repository as stored, for a fork excluding nothing), `COMMIT_IDS` (the ids of its commits and whether it has merge commits), `PULL_COMMITS` (the commits a client lacks, as a repository of their own, or `MERGE`), `PUSH_COMMITS` (commits to commit after its own) and, for older clients, `PULL` and `PUSH`. | UC-13 B7, B8 | `ForkCopyTest`, `DivergedSyncTest`, `SyncProtocolHardeningTest`, `NetworkSyncSharedFileTest` | Code `RemoteSyncService` |
 | FR-D6c | Unwanted | If the sync server receives a request it cannot read, also one nested too deeply, then it shall drop that request and keep serving. | - | `SyncProtocolHardeningTest` | |
 | FR-D6d | Unwanted | If the sync server's channel closes other than by stopping the server - its thread interrupted, say - then the server shall stop instead of accepting on. | - | `RemoteSyncServerHardeningTest` | Code `RemoteSyncService#startServer` |
 | FR-D7 | Ubiquitous | ECCO shall leave the remote repository unchanged by a fork, fetch or pull, also when revisions are excluded or the operation fails. | UC-11 post; UC-12 post, SA2-SA5 post, BA1 post | `ForkLeavesOriginUnchangedTest`, `FetchPullLeaveRemoteUnchangedTest` | |
@@ -1496,7 +1525,7 @@ None of these were written as targets; they are recovered from refusals in the c
 | NFR-R1c | Unwanted | If a pack the core lists is missing, then ECCO shall refuse to open the repository, reporting it as damaged. | UC-2 B5 | `ArtifactPackTest` | Code `SerTransactionStrategy` |
 | NFR-R1d | Unwanted | If a pack's digests entry is missing or cut short, then ECCO shall still open the pack. | - | `ArtifactPackTest` | Code `SerTransactionStrategy` |
 | NFR-R2 | Ubiquitous (design constraint) | ECCO shall not rely on per-file fsync for durability; atomicity comes from the roll-forward journal. | - | - | History: fsync measured ~10x slower (112 s vs 10.6 s, 21k artifacts) and rejected |
-| NFR-R3 | Event | When a repository is closed, reopened and checked out after a commit, ECCO shall reproduce exactly what was committed - for repositories, forks and pulls alike (a fork or pull checks out what its source does), also when they exclude revisions. | UC-3 post; UC-11 post; UC-12 post | `CommitCheckoutTest`, `ForkReopenTest`, `ReopenEquivalenceTest`, `ExcludedRevisionsTest` | History 2c299089, 09fa089a |
+| NFR-R3 | Event | When a repository is closed, reopened and checked out after a commit, ECCO shall reproduce exactly what was committed - for repositories, forks and pulls alike (a fork checks out what its source does; a fork excluding revisions, a pull or a push what committing their commits in order does), also when they exclude revisions. | UC-3 post; UC-11 post; UC-12 post | `CommitCheckoutTest`, `ForkReopenTest`, `ReopenEquivalenceTest`, `ExcludedRevisionsTest`, `DivergedSyncTest` | History 2c299089, 09fa089a |
 | NFR-R4 | Ubiquitous | ECCO shall keep distinct artifacts with equal content distinct through persistence. | - | `EqualContentArtifactsTest` | History c288ed2d, da14de14 |
 | NFR-R5 | Ubiquitous | ECCO shall surface errors instead of dropping them: a missing association a commit refers to is reported instead of skipped, and a failed load reports its real cause (rollbacks: FR-M10c). | - | `SerCommitDanglingAssociationTest`, `ErrorMaskingRollbackTest` | History c6bb7561 |
 | NFR-R6 | Ubiquitous (design constraint) | ECCO shall not prune associations at write time, which loses data on fork-and-merge. | - | - | History (reproduced, closed) |
@@ -1539,7 +1568,7 @@ Partial-order-graph alignment considers every ordering of a graph's concurrent u
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | NFR-V1a | Unwanted | If a repository is in an older or retired format, then ECCO shall refuse it with an explanation, never fail with an exception or misread it. | UC-2 B4, SA4 | `OldStorageFormatTest` | Code tree-format checks; History ff3c5dfe |
-| NFR-V1b | Unwanted | If a repository holds artifacts of a retired adapter format, or unordered artifacts whose data requires order, then ECCO shall refuse a commit or merge into it. | UC-3 B7, SA2; UC-12 B7, SA5 | `CppRoundTripTest` | Code `ArtifactData#retiredFormat`, `Repository#checkArtifactFormats` |
+| NFR-V1b | Unwanted | If a repository holds artifacts of a retired adapter format, or unordered artifacts whose data requires order, then ECCO shall refuse a commit or merge into it. | UC-3 B7, SA2; UC-12 B6, SA5 | `CppRoundTripTest` | Code `ArtifactData#retiredFormat`, `Repository#checkArtifactFormats` |
 | NFR-V2 | State | While a repository holds data of an adapter's older tree format, ECCO should still check it out. | - | `CppRoundTripTest`, `LegacyCppWriterTest` | History d9ce686c (C++) |
 | NFR-V3a | Ubiquitous | A build shall read the current storage layout only. | - | - | History 6dc69da5 |
 | NFR-V3b | Unwanted | If a repository is in an older storage layout (a file per association or artifact, the artifact index in the core), then ECCO shall refuse to open it with a message naming the version that converts it. | UC-2 B4, SA4 | `OldStorageFormatTest` | Code SR `isCurrentLayout`; History 4473766d |
@@ -1580,7 +1609,6 @@ Requirements the code does not meet, places where the documentation and the code
 | 8 | Remote sync is unauthenticated; the REST server has hard-coded demo users with plaintext passwords and a default JWT secret, and its roles are never checked. | README; `rest/.../DummyUserDB`, `application.yml` | Security limitation - **hardened 2026-10-03**: the JWT secret key in `application.yml` was misspelled, so tokens were unsigned and a forged unsigned token was accepted for any user - fixed; the server refuses to start without a real secret and a users file (PBKDF2 hashes) outside development mode; the GUI confirms before syncing with other machines. Still open by choice: sync authentication, role checks Next: sync authentication and role checks when the server is used beyond trusted networks. |
 | 55 | Image adapter limits found by its round-trip tests: 16-bit images are stored with 8 bits per channel; transparent pixels lose their colour (transparent white becomes transparent black); interlaced GIFs 2-4 rows high are read with shifted rows (a JDK bug); grayscale pixels committed before 2026-10-14 are stored brightened (gray taken as linear) - a checkout combining such commits with later ones can mix brightened and true gray levels in one image, and the adapter's format is not versioned, so nothing refuses it (re-commit the variants). | `ImageReader`, `ImageUtil` | Limitations - noted 2026-10-14; `ImageRoundTripTest` A truncated JPEG, committed without an error (the decoder filled in the rest), is refused since 2026-10-15 - an image the decoder reads with warnings is stored whole by the file adapter (`ImageRoundTripTest`). Next: 16-bit channels would need another pixel format (a format change). |
 | 56 | Repositories committed with the first C++ format (checkout-only): a `case` on its own line loses the block under it when another variant has a same-line `case` (`CaseBlockArtifactData.equals` ignores `sameline`) - inherited from that adapter, the old build checks out the same. | `LegacyCppWriter` | Data loss in retired data - noted 2026-10-14; `LegacyCppWriterTest` (disabled case) Next: none unless such a repository is in use - fixing it would change how old repositories check out. |
-| 84 | A fork's checkouts are the files of its origin's - also after the same further commits in both - but its warnings are not: `subset()` copies only the module revisions an association's condition names, with flattened counts, so the fork no longer knows an interaction it never needs for a condition was committed, and warns MISSING for it with the advice to commit it (A's first revision alone, committed in the origin, after A' and B). The origin, in turn, warns SURPLUS for A with a trace id even for a configuration committed exactly so. Content is unaffected (checked for every combination of A, B, C and of A's two revisions, before and after further commits). | `Repository#subset`, `#merge`; `CheckoutService` warnings | Misleading warnings - to decide: carrying the counted module revisions over in `subset()` and `merge()` is a core change |
 
 ### Closed gaps
 
@@ -1666,6 +1694,10 @@ Fixed, done another way, resolved, or settled by a decision - in the order they 
 | 81 | A configuration naming a revision that does not exist reads it as a new revision (FR-F2b): a checkout of `A.1` - not an id - writes nothing of A, without an error, while an exclusion naming it is refused ("Feature revision with id does not exist"). Found writing `ExcludedRevisionsTest`. | `ConfigurationParser#parseConfigurationString`, `#parseFeatureRevisionsString` | Usability - closed 2026-10-21: a checkout refuses it, naming it (FR-K13) |
 | 85 | Git import lists every commit reachable from HEAD in commit-time order (`git log`), not the first-parent line: for a history with merges it imports the commits of merged branches interleaved with the main line, each a whole snapshot, so features switch back and forth between branch states. The diffs are taken against the first parent. The recovered requirement (FR-G1b) and UC-10 step 3 said "along first parents" - they now say what the code does. | `GitHistoryReader#listCommits` | Behaviour - fixed 2026-10-21: `listCommits` walks HEAD's first parents (`RevWalk#setFirstParent`); FR-G1b and UC-10 step 3 say so again |
 | 66 | Functional requirements no use case realizes: FR-L5; FR-F4, FR-F5b; FR-M3b, FR-M6b/c, FR-M7b, FR-M8b, FR-M10c/d, FR-M11b/c, FR-M12b; FR-K2b, FR-K3c, FR-K7c/d, FR-K10c; FR-D1b (no use case registers a remote), FR-D6c; FR-P2a; and IF-G3f/g (importing tagged commits only, which UC-10 does not describe). | [Functional requirements](#functional-requirements), column *Use case* | Traceability - accepted 2026-10-21: what is left are rules no user scenario shows on its own - refusals and guards inside a step (FR-M3b, FR-M7b, FR-M8b), storage and reading internals (FR-M6b/c, FR-M10c/d, FR-M11b/c, FR-P2a, FR-K2b, FR-K3c, FR-K7c/d, FR-K10c) and rules every configuration or session obeys (FR-L5, FR-F4, FR-F5b, FR-M12b, FR-D6c). FR-D1b got UC-16, IF-G3f/g UC-10 SA10. |
-| 67 | Functional requirements no acceptance test checks: FR-L2 for `init` (only a failed fork is tested), FR-L4a (no way to configure the storage plugin from a test);  FR-M1 (only by tests that commit on the way), FR-M10a; FR-K5e (unreachable, see the note under the checkout requirements), FR-K7d, FR-K10c;  FR-D4b (reachable only through cross references), FR-D8d; FR-G3c; FR-P2a. | [Functional requirements](#functional-requirements), column *Acceptance test* | Traceability - accepted 2026-10-21: the rest are structural and run by every test that commits or opens (FR-M1, FR-M10a, FR-P2a), unreachable with the adapters and settings in use (FR-K5e, FR-D4b), would need fault injection, old data or an old server (FR-K7d, FR-K10c, FR-D8d, FR-L2 for init, FR-L4a), or a GUI decision the import tests go through (FR-G3c). |
+| 67 | Functional requirements no acceptance test checks: FR-L2 for `init` (only a failed fork is tested), FR-L4a (no way to configure the storage plugin from a test);  FR-M1 (only by tests that commit on the way), FR-M10a; FR-K5e (unreachable, see the note under the checkout requirements), FR-K7d, FR-K10c;  FR-D4b (reachable only through cross references), FR-D4d (a merge excluding revisions needs a repository with merge commits), FR-D8d; FR-G3c; FR-P2a. | [Functional requirements](#functional-requirements), column *Acceptance test* | Traceability - accepted 2026-10-21: the rest are structural and run by every test that commits or opens (FR-M1, FR-M10a, FR-P2a), unreachable with the adapters and settings in use (FR-K5e, FR-D4b), would need fault injection, old data or an old server (FR-K7d, FR-K10c, FR-D4d, FR-D8d, FR-L2 for init, FR-L4a), or a GUI decision the import tests go through (FR-G3c). |
 | 68 | Functional requirements checked only on one class or only through the GUI: FR-K2b (cycles only), FR-K6 (unreachable, see the note under the checkout requirements); FR-G2a-c (extracting a Git tree), FR-G3a. | Tests marked *(unit)* or *(GUI)* | Traceability - accepted 2026-10-21: one class is the right level for extracting a Git tree and building the LLM request (FR-G2a-c, FR-G3a) and for the order graph's own check (FR-K2b); FR-K6 cannot be reached (see the note under the checkout requirements). |
 | 77 | Adapter, interface and non-functional requirements no acceptance test checks: AD-1a, AD-2a/b, AD-9c; IF-C4b, IF-C7, IF-G3a, IF-G3d, IF-G4, IF-G7, IF-G8a, IF-R1b; NFR-V3a. No test checks a performance requirement's time. (The design constraints NFR-R2, NFR-R6, NFR-B5 and the build requirements NFR-B1, NFR-B2, NFR-B4 are not for acceptance tests; 45 of the 115 rows have no use case, mostly cross-cutting ones - adapter contract, concurrency, build - that no single scenario realizes.) | [Artifact adapter](#artifact-adapter-requirements), [interface](#interface-requirements) and [non-functional requirements](#non-functional-requirements) | Traceability - accepted 2026-10-21: the rest are structural and run by every test (AD-1a, AD-2a/b, NFR-V3a), depend on the machine (AD-9c: a Python module installed while ECCO runs), are checked by the build (IF-C7), or are GUI and REST details whose breaking shows at once (IF-G3a, IF-G3d, IF-G4, IF-G7, IF-G8a, IF-R1b); performance has recorded baselines, no timing tests - they fail at random on a laptop. IF-C3b, IF-C4a/b and IF-C5b got tests. |
+| 84 | A fork's checkouts are the files of its origin's - also after the same further commits in both - but its warnings are not: `subset()` copies only the module revisions an association's condition names, with flattened counts, so the fork no longer knows an interaction it never needs for a condition was committed, and warns MISSING for it with the advice to commit it (A's first revision alone, committed in the origin, after A' and B). The origin, in turn, warns SURPLUS for A with a trace id even for a configuration committed exactly so. Content is unaffected (checked for every combination of A, B, C and of A's two revisions, before and after further commits). | `Repository#subset`, `#merge`; `CheckoutService` warnings | Misleading warnings - closed 2026-10-27: a fork excluding nothing copies its origin, counts included (FR-D2c, 45f6d9f6), and one excluding revisions commits the remaining commits again (FR-D4a), so both warn as committing does; `subset()`, still used by a merge, takes the remaining modules too (`ForkModulesTest`) |
+| 86 | A pull or push of histories that diverged after a fork lost lines no order of the same commits loses: `subset()` rebuilt each association's counts from its condition, once, so an observation that was not part of the condition (a line also in a commit of B and E, its condition B) was lost, and a merge added the history both shared twice - "B, E" checked out "e0" in both repositories, committed in order it is "b0 e0" (a random search found 33 of 200 histories wrong; a real one, 3 of 6 configurations). Pulling twice counted everything again. Exact counts in `subset()` were measured and rejected: still wrong where the shared history is counted twice, and 1.9 million counters for fer. | `Repository#subset`, `#merge`; `RemoteSyncService` | Bug - fixed 2026-10-27: a fork copies its origin's commits (FR-D2c), and pull and push commit the other side's missing commits again, after the receiver's own (FR-D3b/c, fe0fe44c); `DivergedSyncTest`, `RepeatedPullTest`, `DivergedSyncSearchTest`. Repositories with merge commits still merge (FR-D3e) |
+| 87 | A feature made after a fork on both sides with the same name was refused by a pull ("Rename one of each"), as if it were two features whose variables collide (FR-F6) - found on fer. | `FeatureLiterals#checkDistinct` in `Repository#merge` | Behaviour - decided 2026-10-27: a feature of one name is one feature in a pull or push (FR-D3f), its revisions joined; a merge (FR-D3e) still refuses it |
+| 88 | A copy of an order graph (`PartialOrderGraph.Op#copy`) kept its edges but not the order of every node's neighbours, which alignment walks: in a fork of tinycc, the next commit matched two equal lines (two "}") the other way round and lost one that the same commit into the origin kept. Forks, pulls and pushes copy order graphs. | `PartialOrderGraph.Op#copy` | Bug - fixed 2026-10-27 (fae42176): the copy keeps the original's neighbour order; `PartialOrderGraphCopyTest`, `ForkThenCommitSearchTest` |

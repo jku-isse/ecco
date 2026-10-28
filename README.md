@@ -133,10 +133,11 @@ Checkouts show their warnings in the GUI: missing feature interactions, surplus 
 
 ## Distributed Operations
 
-Repositories exchange features, not whole histories: every distributed operation can exclude feature revisions.
+Repositories exchange commits: every distributed operation can exclude feature revisions, and then leaves out every commit whose configuration holds one of them - with the lines only those commits held, also other features' lines committed together with them.
 
-* `fork <remote>` creates a new repository from another one, e.g. `ecco fork --exclude "Video.3f2a9c1" ../shop`.
-* `fetch` reads a remote's features; `pull` and `push` merge a remote's repository into this one, or this one into the remote's.
+* `fork <remote>` creates a new repository from another one, e.g. `ecco fork --exclude "Video.3f2a9c1" ../shop`. Excluding nothing, it is a copy of the remote, commits included.
+* `fetch` reads a remote's features; `pull` commits the remote's commits this repository does not have into it, after its own, and `push` this repository's commits into the remote, after the remote's own. Afterwards a repository checks out every configuration as committing the same commits in that order would, and pulling again changes nothing. A feature of the same name on both sides is one feature.
+* A repository forked, pulled or pushed to by an older ECCO version holds merge commits, which cannot be committed again; with it, and with a server of an older version, `pull` and `push` merge the repositories as that version did, and warn: a merge can lose a line where a configuration was committed again with other content.
 
 ![Distributed Operations](doc/distributed_operations.png "Distributed Operations")
 

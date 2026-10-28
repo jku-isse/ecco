@@ -179,6 +179,17 @@ final class SyncHistory {
         }
     }
 
+    /** pulls from, then pushes to, a server serving [other] over a loopback socket */
+    static void pullAndPushOverTheNetwork(Path repository, Path other) throws Exception {
+        withServer(other, port -> {
+            try (EccoService service = open(repository)) {
+                service.addRemote("server", "localhost:" + port, Remote.Type.REMOTE);
+                service.pull("server");
+                service.push("server");
+            }
+        });
+    }
+
     /** a.txt as checked out for the configuration */
     static String checkout(Path repository, String configuration, Path dir) throws Exception {
         Files.createDirectories(dir);

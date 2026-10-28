@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+  * **Pull and push exchange commits**: a repository after a pull or push is one with the same commits made in order - its own first, then the other side's it did not have (FR-D3b/c). A pull or push of histories that diverged after a fork lost lines no order of the commits loses - "B, E" checked out "e0" where committing in order gives "b0 e0" (gap #86) - and a second pull counted everything again.
+    - **Fork** of everything copies its origin - commits with their ids, configurations, dates and messages, modules and associations with their counts - locally and from a server (new request `CLONE`); a fork excluding revisions commits the origin's remaining commits again (FR-D2c).
+    - **Pull and push** ask for the ids of the other side's commits (`COMMIT_IDS`) and send only those missing (`PULL_COMMITS`, `PUSH_COMMITS`), which the receiver commits again after its own; accepted and rejected constraints and feature parents come along.
+    - **Excluding revisions leaves out every commit that holds one** (FR-D4a), in fork, pull and push: lines only those commits held go too, also other features' lines committed with them. Before, the excluded feature's modules were dropped and the rest kept.
+    - **A feature made on both sides with the same name** is one feature (FR-D3f) - the pull was refused (gap #87).
+    - **Repositories with merge commits** - forked, pulled or pushed to by an older version - and **servers of an older version** merge as before, with a warning (FR-D3e).
+    - **Order graphs copied** keep every node's neighbours in order: a fork of tinycc lost a "}" in its next commit where the origin kept it (gap #88). The warnings a fork gives are its origin's (gap #84).
+    - `DivergedSyncTest`, `RepeatedPullTest`, `ForkCopyTest`, `ReplayTest`, `PartialOrderGraphCopyTest`; random searches `DivergedSyncSearchTest`, `ReplaySearchTest`, `ForkThenCommitSearchTest`. Checked on fer, tinycc, javatasktracker and zip4j, locally and over a socket.
+
   * **Smaller review items**:
     - Python and TypeScript files render the file shown and another when its tab is first selected - every file was rendered on every click, for TypeScript a writer's run each (`SourceSpanViewerTest`).
     - The code viewers compute the details shown for a line's association once, not for every line the mouse crosses.
