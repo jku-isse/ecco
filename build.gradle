@@ -54,6 +54,12 @@ subprojects {
 	}
 
 	sourceSets {
+		// MemoryPreferencesFactory: tests keep their preferences in memory, not the user's
+		test {
+			java {
+				srcDir rootProject.file('gradle/test-support/java')
+			}
+		}
 		integrationTest {
 			java {
 				compileClasspath += main.output + test.output
@@ -120,6 +126,8 @@ subprojects {
 
 	tasks.withType(Test) {
 		reports.html.outputLocation = reporting.baseDirectory.dir(name)
+		// preferences in memory, not the user's: recent repositories, disabled adapters (MemoryPreferencesFactory)
+		systemProperty 'java.util.prefs.PreferencesFactory', 'at.jku.isse.ecco.test.MemoryPreferencesFactory'
 		// a commit skips serializing the artifacts that cannot have changed (gap #49); in tests it
 		// serializes them anyway and fails if one changed without being marked - see
 		// SerTransactionStrategy#VERIFY_UNCHANGED_ARTIFACTS
