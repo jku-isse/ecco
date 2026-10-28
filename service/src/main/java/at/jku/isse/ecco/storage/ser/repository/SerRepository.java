@@ -95,6 +95,13 @@ public final class SerRepository implements Repository, Repository.Op {
 	private transient Map<String, Integer> currentPerPack;
 	// each pack's number of entries (to tell when it is mostly superseded)
 	private Map<String, Integer> packSizes = new HashMap<>();
+	// the same in bytes, as serialized - counted when read or written, not stored: an artifact's
+	// bytes, each pack's current bytes and all bytes written into it. One whole file with its order
+	// graph outweighs thousands of lines: counting artifacts kept a pack 99.6% current by count and
+	// 40% by bytes, and tinycc's packs held 6 MB of superseded files
+	private transient Map<String, Integer> artifactBytes;
+	private transient Map<String, Long> currentBytesPerPack;
+	private transient Map<String, Long> packBytes;
 	// identity-keyed (Collections.newSetFromMap(new IdentityHashMap<>()), same pattern
 	// Trees.java's newIdentitySet() already uses for the same reason): SerArtifact.equals()/
 	// hashCode() are deliberately data-based (Trees.slice() relies on it), so a plain
@@ -236,17 +243,40 @@ public final class SerRepository implements Repository, Repository.Op {
 		return this.livePacks == null ? null : this.livePacks.get(artifactId);
 	}
 
-	/** Records that [pack] holds the current copy of an artifact, superseding the one it had. */
-	public void setArtifactPack(String artifactId, String pack) {
+	/** Records that [pack] holds the current copy of an artifact, of [bytes] serialized, superseding the one it had. */
+	public void setArtifactPack(String artifactId, String pack, int bytes) {
 		if (this.livePacks == null) {
 			this.livePacks = new HashMap<>();
 			this.currentPerPack = new HashMap<>();
+			this.artifactBytes = new HashMap<>();
+			this.currentBytesPerPack = new HashMap<>();
 		}
 		this.liveArtifactIds().add(artifactId);
 		String before = this.livePacks.put(artifactId, pack);
-		if (before != null)
+		Integer bytesBefore = this.artifactBytes.put(artifactId, bytes);
+		if (before != null) {
 			this.currentPerPack.merge(before, -1, Integer::sum);
+			this.currentBytesPerPack.merge(before, -(long) (bytesBefore == null ? 0 : bytesBefore), Long::sum);
+		}
 		this.currentPerPack.merge(pack, 1, Integer::sum);
+		this.currentBytesPerPack.merge(pack, (long) bytes, Long::sum);
+	}
+
+	/** The serialized bytes of an artifact's current copy (0 if it has none). */
+	public int artifactBytes(String artifactId) {
+		return this.artifactBytes == null ? 0 : this.artifactBytes.getOrDefault(artifactId, 0);
+	}
+
+	/** The serialized bytes of the artifacts [pack] holds the current copy of. */
+	public long currentBytes(String pack) {
+		return this.currentBytesPerPack == null ? 0 : this.currentBytesPerPack.getOrDefault(pack, 0L);
+	}
+
+	/** Pack file -> the serialized bytes of all artifacts written into it (not stored: counted when read or written). */
+	public Map<String, Long> getPackBytes() {
+		if (this.packBytes == null)
+			this.packBytes = new HashMap<>();
+		return this.packBytes;
 	}
 
 	/** How many artifacts [pack] holds the current copy of. */
@@ -276,6 +306,7 @@ public final class SerRepository implements Repository, Repository.Op {
 	public void dropEmptyPacks() {
 		this.packOrder.removeIf(pack -> this.currentArtifacts(pack) == 0);
 		this.getPackSizes().keySet().retainAll(this.getPackOrder());
+		this.getPackBytes().keySet().retainAll(this.getPackOrder());
 	}
 
 	/** Pack file -> the number of artifacts written into it. */

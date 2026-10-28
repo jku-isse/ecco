@@ -67,6 +67,44 @@ public class ArtifactPackTest {
         assertEquals("version 30\n" + text, checkout(repoDir, work.resolve("out"), "A.30"));
     }
 
+    /**
+     * A pack is compacted once most of its BYTES are superseded, not only once most of its artifacts
+     * are: a file's own artifact holds its order graph, a node per line, and is written again by every
+     * commit that changes the file - in tinycc 324 such copies, 0.2% of the artifacts, were 6 MB of
+     * 25 MB, every pack still current by count. Reopened, each pack holds at least half its bytes current.
+     */
+    @Test
+    @Timeout(180)
+    public void aPackIsCompactedOnceMostOfItsBytesAreSuperseded() throws Exception {
+        Path work = Files.createTempDirectory("artifact-packs-bytes");
+        Path repoDir = work.resolve(".ecco");
+        Path content = Files.createDirectories(work.resolve("content"));
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < 400; i++)
+            text.append(i % 7 == 0 ? "}" : "x").append('\n');
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repoDir);
+            service.init();
+            service.setBaseDir(content);
+            for (int c = 1; c <= 12; c++) {
+                // one line more each time: the file's artifact and its order graph are written again
+                text.append("line ").append(c).append('\n');
+                Files.writeString(content.resolve("f.txt"), text.toString());
+                service.commit("c" + c, "A." + c);
+            }
+        }
+
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repoDir);
+            service.open();
+            at.jku.isse.ecco.storage.ser.repository.SerRepository repository = (at.jku.isse.ecco.storage.ser.repository.SerRepository) service.getRepository();
+            for (String pack : repository.getPackOrder())
+                assertTrue(repository.currentBytes(pack) * 2 >= repository.getPackBytes().get(pack),
+                        pack + ": " + repository.currentBytes(pack) + " of " + repository.getPackBytes().get(pack) + " bytes current");
+        }
+        assertEquals(text.toString(), checkout(repoDir, work.resolve("out"), "A.12"));
+    }
+
     @Test
     @Timeout(120)
     public void aPackLeftByACrashedWriteIsDeleted() throws Exception {

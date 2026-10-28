@@ -28,6 +28,8 @@ import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import com.google.common.io.CountingInputStream;
+
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.MAX_PACKS;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.PACK_PREFIX;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.PACK_SUFFIX;
@@ -116,15 +118,21 @@ final class ArtifactPackStore {
 			if (artifactsEntry == null)
 				throw new EccoException("The artifact pack " + packName + " has no " + PACK_ARTIFACTS_ENTRY + " - the repository is damaged.");
 			byte[] digests = packDigests(zip, packName);
-			try (ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(zip.getInputStream(artifactsEntry), 1 << 16))) {
+			// counted below the stream: an artifact's bytes are what the stream read for it - give or
+			// take what it reads ahead, which the next artifact's count makes up, so a pack's sum is exact
+			CountingInputStream counted = new CountingInputStream(new BufferedInputStream(zip.getInputStream(artifactsEntry), 1 << 16));
+			try (ObjectInputStream ois = new ObjectInputStream(counted)) {
 				int count = ois.readInt();
+				long before = counted.getCount();
 				for (int i = 0; i < count; i++) {
 					SerArtifact<?> artifact = (SerArtifact<?>) ois.readObject();
 					String id = artifact.getStorageId();
 					loadedById.put(id, artifact);
-					repo.setArtifactPack(id, packName);
+					repo.setArtifactPack(id, packName, (int) (counted.getCount() - before));
+					before = counted.getCount();
 					this.recordDigest(id, digests, i);
 				}
+				repo.getPackBytes().put(packName, before);
 			}
 		}
 	}
@@ -195,12 +203,15 @@ final class ArtifactPackStore {
 			staged.put(id, digest);
 		}
 
-		// how many current artifacts each pack keeps once the new one supersedes those it holds
+		// how many current artifacts, and bytes of them, each pack keeps once the new one supersedes those it holds
 		Map<String, Integer> superseded = new HashMap<>();
+		Map<String, Long> supersededBytes = new HashMap<>();
 		for (String id : entries.keySet()) {
 			String pack = repo.getArtifactPack(id);
-			if (pack != null)
+			if (pack != null) {
 				superseded.merge(pack, 1, Integer::sum);
+				supersededBytes.merge(pack, (long) repo.artifactBytes(id), Long::sum);
+			}
 		}
 		Map<String, Integer> currentAfter = new HashMap<>();
 		for (String pack : repo.getPackOrder())
@@ -210,7 +221,13 @@ final class ArtifactPackStore {
 			int current = currentAfter.get(pack);
 			if (current <= 0)
 				continue;
-			if (StorageFiles.keepsPack(current, repo.getPackSizes().getOrDefault(pack, current)) || !this.repack(repo, this.stillCurrent(repo, pack, entries), entries, staged))
+			// by bytes: a pack is mostly superseded when most of its bytes are - a few whole files
+			// written again weigh more than thousands of lines that were not
+			Long written = repo.getPackBytes().get(pack);
+			boolean keeps = written != null && written > 0
+					? StorageFiles.keepsPack(repo.currentBytes(pack) - supersededBytes.getOrDefault(pack, 0L), written)
+					: StorageFiles.keepsPack(current, repo.getPackSizes().getOrDefault(pack, current));
+			if (keeps || !this.repack(repo, this.stillCurrent(repo, pack, entries), entries, staged))
 				kept.add(pack);
 		}
 		// every write adds a pack: once there are too many, the smallest are merged into the new one
@@ -219,11 +236,16 @@ final class ArtifactPackStore {
 
 		if (!entries.isEmpty()) {
 			String packName = PACK_PREFIX + newId + PACK_SUFFIX;
-			writePack(repo, entries, this.dir.resolve(packName));
-			for (String id : entries.keySet())
-				repo.setArtifactPack(id, packName);
+			Map<String, Integer> lengths = writePack(repo, entries, this.dir.resolve(packName));
+			long packBytes = 0;
+			for (String id : entries.keySet()) {
+				int length = lengths.get(id);
+				repo.setArtifactPack(id, packName, length);
+				packBytes += length;
+			}
 			repo.addPack(packName);
 			repo.getPackSizes().put(packName, entries.size());
+			repo.getPackBytes().put(packName, packBytes);
 		}
 		// packs nothing is current in anymore leave the order (their files go once committed)
 		repo.dropEmptyPacks();
@@ -256,7 +278,12 @@ final class ArtifactPackStore {
 	 * artifacts without serializing everything it loaded. The first packs held one entry per artifact
 	 * instead; they are still read.
 	 */
-	private static void writePack(SerRepository repo, Map<String, byte[]> entries, Path pack) throws IOException {
+	private static Map<String, Integer> writePack(SerRepository repo, Map<String, byte[]> entries, Path pack) throws IOException {
+		// each artifact's bytes in the stream, counted as reading the pack counts them (readOrderedPack):
+		// its own serialization repeats the class descriptions the stream writes once - 400 lines of a
+		// file looked like 200 KB beside the file's own 45 KB, and a pack 37% current like one 82% current
+		Map<String, Integer> lengths = new HashMap<>();
+		long[] written = {0};
 		StorageFiles.writeZip(pack, zos -> {
 				zos.putNextEntry(new ZipEntry(PACK_ARTIFACTS_ENTRY));
 				// serialized straight into the compressed entry: it was serialized into memory first, a
@@ -265,6 +292,7 @@ final class ArtifactPackStore {
 					@Override
 					public void write(byte[] b, int off, int len) throws IOException {
 						this.out.write(b, off, len);
+						written[0] += len;
 					}
 
 					@Override
@@ -273,8 +301,14 @@ final class ArtifactPackStore {
 					}
 				});
 				out.writeInt(entries.size());
-				for (String id : entries.keySet())
+				out.flush();
+				long before = written[0];
+				for (String id : entries.keySet()) {
 					out.writeObject(repo.getArtifact(id));
+					out.flush();
+					lengths.put(id, (int) (written[0] - before));
+					before = written[0];
+				}
 				out.close();
 				zos.closeEntry();
 				zos.putNextEntry(new ZipEntry(PACK_DIGESTS_ENTRY));
@@ -282,6 +316,7 @@ final class ArtifactPackStore {
 					zos.write(digest);
 				zos.closeEntry();
 		});
+		return lengths;
 	}
 
 	/** A digest of an artifact's own serialization - the first half of its SHA-256, to keep packs small. */

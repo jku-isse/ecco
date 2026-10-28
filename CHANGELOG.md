@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+  * **Artifact packs are compacted by bytes**: a pack is rewritten once less than half of its bytes are still current - it was once less than half of its artifacts were. A file's own artifact holds its order graph, a node per line, and every commit changing the file writes it again: in tinycc 324 such copies, 0.2% of the artifacts, were about 6 MB of the 25 MB of packs, and every pack was still current by count. An artifact's bytes are what it takes in its pack's stream, counted when a pack is read or written - nothing more is stored, the format is unchanged. On a copy of tinycc two commits leave 23.6 MB of packs instead of 25.8 MB, in the same time, with every configuration checked out as before (`ArtifactPackTest`).
+
   * **Pull and push exchange commits**: a repository after a pull or push is one with the same commits made in order - its own first, then the other side's it did not have (FR-D3b/c). A pull or push of histories that diverged after a fork lost lines no order of the commits loses - "B, E" checked out "e0" where committing in order gives "b0 e0" (gap #86) - and a second pull counted everything again.
     - **Fork** of everything copies its origin - commits with their ids, configurations, dates and messages, modules and associations with their counts - locally and from a server (new request `CLONE`); a fork excluding revisions commits the origin's remaining commits again (FR-D2c).
     - **Pull and push** ask for the ids of the other side's commits (`COMMIT_IDS`) and send only those missing (`PULL_COMMITS`, `PUSH_COMMITS`), which the receiver commits again after its own; accepted and rejected constraints and feature parents come along.

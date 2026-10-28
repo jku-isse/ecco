@@ -78,7 +78,7 @@ final class StorageFiles {
 	}
 
 	/** Whether a pack with [current] of its [size] entries still current is kept: else they are moved into the new pack. */
-	static boolean keepsPack(int current, int size) {
+	static boolean keepsPack(long current, long size) {
 		return current * 2 >= size;
 	}
 
