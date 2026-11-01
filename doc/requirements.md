@@ -676,6 +676,7 @@ Postcondition: The previously stored minimized conditions stay as they were.
 | Generalization | None |
 | Front ends | GUI Versions > Import from Git |
 | Realizes | FR-G1 to FR-G5, IF-G3, IF-G4 |
+| End-to-end test | `GitImportEndToEndTest` (the import window from the selected range on - the system's folder dialog cannot be driven; every commit reviewed, the LLM an OpenAI-compatible endpoint over HTTP as Preferences configures it; the repository opened again from disk against the Git trees) |
 
 **Basic flow**
 

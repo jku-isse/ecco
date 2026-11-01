@@ -95,6 +95,8 @@ dependencies {
 	// ... the integration tests too: without it, Glass found no Monocle, the JavaFX toolkit never
 	// started, and the first integration test waited for it forever
 	integrationTestRuntimeOnly libs.openjfx.monocle
+	// the end-to-end test of the Git import reads and answers the LLM requests (GitImportEndToEndTest)
+	integrationTestImplementation libs.jackson.databind
 }
 
 // the GUI tests render to Monocle's invisible screen; -Pgui.tests.visible shows their windows again
