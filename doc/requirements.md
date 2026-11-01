@@ -104,7 +104,7 @@ The use cases describe the key usage scenarios step by step, with their normal c
 * A **bounded** flow (`RFS n-m`) can start at any of the steps n to m.
 * A **global** flow can start at any step.
 
-An alternative flow ends with `ABORT` (the use case ends) or `RESUME STEP n` (the flow continues at step n). This document adds two rows to the template: the front ends that offer the use case and the requirements it realizes.
+An alternative flow ends with `ABORT` (the use case ends) or `RESUME STEP n` (the flow continues at step n). This document adds rows to the template: the front ends that offer the use case, the requirements it realizes and, where there is one, the end-to-end test that walks its flows through a front end (the requirements' own tests check them one by one).
 
 **Restrictions applied.**
 
@@ -163,6 +163,7 @@ The stakeholder use cases are the five listed under [Stakeholders and usage cont
 | Generalization | None |
 | Front ends | CLI `init` (current directory); GUI Repositories > New |
 | Realizes | FR-L1, FR-L2, FR-L4 |
+| End-to-end test | `InitCommitCheckoutEndToEndTest` (CLI, one `ecco` process per step; UC-1, UC-3 and UC-5 in one history) |
 
 **Basic flow**
 
@@ -254,6 +255,7 @@ Postcondition: The repository is unchanged.
 | Generalization | None |
 | Front ends | CLI `commit -c <configuration> [-m <message>]` (prints the commit id and any violated constraints); GUI Versions > Commit |
 | Realizes | FR-F1 to FR-F8, FR-M1 to FR-M12, FR-P1 to FR-P3, FR-T1, AD-11, IF-C3, IF-C9, NFR-R1, NFR-R3 |
+| End-to-end test | `InitCommitCheckoutEndToEndTest` (CLI, one `ecco` process per step; UC-1, UC-3 and UC-5 in one history) |
 
 **Basic flow**
 
@@ -391,6 +393,7 @@ Postcondition: The folders committed before the failure stay committed; the rema
 | Generalization | None |
 | Front ends | CLI `checkout -c <configuration> [--minimized]`; GUI Versions > Checkout, Versions > Variants, Explore > Artifacts (Checkout Selected) |
 | Realizes | FR-K1 to FR-K10, FR-K12, FR-K13, FR-N9, FR-T2, AD-6, IF-C9 |
+| End-to-end test | `InitCommitCheckoutEndToEndTest` (CLI, one `ecco` process per step; UC-1, UC-3 and UC-5 in one history) |
 
 **Basic flow**
 
