@@ -33,8 +33,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>
  * The oracle is the files: a variant downloaded holds the files uploaded for its configuration byte
  * for byte, and one never committed as such their merge. A refused request leaves the repository
- * as it was, byte for byte, and so does a download. The repository is read again by a restarted
- * server.
+ * as it was, byte for byte, and so does a download; a variant for a configuration that is one
+ * already is refused. The repository is read again by a restarted server.
  */
 public class WebClientEndToEndTest {
 
@@ -92,6 +92,11 @@ public class WebClientEndToEndTest {
             assertEquals(3, repository.get("variants").size(), repository.toString());
             repository = variant(server, token, id, "both", "BASE, search, export");
             assertEquals("both", repository.get("variants").get(3).get("name").asText(), repository.toString());
+            // a variant for a configuration that is one already is refused, naming that one
+            HttpResponse<String> again = putVariant(server, token, id, "again", "BASE, search");
+            assertEquals(409, again.statusCode(), again.body());
+            assertTrue(again.body().contains("is variant '"), again.body());
+            assertEquals(4, json(get(server, token, "/api/repository/" + id)).get("variants").size());
             before = tree(ecco);
             assertTrue(download(server, token, id, variantId(repository, "BASE"), BASE).isEmpty());
             assertTrue(download(server, token, id, variantId(repository, "BASE", "search"), BASE_SEARCH).isEmpty());
@@ -193,12 +198,16 @@ public class WebClientEndToEndTest {
     }
 
     private JsonNode variant(RestServer server, String token, int id, String name, String configuration) throws Exception {
+        return json(putVariant(server, token, id, name, configuration));
+    }
+
+    private HttpResponse<String> putVariant(RestServer server, String token, int id, String name, String configuration) throws Exception {
         String body = JSON.writeValueAsString(Map.of("configuration", configuration, "description", name));
         HttpRequest request = HttpRequest.newBuilder(server.uri("/api/" + id + "/variant/" + name))
                 .header("Authorization", "Bearer " + token)
                 .header("Content-Type", "application/json")
                 .PUT(HttpRequest.BodyPublishers.ofString(body)).build();
-        return json(http.send(request, HttpResponse.BodyHandlers.ofString()));
+        return http.send(request, HttpResponse.BodyHandlers.ofString());
     }
 
     /** The id of the variant whose configuration has these features. */

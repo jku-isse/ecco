@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Holds {@see EccoService} with one Repository
@@ -113,6 +114,18 @@ public class RepositoryHandler {
     public synchronized RestRepository addVariant(String name, String config, String description) {
         service().addVariant(config, name, description);
         return getRepository();
+    }
+
+    /**
+     * The variant whose configuration this is, if there is one: adding another for it adds nothing.
+     *
+     * @throws EccoException if the configuration cannot be read
+     */
+    public synchronized Optional<Variant> variantOf(String config) {
+        Configuration configuration = service().parseConfigurationString(config);
+        return service().getRepository().getVariants().stream()
+                .filter(variant -> variant.getConfiguration().equals(configuration))
+                .findFirst();
     }
 
     public synchronized RestRepository removeVariant(String variantId) {

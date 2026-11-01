@@ -1505,6 +1505,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-R4 | Ubiquitous | The REST server shall let clients describe features and feature revisions, and pull features from another repository while deselecting some. | UC-12 front ends | `RestFeatureTest` (unit) | Code `FeatureController` |
 | IF-R5a | Ubiquitous | The REST server shall let clients manage variants: add, rename, and add, update or remove their features. | - | `VariantControllerTest` (unit), `RepositoryHandlerTest` | Code `VariantController` |
 | IF-R5b | Event | When a client requests a variant's checkout, the REST server shall return it as a zip file. | UC-15 B1-B7 | `VariantControllerTest` (unit) | Code `VariantController` |
+| IF-R5c | Unwanted | If a client adds a variant for a configuration that already is a variant, then the REST server shall refuse it with 409 and the existing variant's name and id, and with 400 a configuration it cannot read. | - | `FileRepositoryServiceTest`, `WebClientEndToEndTest` | History: was skipped with 200 |
 | IF-R6 | Unwanted | If a request to any endpoint except Swagger carries no valid signed JWT bearer token, then the REST server shall refuse it. | UC-14 GA1; UC-15 GA1 | `RestTokenSecurityTest` | Code `@Secured(IS_AUTHENTICATED)` |
 | IF-R7 | Unwanted | If a login's user name and password match no user, then the REST server shall refuse it with "Invalid user name or password" and issue no token. | UC-14 B2, SA1 | `RestTokenSecurityTest` | Code `AuthenticationProviderUserPassword` |
 

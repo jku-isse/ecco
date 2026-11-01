@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.rest;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.rest.models.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
@@ -18,6 +19,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -249,7 +251,21 @@ public class FileRepositoryService implements RepositoryService {
     @Override
     public RestRepository addVariant(int repositoryHandlerId, String name, String config, String description) {
         LOGGER.info("Adding Variant");
-        return handler(repositoryHandlerId).addVariant(name, config, description);
+        RepositoryHandler repository = handler(repositoryHandlerId);
+        // one request at a time per repository, so no other adds the variant between check and add
+        synchronized (repository) {
+            // a variant for a configuration that is one already is not added - say so, instead of
+            // answering as if it had been; a configuration that cannot be read is the client's error
+            Optional<Variant> existing;
+            try {
+                existing = repository.variantOf(config);
+            } catch (EccoException e) {
+                throw new HttpStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+            }
+            if (existing.isPresent())
+                throw new HttpStatusException(HttpStatus.CONFLICT, "The configuration is variant '" + existing.get().getName() + "' already (id " + existing.get().getId() + ").");
+            return repository.addVariant(name, config, description);
+        }
     }
 
     @Override

@@ -213,6 +213,31 @@ public class FileRepositoryServiceTest {
     }
 
     /**
+     * A variant for a configuration that already is one was not added, and the request answered as
+     * if it had been (200, the repository unchanged): the client could not tell. Now 409, naming the
+     * variant there is; a configuration that cannot be read is the client's error, 400.
+     */
+    @Test
+    @Timeout(30)
+    public void aVariantOfAConfigurationThatIsOneAlreadyIsAConflict() throws IOException {
+        Path storage = Files.createTempDirectory("file-repository-service-variant-conflict");
+        FileRepositoryService service = new FileRepositoryService(storage);
+        service.createRepository("my-repo");
+        // the commit records its configuration as a variant
+        RestRepository committed = service.addCommit(1, "first commit", "Core", "alice", List.of(mockUpload("\\file.txt", "hello\n")));
+        String existing = committed.getVariants().iterator().next().getName();
+
+        HttpStatusException conflict = assertThrows(HttpStatusException.class, () -> service.addVariant(1, "again", "Core", "d"));
+        assertEquals(HttpStatus.CONFLICT, conflict.getStatus());
+        assertTrue(conflict.getMessage().contains("'" + existing + "'"), conflict.getMessage());
+
+        HttpStatusException malformed = assertThrows(HttpStatusException.class, () -> service.addVariant(1, "bad", "Core, bad name", "d"));
+        assertEquals(HttpStatus.BAD_REQUEST, malformed.getStatus());
+
+        assertEquals(1, service.getRepository(1).getVariants().size(), "nothing added");
+    }
+
+    /**
      * Regression test for a real bug, now fixed: Repository.Op.merge()
      * (base/src/main/java/at/jku/isse/ecco/repository/Repository.java, the "for every association in
      * other repository" loop) builds a {@code Commit} per merged association via
