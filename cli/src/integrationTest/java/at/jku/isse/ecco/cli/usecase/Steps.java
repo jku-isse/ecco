@@ -85,6 +85,31 @@ final class Steps {
         return warnings < 0 ? "" : out.substring(warnings + "Warnings: ".length(), out.indexOf(" -- details in .warnings"));
     }
 
+    /** A repository that committed the variants in this order, with their configurations in {@link Shop}. */
+    @SafeVarargs
+    static Path linear(Path tmp, String name, Map<String, byte[]>... variants) throws Exception {
+        Path work = Files.createDirectories(tmp.resolve(name));
+        ok(work, "init");
+        for (Map<String, byte[]> variant : variants)
+            commit(work, variant, Shop.configuration(variant), "linear");
+        return work;
+    }
+
+    /**
+     * The oracle of the sync tests: each configuration checks out from the repository as from the
+     * linear one - the same files and the same warnings - and as the expected files; a committed
+     * one without warnings.
+     */
+    static void assertSameAsLinear(Path work, Path linear, Map<String, Map<String, byte[]>> configurations) throws Exception {
+        for (Map.Entry<String, Map<String, byte[]>> configuration : configurations.entrySet()) {
+            String warnings = checkout(work, configuration.getKey(), configuration.getValue());
+            String linearWarnings = checkout(linear, configuration.getKey(), configuration.getValue());
+            assertEquals(linearWarnings, warnings, work.getFileName() + ": " + configuration.getKey());
+            if (Shop.committed(configuration.getKey()))
+                assertEquals("", warnings, work.getFileName() + ": " + configuration.getKey());
+        }
+    }
+
     static void writeVariant(Path work, Map<String, byte[]> variant) throws IOException {
         clear(work);
         for (Map.Entry<String, byte[]> file : variant.entrySet()) {

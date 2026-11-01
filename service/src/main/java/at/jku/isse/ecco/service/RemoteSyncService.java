@@ -249,10 +249,11 @@ public class RemoteSyncService {
             ssChannel.socket().bind(allInterfaces ? new InetSocketAddress(port) : new InetSocketAddress(InetAddress.getLoopbackAddress(), port));
             this.serverPort = ssChannel.socket().getLocalPort();
 
+            // the port bound, which for port 0 is one the system chose
             String scope = allInterfaces ? " (all interfaces)" : " (local connections only)";
-            LOGGER.info("Server started on port " + port + scope + ".");
-            owner.listeners.fireServerEvent("Server started on port " + port + scope + ".");
-            owner.listeners.fireServerStartedEvent(port);
+            LOGGER.info("Server started on port " + this.serverPort + scope + ".");
+            owner.listeners.fireServerEvent("Server started on port " + this.serverPort + scope + ".");
+            owner.listeners.fireServerStartedEvent(this.serverPort);
 
             while (!serverShutdown) {
                 try (SocketChannel sChannel = ssChannel.accept()) {

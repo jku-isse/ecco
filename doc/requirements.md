@@ -801,7 +801,7 @@ Postcondition: The repository holds one commit per tagged Git commit - the relea
 | Generalization | None |
 | Front ends | CLI `fork <remote> [--exclude ...]`; GUI Repositories > Fork; REST fork with deselected features |
 | Realizes | FR-D1, FR-D2, FR-D3, FR-D4, FR-D5, FR-D7, FR-D8, FR-L2, FR-N4, IF-R2 |
-| End-to-end test | `ForkPullPushEndToEndTest` (CLI, local paths, one `ecco` process per step; UC-11 and UC-12 in one history, against linear histories) |
+| End-to-end test | `ForkPullPushEndToEndTest` (CLI, local paths, one `ecco` process per step; UC-11 and UC-12 in one history, against linear histories); over the socket: `ServeEndToEndTest` |
 
 **Basic flow**
 
@@ -870,7 +870,7 @@ Postcondition: Nothing is created, and the collaborator can retry.
 | Generalization | None |
 | Front ends | CLI `fetch`, `pull`, `push [remote] [--exclude ...]`; GUI Collaborate > Remotes; REST pull between its own repositories |
 | Realizes | FR-D1, FR-D3, FR-D4, FR-D5, FR-D7, FR-D8, FR-D9, FR-M9, FR-N4, IF-C4, IF-G10, IF-R4 |
-| End-to-end test | `ForkPullPushEndToEndTest` (CLI, local paths, one `ecco` process per step; UC-11 and UC-12 in one history, against linear histories) |
+| End-to-end test | `ForkPullPushEndToEndTest` (CLI, local paths, one `ecco` process per step; UC-11 and UC-12 in one history, against linear histories); over the socket: `ServeEndToEndTest` |
 
 **Basic flow**
 
@@ -978,6 +978,7 @@ Postcondition: The receiving repository holds the union of both repositories' se
 | Generalization | None |
 | Front ends | GUI Preferences, server section |
 | Realizes | FR-D6, FR-D8, IF-G10, NFR-S1, NFR-S3 |
+| End-to-end test | `ServeEndToEndTest` (the server in a JVM of its own as the GUI runs it, without the GUI; CLI clients over the socket, one `ecco` process per step; with UC-11 and UC-12, against linear histories) |
 
 **Basic flow**
 

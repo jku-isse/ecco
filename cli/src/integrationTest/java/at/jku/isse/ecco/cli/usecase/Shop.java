@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.cli.usecase;
 
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -45,7 +47,47 @@ final class Shop {
             "src/core.txt", "start\nlog\nload\nsave\nexport\nstop\n",
             "src/logging.txt", "level=info\n");
 
+    /** The configurations the sync tests check: the committed ones and two never committed as such. */
+    static final Map<String, Map<String, byte[]>> ALL = configurations(
+            "BASE", BASE,
+            "BASE, search", BASE_SEARCH,
+            "BASE, export", BASE_EXPORT,
+            "BASE, logging", BASE_LOGGING,
+            "BASE, export, logging", BASE_EXPORT_LOGGING,
+            "BASE, search, export, logging", BASE_SEARCH_EXPORT_LOGGING);
+
+    /** {@link #ALL} without search. */
+    static final Map<String, Map<String, byte[]>> WITHOUT_SEARCH = configurations(
+            "BASE", BASE,
+            "BASE, logging", BASE_LOGGING,
+            "BASE, export", BASE_EXPORT,
+            "BASE, export, logging", BASE_EXPORT_LOGGING);
+
     private Shop() {
+    }
+
+    /** The configuration a committed variant is committed with. */
+    static String configuration(Map<String, byte[]> variant) {
+        if (variant == BASE) return "BASE";
+        if (variant == BASE_SEARCH) return "BASE, search";
+        if (variant == BASE_EXPORT) return "BASE, export";
+        if (variant == BASE_LOGGING) return "BASE, logging";
+        throw new IllegalArgumentException("not a committed variant");
+    }
+
+    /** Whether the configuration is one a variant is committed with. */
+    static boolean committed(String configuration) {
+        return List.of("BASE", "BASE, search", "BASE, export", "BASE, logging").contains(configuration);
+    }
+
+    private static Map<String, Map<String, byte[]>> configurations(Object... configurationsAndVariants) {
+        Map<String, Map<String, byte[]>> result = new LinkedHashMap<>();
+        for (int i = 0; i < configurationsAndVariants.length; i += 2) {
+            @SuppressWarnings("unchecked")
+            Map<String, byte[]> variant = (Map<String, byte[]>) configurationsAndVariants[i + 1];
+            result.put((String) configurationsAndVariants[i], variant);
+        }
+        return result;
     }
 
     private static Map<String, byte[]> files(Object... pathsAndContents) {

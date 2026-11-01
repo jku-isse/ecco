@@ -25,21 +25,7 @@ final class EccoProcess {
     }
 
     static Result run(Path dir, String... args) throws IOException, InterruptedException {
-        List<String> command = new ArrayList<>();
-        command.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());
-        command.add("-Xss64m");
-        command.add("-Xmx1g");
-        // the test JVM's settings: preferences in memory, not the user's (MemoryPreferencesFactory),
-        // the checks of unchanged artifacts, the suggestion log in the build directory
-        for (String name : System.getProperties().stringPropertyNames())
-            if (name.startsWith("ecco.") || name.equals("java.util.prefs.PreferencesFactory"))
-                command.add("-D" + name + "=" + System.getProperty(name));
-        command.add("-cp");
-        command.add(System.getProperty("java.class.path"));
-        command.add("at.jku.isse.ecco.cli.Main");
-        command.addAll(List.of(args));
-
-        Process process = new ProcessBuilder(command)
+        Process process = new ProcessBuilder(java("at.jku.isse.ecco.cli.Main", args))
                 .directory(dir.toFile())
                 .redirectOutput(ProcessBuilder.Redirect.PIPE)
                 .redirectError(ProcessBuilder.Redirect.PIPE)
@@ -57,7 +43,25 @@ final class EccoProcess {
         return new Result(process.exitValue(), out.join(), err.join());
     }
 
-    private static String read(java.io.InputStream stream) {
+    /** The command line that runs the main class with the test's classpath and settings. */
+    static List<String> java(String mainClass, String... args) {
+        List<String> command = new ArrayList<>();
+        command.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());
+        command.add("-Xss64m");
+        command.add("-Xmx1g");
+        // the test JVM's settings: preferences in memory, not the user's (MemoryPreferencesFactory),
+        // the checks of unchanged artifacts, the suggestion log in the build directory
+        for (String name : System.getProperties().stringPropertyNames())
+            if (name.startsWith("ecco.") || name.equals("java.util.prefs.PreferencesFactory"))
+                command.add("-D" + name + "=" + System.getProperty(name));
+        command.add("-cp");
+        command.add(System.getProperty("java.class.path"));
+        command.add(mainClass);
+        command.addAll(List.of(args));
+        return command;
+    }
+
+    static String read(java.io.InputStream stream) {
         try (stream) {
             return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {

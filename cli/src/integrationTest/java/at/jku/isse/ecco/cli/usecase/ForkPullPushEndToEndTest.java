@@ -6,8 +6,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import static at.jku.isse.ecco.cli.usecase.Shop.*;
@@ -72,7 +70,7 @@ public class ForkPullPushEndToEndTest {
 
         // UC-12 B1-B9: alice pulls - upstream's logging commit after her own; upstream unchanged
         leavesRepository(upstream, alice, "pull");
-        Map<String, Map<String, byte[]>> all = all();
+        Map<String, Map<String, byte[]>> all = ALL;
         Path linearAlice = linear(tmp, "linear-alice", BASE, BASE_SEARCH, BASE_EXPORT, BASE_LOGGING);
         assertSameAsLinear(alice, linearAlice, all);
         // pulling again changes nothing - in what alice checks out: the repository is stored
@@ -87,55 +85,6 @@ public class ForkPullPushEndToEndTest {
         // UC-12 B5: bob pulls without search - logging and export, in upstream's order
         leavesRepository(upstream, bob, "pull", "--exclude", search);
         assertFalse(ok(bob, "features").out().contains("search"));
-        Map<String, Map<String, byte[]>> withoutSearch = new LinkedHashMap<>();
-        withoutSearch.put("BASE", BASE);
-        withoutSearch.put("BASE, logging", BASE_LOGGING);
-        withoutSearch.put("BASE, export", BASE_EXPORT);
-        withoutSearch.put("BASE, export, logging", BASE_EXPORT_LOGGING);
-        assertSameAsLinear(bob, linear(tmp, "linear-bob", BASE, BASE_LOGGING, BASE_EXPORT), withoutSearch);
-    }
-
-    /** The configurations checked: the committed ones and two never committed as such. */
-    private static Map<String, Map<String, byte[]>> all() {
-        Map<String, Map<String, byte[]>> configurations = new LinkedHashMap<>();
-        configurations.put("BASE", BASE);
-        configurations.put("BASE, search", BASE_SEARCH);
-        configurations.put("BASE, export", BASE_EXPORT);
-        configurations.put("BASE, logging", BASE_LOGGING);
-        configurations.put("BASE, export, logging", BASE_EXPORT_LOGGING);
-        configurations.put("BASE, search, export, logging", BASE_SEARCH_EXPORT_LOGGING);
-        return configurations;
-    }
-
-    /** A repository that committed the variants in this order, with the configurations they have in {@link Shop}. */
-    @SafeVarargs
-    private static Path linear(Path tmp, String name, Map<String, byte[]>... variants) throws Exception {
-        Path work = Files.createDirectories(tmp.resolve(name));
-        ok(work, "init");
-        for (Map<String, byte[]> variant : variants)
-            commit(work, variant, configuration(variant), "linear");
-        return work;
-    }
-
-    private static String configuration(Map<String, byte[]> variant) {
-        if (variant == BASE) return "BASE";
-        if (variant == BASE_SEARCH) return "BASE, search";
-        if (variant == BASE_EXPORT) return "BASE, export";
-        if (variant == BASE_LOGGING) return "BASE, logging";
-        throw new IllegalArgumentException("not a committed variant");
-    }
-
-    /**
-     * Each configuration checks out from the repository as from the linear one - the same files
-     * and the same warnings - and as the expected files.
-     */
-    private static void assertSameAsLinear(Path work, Path linear, Map<String, Map<String, byte[]>> configurations) throws Exception {
-        for (Map.Entry<String, Map<String, byte[]>> configuration : configurations.entrySet()) {
-            String warnings = checkout(work, configuration.getKey(), configuration.getValue());
-            String linearWarnings = checkout(linear, configuration.getKey(), configuration.getValue());
-            assertEquals(linearWarnings, warnings, work.getFileName() + ": " + configuration.getKey());
-            if (List.of("BASE", "BASE, search", "BASE, export", "BASE, logging").contains(configuration.getKey()))
-                assertEquals("", warnings, work.getFileName() + ": " + configuration.getKey());
-        }
+        assertSameAsLinear(bob, linear(tmp, "linear-bob", BASE, BASE_LOGGING, BASE_EXPORT), WITHOUT_SEARCH);
     }
 }
