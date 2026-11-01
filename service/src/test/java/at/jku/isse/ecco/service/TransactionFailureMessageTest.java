@@ -32,7 +32,8 @@ public class TransactionFailureMessageTest {
             Files.writeString(content.resolve("a.txt"), "a\n");
             service.setBaseDir(content);
             service.commit("v", "A.1");
-            Configuration configuration = service.parseConfigurationString("A.1");
+            // no variant yet - the commit's configuration is one, and a variant of it is refused before the write
+            Configuration configuration = service.parseConfigurationString("");
 
             Path writeLock = repositoryDir.resolve("write");
             assumeTrue(writeLock.toFile().setWritable(false) && !Files.isWritable(writeLock), "file permissions not enforced (root?)");

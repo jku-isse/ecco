@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
@@ -56,17 +57,23 @@ public class VariantManagerTest {
         }
     }
 
+    /**
+     * A configuration that already is a variant is refused, naming that variant: it was not added,
+     * without a word, so the Add Variant dialog and the REST server said it had been.
+     */
     @Test
     @Timeout(30)
-    public void addVariantDoesNotDuplicateExistingConfiguration() throws IOException {
+    public void addVariantRefusesAConfigurationThatIsOneAlready() throws IOException {
         Path workDir = Files.createTempDirectory("variant-manager-add-dup");
         try (EccoService service = initServiceWithOneCommit(workDir)) {
             assertEquals(1, service.getRepository().getVariants().size());
+            String existing = service.getRepository().getVariants().get(0).getName();
 
             Configuration coreConfiguration = service.parseConfigurationString("Core");
-            service.addVariant(coreConfiguration, "duplicate", "should not be added");
+            EccoException refused = assertThrows(EccoException.class, () -> service.addVariant(coreConfiguration, "duplicate", "should not be added"));
 
-            assertEquals(1, service.getRepository().getVariants().size(), "adding an already-present configuration must be a no-op");
+            assertEquals("This configuration is already saved as variant '" + existing + "'.", refused.getMessage());
+            assertEquals(1, service.getRepository().getVariants().size(), "nothing added");
         }
     }
 

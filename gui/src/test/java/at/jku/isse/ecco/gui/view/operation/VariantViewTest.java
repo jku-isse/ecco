@@ -110,6 +110,35 @@ public class VariantViewTest {
         }
     }
 
+    /**
+     * A configuration that already is a variant ends on the error header, naming that variant: it
+     * was not added, and the dialog said "Variant '...' added." all the same.
+     */
+    @Test
+    @Timeout(60)
+    public void aConfigurationThatIsAVariantAlreadyIsRefused(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
+            String existing = service.getRepository().getVariants().get(0).getName();
+            VariantView view = onFx(() -> new VariantView(service));
+
+            onFx(() -> {
+                fields(view).get(0).setText("A.1");
+                fields(view).get(1).setText("again");
+                button(view, "Add").fire();
+            });
+            waitUntil("the operation is over", () -> done(view));
+
+            assertEquals(1, service.getRepository().getVariants().size());
+            assertError(view);
+            String shown = onFx(() -> findAll(view, n -> n instanceof javafx.scene.control.Labeled || n instanceof javafx.scene.control.TextInputControl).stream()
+                    .map(n -> n instanceof javafx.scene.control.Labeled l ? l.getText() : ((javafx.scene.control.TextInputControl) n).getText())
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.joining("\n")));
+            assertTrue(shown.contains("already saved as variant '" + existing + "'"), shown);
+        }
+    }
+
     private static void assertError(VariantView view) throws Exception {
         List<String> styles = onFx(() -> List.copyOf(view.toolBar.getStyleClass()));
         assertTrue(styles.contains("error"), "error header: " + styles);

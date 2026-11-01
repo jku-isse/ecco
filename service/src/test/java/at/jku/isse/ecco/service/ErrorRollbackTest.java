@@ -99,12 +99,13 @@ public class ErrorRollbackTest {
         service.repositoryDao = repositoryDao;
         service.remoteDao = remoteDao;
 
-        // a write after the Error is stored, and the repository closes
-        service.addVariant(configuration, "after " + name);
+        // a write after the Error is stored, and the repository closes - a variant of a configuration
+        // that is none yet: the commit's is one, and a variant of it is refused
+        service.addVariant(service.parseConfigurationString(""), "after " + name);
         service.close();
 
         try (EccoService reopened = open(repositoryDir)) {
-            assertEquals(1, reopened.getRepository().getVariants().size(), name + ": the later write was stored");
+            assertEquals(2, reopened.getRepository().getVariants().size(), name + ": the later write was stored");
             assertTrue(reopened.getRemotes().stream().map(Remote::getName).anyMatch("origin"::equals), name);
         }
     }

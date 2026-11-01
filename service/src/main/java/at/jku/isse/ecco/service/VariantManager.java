@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.feature.Configuration;
@@ -7,7 +8,6 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.UUID;
 
@@ -28,27 +28,24 @@ public class VariantManager {
         this.owner = owner;
     }
 
+    /**
+     * Adds a variant of the configuration - refused if the configuration already is a variant: it
+     * was left out without a word, and the GUI and the REST server reported a variant added.
+     * EccoService#addVariant holds the service's lock, so no other write comes between check and add.
+     *
+     * @throws EccoException naming the variant the configuration already is
+     */
     public void addVariant(Configuration configuration, String name, String description) {
         owner.checkInitialized();
 
         checkNotNull(configuration);
+        for (Variant variant : owner.getRepository().getVariants())
+            if (variant.getConfiguration().equals(configuration))
+                throw new EccoException("This configuration is already saved as variant '" + variant.getName() + "'.");
         owner.writeTransaction("Error during adding a variant.", repository -> {
-            ArrayList<Variant> variants = repository.getVariants();
-
-            //storing new variant
-            boolean hasConfigurarion = false;
-            for (Variant v : variants) {
-                if (v.getConfiguration().equals(configuration)) {
-                    hasConfigurarion = true;
-                }
-            }
-            if (!hasConfigurarion) {
-                Variant memVariant = owner.entityFactory.createVariant(name, configuration, UUID.randomUUID().toString());
-                memVariant.setDescription(description);
-                repository.addVariant(memVariant);
-            }
-            //
-
+            Variant memVariant = owner.entityFactory.createVariant(name, configuration, UUID.randomUUID().toString());
+            memVariant.setDescription(description);
+            repository.addVariant(memVariant);
             return repository;
         });
     }
