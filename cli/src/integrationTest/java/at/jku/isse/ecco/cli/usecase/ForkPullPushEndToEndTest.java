@@ -8,7 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import static at.jku.isse.ecco.cli.usecase.Shop.*;
+import static at.jku.isse.ecco.test.Shop.*;
 import static at.jku.isse.ecco.cli.usecase.Steps.*;
 import static org.junit.jupiter.api.Assertions.*;
 

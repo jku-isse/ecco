@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.cli.usecase;
 
 import at.jku.isse.ecco.cli.usecase.EccoProcess.Result;
+import at.jku.isse.ecco.test.Shop;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

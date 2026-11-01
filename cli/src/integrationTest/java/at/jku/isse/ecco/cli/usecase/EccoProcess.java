@@ -1,10 +1,9 @@
 package at.jku.isse.ecco.cli.usecase;
 
+import at.jku.isse.ecco.test.TestJvm;
+
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -25,7 +24,7 @@ final class EccoProcess {
     }
 
     static Result run(Path dir, String... args) throws IOException, InterruptedException {
-        Process process = new ProcessBuilder(java("at.jku.isse.ecco.cli.Main", args))
+        Process process = new ProcessBuilder(TestJvm.java("at.jku.isse.ecco.cli.Main", args))
                 .directory(dir.toFile())
                 .redirectOutput(ProcessBuilder.Redirect.PIPE)
                 .redirectError(ProcessBuilder.Redirect.PIPE)
@@ -34,8 +33,8 @@ final class EccoProcess {
         // read both streams while the process runs: a full pipe would block it
         var out = new java.util.concurrent.CompletableFuture<String>();
         var err = new java.util.concurrent.CompletableFuture<String>();
-        Thread.ofVirtual().start(() -> out.complete(read(process.getInputStream())));
-        Thread.ofVirtual().start(() -> err.complete(read(process.getErrorStream())));
+        Thread.ofVirtual().start(() -> out.complete(TestJvm.read(process.getInputStream())));
+        Thread.ofVirtual().start(() -> err.complete(TestJvm.read(process.getErrorStream())));
         if (!process.waitFor(5, TimeUnit.MINUTES)) {
             process.destroyForcibly();
             throw new AssertionError("ecco " + String.join(" ", args) + " did not finish within 5 minutes");
@@ -43,29 +42,4 @@ final class EccoProcess {
         return new Result(process.exitValue(), out.join(), err.join());
     }
 
-    /** The command line that runs the main class with the test's classpath and settings. */
-    static List<String> java(String mainClass, String... args) {
-        List<String> command = new ArrayList<>();
-        command.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());
-        command.add("-Xss64m");
-        command.add("-Xmx1g");
-        // the test JVM's settings: preferences in memory, not the user's (MemoryPreferencesFactory),
-        // the checks of unchanged artifacts, the suggestion log in the build directory
-        for (String name : System.getProperties().stringPropertyNames())
-            if (name.startsWith("ecco.") || name.equals("java.util.prefs.PreferencesFactory"))
-                command.add("-D" + name + "=" + System.getProperty(name));
-        command.add("-cp");
-        command.add(System.getProperty("java.class.path"));
-        command.add(mainClass);
-        command.addAll(List.of(args));
-        return command;
-    }
-
-    static String read(java.io.InputStream stream) {
-        try (stream) {
-            return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            return "<" + e + ">";
-        }
-    }
 }

@@ -1023,6 +1023,7 @@ Postcondition: Any machine that reaches the port can read and push into the repo
 | Generalization | None |
 | Front ends | REST `POST /login`, `POST /api/{repository}/commit/add` |
 | Realizes | IF-R1, IF-R3, IF-R6, IF-R7, NFR-S2, NFR-S4, NFR-S5 |
+| End-to-end test | `WebClientEndToEndTest` (the web client's requests over HTTP to the REST server in a JVM of its own, installed as rest/README.md says: users file, JWT secret, no development mode; UC-14 and UC-15 in one history, restarted) |
 
 **Basic flow**
 
@@ -1086,6 +1087,7 @@ Postcondition: The repository is unchanged.
 | Generalization | None |
 | Front ends | REST `GET /api/{repository}/variant/{variant}/checkout` |
 | Realizes | IF-R5, IF-R6 |
+| End-to-end test | `WebClientEndToEndTest` (the web client's requests over HTTP to the REST server in a JVM of its own, installed as rest/README.md says: users file, JWT secret, no development mode; UC-14 and UC-15 in one history, restarted) |
 
 **Basic flow**
 

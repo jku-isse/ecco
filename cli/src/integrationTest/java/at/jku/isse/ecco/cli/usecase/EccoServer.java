@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.cli.usecase;
 
+import at.jku.isse.ecco.test.TestJvm;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -28,7 +30,7 @@ final class EccoServer implements AutoCloseable {
 
     /** Serves the repository in {@code dir} on the port, 0 for any; returns once it listens. */
     EccoServer(Path dir, int port) throws IOException, InterruptedException {
-        process = new ProcessBuilder(EccoProcess.java(ServerMain.class.getName(), dir.toString(), Integer.toString(port)))
+        process = new ProcessBuilder(TestJvm.java(ServerMain.class.getName(), dir.toString(), Integer.toString(port)))
                 .redirectOutput(ProcessBuilder.Redirect.PIPE)
                 .redirectError(ProcessBuilder.Redirect.PIPE)
                 .start();
@@ -41,7 +43,7 @@ final class EccoServer implements AutoCloseable {
                 // the process ended
             }
         });
-        Thread.ofVirtual().start(() -> err.complete(EccoProcess.read(process.getErrorStream())));
+        Thread.ofVirtual().start(() -> err.complete(TestJvm.read(process.getErrorStream())));
         String line = next("PORT ");
         this.port = Integer.parseInt(line.substring("PORT ".length()));
     }

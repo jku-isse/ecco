@@ -6,7 +6,8 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import org.junit.jupiter.api.Test;
 
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 
@@ -31,15 +32,19 @@ public class RestCommitTest {
         assertEquals("alice", restCommit.getUsername());
     }
 
+    /**
+     * In 24-hour time: the pattern had hh, the hour of a 12-hour clock without AM or PM, so a commit
+     * at 22:10 showed as 10:10.
+     */
     @Test
-    public void formatsTheDateAsYyyyMmDdHhMmSs() {
+    public void formatsTheDateAsYyyyMmDdHhMmSsInTwentyFourHourTime() {
         Commit commit = mock(Commit.class);
-        Date date = new Date(0); // 1970-01-01 in the JVM's default time zone
+        Date date = Date.from(LocalDateTime.of(2026, 11, 1, 22, 10, 11).atZone(ZoneId.systemDefault()).toInstant());
         when(commit.getDate()).thenReturn(date);
 
         RestCommit restCommit = new RestCommit(commit);
 
-        assertEquals(new SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(date), restCommit.getDate());
+        assertEquals("2026-11-01 22:10:11", restCommit.getDate());
     }
 
     @Test

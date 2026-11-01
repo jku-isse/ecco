@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.cli.usecase;
+package at.jku.isse.ecco.test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -7,48 +7,48 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * The variants the end-to-end tests commit, path to content: a base and one variant per feature,
+ * The variants the end-to-end tests of the use cases commit (the command line's, the REST server's), path to content: a base and one variant per feature,
  * each feature adding a line of its own to the shared {@code src/core.txt} at a place of its own,
  * and files of its own. Text, Markdown, a file without a final newline and a binary file.
  */
-final class Shop {
+public final class Shop {
 
-    static final Map<String, byte[]> BASE = files(
+    public static final Map<String, byte[]> BASE = files(
             "README.md", "# Shop\n\nA small shop.\n",
             "src/core.txt", "start\nload\nsave\nstop\n",
             "notes.txt", "no final newline",
             "data/logo.bin", binary());
 
-    static final Map<String, byte[]> BASE_SEARCH = with(BASE,
+    public static final Map<String, byte[]> BASE_SEARCH = with(BASE,
             "src/core.txt", "start\nload\nsearch\nsave\nstop\n",
             "src/search.txt", "query\nrank\n");
 
-    static final Map<String, byte[]> BASE_EXPORT = with(BASE,
+    public static final Map<String, byte[]> BASE_EXPORT = with(BASE,
             "src/core.txt", "start\nload\nsave\nexport\nstop\n",
             "docs/export.md", "# Export\n\nWrites CSV.\n");
 
-    static final Map<String, byte[]> BASE_LOGGING = with(BASE,
+    public static final Map<String, byte[]> BASE_LOGGING = with(BASE,
             "src/core.txt", "start\nlog\nload\nsave\nstop\n",
             "src/logging.txt", "level=info\n");
 
     /** Never committed: the search line from one variant, the export line from the other. */
-    static final Map<String, byte[]> BASE_SEARCH_EXPORT = with(BASE,
+    public static final Map<String, byte[]> BASE_SEARCH_EXPORT = with(BASE,
             "src/core.txt", "start\nload\nsearch\nsave\nexport\nstop\n",
             "src/search.txt", "query\nrank\n",
             "docs/export.md", "# Export\n\nWrites CSV.\n");
 
     /** Never committed: the lines of all three features. */
-    static final Map<String, byte[]> BASE_SEARCH_EXPORT_LOGGING = with(BASE_SEARCH_EXPORT,
+    public static final Map<String, byte[]> BASE_SEARCH_EXPORT_LOGGING = with(BASE_SEARCH_EXPORT,
             "src/core.txt", "start\nlog\nload\nsearch\nsave\nexport\nstop\n",
             "src/logging.txt", "level=info\n");
 
     /** Never committed: the lines of export and logging. */
-    static final Map<String, byte[]> BASE_EXPORT_LOGGING = with(BASE_EXPORT,
+    public static final Map<String, byte[]> BASE_EXPORT_LOGGING = with(BASE_EXPORT,
             "src/core.txt", "start\nlog\nload\nsave\nexport\nstop\n",
             "src/logging.txt", "level=info\n");
 
     /** The configurations the sync tests check: the committed ones and two never committed as such. */
-    static final Map<String, Map<String, byte[]>> ALL = configurations(
+    public static final Map<String, Map<String, byte[]>> ALL = configurations(
             "BASE", BASE,
             "BASE, search", BASE_SEARCH,
             "BASE, export", BASE_EXPORT,
@@ -57,7 +57,7 @@ final class Shop {
             "BASE, search, export, logging", BASE_SEARCH_EXPORT_LOGGING);
 
     /** {@link #ALL} without search. */
-    static final Map<String, Map<String, byte[]>> WITHOUT_SEARCH = configurations(
+    public static final Map<String, Map<String, byte[]>> WITHOUT_SEARCH = configurations(
             "BASE", BASE,
             "BASE, logging", BASE_LOGGING,
             "BASE, export", BASE_EXPORT,
@@ -67,7 +67,7 @@ final class Shop {
     }
 
     /** The configuration a committed variant is committed with. */
-    static String configuration(Map<String, byte[]> variant) {
+    public static String configuration(Map<String, byte[]> variant) {
         if (variant == BASE) return "BASE";
         if (variant == BASE_SEARCH) return "BASE, search";
         if (variant == BASE_EXPORT) return "BASE, export";
@@ -76,7 +76,7 @@ final class Shop {
     }
 
     /** Whether the configuration is one a variant is committed with. */
-    static boolean committed(String configuration) {
+    public static boolean committed(String configuration) {
         return List.of("BASE", "BASE, search", "BASE, export", "BASE, logging").contains(configuration);
     }
 
