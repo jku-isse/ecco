@@ -67,6 +67,12 @@ public class SurplusModuleSuppressorMultiRevisionTest {
         try (EccoService service = new EccoService()) {
             service.setRepositoryDir(repoDir);
             service.init();
+            // the suppressor alone: SurplusLatticeAbsorber, which runs first, reads the branchA
+            // association's condition as BranchA + Core@latest.BranchA = BranchA and drops the
+            // mismatch before the suppressor sees it. The test passed with the absorber on only
+            // through a false surplus - the shared core association's Core@latest, reported though
+            // its Core@old explains it (SurplusAcrossRevisionsTest)
+            service.setSurplusAbsorptionEnabled(false);
 
             service.setBaseDir(coreDir);
             service.commit("core v1", "Core");

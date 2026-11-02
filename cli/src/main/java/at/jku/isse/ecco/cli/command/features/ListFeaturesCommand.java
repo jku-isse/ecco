@@ -36,11 +36,13 @@ public class ListFeaturesCommand implements Command {
 
         Collection<? extends Feature> features = this.eccoService.getRepository().getFeatures();
 
+        // each with its id as a configuration takes it: two features of one name can only be told
+        // apart by it ("Feature name is not unique. Use feature id instead."), and nothing showed it
         for (Feature feature : features) {
             if (name == null) {
-                writer.println(feature.toString());
+                writer.println(feature + " [" + feature.getId() + "]");
             } else if (feature.getName().equals(name)) {
-                writer.println(feature.toString());
+                writer.println(feature + " [" + feature.getId() + "]");
                 for (FeatureRevision featureRevision : feature.getRevisions()) {
                     writer.println("\t" + featureRevision);
                 }

@@ -98,7 +98,7 @@ ecco checkout -c "Base, Cart, Wishlist"    # composed from both commits; see .wa
 | `commit -c <configuration> [-m <message>]` | Commits the working directory as a variant with the given configuration. |
 | `checkout -c <configuration>` | Composes the variant for the configuration into the working directory. |
 | `order <file>...` | Records the order of checked-out files as they are now, without a commit: put the content of a file with an ORDER warning in the right order, then run this. Content added or removed is refused. |
-| `features [name]` | Lists the features and their revisions. |
+| `features [name]` | Lists the features, each with its id as a configuration takes it (`search [<id>]`); with a name, that feature and its revisions. |
 | `traces [id]` | Lists the associations with their presence conditions. |
 | `get <property>`, `set <property> <value>` | Reads or changes a repository setting. |
 | `remotes [--add NAME ADDRESS] [--remove NAME]` | Lists, adds, or removes remotes. |

@@ -255,7 +255,7 @@ Postcondition: The repository is unchanged.
 | Generalization | None |
 | Front ends | CLI `commit -c <configuration> [-m <message>]` (prints the commit id and any violated constraints); GUI Versions > Commit |
 | Realizes | FR-F1 to FR-F8, FR-M1 to FR-M12, FR-P1 to FR-P3, FR-T1, AD-11, IF-C3, IF-C9, NFR-R1, NFR-R3 |
-| End-to-end test | `InitCommitCheckoutEndToEndTest` (CLI, one `ecco` process per step; UC-1, UC-3 and UC-5 in one history) |
+| End-to-end test | `InitCommitCheckoutEndToEndTest` (CLI, one `ecco` process per step; UC-1, UC-3 and UC-5 in one history); feature revisions by name, id prefix and feature id: `FeatureRevisionsEndToEndTest` |
 
 **Basic flow**
 
@@ -393,7 +393,7 @@ Postcondition: The folders committed before the failure stay committed; the rema
 | Generalization | None |
 | Front ends | CLI `checkout -c <configuration> [--minimized]`; GUI Versions > Checkout, Versions > Variants, Explore > Artifacts (Checkout Selected) |
 | Realizes | FR-K1 to FR-K10, FR-K12, FR-K13, FR-N9, FR-T2, AD-6, IF-C9 |
-| End-to-end test | `InitCommitCheckoutEndToEndTest` (CLI, one `ecco` process per step; UC-1, UC-3 and UC-5 in one history) |
+| End-to-end test | `InitCommitCheckoutEndToEndTest` (CLI, one `ecco` process per step; UC-1, UC-3 and UC-5 in one history); feature revisions by name, id prefix and feature id: `FeatureRevisionsEndToEndTest` |
 
 **Basic flow**
 
@@ -1188,18 +1188,18 @@ Postcondition: No remote is stored or changed.
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| FR-F1a | Ubiquitous | ECCO shall accept as a configuration a comma-separated list of `A` (the latest revision, or a new feature), `A'` (a new revision), `A.<rev>` (that revision) and `[<id>]` (the feature with that id). | UC-3 B3; UC-5 B2; UC-14 B6 | `ConfigurationGrammarTest` | Doc; Code `ConfigurationParser` |
+| FR-F1a | Ubiquitous | ECCO shall accept as a configuration a comma-separated list of `A` (the latest revision, or a new feature), `A'` (a new revision), `A.<rev>` (that revision) and `[<id>]` (the feature with that id). | UC-3 B3; UC-5 B2; UC-14 B6 | `ConfigurationGrammarTest`, `FeatureRevisionsEndToEndTest` | Doc; Code `ConfigurationParser` |
 | FR-F1b | Unwanted | If a feature name holds a character other than `[a-zA-Z0-9_-]`, then ECCO shall reject the configuration. | UC-3 SA1; UC-5 SA1; UC-14 SA3 | `SmallRefusalsTest`, `InitCommitCheckoutEndToEndTest`, `WebClientEndToEndTest` | Code `Configuration.java:27` |
-| FR-F2 | Event | When a configuration names a revision by a prefix of its id of 7 or more characters, ECCO shall resolve the prefix to the revision if no other revision id starts with it. | UC-3 B3; UC-5 B2 | `ShortRevisionIdTest`, `ConfigurationStringRevisionPrefixTest` | History f2e97cc2 |
-| FR-F2b | Unwanted | If a revision id in a configuration names no revision of its feature - an unknown id, one shorter than 7 characters (the "2" of `A.2`) or a prefix several revisions share - then ECCO shall read it as a new revision of that feature - which a commit creates and a checkout refuses (FR-K13). | UC-3 B3 | `ShortRevisionIdTest` | Code `ConfigurationParser#findRevisionByIdPrefix` |
+| FR-F2 | Event | When a configuration names a revision by a prefix of its id of 7 or more characters, ECCO shall resolve the prefix to the revision if no other revision id starts with it. | UC-3 B3; UC-5 B2 | `ShortRevisionIdTest`, `ConfigurationStringRevisionPrefixTest`, `FeatureRevisionsEndToEndTest` | History f2e97cc2 |
+| FR-F2b | Unwanted | If a revision id in a configuration names no revision of its feature - an unknown id, one shorter than 7 characters (the "2" of `A.2`) or a prefix several revisions share - then ECCO shall read it as a new revision of that feature - which a commit creates and a checkout refuses (FR-K13). | UC-3 B3 | `ShortRevisionIdTest`, `FeatureRevisionsEndToEndTest` | Code `ConfigurationParser#findRevisionByIdPrefix` |
 | FR-F3 | Unwanted | If a feature name in a configuration is ambiguous, then ECCO shall reject the configuration with a hint to use the feature id. | UC-3 SA1; UC-5 SA1 | `SmallRefusalsTest` | Code `ConfigurationParser:175` |
 | FR-F4 | Ubiquitous | ECCO shall not persist revisions when it parses a configuration. | - | `ParseConfigurationPhantomRevisionTest` | |
-| FR-F5a | Unwanted | If a configuration selects two revisions of one feature, by name or by id, then ECCO shall reject it as "selected twice". | UC-3 SA1; UC-5 SA1 | `ConfigurationGrammarTest` | Code REPO:509-516 |
+| FR-F5a | Unwanted | If a configuration selects two revisions of one feature, by name or by id, then ECCO shall reject it as "selected twice". | UC-3 SA1; UC-5 SA1 | `ConfigurationGrammarTest`, `FeatureRevisionsEndToEndTest` | Code REPO:509-516 |
 | FR-F5b | Ubiquitous | ECCO shall read a revision named twice in a configuration as that revision once. | - | `ConfigurationGrammarTest` | |
 | FR-F6 | Unwanted | If a commit or pull would add a feature or revision whose logic variable (`.` and `-` read as `_`) is another's - `shopping-cart` next to `shopping_cart`, `A.B_1` next to `A_B.1`, `A_1` next to `A.1` - then ECCO shall refuse it, because conditions could not tell the two apart. A feature of a pull or push of the same name as one here is that feature (FR-D3f), except in a merge (UC-12 SA7), which refuses it too. | UC-3 SA1; UC-12 SA7 | `FeatureVariableCollisionTest` | Code `FeatureLiterals.checkDistinct` |
-| FR-F7a | Ubiquitous | ECCO shall read `[<id>]` in a configuration as the feature's name, in every form (`[<id>]`, `[<id>]'`, `[<id>].<rev>`). | UC-3 B3; UC-5 B2 | `UnknownFeatureIdTest` | |
-| FR-F7b | Unwanted | If `[<id>]` names no existing feature, then ECCO shall reject the configuration. | UC-3 SA1; UC-5 SA1 | `UnknownFeatureIdTest` | |
-| FR-F8 | Unwanted | If a configuration names a feature that starts with `-` and does not exist (`A, -B`), then ECCO shall reject it with a hint to leave the feature out instead. | UC-3 SA1; UC-5 SA1 | `ConfigurationGrammarTest` | Code `ConfigurationParser:173-177` |
+| FR-F7a | Ubiquitous | ECCO shall read `[<id>]` in a configuration as the feature's name, in every form (`[<id>]`, `[<id>]'`, `[<id>].<rev>`). | UC-3 B3; UC-5 B2 | `UnknownFeatureIdTest`, `FeatureRevisionsEndToEndTest` | |
+| FR-F7b | Unwanted | If `[<id>]` names no existing feature, then ECCO shall reject the configuration. | UC-3 SA1; UC-5 SA1 | `UnknownFeatureIdTest`, `FeatureRevisionsEndToEndTest` | |
+| FR-F8 | Unwanted | If a configuration names a feature that starts with `-` and does not exist (`A, -B`), then ECCO shall reject it with a hint to leave the feature out instead. | UC-3 SA1; UC-5 SA1 | `ConfigurationGrammarTest`, `FeatureRevisionsEndToEndTest` | Code `ConfigurationParser:173-177` |
 
 FR-F3 can only meet a repository made before FR-F6 (51523c0d): a pull or push takes a feature of the same name as the one already there, and a merge refuses it, so two cannot arise.
 
@@ -1251,6 +1251,7 @@ A file its enabled adapter fails to parse falls back to another adapter (AD-11, 
 | FR-K5 | Ubiquitous | ECCO shall list the warnings of a checkout in `.warnings`, one per line, with a suggested fix where one exists: the kinds of FR-K5a-f, and TRACE (FR-T2b). | UC-5 B8, B12 | `CheckoutMissingModuleDiagnosticsTest` | Code `CheckoutService` |
 | FR-K5a | Event | When a configuration combines features in an interaction never committed, ECCO shall warn MISSING for that interaction. | UC-5 B8 | `CheckoutMissingModuleDiagnosticsTest`, `InitCommitCheckoutEndToEndTest`, `WebClientEndToEndTest` | |
 | FR-K5b | Event | When a checkout holds artifacts its configuration does not explain, ECCO shall warn SURPLUS for them. | UC-5 B8 | `SurplusLatticeAbsorberTest` | |
+| FR-K5i | Unwanted | If the artifacts of an association were committed with several revisions of a feature, then ECCO shall take any one of them in the configuration as explaining them, and not warn SURPLUS for the others. | UC-5 B8 | `SurplusAcrossRevisionsTest`, `FeatureRevisionsEndToEndTest` | History: every checkout of a feature in several revisions warned SURPLUS, once per other revision |
 | FR-K5c | Event | When the order of sibling artifacts is ambiguous, ECCO shall warn ORDER, naming the undecided lines. | UC-5 B8; UC-6 precondition | `OrderWarningTextTest` | |
 | FR-K5d | Event | When a file stored whole has several versions in the combination, ECCO shall not write the file and shall warn CONFLICT. | UC-5 B8 | `WholeFileConflictTest` | Code `WholeFileConflicts` |
 | FR-K5h | Event | When a file stored whole has no version for the combination, ECCO shall not write the file, write the other files, and warn CONFLICT for it. | UC-5 B8 | `WholeFileConflictTest` | Code `WholeFileConflicts` |
@@ -1270,7 +1271,7 @@ A file its enabled adapter fails to parse falls back to another adapter (AD-11, 
 | FR-K11b | Unwanted | If a recorded order contradicts an order recorded before, then ECCO shall refuse it and change nothing. | UC-6 B6, SA4 | `RecordOrderTest` | |
 | FR-K11c | Ubiquitous | ECCO shall use a recorded order in every later checkout that contains those children, whatever its configuration. | UC-6 post | `RecordOrderTest`, `OrderResolutionCharacterizationTest` | |
 | FR-K12 | Ubiquitous | ECCO shall not check out a file removed in a later commit (for example by renaming its directory) in a variant that does not contain it. | UC-5 B5 | `RemovedFileCheckoutTest` | Code `SerNode.copySingleNodeCompletely`, `Trees.treeFusion`; History d73f17e0 |
-| FR-K13 | Unwanted | If a checkout's configuration names a feature or revision the repository does not have (FR-F2b reads it as a new one), then ECCO shall refuse the checkout before writing anything, naming it. | UC-5 B2, SA1 | `UnknownRevisionCheckoutTest`, `ForkPullPushEndToEndTest` | Code `CheckoutService#checkCommitted` |
+| FR-K13 | Unwanted | If a checkout's configuration names a feature or revision the repository does not have (FR-F2b reads it as a new one), then ECCO shall refuse the checkout before writing anything, naming it. | UC-5 B2, SA1 | `UnknownRevisionCheckoutTest`, `ForkPullPushEndToEndTest`, `FeatureRevisionsEndToEndTest` | Code `CheckoutService#checkCommitted` |
 
 FR-K5e and FR-K6 cannot be reached with the adapters and settings in use: a checkout counts an association as unresolved only through a cross reference between artifacts (`Artifact#getUses`, as FR-D4b), which no adapter in use records; and with the maximum order 2 a missing sub-combination would be a single feature never committed, which a checkout refuses (FR-K13) - the maximum order cannot be raised through the service. Their unit tests stay.
 
@@ -1459,6 +1460,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-C10a | Event | When `order <file>...` runs, the CLI shall record the order of the files as they are now, without a commit (FR-K11), taking the configuration from `.config` and matching the files to its composition by content. | UC-6 SA3 | `OrderCommandTest`, `RecordOrderTest` | |
 | IF-C10b | Unwanted | If a file given to `order` holds content the composition does not, or lacks some of it, then the CLI shall refuse it, naming that content. | UC-6 SA3 | `RecordOrderTest` | |
 | IF-C10c | Ubiquitous | `order` shall read paths relative to the directory it runs in. | UC-6 SA3 | `RecordOrderTest` | |
+| IF-C11 | Event | When `features` runs, the CLI shall list each feature with its id as a configuration takes it (`search [<id>]`), and with a name that feature's revisions. | UC-3 B3; UC-5 B2 | `ListFeaturesCommandTest`, `FeatureRevisionsEndToEndTest` | History: the CLI showed no feature id, so `[<id>]` and the hint for an ambiguous name could not be used from it |
 
 ### Graphical user interface (`gui`)
 

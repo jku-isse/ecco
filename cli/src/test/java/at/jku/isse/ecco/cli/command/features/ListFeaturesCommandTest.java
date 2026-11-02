@@ -55,6 +55,7 @@ public class ListFeaturesCommandTest {
         Feature feature = mock(Feature.class);
         FeatureRevision revision = mock(FeatureRevision.class);
         when(feature.getName()).thenReturn("feature 1");
+        when(feature.getId()).thenReturn("f1-id");
         when(feature.toString()).thenReturn("feature 1");
         doReturn(List.of(revision)).when(feature).getRevisions();
         when(revision.toString()).thenReturn("feature 1.1");
@@ -68,7 +69,8 @@ public class ListFeaturesCommandTest {
         listFeaturesAction.run(new Namespace(attrs));
 
         assertEquals(2, stringWriter.getLines().size());
-        assertEquals("feature 1", stringWriter.getLines().get(0));
+        // with its id, in the form a configuration takes ([<id>]): the only way to tell two features of one name apart
+        assertEquals("feature 1 [f1-id]", stringWriter.getLines().get(0));
         assertTrue(stringWriter.getLines().get(1).contains("feature 1.1"));
     }
 }

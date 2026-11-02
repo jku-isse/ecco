@@ -828,11 +828,12 @@ public interface Repository extends Persistable {
 				if (moduleCondition.getType() == Condition.TYPE.AND) {
 					Map<Module, Collection<ModuleRevision>> moduleMap = moduleCondition.getModules();
 					for (Map.Entry<Module, Collection<ModuleRevision>> entry : moduleMap.entrySet()) {
-						if (entry.getValue() != null) {
+						// a module's revisions are alternatives (Condition#holds): one in the
+						// configuration explains it - each other one was reported surplus, so every
+						// checkout of a feature in several revisions warned, also of a committed variant
+						if (entry.getValue() != null && entry.getValue().stream().noneMatch(desiredModules::contains)) {
 							for (ModuleRevision existingModuleRevision : entry.getValue()) {
-								if (!desiredModules.contains(existingModuleRevision)) {
-									surplusModules.put(existingModuleRevision,association.getId());
-								}
+								surplusModules.put(existingModuleRevision,association.getId());
 							}
 						}
 					}
