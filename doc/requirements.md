@@ -452,6 +452,7 @@ Postcondition: Same as the basic flow.
 | Generalization | None |
 | Front ends | GUI checkout details; CLI `order <file>...` |
 | Realizes | IF-G8, IF-C10, FR-K2, FR-K5, FR-K11 |
+| End-to-end test | `ResolveOrderEndToEndTest` (flow SA3 through the CLI, one `ecco` process per step; the dialog of the basic flow is the GUI's) |
 
 **Basic flow**
 
@@ -1243,7 +1244,7 @@ A file its enabled adapter fails to parse falls back to another adapter (AD-11, 
 | --- | --- | --- | --- | --- | --- |
 | FR-K1a | Event | When the variant developer checks out a configuration, ECCO shall select the associations whose presence condition holds for the configuration. | UC-5 B5 | `RepositoryCheckoutTest`, `InitCommitCheckoutEndToEndTest` | Code REPO:756-763, `CheckoutComposer` |
 | FR-K1b | Ubiquitous | ECCO shall prune the composed tree per node by the repository's evaluation strategy (RETROACTIVE, PROACTIVE, PROACTIVE-ADDITION, PROACTIVE-SUBTRACTION). | UC-5 B6 | `EvaluationStrategyCheckoutTest`, `NodeRemovalVisitorTest` (unit) | Code `featuretrace/evaluation` |
-| FR-K2a | Ubiquitous | ECCO shall order sibling artifacts by their partial order graph. | UC-5 B7 | `DefaultOrderSelectorTest` (unit), `OrderResolutionCharacterizationTest`, `InitCommitCheckoutEndToEndTest` | Code `DefaultOrderSelector` |
+| FR-K2a | Ubiquitous | ECCO shall order sibling artifacts by their partial order graph. | UC-5 B7 | `DefaultOrderSelectorTest` (unit), `OrderResolutionCharacterizationTest`, `InitCommitCheckoutEndToEndTest`, `ResolveOrderEndToEndTest` | Code `DefaultOrderSelector` |
 | FR-K2b | Unwanted | If a partial order graph has a cycle, a redundant transitive edge or a wrong node count, then ECCO shall reject the graph. | - | `PartialOrderGraphCycleCheckEquivalenceTest` (unit, cycles only) | Code `PartialOrderGraph:347-358` |
 | FR-K3a | Unwanted | If the working directory of a checkout holds anything besides the repository's own `.ecco` - also only a `.config`, `.warnings` or `.hashes`, or another repository - then ECCO shall refuse the checkout before writing anything. | UC-5 B3, SA2 | `CheckoutIntoNonEmptyDirectoryTest`, `CheckoutViewTest` (GUI), `InitCommitCheckoutEndToEndTest` | Code DW:97-111 |
 | FR-K3b | - | Merged into FR-K3a: a leftover `.config`, `.warnings` or `.hashes` already makes the directory non-empty; the later checks for them (`CheckoutService`, `DispatchWriter`) cannot be reached. | UC-5 B3, SA2 | `CheckoutIntoNonEmptyDirectoryTest` | |
@@ -1253,7 +1254,7 @@ A file its enabled adapter fails to parse falls back to another adapter (AD-11, 
 | FR-K5a | Event | When a configuration combines features in an interaction never committed, ECCO shall warn MISSING for that interaction. | UC-5 B8 | `CheckoutMissingModuleDiagnosticsTest`, `InitCommitCheckoutEndToEndTest`, `WebClientEndToEndTest` | |
 | FR-K5b | Event | When a checkout holds artifacts its configuration does not explain, ECCO shall warn SURPLUS for them. | UC-5 B8 | `SurplusLatticeAbsorberTest` | |
 | FR-K5i | Unwanted | If the artifacts of an association were committed with several revisions of a feature, then ECCO shall take any one of them in the configuration as explaining them, and not warn SURPLUS for the others. | UC-5 B8 | `SurplusAcrossRevisionsTest`, `FeatureRevisionsEndToEndTest` | History: every checkout of a feature in several revisions warned SURPLUS, once per other revision |
-| FR-K5c | Event | When the order of sibling artifacts is ambiguous, ECCO shall warn ORDER, naming the undecided lines. | UC-5 B8; UC-6 precondition | `OrderWarningTextTest` | |
+| FR-K5c | Event | When the order of sibling artifacts is ambiguous, ECCO shall warn ORDER, naming the undecided lines. | UC-5 B8; UC-6 precondition | `OrderWarningTextTest`, `ResolveOrderEndToEndTest` | |
 | FR-K5d | Event | When a file stored whole has several versions in the combination, ECCO shall not write the file and shall warn CONFLICT. | UC-5 B8 | `WholeFileConflictTest` | Code `WholeFileConflicts` |
 | FR-K5h | Event | When a file stored whole has no version for the combination, ECCO shall not write the file, write the other files, and warn CONFLICT for it. | UC-5 B8 | `WholeFileConflictTest` | Code `WholeFileConflicts` |
 | FR-K5e | Event | When an association cannot be resolved, ECCO shall warn UNRESOLVED for it. | UC-5 B8 | - | Code `CheckoutService` |
@@ -1268,9 +1269,9 @@ A file its enabled adapter fails to parse falls back to another adapter (AD-11, 
 | FR-K10a | Ubiquitous | ECCO shall write each line-based file in the encoding and line separator of the variant it comes from, ending with a newline as that variant did (AD-6). | UC-5 B10 | `TextFormatVariantsTest`, `MarkdownRepositoryVariantsTest`, `FinalNewlineVariantsTest`, `InitCommitCheckoutEndToEndTest` | History 8282a32d |
 | FR-K10b | Event | When a checkout combines variants in different formats, ECCO shall write the newest commit's format. | UC-5 B10 | `TextFormatVariantsTest`, `TextFormatLastCommitWinsTest` | History 5027fcb0 |
 | FR-K10c | State | While a file has no traced format (it was stored before formats were traced), ECCO shall write it in the newest commit's format. | - | - | History 5027fcb0 |
-| FR-K11a | Event | When the variant developer records the order of an artifact's children, ECCO shall change only the artifact's partial order graph, without a commit. | UC-6 B7, SA3 | `RecordOrderTest`, `OrderCommandTest` | |
-| FR-K11b | Unwanted | If a recorded order contradicts an order recorded before, then ECCO shall refuse it and change nothing. | UC-6 B6, SA4 | `RecordOrderTest` | |
-| FR-K11c | Ubiquitous | ECCO shall use a recorded order in every later checkout that contains those children, whatever its configuration. | UC-6 post | `RecordOrderTest`, `OrderResolutionCharacterizationTest` | |
+| FR-K11a | Event | When the variant developer records the order of an artifact's children, ECCO shall change only the artifact's partial order graph, without a commit. | UC-6 B7, SA3 | `RecordOrderTest`, `OrderCommandTest`, `ResolveOrderEndToEndTest` | |
+| FR-K11b | Unwanted | If a recorded order contradicts an order recorded before, then ECCO shall refuse it and change nothing. | UC-6 B6, SA4 | `RecordOrderTest`, `ResolveOrderEndToEndTest` | |
+| FR-K11c | Ubiquitous | ECCO shall use a recorded order in every later checkout that contains those children, whatever its configuration. | UC-6 post | `RecordOrderTest`, `OrderResolutionCharacterizationTest`, `ResolveOrderEndToEndTest` | |
 | FR-K12 | Ubiquitous | ECCO shall not check out a file removed in a later commit (for example by renaming its directory) in a variant that does not contain it. | UC-5 B5 | `RemovedFileCheckoutTest` | Code `SerNode.copySingleNodeCompletely`, `Trees.treeFusion`; History d73f17e0 |
 | FR-K13 | Unwanted | If a checkout's configuration names a feature or revision the repository does not have (FR-F2b reads it as a new one), then ECCO shall refuse the checkout before writing anything, naming it. | UC-5 B2, SA1 | `UnknownRevisionCheckoutTest`, `ForkPullPushEndToEndTest`, `FeatureRevisionsEndToEndTest` | Code `CheckoutService#checkCommitted` |
 
@@ -1458,9 +1459,9 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-C8b | Event | When `init` or `fork` runs, the CLI shall create the repository in the current directory. | UC-1 B1; UC-11 B1 | `InitCommandTest`, `ForkCommandTest`, `InitCommitCheckoutEndToEndTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | Doc |
 | IF-C9a | Event | When `commit` succeeds, the CLI shall print the commit id and configuration, then each accepted constraint the configuration violates as `CONSTRAINT:`, checked before committing. | UC-3 front ends | `CommitCommandTest`, `InitCommitCheckoutEndToEndTest`, `ConstraintsEndToEndTest` | |
 | IF-C9b | Event | When `checkout` succeeds, the CLI shall print the configuration and the number of warnings of each kind, pointing to `.warnings`. | UC-5 SA4 | `CheckoutCommandTest`, `InitCommitCheckoutEndToEndTest` | |
-| IF-C10a | Event | When `order <file>...` runs, the CLI shall record the order of the files as they are now, without a commit (FR-K11), taking the configuration from `.config` and matching the files to its composition by content. | UC-6 SA3 | `OrderCommandTest`, `RecordOrderTest` | |
-| IF-C10b | Unwanted | If a file given to `order` holds content the composition does not, or lacks some of it, then the CLI shall refuse it, naming that content. | UC-6 SA3 | `RecordOrderTest` | |
-| IF-C10c | Ubiquitous | `order` shall read paths relative to the directory it runs in. | UC-6 SA3 | `RecordOrderTest` | |
+| IF-C10a | Event | When `order <file>...` runs, the CLI shall record the order of the files as they are now, without a commit (FR-K11), taking the configuration from `.config` and matching the files to its composition by content. | UC-6 SA3 | `OrderCommandTest`, `RecordOrderTest`, `ResolveOrderEndToEndTest` | |
+| IF-C10b | Unwanted | If a file given to `order` holds content the composition does not, or lacks some of it, then the CLI shall refuse it, naming that content. | UC-6 SA3 | `RecordOrderTest`, `ResolveOrderEndToEndTest` | |
+| IF-C10c | Ubiquitous | `order` shall read paths relative to the directory it runs in. | UC-6 SA3 | `RecordOrderTest`, `ResolveOrderEndToEndTest` | |
 | IF-C11 | Event | When `features` runs, the CLI shall list each feature with its id as a configuration takes it (`search [<id>]`), and with a name that feature's revisions. | UC-3 B3; UC-5 B2 | `ListFeaturesCommandTest`, `FeatureRevisionsEndToEndTest` | History: the CLI showed no feature id, so `[<id>]` and the hint for an ambiguous name could not be used from it |
 
 ### Graphical user interface (`gui`)
