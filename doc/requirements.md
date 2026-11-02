@@ -568,6 +568,7 @@ Postcondition: The repository is unchanged.
 | Generalization | None |
 | Front ends | GUI Explore > Feature Model; CLI `suggest-constraints`, `accept-constraint`, `reject-constraint` |
 | Realizes | FR-N1 to FR-N6, IF-C5, IF-G5 |
+| End-to-end test | `ConstraintsEndToEndTest` (CLI, one `ecco` process per step: suggest, accept, reject and undo; then the checkout and the commit that violate the accepted constraint, and the decisions carried by a fork and a pull) |
 
 **Basic flow**
 
@@ -1256,13 +1257,13 @@ A file its enabled adapter fails to parse falls back to another adapter (AD-11, 
 | FR-K5d | Event | When a file stored whole has several versions in the combination, ECCO shall not write the file and shall warn CONFLICT. | UC-5 B8 | `WholeFileConflictTest` | Code `WholeFileConflicts` |
 | FR-K5h | Event | When a file stored whole has no version for the combination, ECCO shall not write the file, write the other files, and warn CONFLICT for it. | UC-5 B8 | `WholeFileConflictTest` | Code `WholeFileConflicts` |
 | FR-K5e | Event | When an association cannot be resolved, ECCO shall warn UNRESOLVED for it. | UC-5 B8 | - | Code `CheckoutService` |
-| FR-K5f | Event | When a configuration violates an accepted constraint, ECCO shall warn CONSTRAINT. | UC-5 B8 | `ConstraintViolationWarningTest` | |
+| FR-K5f | Event | When a configuration violates an accepted constraint, ECCO shall warn CONSTRAINT. | UC-5 B8 | `ConstraintViolationWarningTest`, `ConstraintsEndToEndTest` | |
 | FR-K6 | Ubiquitous | ECCO shall not warn MISSING for an interaction when a smaller sub-combination of it is already missing. | UC-5 B8 | `ModuleRevisionsTest` (unit) | Code `ModuleRevisions.java:38-58` |
 | FR-K7a | Optional | Where SURPLUS absorption is on (the default), ECCO shall absorb SURPLUS warnings (X + XY = X). | UC-5 B8 | `SurplusLatticeAbsorberTest` | Code `SurplusLatticeAbsorber` |
 | FR-K7b | Optional | Where SURPLUS suppression is on (the default), ECCO shall suppress a SURPLUS warning that the feature model entails. | UC-5 B8 | `SurplusModuleSuppressorTest` (unit), `SurplusModuleSuppressorMultiRevisionTest` | Code `SurplusModuleSuppressor`; History ce32c243 |
 | FR-K7c | Ubiquitous | ECCO shall never absorb or suppress MISSING warnings. | - | `SurplusLatticeAbsorberTest`, `SurplusModuleSuppressorTest` (unit) | |
 | FR-K7d | Unwanted | If SURPLUS absorption or suppression fails, then ECCO shall log the failure and keep the warnings unreduced. | - | - | Code `SurplusLatticeAbsorber`, `SurplusModuleSuppressor` |
-| FR-K8 | Ubiquitous | ECCO shall not block a commit or checkout because of a constraint violation. | UC-3 SA3; UC-4 SA3 | `ConstraintViolationWarningTest` | Code ES:1196-1207 |
+| FR-K8 | Ubiquitous | ECCO shall not block a commit or checkout because of a constraint violation. | UC-3 SA3; UC-4 SA3 | `ConstraintViolationWarningTest`, `ConstraintsEndToEndTest` | Code ES:1196-1207 |
 | FR-K9 | Ubiquitous | ECCO shall compose a checkout in a read-only transaction. | UC-5 B4, B9 | `ReadWithoutTransactionTest` | |
 | FR-K10a | Ubiquitous | ECCO shall write each line-based file in the encoding and line separator of the variant it comes from, ending with a newline as that variant did (AD-6). | UC-5 B10 | `TextFormatVariantsTest`, `MarkdownRepositoryVariantsTest`, `FinalNewlineVariantsTest`, `InitCommitCheckoutEndToEndTest` | History 8282a32d |
 | FR-K10b | Event | When a checkout combines variants in different formats, ECCO shall write the newest commit's format. | UC-5 B10 | `TextFormatVariantsTest`, `TextFormatLastCommitWinsTest` | History 5027fcb0 |
@@ -1281,15 +1282,15 @@ FR-K12 holds because a node that only leads to its association's own nodes contr
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| FR-N1a | Event | When the product-line engineer asks for constraint suggestions, ECCO shall mine MANDATORY, REQUIRES and EXCLUDES constraints from the committed configurations. | UC-8 B2, SA4 | `ConstraintMinerTest` (unit), `SuggestConstraintsCommandTest` | Code `ConstraintMiner:80-210` |
+| FR-N1a | Event | When the product-line engineer asks for constraint suggestions, ECCO shall mine MANDATORY, REQUIRES and EXCLUDES constraints from the committed configurations. | UC-8 B2, SA4 | `ConstraintMinerTest` (unit), `SuggestConstraintsCommandTest`, `ConstraintsEndToEndTest` | Code `ConstraintMiner:80-210` |
 | FR-N1b | Ubiquitous | ECCO shall mine with a minimum witness count (at least 1, default 4) and a confidence threshold (0 to 1, default 0.9; 1.0 = hard rules only). | UC-8 B2, SA1 | `ConstraintMinerTest` (unit), `ConstraintSuggestionsViewTest` (GUI) | Code `ConstraintMiner:80-210` |
 | FR-N1c | Ubiquitous | ECCO shall list the suggestions hard ones first, then by number of witnesses. | UC-8 B3 | `SuggestConstraintsCommandTest` | Code `ConstraintMiner:80-210` |
 | FR-N2 | Ubiquitous | ECCO shall apply a mined constraint only once it is accepted. | UC-8 B3-B5 | `UnacceptedConstraintsTest` | Code `ConstraintMiner` |
 | FR-N3 | Ubiquitous | ECCO shall mine constraints per feature, so that revisions of one feature are never mutually exclusive. | UC-8 B2 | `ConstraintMinerTest` (unit), `SuggestConstraintsCommandTest` | Code `ConfigurationBridge` |
-| FR-N4a | Event | When the product-line engineer accepts or rejects a suggestion, ECCO shall store the decision in the repository and withdraw an opposite decision on the same suggestion. | UC-8 B5, SA2 | `RejectedConstraintsTest` | |
-| FR-N4b | Event | When a fork, pull or push joins two repositories, ECCO shall carry the accepted and rejected constraints and the feature parents over without duplicates, the receiving repository keeping its own decision. | UC-11 B5; UC-12 B7, SA1, SA7 | `ConstraintPersistenceMergeTest`, `RejectedConstraintsTest` | |
+| FR-N4a | Event | When the product-line engineer accepts or rejects a suggestion, ECCO shall store the decision in the repository and withdraw an opposite decision on the same suggestion. | UC-8 B5, SA2 | `RejectedConstraintsTest`, `ConstraintsEndToEndTest` | |
+| FR-N4b | Event | When a fork, pull or push joins two repositories, ECCO shall carry the accepted and rejected constraints and the feature parents over without duplicates, the receiving repository keeping its own decision. | UC-11 B5; UC-12 B7, SA1, SA7 | `ConstraintPersistenceMergeTest`, `RejectedConstraintsTest`, `ConstraintsEndToEndTest` | |
 | FR-N4c | Event | When a repository is opened on a machine that holds rejections kept by an earlier version, ECCO shall move them into the repository, except for suggestions the repository has accepted. | UC-8 SA5 | `RejectedConstraintsTest` | |
-| FR-N5 | State | While re-mining no longer yields an accepted constraint, ECCO shall not trust it. | UC-8 B7, post | `AcceptedConstraintStaleReMineTest` | |
+| FR-N5 | State | While re-mining no longer yields an accepted constraint, ECCO shall not trust it. | UC-8 B7, post | `AcceptedConstraintStaleReMineTest`, `ConstraintsEndToEndTest` | |
 | FR-N6 | Event | When the product-line engineer accepts, rejects or returns several constraints at once, ECCO shall store them in one transaction and fire one event. | UC-8 B5, SA2, SA3 | `ConstraintBatchAcceptTest` | Code `ConstraintService:84-122`; History 04825b26 |
 | FR-N7a | Ubiquitous | ECCO shall drop a literal or term of a presence condition only where a SAT check proves the result equivalent under the feature model. | UC-9 B3 | `PresenceConditionMinimizerTest` (unit), `MinimizedCheckoutEquivalenceTest` | Code `PresenceConditionMinimizer` |
 | FR-N7b | Event | When the product-line engineer previews a minimization (`minimize-preview`), ECCO shall leave the repository unchanged. | UC-9 SA1 | `MinimizePreviewCommandTest` | Doc |
@@ -1450,12 +1451,12 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-C4a | Ubiquitous | `fetch`, `pull` and `push` shall use the remote `origin` when given none. | UC-12 precondition | `MainArgumentsTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | Code |
 | IF-C4b | Ubiquitous | `pull`, `push` and `fork` shall take feature revisions to exclude (`--exclude`, FR-D4). | UC-11 B1; UC-12 B1 | `MainArgumentsTest`, `PullCommandTest`, `PushCommandTest`, `ForkCommandTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | Code |
 | IF-C5a | Ubiquitous | `suggest-constraints` and `minimize-preview` shall take `--min-witness` and `--confidence` (defaults in FR-N1b). | UC-8 SA1, SA4; UC-9 SA1 | `SuggestConstraintsCommandTest`, `MinimizePreviewCommandTest` | Code |
-| IF-C5b | Optional | Unless given `--all`, `suggest-constraints` shall leave out accepted and rejected suggestions. | UC-8 SA4 | `SuggestConstraintsCommandTest` | Code |
+| IF-C5b | Optional | Unless given `--all`, `suggest-constraints` shall leave out accepted and rejected suggestions. | UC-8 SA4 | `SuggestConstraintsCommandTest`, `ConstraintsEndToEndTest` | Code |
 | IF-C6 | Event | When `dg` runs, the CLI shall print the association dependency graph as GML on stdout. | UC-7 SA3 | `DependencyGraphCommandTest` | Code |
 | IF-C7 | Ubiquitous | The CLI shall bundle the same adapters as the GUI, so that it can work on repositories made with the GUI (headless: NFR-B3). | - | - | Doc |
 | IF-C8a | Event | When a command runs, the CLI shall use the repository in the current or nearest parent directory, and that directory as the working directory. | UC-2 SA1 | `MainRepositoryDiscoveryTest` | Doc |
 | IF-C8b | Event | When `init` or `fork` runs, the CLI shall create the repository in the current directory. | UC-1 B1; UC-11 B1 | `InitCommandTest`, `ForkCommandTest`, `InitCommitCheckoutEndToEndTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | Doc |
-| IF-C9a | Event | When `commit` succeeds, the CLI shall print the commit id and configuration, then each accepted constraint the configuration violates as `CONSTRAINT:`, checked before committing. | UC-3 front ends | `CommitCommandTest`, `InitCommitCheckoutEndToEndTest` | |
+| IF-C9a | Event | When `commit` succeeds, the CLI shall print the commit id and configuration, then each accepted constraint the configuration violates as `CONSTRAINT:`, checked before committing. | UC-3 front ends | `CommitCommandTest`, `InitCommitCheckoutEndToEndTest`, `ConstraintsEndToEndTest` | |
 | IF-C9b | Event | When `checkout` succeeds, the CLI shall print the configuration and the number of warnings of each kind, pointing to `.warnings`. | UC-5 SA4 | `CheckoutCommandTest`, `InitCommitCheckoutEndToEndTest` | |
 | IF-C10a | Event | When `order <file>...` runs, the CLI shall record the order of the files as they are now, without a commit (FR-K11), taking the configuration from `.config` and matching the files to its composition by content. | UC-6 SA3 | `OrderCommandTest`, `RecordOrderTest` | |
 | IF-C10b | Unwanted | If a file given to `order` holds content the composition does not, or lacks some of it, then the CLI shall refuse it, naming that content. | UC-6 SA3 | `RecordOrderTest` | |
