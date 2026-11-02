@@ -634,6 +634,7 @@ Postcondition: The rejections are stored in the repository and no longer on this
 | Generalization | None |
 | Front ends | CLI `minimize`, `minimize-preview`; GUI "Minimize Presence Conditions" |
 | Realizes | FR-N7, FR-N8, FR-N9, IF-C5 |
+| End-to-end test | `MinimizedCheckoutEndToEndTest` (CLI, one `ecco` process per step: the preview, `minimize`, and `checkout --minimized` against a checkout without them for every configuration the accepted constraint allows, also after a commit) |
 
 **Basic flow**
 
@@ -1294,10 +1295,10 @@ FR-K12 holds because a node that only leads to its association's own nodes contr
 | FR-N5 | State | While re-mining no longer yields an accepted constraint, ECCO shall not trust it. | UC-8 B7, post | `AcceptedConstraintStaleReMineTest`, `ConstraintsEndToEndTest` | |
 | FR-N6 | Event | When the product-line engineer accepts, rejects or returns several constraints at once, ECCO shall store them in one transaction and fire one event. | UC-8 B5, SA2, SA3 | `ConstraintBatchAcceptTest` | Code `ConstraintService:84-122`; History 04825b26 |
 | FR-N7a | Ubiquitous | ECCO shall drop a literal or term of a presence condition only where a SAT check proves the result equivalent under the feature model. | UC-9 B3 | `PresenceConditionMinimizerTest` (unit), `MinimizedCheckoutEquivalenceTest` | Code `PresenceConditionMinimizer` |
-| FR-N7b | Event | When the product-line engineer previews a minimization (`minimize-preview`), ECCO shall leave the repository unchanged. | UC-9 SA1 | `MinimizePreviewCommandTest` | Doc |
-| FR-N8 | Ubiquitous | ECCO shall show or use a stored minimized condition only while the association's condition, the distinct committed configurations and the accepted constraints it was computed from are unchanged. | UC-9 B4, post | `MinimizedConditionValidityTest` | |
-| FR-N9a | Optional | Where a checkout asks for minimized conditions (`checkout --minimized`, GUI preference; off by default), ECCO shall select with the stored revision-exact minimized conditions that are still valid, and with the full conditions otherwise. | UC-5 SA3 | `MinimizeCommandTest` | |
-| FR-N9b | Ubiquitous | ECCO shall write the same files with minimized conditions as without them for every configuration the feature model allows. | UC-5 SA3 post | `MinimizedCheckoutEquivalenceTest` | |
+| FR-N7b | Event | When the product-line engineer previews a minimization (`minimize-preview`), ECCO shall leave the repository unchanged. | UC-9 SA1 | `MinimizePreviewCommandTest`, `MinimizedCheckoutEndToEndTest` | Doc |
+| FR-N8 | Ubiquitous | ECCO shall show or use a stored minimized condition only while the association's condition, the distinct committed configurations and the accepted constraints it was computed from are unchanged. | UC-9 B4, post | `MinimizedConditionValidityTest`, `MinimizedCheckoutEndToEndTest` | |
+| FR-N9a | Optional | Where a checkout asks for minimized conditions (`checkout --minimized`, GUI preference; off by default), ECCO shall select with the stored revision-exact minimized conditions that are still valid, and with the full conditions otherwise. | UC-5 SA3 | `MinimizeCommandTest`, `MinimizedCheckoutEndToEndTest` | |
+| FR-N9b | Ubiquitous | ECCO shall write the same files with minimized conditions as without them for every configuration the feature model allows. | UC-5 SA3 post | `MinimizedCheckoutEquivalenceTest`, `MinimizedCheckoutEndToEndTest` | |
 
 ### Proactive feature traces
 
