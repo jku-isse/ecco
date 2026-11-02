@@ -20,7 +20,7 @@ public class SyncTimeoutTest {
     @Timeout(30)
     public void connectionsToARemoteHaveAReadTimeout() throws Exception {
         try (ServerSocket silent = new ServerSocket(0); SocketChannel channel = SocketChannel.open()) {
-            assertTrue(RemoteSyncService.connect(channel, new InetSocketAddress("localhost", silent.getLocalPort())));
+            RemoteSyncService.connect(channel, new InetSocketAddress("localhost", silent.getLocalPort()));
             assertEquals(RemoteSyncService.READ_TIMEOUT_MILLIS, channel.socket().getSoTimeout());
             assertTrue(RemoteSyncService.READ_TIMEOUT_MILLIS > 0);
 
@@ -31,9 +31,9 @@ public class SyncTimeoutTest {
     }
 
     /**
-     * A remote that cannot be reached is named: the failure was a bare "Connection refused", and the
-     * "Error connecting to remote" messages were never reached - connect threw before them
-     * (FailureFlowsEndToEndTest found it).
+     * A remote that cannot be reached is named: the failure was a bare "Connection refused" - the
+     * "Error connecting to remote" messages for connect returning false were never reached, it threw
+     * before them (FailureFlowsEndToEndTest found it).
      */
     @Test
     @Timeout(30)

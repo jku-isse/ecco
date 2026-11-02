@@ -63,22 +63,22 @@ public class RemoteSyncService {
     /**
      * Connects {@code channel} (blocking) to {@code address} with a connect timeout, and sets a read
      * timeout: without them a remote that accepted the connection and never answered held a fetch -
-     * and the service's lock, which the GUI's Save, Close and Quit wait for - forever.
+     * and the service's lock, which the GUI's Save, Close and Quit wait for - forever. A remote that
+     * cannot be reached throws, naming its address (it returned true, and every caller's branch for
+     * false was dead).
      */
-    static boolean connect(SocketChannel channel, InetSocketAddress address) throws IOException {
+    static void connect(SocketChannel channel, InetSocketAddress address) throws IOException {
         channel.configureBlocking(true);
         try {
             channel.socket().connect(address, CONNECT_TIMEOUT_MILLIS);
         } catch (IOException e) {
-            // named: the failure read "Connection refused" alone, and the callers' "Error connecting
-            // to remote" messages for a false return were never reached
+            // named: the failure read "Connection refused" alone
             java.net.ConnectException named = new java.net.ConnectException("Error connecting to remote "
                     + address.getHostString() + ":" + address.getPort() + ": " + e.getMessage());
             named.initCause(e);
             throw named;
         }
         channel.socket().setSoTimeout(READ_TIMEOUT_MILLIS);
-        return true;
     }
 
     public Remote addRemote(String name, String address) {
@@ -635,39 +635,36 @@ public class RemoteSyncService {
 
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
-                    if (RemoteSyncService.connect(sChannel, socketAddressOf(remote))) {
-                        ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
+                    RemoteSyncService.connect(sChannel, socketAddressOf(remote));
+                    ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
-                        ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-                        ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
+                    ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
+                    ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
 
-                        oos.writeObject("FETCH");
-                        oos.flush();
-
-
-                        int size = (Integer) ois.readObject();
-                        progressInputStream.setMaxBytes(size);
-                        progressInputStream.resetProgress();
-                        progressInputStream.addListener(owner);
-
-                        // retrieve features
-                        @SuppressWarnings("unchecked")
-                        Collection<Feature> features = (Collection<Feature>) ois.readObject();
-
-                        progressInputStream.removeListener(owner);
+                    oos.writeObject("FETCH");
+                    oos.flush();
 
 
-                        // copy it using this entity factory
-                        Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(features, owner.entityFactory);
-                        OperationCancelledException.check(cancelled);
+                    int size = (Integer) ois.readObject();
+                    progressInputStream.setMaxBytes(size);
+                    progressInputStream.resetProgress();
+                    progressInputStream.addListener(owner);
 
-                        // store with remote
-                        remote.getFeatures().clear();
-                        remote.getFeatures().addAll(copiedFeatures);
-                        owner.remoteDao.storeRemote(remote);
-                    } else {
-                        throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + remote.getAddress());
-                    }
+                    // retrieve features
+                    @SuppressWarnings("unchecked")
+                    Collection<Feature> features = (Collection<Feature>) ois.readObject();
+
+                    progressInputStream.removeListener(owner);
+
+
+                    // copy it using this entity factory
+                    Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(features, owner.entityFactory);
+                    OperationCancelledException.check(cancelled);
+
+                    // store with remote
+                    remote.getFeatures().clear();
+                    remote.getFeatures().addAll(copiedFeatures);
+                    owner.remoteDao.storeRemote(remote);
                 } catch (Exception e) {
                     throw new EccoException("Error during remote fetch.", e);
                 }
@@ -731,8 +728,7 @@ public class RemoteSyncService {
             return null;
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
-            if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
-                throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + remote.getAddress());
+            RemoteSyncService.connect(sChannel, socketAddressOf(remote));
             ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
             ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
             oos.writeObject("PULL_COMMITS");
@@ -769,8 +765,7 @@ public class RemoteSyncService {
     private ArrayList<String> remoteCommitIds(Remote remote) throws IOException, ClassNotFoundException {
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
-            if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
-                throw new EccoException("Error connecting to remote: " + remote.getAddress());
+            RemoteSyncService.connect(sChannel, socketAddressOf(remote));
             ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
             oos.writeObject("COMMIT_IDS");
             oos.flush();
@@ -796,8 +791,7 @@ public class RemoteSyncService {
         byte[] payload = SyncObjectStreams.writeCopy(commits);
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
-            if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
-                throw new EccoException("Error connecting to remote: " + remote.getAddress());
+            RemoteSyncService.connect(sChannel, socketAddressOf(remote));
             ProgressOutputStream pos = new ProgressOutputStream(sChannel.socket().getOutputStream());
             ObjectOutputStream oos = new ObjectOutputStream(pos);
             oos.writeObject("PUSH_COMMITS");
@@ -843,8 +837,7 @@ public class RemoteSyncService {
     static Map<String, String> remoteSettings(InetSocketAddress address, String name) throws IOException, ClassNotFoundException {
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
-            if (!RemoteSyncService.connect(sChannel, address))
-                throw new EccoException("Error connecting to remote: " + name + ": " + address);
+            RemoteSyncService.connect(sChannel, address);
             ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
             oos.writeObject("SETTINGS");
             oos.flush();
@@ -869,8 +862,7 @@ public class RemoteSyncService {
         String reply;
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
-            if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
-                throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + remote.getAddress());
+            RemoteSyncService.connect(sChannel, socketAddressOf(remote));
             ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
             oos.writeObject("MERGE_SETTINGS");
             oos.writeObject(new HashMap<>(owner.repositorySettings()));
@@ -904,8 +896,7 @@ public class RemoteSyncService {
     void sendPush(Remote remote, Repository.Op subsetRepository, Map<String, String> settings, boolean answers) throws IOException, ClassNotFoundException {
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
-            if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
-                throw new EccoException("Error connecting to remote: " + remote.getAddress());
+            RemoteSyncService.connect(sChannel, socketAddressOf(remote));
             // oos wraps the progress-tracking stream (not the raw socket stream directly) so
             // that the actual payload write below -- not just a separate scratch stream used
             // only to estimate size, see below -- is what the progress listener observes.
@@ -1023,41 +1014,38 @@ public class RemoteSyncService {
                     owner.repositoryDao.store(repository);
                 } else try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
-                    if (RemoteSyncService.connect(sChannel, socketAddressOf(remote))) {
-                        ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
+                    RemoteSyncService.connect(sChannel, socketAddressOf(remote));
+                    ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
-                        ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-                        ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
+                    ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
+                    ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
 
-                        oos.writeObject("PULL");
-                        oos.writeObject(deselectedFeatureRevisionsString);
-                        oos.flush();
-
-
-                        int size = (Integer) ois.readObject();
-                        progressInputStream.setMaxBytes(size);
-                        progressInputStream.resetProgress();
-                        progressInputStream.addListener(owner);
-
-                        // retrieve remote repository
-                        Repository.Op subsetRepository = SyncObjectStreams.readRepository(ois);
-
-                        progressInputStream.removeListener(owner);
+                    oos.writeObject("PULL");
+                    oos.writeObject(deselectedFeatureRevisionsString);
+                    oos.flush();
 
 
-                        // copy it using this entity factory
-                        Repository.Op copiedRepository = subsetRepository.copy(owner.entityFactory);
-                        OperationCancelledException.check(cancelled);
+                    int size = (Integer) ois.readObject();
+                    progressInputStream.setMaxBytes(size);
+                    progressInputStream.resetProgress();
+                    progressInputStream.addListener(owner);
 
-                        // merge into this repository - if both read the files the same way
-                        if (remoteSettings != null)
-                            takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(copiedRepository), remoteSettings,
-                                    owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
-                        repository.merge(copiedRepository);
-                        owner.repositoryDao.store(repository);
-                    } else {
-                        throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + remote.getAddress());
-                    }
+                    // retrieve remote repository
+                    Repository.Op subsetRepository = SyncObjectStreams.readRepository(ois);
+
+                    progressInputStream.removeListener(owner);
+
+
+                    // copy it using this entity factory
+                    Repository.Op copiedRepository = subsetRepository.copy(owner.entityFactory);
+                    OperationCancelledException.check(cancelled);
+
+                    // merge into this repository - if both read the files the same way
+                    if (remoteSettings != null)
+                        takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(copiedRepository), remoteSettings,
+                                owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
+                    repository.merge(copiedRepository);
+                    owner.repositoryDao.store(repository);
                 } catch (Exception e) {
                     throw new EccoException("Error during remote pull.", e);
                 }

@@ -743,33 +743,30 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
-            if (RemoteSyncService.connect(sChannel, new InetSocketAddress(hostname, port))) {
-                ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
+            RemoteSyncService.connect(sChannel, new InetSocketAddress(hostname, port));
+            ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
-                ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-                ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
+            ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
+            ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
 
-                oos.writeObject("PULL");
-                oos.writeObject(deselectedFeatureRevisionsString);
-                oos.flush();
-
-
-                int size = (Integer) ois.readObject();
-                progressInputStream.setMaxBytes(size);
-                progressInputStream.resetProgress();
-                progressInputStream.addListener(this);
-
-                // retrieve remote repository
-                Repository.Op subsetRepository = SyncObjectStreams.readRepository(ois);
-
-                progressInputStream.removeListener(this);
+            oos.writeObject("PULL");
+            oos.writeObject(deselectedFeatureRevisionsString);
+            oos.flush();
 
 
-                // copy it using this entity factory
-                copiedRepository = subsetRepository.copy(this.entityFactory);
-            } else {
-                throw new EccoException("Error connecting to remote: " + hostname + ":" + port);
-            }
+            int size = (Integer) ois.readObject();
+            progressInputStream.setMaxBytes(size);
+            progressInputStream.resetProgress();
+            progressInputStream.addListener(this);
+
+            // retrieve remote repository
+            Repository.Op subsetRepository = SyncObjectStreams.readRepository(ois);
+
+            progressInputStream.removeListener(this);
+
+
+            // copy it using this entity factory
+            copiedRepository = subsetRepository.copy(this.entityFactory);
         } catch (Error e) {
             this.abandonNewRepository(e);
             throw e;
@@ -807,8 +804,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     private Repository.Op receiveCopy(String hostname, int port) throws IOException, ClassNotFoundException {
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
-            if (!RemoteSyncService.connect(sChannel, new InetSocketAddress(hostname, port)))
-                throw new EccoException("Error connecting to remote: " + hostname + ":" + port);
+            RemoteSyncService.connect(sChannel, new InetSocketAddress(hostname, port));
             ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
             ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
             ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
