@@ -341,7 +341,7 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 		chart.setPrefHeight(Math.max(MIN_BAR_CHART_HEIGHT, BAR_CHART_PADDING + BAR_HEIGHT * bars.size()));
 	}
 
-	/** Called by {@code MainView#switchTo}: shown again, the charts are loaded again. */
+	/** Called by {@code MainView#switchTo}: shown again, the charts are loaded again if the repository changed while hidden. */
 	@Override
 	public void setTabVisible(boolean tabVisible) {
 		this.tabVisible = tabVisible;

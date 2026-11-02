@@ -186,11 +186,15 @@ public class ChartsViewTest {
             service.setRepositoryDir(tmp.resolve("repo").resolve(".ecco"));
             service.init();
             commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
-            ChartsView view = loaded(service);
+            // the first load done: the test only waited for the view to be enabled, and passed only
+            // when the first load read the repository after it began to fail - hiding and showing
+            // the tab loads nothing by itself, only what changed while it was hidden
+            ChartsView view = refreshed(service);
 
             failing.set(true);
             onFx(() -> {
                 view.setTabVisible(false);
+                view.statusChangedEvent(service); // a change while hidden: noted, loaded when shown
                 view.setTabVisible(true);
             });
             waitUntil("the failure is shown", () -> Window.getWindows().stream()
