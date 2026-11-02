@@ -72,7 +72,17 @@ public class NotificationPanelTest {
             return p;
         });
         assertEquals(1, onFx(() -> panel.getChildren().size()));
-        waitUntil("the card dismissed itself", () -> panel.getChildren().isEmpty());
+        // failed once in a full run (2026-10-16), the FX thread answering all along; not reproduced
+        // in eleven full runs since. Should it fail again: an opacity of 1 means the 4 s pause never
+        // ended - JavaFX ran no animations (the JVM throttled, the machine asleep?) - below 1 the fade
+        // stalled, and a card gone meanwhile its removal was late
+        try {
+            waitUntil("the card dismissed itself", () -> panel.getChildren().isEmpty());
+        } catch (AssertionError timedOut) {
+            String state = onFx(() -> panel.getChildren().isEmpty() ? "gone by now"
+                    : "opacity " + panel.getChildren().get(0).getOpacity());
+            throw new AssertionError(timedOut.getMessage() + " - the card: " + state, timedOut);
+        }
     }
 
     /** Notifications posts to the installed panel from a background thread, and is a no-op with none installed. */
