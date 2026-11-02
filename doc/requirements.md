@@ -255,7 +255,7 @@ Postcondition: The repository is unchanged.
 | Generalization | None |
 | Front ends | CLI `commit -c <configuration> [-m <message>]` (prints the commit id and any violated constraints); GUI Versions > Commit |
 | Realizes | FR-F1 to FR-F8, FR-M1 to FR-M12, FR-P1 to FR-P3, FR-T1, AD-11, IF-C3, IF-C9, NFR-R1, NFR-R3 |
-| End-to-end test | `InitCommitCheckoutEndToEndTest` (CLI, one `ecco` process per step; UC-1, UC-3 and UC-5 in one history); feature revisions by name, id prefix and feature id: `FeatureRevisionsEndToEndTest` |
+| End-to-end test | `InitCommitCheckoutEndToEndTest` (CLI, one `ecco` process per step; UC-1, UC-3 and UC-5 in one history); feature revisions by name, id prefix and feature id: `FeatureRevisionsEndToEndTest`; failure flows: `FailureFlowsEndToEndTest` |
 
 **Basic flow**
 
@@ -856,7 +856,7 @@ Postcondition: The new repository checks out the remote's content without the ex
 **Bounded alternative flow BA1** (RFS 4-9)
 
 1. IF the connection or the copy fails THEN the system removes the half-created repository ENDIF.
-2. The system reports the error, for example "Error connecting to remote: ...".
+2. The system reports the error, for example "Error connecting to remote <host>:<port>: Connection refused".
 3. ABORT.
 
 Postcondition: Nothing is created, and the collaborator can retry.
@@ -873,7 +873,7 @@ Postcondition: Nothing is created, and the collaborator can retry.
 | Generalization | None |
 | Front ends | CLI `fetch`, `pull`, `push [remote] [--exclude ...]`; GUI Collaborate > Remotes; REST pull between its own repositories |
 | Realizes | FR-D1, FR-D3, FR-D4, FR-D5, FR-D7, FR-D8, FR-D9, FR-M9, FR-N4, IF-C4, IF-G10, IF-R4 |
-| End-to-end test | `ForkPullPushEndToEndTest` (CLI, local paths, one `ecco` process per step; UC-11 and UC-12 in one history, against linear histories); over the socket: `ServeEndToEndTest` |
+| End-to-end test | `ForkPullPushEndToEndTest` (CLI, local paths, one `ecco` process per step; UC-11 and UC-12 in one history, against linear histories); over the socket: `ServeEndToEndTest`; failure flows: `FailureFlowsEndToEndTest` |
 
 **Basic flow**
 
@@ -935,7 +935,7 @@ Postcondition: Both repositories are unchanged.
 **Bounded alternative flow BA1** (RFS 4-8)
 
 1. IF the connection to the remote fails THEN the system rolls back the transaction ENDIF.
-2. The system reports "Error connecting to remote: ...".
+2. The system reports "Error connecting to remote <host>:<port>: ..." with the reason.
 3. ABORT.
 
 Postcondition: Both repositories are unchanged.
@@ -1221,13 +1221,13 @@ FR-F3 can only meet a repository made before FR-F6 (51523c0d): a pull or push ta
 | FR-M6a | Ubiquitous | ECCO shall read each file with the adapter of the first `.ecco/.adapters` line (`pluginId;glob`) whose glob matches the file. | UC-3 B6 | `DispatchReaderPriorityTieTest` | Doc; Code DR:143-197 |
 | FR-M6b | Event | When a repository without `.adapters` is opened, ECCO shall write `.adapters` from the adapters' priorities. | - | `DispatchReaderPriorityTieTest` | Doc; Code DR:143-197 |
 | FR-M6c | Ubiquitous | ECCO shall keep a repository's `.adapters` once written. | - | `UnavailableAdapterRoutingTest` | Doc; Code DR:143-197 |
-| FR-M7a | Unwanted | If a file maps to a disabled or missing adapter, then ECCO shall fail the commit and not read the file with another adapter. | UC-3 BA1 | `UnavailableAdapterRoutingTest` | |
+| FR-M7a | Unwanted | If a file maps to a disabled or missing adapter, then ECCO shall fail the commit and not read the file with another adapter. | UC-3 BA1 | `UnavailableAdapterRoutingTest`, `FailureFlowsEndToEndTest` | |
 | FR-M7b | Unwanted | If a line of `.adapters` is malformed, then ECCO shall reject it, naming the line. | - | `UnavailableAdapterRoutingTest` | |
-| FR-M8a | Unwanted | If a file cannot be read, then ECCO shall fail the commit instead of committing the file empty. | UC-3 BA1 | `UnreadableFileCommitTest` | |
+| FR-M8a | Unwanted | If a file cannot be read, then ECCO shall fail the commit instead of committing the file empty. | UC-3 BA1 | `UnreadableFileCommitTest`, `FailureFlowsEndToEndTest` | |
 | FR-M8b | Unwanted | If the working directory contains a symlink loop, then ECCO shall skip the loop. | - | `SymlinkLoopCommitTest` | |
 | FR-M9 | - | Moved to [NFR-V1](#compatibility-and-evolution) (a commit or merge into a repository of a retired adapter format is refused) and NFR-V2 (it still checks out). | UC-3 B7, SA2; UC-12 B6, SA5 | `CppRoundTripTest` | |
 | FR-M10a | Ubiquitous | ECCO shall run a commit in one read-write transaction. | UC-3 B5, B11 | - | Code `CommitService` |
-| FR-M10b | Unwanted | If a commit fails, also with an `Error` such as `OutOfMemoryError`, then ECCO shall roll back its transaction. | UC-3 BA1 | `ErrorRollbackTest` | History 2dc75b70 |
+| FR-M10b | Unwanted | If a commit fails, also with an `Error` such as `OutOfMemoryError`, then ECCO shall roll back its transaction. | UC-3 BA1 | `ErrorRollbackTest`, `FailureFlowsEndToEndTest` | History 2dc75b70 |
 | FR-M10c | Unwanted | If a listener fails after a transaction is committed, then ECCO shall keep the transaction committed. | - | `ListenerFailureKeepsCommitTest` | Code `ListenerRegistry:76-82` |
 | FR-M10d | Unwanted | If any other operation fails while it holds a transaction, read-only or read-write, then ECCO shall roll the transaction back and pass an `Error` on unwrapped. | - | `ErrorRollbackTest` | History 2dc75b70 |
 | FR-M11a | Optional, event | Where a file's adapter names its read context (`ArtifactReader#readContext`: C, C++, TypeScript, Python, Java AST, Markdown, LilyPond), when the file's adapter, path, content (SHA-256) and context are the same as in the session's previous read, ECCO shall copy the tree of that read instead of parsing the file again. | UC-3 B6 | `DispatchReaderReuseTest` | Code DR, `Trees#copyRead`; History 90135e96 |
@@ -1323,6 +1323,7 @@ FR-K12 holds because a node that only leads to its association's own nodes contr
 | FR-D3e | Unwanted | If one of the repositories has merge commits, or the remote is a sync server too old to exchange commits, then ECCO shall merge the repositories as before, and warn that it does. | UC-11 SA4; UC-12 SA7 | `DivergedSyncTest`, `ForkCopyTest` (older server: fork and pull) | Code `RemoteSyncService` |
 | FR-D3g | Unwanted | If a sync server that told the ids of its commits closes the connection without sending the commits asked for, then ECCO shall report that and pull nothing, instead of merging as with an older server. | UC-12 BA1 | `SyncProtocolHardeningTest` | Code `RemoteSyncService#receiveCommits` |
 | FR-D3h | Event | When a pull or push sends a commit the receiving repository already has - two pushes that asked for the missing commits before either was taken in - ECCO shall leave it out. | UC-12 B8, SA1 | `DivergedSyncTest` | Code `EccoService#replayInto` |
+| FR-D3i | Unwanted | If a fork, fetch, pull or push cannot reach the remote, then ECCO shall refuse it naming the remote's address and the reason ("Error connecting to remote localhost:3770: Connection refused"), and change neither repository. | UC-11 BA1; UC-12 BA1 | `SyncTimeoutTest`, `FailureFlowsEndToEndTest` | History: the reason alone ("Connection refused"), the messages naming the remote never reached |
 | FR-D3f | Event | When a pull or push commits a commit whose configuration names a feature by a name the receiving repository has, ECCO shall take it as that feature, adding the revision if the feature lacks it. | UC-12 B8, SA1 | `SmallRefusalsTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | Code `Repository#adoptConfiguration` |
 | FR-D4a | Event | When a fork, pull or push excludes feature revisions, ECCO shall leave out every commit whose configuration holds an excluded revision, and keep the others as committed in the source. | UC-11 B6; UC-12 B5, SA1 | `ExcludedRevisionsTest`, `NetworkSyncSharedFileTest`, `FetchPullLeaveRemoteUnchangedTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | History fe0fe44c |
 | FR-D4b | Unwanted | If, in a merge, an exclusion leaves an artifact without an artifact it references, then ECCO shall refuse the fork, pull or push with "Unresolved dependencies in selection.". | UC-11 SA4, SA3; UC-12 SA7, SA4 | - | Code REPO `subset`, `DependencyGraph` |
@@ -1338,7 +1339,7 @@ FR-D4b is reachable only through a cross reference between artifacts (`Artifact#
 | FR-D6e | Ubiquitous | The sync server shall answer the requests `SETTINGS`, `MERGE_SETTINGS`, `FETCH`, `CLONE` (the repository as stored, for a fork excluding nothing), `COMMIT_IDS` (the ids of its commits and whether it has merge commits), `PULL_COMMITS` (the commits a client lacks, as a repository of their own, or `MERGE`), `PUSH_COMMITS` (commits to commit after its own) and, for older clients, `PULL` and `PUSH`. | UC-13 B7, B8 | `ForkCopyTest`, `DivergedSyncTest`, `SyncProtocolHardeningTest`, `NetworkSyncSharedFileTest`, `ServeEndToEndTest` | Code `RemoteSyncService` |
 | FR-D6c | Unwanted | If the sync server receives a request it cannot read, also one nested too deeply, then it shall drop that request and keep serving. | - | `SyncProtocolHardeningTest` | |
 | FR-D6d | Unwanted | If the sync server's channel closes other than by stopping the server - its thread interrupted, say - then the server shall stop instead of accepting on. | - | `RemoteSyncServerHardeningTest` | Code `RemoteSyncService#startServer` |
-| FR-D7 | Ubiquitous | ECCO shall leave the remote repository unchanged by a fork, fetch or pull, also when revisions are excluded or the operation fails. | UC-11 post; UC-12 post, SA2-SA5 post, BA1 post | `ForkLeavesOriginUnchangedTest`, `FetchPullLeaveRemoteUnchangedTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | |
+| FR-D7 | Ubiquitous | ECCO shall leave the remote repository unchanged by a fork, fetch or pull, also when revisions are excluded or the operation fails. | UC-11 post; UC-12 post, SA2-SA5 post, BA1 post | `ForkLeavesOriginUnchangedTest`, `FetchPullLeaveRemoteUnchangedTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest`, `FailureFlowsEndToEndTest` | |
 | FR-D9 | Event | When the collaborator cancels a fetch, pull or push, ECCO shall stop it at its next checkpoint before anything is written, roll back its transaction and leave both repositories as they were. | UC-12 BA2 | `CancelRemoteSyncTest` | Code `RemoteSyncService`, `OperationCancelledException` |
 
 ECCO merges only files that both repositories read the same way, as their `.ecco/.settings` say:
@@ -1347,7 +1348,7 @@ ECCO merges only files that both repositories read the same way, as their `.ecco
 | --- | --- | --- | --- | --- | --- |
 | FR-D8a | Event | When the collaborator forks a remote, ECCO shall give the new repository the origin's settings, also from a sync server. | UC-11 B4 | `LilypondSettingsSyncTest` | |
 | FR-D8b | Event | When a pull or push merges a plugin's files into a repository that has neither that plugin's settings nor its files, ECCO shall give the receiving repository the sender's settings for that plugin. | UC-12 SA6, SA1 | `LilypondSettingsSyncTest` | |
-| FR-D8c | Unwanted | If the two repositories' settings differ otherwise, then ECCO shall refuse the pull or push before merging anything, naming the differing settings. | UC-12 B3, SA6, SA1 | `LilypondSettingsSyncTest` | |
+| FR-D8c | Unwanted | If the two repositories' settings differ otherwise, then ECCO shall refuse the pull or push before merging anything, naming the differing settings. | UC-12 B3, SA6, SA1 | `LilypondSettingsSyncTest`, `FailureFlowsEndToEndTest` | |
 | FR-D8d | Unwanted | If a sync server is too old to tell its settings, then ECCO shall sync with it without comparing settings. | UC-12 SA6 | - | Code `RemoteSyncService:627-660` |
 | FR-D8e | Unwanted | If a sync server cannot tell its settings, then ECCO shall report that and sync nothing. | UC-12 SA6 | `SyncProtocolHardeningTest` | |
 | FR-D8f | Event | When the sync server receives a push, it shall compare the settings in the transaction that merges the push and answer whether it merged it. | UC-13 B8; UC-12 SA1 | `SyncProtocolHardeningTest` | |

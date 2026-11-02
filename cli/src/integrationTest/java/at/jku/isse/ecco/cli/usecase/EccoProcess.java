@@ -24,7 +24,12 @@ final class EccoProcess {
     }
 
     static Result run(Path dir, String... args) throws IOException, InterruptedException {
-        Process process = new ProcessBuilder(TestJvm.java("at.jku.isse.ecco.cli.Main", args))
+        return run(java.util.List.of(), dir, args);
+    }
+
+    /** With JVM options, as a user gives them in JAVA_OPTS (e.g. {@code -Decco.lilypond.musicalTokens=false}). */
+    static Result run(java.util.List<String> jvmOptions, Path dir, String... args) throws IOException, InterruptedException {
+        Process process = new ProcessBuilder(TestJvm.java(jvmOptions, "at.jku.isse.ecco.cli.Main", args))
                 .directory(dir.toFile())
                 .redirectOutput(ProcessBuilder.Redirect.PIPE)
                 .redirectError(ProcessBuilder.Redirect.PIPE)

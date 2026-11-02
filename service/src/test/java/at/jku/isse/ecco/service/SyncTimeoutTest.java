@@ -29,4 +29,24 @@ public class SyncTimeoutTest {
             assertThrows(SocketTimeoutException.class, () -> channel.socket().getInputStream().read());
         }
     }
+
+    /**
+     * A remote that cannot be reached is named: the failure was a bare "Connection refused", and the
+     * "Error connecting to remote" messages were never reached - connect threw before them
+     * (FailureFlowsEndToEndTest found it).
+     */
+    @Test
+    @Timeout(30)
+    public void aRemoteThatCannotBeReachedIsNamed() throws Exception {
+        int closed;
+        try (ServerSocket free = new ServerSocket(0)) {
+            closed = free.getLocalPort();
+        }
+        try (SocketChannel channel = SocketChannel.open()) {
+            java.net.ConnectException refused = assertThrows(java.net.ConnectException.class,
+                    () -> RemoteSyncService.connect(channel, new InetSocketAddress("localhost", closed)));
+            assertTrue(refused.getMessage().startsWith("Error connecting to remote localhost:" + closed + ": "), refused.getMessage());
+            assertNotNull(refused.getCause());
+        }
+    }
 }

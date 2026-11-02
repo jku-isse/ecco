@@ -18,6 +18,11 @@ public final class TestJvm {
 
     /** The command line that runs the main class with the test's classpath and settings. */
     public static List<String> java(String mainClass, String... args) {
+        return java(List.of(), mainClass, args);
+    }
+
+    /** ... with JVM options of its own, as a user gives them in JAVA_OPTS (e.g. {@code -Dkey=value}). */
+    public static List<String> java(List<String> jvmOptions, String mainClass, String... args) {
         List<String> command = new ArrayList<>();
         command.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());
         command.add("-Xss64m");
@@ -27,6 +32,7 @@ public final class TestJvm {
         for (String name : System.getProperties().stringPropertyNames())
             if (name.startsWith("ecco.") || name.equals("java.util.prefs.PreferencesFactory"))
                 command.add("-D" + name + "=" + System.getProperty(name));
+        command.addAll(jvmOptions);
         command.add("-cp");
         command.add(System.getProperty("java.class.path"));
         command.add(mainClass);

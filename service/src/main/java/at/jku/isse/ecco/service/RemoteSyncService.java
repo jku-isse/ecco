@@ -67,7 +67,16 @@ public class RemoteSyncService {
      */
     static boolean connect(SocketChannel channel, InetSocketAddress address) throws IOException {
         channel.configureBlocking(true);
-        channel.socket().connect(address, CONNECT_TIMEOUT_MILLIS);
+        try {
+            channel.socket().connect(address, CONNECT_TIMEOUT_MILLIS);
+        } catch (IOException e) {
+            // named: the failure read "Connection refused" alone, and the callers' "Error connecting
+            // to remote" messages for a false return were never reached
+            java.net.ConnectException named = new java.net.ConnectException("Error connecting to remote "
+                    + address.getHostString() + ":" + address.getPort() + ": " + e.getMessage());
+            named.initCause(e);
+            throw named;
+        }
         channel.socket().setSoTimeout(READ_TIMEOUT_MILLIS);
         return true;
     }
