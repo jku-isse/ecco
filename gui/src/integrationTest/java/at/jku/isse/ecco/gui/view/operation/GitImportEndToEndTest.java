@@ -54,7 +54,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * selected range (B4): the folder is chosen in the system's own dialog, which a test cannot drive.
  * <p>
  * The oracle is the clone: the repository, opened again from disk, checks out each imported commit
- * as its Git tree, byte for byte; the clone is left as it was, byte for byte.
+ * as its Git tree, byte for byte; the clone is left as it was, byte for byte. Also a run stopped
+ * partway (SA5) and one of the tagged releases only, unattended (SA10).
  */
 public class GitImportEndToEndTest {
 
@@ -75,6 +76,8 @@ public class GitImportEndToEndTest {
             "reword the readme", "{\"configuration\": \"\"}");
 
     private final List<String> asked = new CopyOnWriteArrayList<>();
+    /** What the LLM answers in this test - {@link #ANSWERS} unless a test says otherwise. */
+    private volatile Map<String, String> answers = ANSWERS;
     private HttpServer llm;
     private String endpoint, model;
 
@@ -99,7 +102,7 @@ public class GitImportEndToEndTest {
             String user = request.path("messages").get(1).path("content").asText();
             asked.add(user);
             String summary = user.lines().filter(line -> line.startsWith("summary: ")).findFirst().orElse("").substring("summary: ".length());
-            String content = ANSWERS.get(summary);
+            String content = answers.get(summary);
             byte[] reply;
             int status;
             if (content == null) {
@@ -193,21 +196,127 @@ public class GitImportEndToEndTest {
         assertSameFiles(cloneBefore, tree(clone));
         // ...and the repository, opened again, holds one commit per imported Git commit, each
         // checking out as its tree
+        assertImported(repository, tmp, HISTORY.subList(0, 4).stream().map(Map.Entry::getValue).toList());
+    }
+
+    /** UC-10 SA5: the engineer stops partway - what was imported stays, nothing more is. */
+    @Test
+    @Timeout(300)
+    public void aStoppedImportKeepsWhatItImported(@TempDir Path tmp) throws Exception {
+        Path clone = gitHistory(tmp.resolve("clone"));
+        Map<String, byte[]> cloneBefore = tree(clone);
+        Path repository = Files.createDirectories(tmp.resolve("repository"));
+        EccoService service = new EccoService();
+        service.setRepositoryDir(repository.resolve(".ecco"));
+        service.init();
+        ImportGitView view = start(service, clone);
+
+        waitFor(view, "Review Commit (1 of 5)");
+        clickButton(view, "Import");
+        waitFor(view, "Review Commit (2 of 5)");
+        clickButton(view, "Import");
+        waitFor(view, "Review Commit (3 of 5)");
+        clickButton(view, "Stop");
+
+        waitFor(view, "");
+        String summary = onFx(view::summaryText);
+        assertTrue(summary.startsWith("Imported 2 of 5 commits. Stopped before the end."), summary);
+        assertTrue(onFx(() -> ((javafx.scene.control.TextArea) find(view, n -> n instanceof javafx.scene.control.TextArea area
+                && area.getText().contains("Stopped: "))).getText()).contains("Stopped: imported 2 of 5 commit(s)."));
+        service.close();
+
+        assertSameFiles(cloneBefore, tree(clone));
+        assertImported(repository, tmp, List.of(BASE, BASE_SEARCH));
+    }
+
+    /**
+     * UC-10 SA10: only the tagged commits - the releases - are imported, unattended; the commits
+     * between are only suggested, their features in the next tagged commit; what comes after the
+     * last tag is left out. The tags are read from the clone as the window reads them.
+     */
+    @Test
+    @Timeout(300)
+    public void onlyTheTaggedReleasesAreImported(@TempDir Path tmp) throws Exception {
+        answers = Map.of(
+                "add search", "{\"configuration\": \"search\", \"parents\": {\"search\": \"BASE\"}}",
+                "add export", "{\"configuration\": \"export\", \"parents\": {\"export\": \"BASE\"}}",
+                "add logging", "{\"configuration\": \"logging\", \"parents\": {\"logging\": \"BASE\"}}",
+                "reword the readme", "{\"configuration\": \"\"}");
+        List<Map.Entry<String, Map<String, byte[]>>> history = new ArrayList<>(HISTORY);
+        history.add(Map.entry("after the last release", withReadme(BASE_SEARCH_EXPORT_LOGGING, "# Shop\n\nAfter the release.\n")));
+        Path clone = gitHistory(tmp.resolve("clone"), history, Map.of("initial shop", "v1.0", "add export", "v1.1", "reword the readme", "v1.2"));
+        Map<String, byte[]> cloneBefore = tree(clone);
+        Path repository = Files.createDirectories(tmp.resolve("repository"));
+        EccoService service = new EccoService();
+        service.setRepositoryDir(repository.resolve(".ecco"));
+        service.init();
+
+        GitHistoryReader reader = new GitHistoryReader();
+        Map<String, List<String>> tags = reader.listTags(clone);
+        assertEquals(3, tags.size(), tags.toString());
+        List<GitCommitInfo> oldestFirst = new ArrayList<>(reader.listCommits(clone));
+        Collections.reverse(oldestFirst);
+        // the window leaves out what comes after the last tag
+        int last = ImportGitView.lastTagged(oldestFirst, tags);
+        assertEquals(4, last);
+        ImportGitView view = onFx(() -> {
+            ImportGitView v = new ImportGitView(service);
+            new Scene(v);
+            // unattended: neither each commit reviewed, nor one whose suggestion is uncertain - the
+            // empty one for the readme's rewording is (it changed BASE's file), and would stop it
+            v.reviewUncertain = false;
+            v.startTaggedImport(clone, tags, oldestFirst.subList(0, last + 1), true, false);
+            return v;
+        });
+
+        waitFor(view, "");
+        String summary = onFx(view::summaryText);
+        assertTrue(summary.startsWith("Imported 3 of 3 commits."), summary);
+        assertTrue(summary.contains("2 commit(s) between the tagged ones were not imported"), summary);
+        // the first tagged commit is BASE without the LLM; every later one is asked about
+        assertEquals(4, asked.size());
+        service.close();
+
+        assertSameFiles(cloneBefore, tree(clone));
+        List<String> configurations = assertImported(repository, tmp, List.of(BASE, BASE_SEARCH_EXPORT, history.get(4).getValue()));
+        assertEquals(List.of("BASE", "BASE, export, search", "BASE, export, logging, search"), configurations);
+    }
+
+    private static ImportGitView start(EccoService service, Path clone) throws Exception {
+        List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
+        Collections.reverse(oldestFirst);
+        return onFx(() -> {
+            ImportGitView v = new ImportGitView(service);
+            new Scene(v);
+            v.startImport(clone, oldestFirst, true, true);
+            return v;
+        });
+    }
+
+    /**
+     * The repository, opened again from disk, holds a commit per tree of [expected], oldest first,
+     * each checking out as that tree byte for byte; returns their configurations.
+     */
+    private static List<String> assertImported(Path repository, Path tmp, List<Map<String, byte[]>> expected) throws Exception {
+        List<String> configurations = new ArrayList<>();
         try (EccoService reopened = new EccoService()) {
             reopened.setRepositoryDir(repository.resolve(".ecco"));
             reopened.open();
             List<Commit> commits = new ArrayList<>(reopened.getCommits());
             commits.sort(Comparator.comparing(Commit::getDate));
-            assertEquals(4, commits.size());
+            assertEquals(expected.size(), commits.size());
             for (int i = 0; i < commits.size(); i++) {
                 Path checkout = Files.createDirectories(tmp.resolve("checkout-" + i));
                 reopened.setBaseDir(checkout);
                 reopened.checkout(commits.get(i).getConfiguration().getConfigurationString());
                 Map<String, byte[]> files = tree(checkout);
                 files.keySet().removeAll(List.of(".config", ".warnings", ".hashes"));
-                assertSameFiles(HISTORY.get(i).getValue(), files);
+                assertSameFiles(expected.get(i), files);
+                configurations.add(java.util.Arrays.stream(commits.get(i).getConfiguration().getFeatureRevisions())
+                        .map(revision -> revision.getFeature().getName()).sorted().collect(java.util.stream.Collectors.joining(", ")));
             }
         }
+        return configurations;
     }
 
     private static Map<String, byte[]> withReadme(Map<String, byte[]> variant, String readme) {
@@ -218,9 +327,14 @@ public class GitImportEndToEndTest {
 
     /** The clone: one Git commit per entry of {@link #HISTORY}, its tree the entry's files. */
     private static Path gitHistory(Path dir) throws Exception {
+        return gitHistory(dir, HISTORY, Map.of());
+    }
+
+    /** ... of [history], the commits named in [tags] (message to tag) tagged. */
+    private static Path gitHistory(Path dir, List<Map.Entry<String, Map<String, byte[]>>> history, Map<String, String> tags) throws Exception {
         Files.createDirectories(dir);
         try (Git git = Git.init().setDirectory(dir.toFile()).call()) {
-            for (Map.Entry<String, Map<String, byte[]>> commit : HISTORY) {
+            for (Map.Entry<String, Map<String, byte[]>> commit : history) {
                 for (Map.Entry<String, byte[]> file : commit.getValue().entrySet()) {
                     Path path = dir.resolve(file.getKey());
                     Files.createDirectories(path.getParent());
@@ -228,6 +342,8 @@ public class GitImportEndToEndTest {
                 }
                 git.add().addFilepattern(".").call();
                 git.commit().setMessage(commit.getKey()).setAuthor("t", "t@example.com").setCommitter("t", "t@example.com").call();
+                if (tags.containsKey(commit.getKey()))
+                    git.tag().setName(tags.get(commit.getKey())).setAnnotated(false).call();
             }
         }
         return dir;

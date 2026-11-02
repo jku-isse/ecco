@@ -678,7 +678,7 @@ Postcondition: The previously stored minimized conditions stay as they were.
 | Generalization | None |
 | Front ends | GUI Versions > Import from Git |
 | Realizes | FR-G1 to FR-G5, IF-G3, IF-G4 |
-| End-to-end test | `GitImportEndToEndTest` (the import window from the selected range on - the system's folder dialog cannot be driven; every commit reviewed, the LLM an OpenAI-compatible endpoint over HTTP as Preferences configures it; the repository opened again from disk against the Git trees) |
+| End-to-end test | `GitImportEndToEndTest` (the import window from the selected range on - the system's folder dialog cannot be driven; every commit reviewed, the LLM an OpenAI-compatible endpoint over HTTP as Preferences configures it; the repository opened again from disk against the Git trees; also a run stopped partway (SA5) and one of the tagged releases only, unattended (SA10)) |
 
 **Basic flow**
 
@@ -1478,8 +1478,9 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-G3c | Optional | Where the user imports unattended, the GUI shall stop only for a failure or an uncertain suggestion. | UC-10 SA2 | `ImportGitViewRetryTest` (GUI) | Code `ImportGitView` |
 | IF-G3d | Event | When the window is closed while a commit is suggested or imported, the GUI shall ask whether to stop the import. | UC-10 GA1 | - | Code `ImportGitView` |
 | IF-G3e | Event | When an import ends, the GUI shall show a summary. | UC-10 B17 | `ImportGitViewConstraintTest` (GUI), `GitImportEndToEndTest` | Code `ImportGitView` |
-| IF-G3f | Optional | Where the user imports the tagged commits only, the GUI shall import only those - the first of them as BASE, together with the commits before it - and leave out the commits after the last tag. | UC-10 SA10 | `ImportGitViewTaggedTest` (GUI) | Code `ImportGitView` |
-| IF-G3g | Optional | Where the user imports the tagged commits only, the GUI shall ask for a suggestion for each commit between two tagged ones without importing it, give a feature it changed a new revision in the next tagged commit, and stop at it only when its suggestion failed. | UC-10 SA10 | `ImportGitViewTaggedTest` (GUI) | Code `ImportGitView#releaseConfigurationText` |
+| IF-G3f | Optional | Where the user imports the tagged commits only, the GUI shall import only those - the first of them as BASE, together with the commits before it - and leave out the commits after the last tag. | UC-10 SA10 | `ImportGitViewTaggedTest` (GUI), `GitImportEndToEndTest` | Code `ImportGitView` |
+| IF-G3g | Optional | Where the user imports the tagged commits only, the GUI shall ask for a suggestion for each commit between two tagged ones without importing it, give a feature it changed a new revision in the next tagged commit, and stop at it only when its suggestion failed. | UC-10 SA10 | `ImportGitViewTaggedTest` (GUI), `GitImportEndToEndTest` | Code `ImportGitView#releaseConfigurationText` |
+| IF-G3h | Event | When the user stops an import, the GUI shall import no further commit, keep the commits imported so far, log "Stopped: imported X of Y commit(s)." and say so in the summary. | UC-10 SA5, GA1 | `GitImportEndToEndTest` | Code `ImportGitView` |
 | IF-G4 | Ubiquitous | The GUI shall let users configure the LLM of Git import (FR-G3a) under Preferences, by URL and model; any OpenAI-compatible endpoint should do. | UC-10 precondition | `GitImportEndToEndTest` | Code `PreferencesView`; Doc |
 | IF-G5a | Ubiquitous | The feature model view shall show the feature model derived from the commits. | UC-8 B1, B7 | `FeaturesViewTest` (GUI) | Code `FeaturesView` |
 | IF-G5b | Event | When the user accepts, rejects or returns mined constraints or suggested subfeatures, the GUI shall store the decision (FR-N4a, FR-N6). | UC-8 B4, B5, SA2, SA3 | `ConstraintSuggestionsViewTest` (GUI) | Code `ConstraintSuggestionsView` |
