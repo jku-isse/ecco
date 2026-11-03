@@ -289,7 +289,7 @@ public class RemoteSyncService {
                             Object reply;
                             synchronized (owner) {
                                 try {
-                                    reply = new HashMap<>(owner.repositorySettings());
+                                    reply = new HashMap<>(owner.settings.current());
                                 } catch (RuntimeException e) {
                                     reply = "Could not tell its settings: " + messages(e);
                                 }
@@ -310,8 +310,8 @@ public class RemoteSyncService {
                                 try {
                                     // compared only: the push takes them over in its own transaction - written
                                     // here, a push that failed or was cancelled afterwards left them
-                                    owner.settingsToTakeOver(plugins, settings, owner.repositorySettings(),
-                                            owner.pluginsWithFiles(), "push to '" + remoteName + "'");
+                                    owner.settings.toTakeOver(plugins, settings, owner.settings.current(),
+                                            owner.settings.pluginsWithFiles(), "push to '" + remoteName + "'");
                                     reply = "OK";
                                 } catch (EccoException e) {
                                     reply = e.getMessage();
@@ -443,11 +443,11 @@ public class RemoteSyncService {
                                 try {
                                     owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                                     Repository.Op repository = owner.repositoryDao.load();
-                                    Map<String, String> takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(commits), pushedSettings,
-                                            owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
+                                    Map<String, String> takeOver = owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(commits), pushedSettings,
+                                            owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
                                     owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                                     owner.repositoryDao.store(repository);
-                                    owner.endTakingOverSettings(takeOver);
+                                    owner.settings.endTakingOver(takeOver);
                                     reply = "OK";
                                 } catch (RuntimeException e) {
                                     owner.rollbackIfTransactionActive();
@@ -527,11 +527,11 @@ public class RemoteSyncService {
                                     owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                                     Repository.Op repository = owner.repositoryDao.load();
                                     Map<String, String> takeOver = pushedSettings == null ? Map.of()
-                                            : owner.settingsToTakeOver(EccoService.pluginsWithFiles(copiedRepository), pushedSettings,
-                                            owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
+                                            : owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(copiedRepository), pushedSettings,
+                                            owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
                                     repository.merge(copiedRepository);
                                     owner.repositoryDao.store(repository);
-                                    owner.endTakingOverSettings(takeOver);
+                                    owner.settings.endTakingOver(takeOver);
                                     reply = "OK";
                                 } catch (RuntimeException e) {
                                     owner.rollbackIfTransactionActive();
@@ -865,7 +865,7 @@ public class RemoteSyncService {
             RemoteSyncService.connect(sChannel, socketAddressOf(remote));
             ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
             oos.writeObject("MERGE_SETTINGS");
-            oos.writeObject(new HashMap<>(owner.repositorySettings()));
+            oos.writeObject(new HashMap<>(owner.settings.current()));
             oos.writeObject(new HashSet<>(plugins));
             oos.writeObject(remote.getName());
             oos.flush();
@@ -1008,8 +1008,8 @@ public class RemoteSyncService {
                 if (commits != null) {
                     OperationCancelledException.check(cancelled);
                     if (remoteSettings != null)
-                        takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(commits), remoteSettings,
-                                owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
+                        takeOver = owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(commits), remoteSettings,
+                                owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
                     owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                     owner.repositoryDao.store(repository);
                 } else try (SocketChannel sChannel = SocketChannel.open()) {
@@ -1042,8 +1042,8 @@ public class RemoteSyncService {
 
                     // merge into this repository - if both read the files the same way
                     if (remoteSettings != null)
-                        takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(copiedRepository), remoteSettings,
-                                owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
+                        takeOver = owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(copiedRepository), remoteSettings,
+                                owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
                     repository.merge(copiedRepository);
                     owner.repositoryDao.store(repository);
                 } catch (Exception e) {
@@ -1063,7 +1063,7 @@ public class RemoteSyncService {
                     parentService.setRepositoryDir(EccoService.resolveRepositoryDir(Paths.get(remote.getAddress())));
                     // only read, in a read-only transaction, so the remote stays unchanged (FetchPullLeaveRemoteUnchangedTest)
                     parentService.open();
-                    parentSettings = parentService.repositorySettings();
+                    parentSettings = parentService.settings.current();
 
                     try {
                         parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
@@ -1091,8 +1091,8 @@ public class RemoteSyncService {
                 OperationCancelledException.check(cancelled);
                 // into this repository - if both read the files the same way
                 Repository.Op received = commits != null ? commits : subsetParentRepository;
-                takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(received), parentSettings,
-                        owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
+                takeOver = owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(received), parentSettings,
+                        owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
                 if (commits != null)
                     owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                 else
@@ -1102,7 +1102,7 @@ public class RemoteSyncService {
 
             // the last chance: what follows writes
             OperationCancelledException.check(cancelled);
-            owner.endTakingOverSettings(takeOver);
+            owner.settings.endTakingOver(takeOver);
         } catch (Error e) {
             owner.rollbackIfTransactionActive();
             throw e;
@@ -1168,9 +1168,9 @@ public class RemoteSyncService {
                     owner.transactionStrategy.end();
                     // the last chance: the server replays what it gets
                     OperationCancelledException.check(cancelled);
-                    boolean answers = this.mergeSettingsIntoRemote(remote, EccoService.pluginsWithFiles(commits));
+                    boolean answers = this.mergeSettingsIntoRemote(remote, RepositorySettings.pluginsWithFiles(commits));
                     try {
-                        this.sendPushCommits(remote, commits, owner.repositorySettings(), answers);
+                        this.sendPushCommits(remote, commits, owner.settings.current(), answers);
                     } catch (EccoException e) {
                         throw e;
                     } catch (Exception e) {
@@ -1184,10 +1184,10 @@ public class RemoteSyncService {
                 // the last chance: the server merges what it gets
                 OperationCancelledException.check(cancelled);
                 // the remote merges only files it reads the same way - asked before sending anything
-                boolean answers = this.mergeSettingsIntoRemote(remote, EccoService.pluginsWithFiles(subsetRepository));
+                boolean answers = this.mergeSettingsIntoRemote(remote, RepositorySettings.pluginsWithFiles(subsetRepository));
 
                 try {
-                    this.sendPush(remote, subsetRepository, owner.repositorySettings(), answers);
+                    this.sendPush(remote, subsetRepository, owner.settings.current(), answers);
                 } catch (EccoException e) {
                     throw e;
                 } catch (Exception e) {
@@ -1220,8 +1220,8 @@ public class RemoteSyncService {
                         } else {
                             commits = parentService.copyOfCommits(repository, repository.commitsMissingIn(commitIds(parentRepository), deselected));
                         }
-                        Map<String, String> takeOver = parentService.settingsToTakeOver(EccoService.pluginsWithFiles(commits != null ? commits : subsetRepository),
-                                owner.repositorySettings(), parentService.repositorySettings(), EccoService.pluginsWithFiles(parentRepository),
+                        Map<String, String> takeOver = parentService.settings.toTakeOver(RepositorySettings.pluginsWithFiles(commits != null ? commits : subsetRepository),
+                                owner.settings.current(), parentService.settings.current(), RepositorySettings.pluginsWithFiles(parentRepository),
                                 "push to '" + remote.getName() + "'");
                         if (commits != null)
                             parentService.replayInto(parentRepository, commits, new ArrayList<>(commits.getCommits()));
@@ -1231,7 +1231,7 @@ public class RemoteSyncService {
 
                         // the last chance: what follows writes the remote
                         OperationCancelledException.check(cancelled);
-                        parentService.endTakingOverSettings(takeOver);
+                        parentService.settings.endTakingOver(takeOver);
                     } catch (Error e) {
                         parentService.rollbackIfTransactionActive();
                         throw e;

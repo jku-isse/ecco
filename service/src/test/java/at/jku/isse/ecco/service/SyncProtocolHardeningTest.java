@@ -135,7 +135,7 @@ public class SyncProtocolHardeningTest {
 			}
 			RemoteSyncService sync = new RemoteSyncService(client);
 			EccoException thrown = assertThrows(EccoException.class,
-					() -> sync.sendPush(client.getRemote("origin"), subset, client.repositorySettings()));
+					() -> sync.sendPush(client.getRemote("origin"), subset, client.settings.current()));
 
 			assertTrue(messages(thrown).contains("read differently") && messages(thrown).contains(LilypondPlugin.MUSICAL_TOKENS_SETTING), messages(thrown));
 			assertTrue(server.service.getCommits().isEmpty(), "nothing merged");
@@ -247,12 +247,12 @@ public class SyncProtocolHardeningTest {
 		try (Server server = new Server(serverRepository); EccoService client = newRepository("sync-hardening-client")) {
 			setting(client.getRepositoryDir(), LilypondPlugin.MUSICAL_TOKENS_SETTING, "false");
 			client.addRemote("origin", "localhost:" + server.port, Remote.Type.REMOTE);
-			Map<String, String> before = server.service.repositorySettings();
+			Map<String, String> before = server.service.settings.current();
 			assertFalse(before.containsKey(LilypondPlugin.MUSICAL_TOKENS_SETTING));
 
 			assertTrue(new RemoteSyncService(client).mergeSettingsIntoRemote(client.getRemote("origin"), java.util.Set.of(LilypondPlugin.class.getName())),
 					"answered");
-			assertEquals(before, server.service.repositorySettings(), "nothing taken over before a push arrives");
+			assertEquals(before, server.service.settings.current(), "nothing taken over before a push arrives");
 		}
 	}
 
@@ -292,7 +292,7 @@ public class SyncProtocolHardeningTest {
 			}
 
 			Map<String, String> settings = RemoteSyncService.remoteSettings(new java.net.InetSocketAddress(InetAddress.getLoopbackAddress(), server.port), "the server");
-			assertEquals(origin.repositorySettings(), settings);
+			assertEquals(origin.settings.current(), settings);
 			assertTrue(server.thread.isAlive());
 		}
 	}
@@ -328,9 +328,9 @@ public class SyncProtocolHardeningTest {
 		Properties settings = new Properties();
 		settings.setProperty("new", "2");
 
-		EccoService.writeSettings(file, settings, null);
+		RepositorySettings.write(file, settings, null);
 
-		assertEquals(Map.of("new", "2"), EccoService.readSettings(dir));
+		assertEquals(Map.of("new", "2"), RepositorySettings.read(dir));
 		try (Stream<Path> files = Files.list(dir)) {
 			assertEquals(List.of(file), files.toList());
 		}
