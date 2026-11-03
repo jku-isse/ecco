@@ -31,7 +31,6 @@ import java.net.*;
 import java.nio.channels.*;
 import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.locks.*;
 import java.util.function.*;
 import java.util.logging.*;
 import java.util.stream.*;
@@ -71,13 +70,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public static final Path CONFIG_FILE_NAME = Paths.get(".config");
     public static final Path WARNINGS_FILE_NAME = Paths.get(".warnings");
     public static final Path HASHES_FILE_NAME = Paths.get(".hashes");
+    /** The per-repository settings: what each plugin chose when the repository was created. */
+    public static final Path SETTINGS_FILE_NAME = Paths.get(".settings");
 
     private final Properties properties = new Properties();
     Path baseDir;
     private Path repositoryDir;
     private Collection<ArtifactPlugin> artifactPlugins;
-    private Collection<StoragePlugin> dataPlugins;
-    private StoragePlugin dataPlugin;
     private Injector injector;
     private boolean initialized = false;
     public boolean isInitialized() {
@@ -159,10 +158,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     public EntityFactory getEntityFactory() {
         return entityFactory;
-    }
-
-    public void setEntityFactory(EntityFactory entityFactory) {
-        this.entityFactory = entityFactory;
     }
 
     public DispatchReader getReader() {
@@ -273,27 +268,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public void fileWriteEvent(Path file, ArtifactWriter writer) {
         this.listeners.fireWriteEvent(file, writer);
     }
-
-
-    // # SETTINGS ######################################################################################################
-
-//	public int getMaxOrder() {
-//		return this.settingsDao.loadMaxOrder();
-//	}
-//
-//	public void setMaxOrder(int maxOrder) {
-//		try {
-//			this.transactionStrategy.begin();
-//
-//			this.settingsDao.storeMaxOrder(maxOrder);
-//
-//			this.transactionStrategy.end();
-//		} catch (Exception e) {
-//			this.transactionStrategy.rollback();
-//
-//			throw new EccoException("Error changing settings.", e);
-//		}
-//	}
 
 
     // # REPOSITORY SERVICES ###########################################################################################
@@ -414,13 +388,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         String storagePluginId = this.properties.getProperty(ECCO_PROPERTIES_STORAGE);
         List<Module> storageModules = new ArrayList<>();
         List<Module> allStorageModules = new ArrayList<>();
-        this.dataPlugins = new ArrayList<>();
         for (StoragePlugin dataPlugin : StoragePlugin.getDataPlugins()) {
             if (dataPlugin.getPluginId().equals(storagePluginId)) {
                 storageModules.add(dataPlugin.getModule());
-                this.dataPlugin = dataPlugin;
             }
-            this.dataPlugins.add(dataPlugin);
             allStorageModules.add(dataPlugin.getModule());
         }
         LOGGER.config("STORAGE PLUGINS: " + storageModules);
@@ -1098,15 +1069,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     // INIT ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Creates and initializes a repository at the current location if no repository already exists at the current location or any of its parents.
-     * The newly created repository is opened right away.
-     *
-     * @return True if the repository was created, false otherwise.
-     */
-    /** The per-repository settings: what each plugin chose when the repository was created. */
-    public static final Path SETTINGS_FILE_NAME = Paths.get(".settings");
-
     /** Records each plugin's settings for a new repository (see ArtifactPlugin#newRepositorySettings). */
     private void writeNewRepositorySettings() throws IOException {
         java.util.Properties settings = new java.util.Properties();
@@ -1332,6 +1294,12 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
+    /**
+     * Creates a repository at the repository directory and opens it right away.
+     *
+     * @return Always true.
+     * @throws EccoException if the service is initialized, a repository already exists at this location, or creating it failed.
+     */
     public synchronized boolean init() {
         LOGGER.info("INIT()");
 
@@ -1514,11 +1482,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
-     * Commits the files in the base directory as the given configuration and returns the resulting commit object, or null in case of an error.
+     * Commits the files in the base directory as the given configuration and returns the resulting commit object.
      *
      * @param commitMessage the commit message as string.
      * @param configuration The configuration to be commited.
-     * @return The resulting commit object or null in case of an error.
+     * @return The resulting commit object.
      */
     public synchronized Commit commit(String commitMessage, Configuration configuration, String committer) {
         return this.commitService.commit(commitMessage, configuration, committer);
@@ -1574,16 +1542,16 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
-     * Remove a new variant configuration
+     * Removes a variant.
      *
-     * @param id The configuration of the variant
+     * @param id The id of the variant
      */
     public synchronized void removeVariant(String id) {
         this.variantManager.removeVariant(id);
     }
 
     /**
-     * Remove a new variant configuration
+     * Removes the variant of a configuration.
      *
      * @param configuration The configuration of the variant
      */
@@ -1610,9 +1578,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
-     * Remove a new variant configuration
+     * Updates a variant: its configuration and name.
      *
-     * @param configuration The configuration of the variant
+     * @param configuration The new configuration of the variant
+     * @param name          The new name of the variant
+     * @param id            The id of the variant
      */
     public synchronized void updateVariant(Configuration configuration, String name, String id) {
         this.variantManager.updateVariant(configuration, name, id);
@@ -2067,10 +2037,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         return this.orderService.recordOrderOfFiles(files);
     }
 
-    private synchronized Set<Node> compareArtifacts(Checkout checkout) {
-        return this.checkoutService.selectArtifacts(checkout);
-    }
-
     /**
      * Checks whether the given configuration's selected features violate any accepted, currently
      * hard constraint (see {@link ConstraintViolationChecker}). Purely advisory: does not affect
@@ -2128,16 +2094,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         return checkout.getSelectedAssociations();
     }
 
-    public synchronized Set<Node> compareArtifacts(String configurationString) {
-        return this.compareArtifacts(this.parseConfigurationString(configurationString));
-    }
-
-    public synchronized Set<Node> compareArtifacts(Configuration configuration) {
-        Checkout checkout = compose(configuration);
-        return compareArtifacts(checkout);
-    }
-
-    // TODO: check if 'compareArtifacts' is proper name for method (fires association-selected events and returns artifact nodes)
 
 
     /**
