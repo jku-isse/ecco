@@ -1,6 +1,6 @@
 # ECCO - Recovered Requirements
 
-As of 2026-10-21.
+As of 2026-11-03.
 
 ## Contents
 
@@ -137,9 +137,9 @@ An alternative flow ends with `ABORT` (the use case ends) or `RESUME STEP n` (th
 | UC-3 | Commit variant | Variant developer | CLI, GUI | 1-4 |
 | UC-4 | Commit several variants | Variant developer | GUI | 1, 2 |
 | UC-5 | Check out variant | Variant developer | CLI, GUI | 3, 4 |
-| UC-6 | Resolve ambiguous order | Variant developer | GUI | 3, 4 |
+| UC-6 | Resolve ambiguous order | Variant developer | CLI, GUI | 3, 4 |
 | UC-7 | Locate features | Researcher | CLI, GUI | 1 |
-| UC-8 | Review mined constraints | Product-line engineer | GUI (CLI read-only) | 2, 4 |
+| UC-8 | Review mined constraints | Product-line engineer | CLI, GUI | 2, 4 |
 | UC-9 | Minimize presence conditions | Product-line engineer | CLI, GUI | 2 |
 | UC-10 | Import Git history | Product-line engineer | GUI | 2, 4 |
 | UC-11 | Fork repository | Collaborator | CLI, GUI, REST | 5 |
