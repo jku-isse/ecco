@@ -27,8 +27,6 @@ import com.google.inject.*;
 import com.google.inject.name.*;
 
 import java.io.*;
-import java.net.*;
-import java.nio.channels.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.function.*;
@@ -223,7 +221,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     private final ConstraintService constraintService = new ConstraintService(this);
 
-    private final RemoteSyncService remoteSyncService = new RemoteSyncService(this);
+    final RemoteSyncService remoteSyncService = new RemoteSyncService(this);
+
+    private final ForkService forkService = new ForkService(this);
 
     private final ConfigurationParser configurationParser = new ConfigurationParser(this);
 
@@ -659,149 +659,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     public synchronized void fork(String hostname, int port, String deselectedFeatureRevisionsString) {
-        if (this.isInitialized())
-            throw new EccoException("Service must not be initialized for fork operation.");
-        if (this.repositoryDirectoryExists())
-            throw new EccoException("A repository already exists at the given location: " + this.repositoryDir);
-
-        // a fork reads files the way its origin's history was read; null from an older server
-        Map<String, String> originSettings;
-        try {
-            originSettings = RemoteSyncService.remoteSettings(new InetSocketAddress(hostname, port), hostname + ":" + port);
-        } catch (Exception e) {
-            throw new EccoException("Error during remote fork.", e);
-        }
-
-        // initialized before the copy, like a local fork - the copy needs this service's entity
-        // factory, which was null here: every fork over the network failed
-        this.init();
-        Repository.Op copiedRepository;
-        // a fork of everything is a copy, commits and counts included (Repository.Op#copyInto); from a
-        // server too old to send one, a merge as before
-        Repository.Op originCopy = null;
-        Repository.Op originCommits = null;
-        try {
-            if (originSettings != null)
-                this.settings.replace(originSettings);
-            if (deselectedFeatureRevisionsString == null || deselectedFeatureRevisionsString.isBlank())
-                originCopy = this.receiveCopy(hostname, port);
-            else
-                // leaving revisions out: the origin's commits without them, to replay
-                originCommits = this.remoteSyncService.receiveCommits(this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE),
-                        new ArrayList<>(), deselectedFeatureRevisionsString);
-        } catch (Error e) {
-            this.abandonNewRepository(e);
-            throw e;
-        } catch (Exception e) {
-            this.abandonNewRepository(e);
-            throw new EccoException("Error during remote fork.", e);
-        }
-        if (originCopy != null || originCommits != null) {
-            try {
-                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                Repository.Op repository = this.repositoryDao.load();
-                if (originCopy != null)
-                    originCopy.copyInto(repository);
-                else
-                    this.replayInto(repository, originCommits, new ArrayList<>(originCommits.getCommits()));
-                this.repositoryDao.store(repository);
-                this.remoteDao.storeRemote(this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE));
-                this.transactionStrategy.end();
-            } catch (Error e) {
-                this.abandonNewRepository(e);
-                throw e;
-            } catch (Exception e) {
-                this.abandonNewRepository(e);
-                throw new EccoException("Error during remote fork.", e);
-            }
-            return;
-        }
-        try (SocketChannel sChannel = SocketChannel.open()) {
-            sChannel.configureBlocking(true);
-            RemoteSyncService.connect(sChannel, new InetSocketAddress(hostname, port));
-            ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
-
-            ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-            ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
-
-            oos.writeObject("PULL");
-            oos.writeObject(deselectedFeatureRevisionsString);
-            oos.flush();
-
-
-            int size = (Integer) ois.readObject();
-            progressInputStream.setMaxBytes(size);
-            progressInputStream.resetProgress();
-            progressInputStream.addListener(this);
-
-            // retrieve remote repository
-            Repository.Op subsetRepository = SyncObjectStreams.readRepository(ois);
-
-            progressInputStream.removeListener(this);
-
-
-            // copy it using this entity factory
-            copiedRepository = subsetRepository.copy(this.entityFactory);
-        } catch (Error e) {
-            this.abandonNewRepository(e);
-            throw e;
-        } catch (Exception e) {
-            this.abandonNewRepository(e);
-            throw new EccoException("Error during remote fork.", e);
-        }
-
-        try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
-            // merge into this repository
-            Repository.Op repository = this.repositoryDao.load();
-            repository.merge(copiedRepository);
-            this.repositoryDao.store(repository);
-
-            // after fork add used remote as default origin remote
-            Remote remote = this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE);
-            this.remoteDao.storeRemote(remote);
-
-            this.transactionStrategy.end();
-        } catch (Error e) {
-            this.abandonNewRepository(e);
-            throw e;
-        } catch (Exception e) {
-            this.abandonNewRepository(e);
-            throw new EccoException("Error during remote fork.", e);
-        }
-    }
-
-    /**
-     * The repository of the server at [hostname]:[port] as it is (its CLONE request); null from a server
-     * too old to know the request, which closes the connection without an answer.
-     */
-    private Repository.Op receiveCopy(String hostname, int port) throws IOException, ClassNotFoundException {
-        try (SocketChannel sChannel = SocketChannel.open()) {
-            sChannel.configureBlocking(true);
-            RemoteSyncService.connect(sChannel, new InetSocketAddress(hostname, port));
-            ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
-            ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-            ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
-            oos.writeObject("CLONE");
-            oos.flush();
-
-            int size;
-            try {
-                size = (Integer) ois.readObject();
-            } catch (EOFException e) {
-                LOGGER.warning("The server at " + hostname + ":" + port + " is too old to send a copy of its repository: forked by merging, without its commits.");
-                return null;
-            }
-            progressInputStream.setMaxBytes(size);
-            progressInputStream.resetProgress();
-            progressInputStream.addListener(this);
-            try {
-                return SyncObjectStreams.readCopy((byte[]) ois.readObject());
-            } finally {
-                progressInputStream.removeListener(this);
-            }
-        }
+        this.forkService.fork(hostname, port, deselectedFeatureRevisionsString);
     }
 
     /**
@@ -882,153 +740,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param deselectedFeatureRevisionsString A string enumerating the deselected feature revisions.
      */
     public synchronized void fork(Path originRepositoryDir, String deselectedFeatureRevisionsString) {
-        // check that this service has not yet been initialized and that no repository already exists,
-        if (this.isInitialized())
-            throw new EccoException("Service must not be initialized for fork operation.");
-        if (this.repositoryDirectoryExists())
-            throw new EccoException("A repository already exists at the given location: " + this.repositoryDir);
-
-        // the repository must be initialized here or the entity factory needed during the subset operation is null
-        this.init();
-        // a fork reads files the way its origin's history was read
-        this.settings.inheritFrom(resolveRepositoryDir(originRepositoryDir));
-
-        // create another ecco service and init it on the parent repository directory.
-        EccoService originService = new EccoService();
-        originService.setRepositoryDir(resolveRepositoryDir(originRepositoryDir));
-        // create subset repository
-        Repository.Op subsetOriginRepository;
-        try {
-            // open() takes only shared locks and the origin is read in a read-only transaction, so a fork
-            // never writes to its origin (ForkLeavesOriginUnchangedTest) - except .ignores/.adapters,
-            // which open() creates in a repository old enough not to have them
-            originService.open();
-
-            originService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-
-            Repository.Op originRepository = originService.repositoryDao.load();
-            Collection<FeatureRevision> deselected = originService.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
-            if (deselected.isEmpty()) {
-                // a fork of everything is a copy, commits and counts included (Repository.Op#copyInto)
-                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                Repository.Op repository = this.repositoryDao.load();
-                originRepository.copyInto(repository);
-                this.repositoryDao.store(repository);
-                this.transactionStrategy.end();
-                subsetOriginRepository = null;
-            } else if (!originRepository.hasMergeCommits()) {
-                // a fork leaving revisions out: the origin's commits without them, replayed (Repository.Op#replay)
-                Repository.Op commits = this.copyOfCommits(originRepository, originRepository.commitsMissingIn(List.of(), deselected));
-                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                Repository.Op repository = this.repositoryDao.load();
-                this.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
-                this.repositoryDao.store(repository);
-                this.transactionStrategy.end();
-                subsetOriginRepository = null;
-            } else {
-                subsetOriginRepository = originRepository.subset(deselected, originRepository.getMaxOrder(), this.entityFactory);
-            }
-
-            originService.transactionStrategy.end();
-        } catch (Error e) {
-            this.rollbackIfTransactionActive();
-            originService.rollbackIfTransactionActive();
-            this.abandonNewRepository(e);
-            throw e;
-        } catch (Exception e) {
-            // quietly: open() itself may have failed, with no transaction (or strategy) to roll back -
-            // an unconditional rollback() then replaced the real error
-            this.rollbackIfTransactionActive();
-            originService.rollbackIfTransactionActive();
-            this.abandonNewRepository(e);
-
-            throw new EccoException("Error during local fork.", e);
-        } finally {
-            // close parent repository
-            originService.close();
-        }
-
-        try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
-            // merge into this repository, unless it is a copy already
-            if (subsetOriginRepository != null) {
-                Repository.Op repository = this.repositoryDao.load();
-                repository.merge(subsetOriginRepository);
-                this.repositoryDao.store(repository);
-            }
-
-            // after fork add used remote as default origin remote
-            Remote remote = this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, originRepositoryDir.toString(), Remote.Type.LOCAL);
-            this.remoteDao.storeRemote(remote);
-
-            this.transactionStrategy.end();
-        } catch (Error e) {
-            this.abandonNewRepository(e);
-            throw e;
-        } catch (Exception e) {
-            this.abandonNewRepository(e);
-
-            throw new EccoException("Error during local fork.", e);
-        }
+        this.forkService.fork(originRepositoryDir, deselectedFeatureRevisionsString);
     }
 
     public synchronized void forkAlreadyOpen(EccoService origService, String deselectedFeatureRevisionsString) {
-        // create subset repository
-        Repository.Op subsetOriginRepository;
-
-        try {
-            origService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-            Repository.Op originRepository = (Repository.Op) origService.getRepository();
-            Collection<FeatureRevision> deselected = origService.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
-            Repository.Op repository = (Repository.Op) this.getRepository();
-            if (deselected.isEmpty() && repository.getAssociations().isEmpty() && repository.getCommits().isEmpty()) {
-                // a fork of everything into an empty repository is a copy (Repository.Op#copyInto)
-                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                originRepository.copyInto(repository);
-                this.repositoryDao.store(repository);
-                this.transactionStrategy.end();
-                subsetOriginRepository = null;
-            } else if (!originRepository.hasMergeCommits() && !repository.hasMergeCommits()) {
-                // the origin's commits this repository does not have, without the revisions left out, replayed (Repository.Op#replay)
-                Repository.Op commits = this.copyOfCommits(originRepository, originRepository.commitsMissingIn(RemoteSyncService.commitIds(repository), deselected));
-                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                this.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
-                this.repositoryDao.store(repository);
-                this.transactionStrategy.end();
-                subsetOriginRepository = null;
-            } else {
-                subsetOriginRepository = originRepository.subset(deselected, originRepository.getMaxOrder(), this.entityFactory);
-            }
-            origService.transactionStrategy.end();
-        } catch (Error e) {
-            this.rollbackIfTransactionActive();
-            origService.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            // otherwise the ORIGIN's read transaction stays open, breaking that service for good
-            this.rollbackIfTransactionActive();
-            origService.rollbackIfTransactionActive();
-            throw new EccoException("Error during local fork.", e);
-        }
-        if (subsetOriginRepository == null)
-            return;
-
-        try {
-            Repository.Op repository = (Repository.Op) this.getRepository();
-            repository.merge(subsetOriginRepository);
-
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-            this.repositoryDao.store(repository);
-            this.transactionStrategy.end();
-        } catch (Error e) {
-            this.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            // the target already existed (unlike fork()), so only release the transaction
-            this.rollbackIfTransactionActive();
-            throw new EccoException("Error during local fork.", e);
-        }
+        this.forkService.forkAlreadyOpen(origService, deselectedFeatureRevisionsString);
     }
 
 
@@ -1195,7 +911,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * existed at this location beforehand - i.e. the directory is entirely theirs. Cleanup failures
      * are attached to {@code cause} instead of hiding it.
      */
-    private void abandonNewRepository(Throwable cause) {
+    void abandonNewRepository(Throwable cause) {
         this.rollbackIfTransactionActive();
         try {
             this.close();
