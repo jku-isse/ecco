@@ -4,6 +4,18 @@
 
 ## Unreleased
 
+  * **Found by end-to-end tests of the use cases** (every command an ecco process of its own, repositories read from disk; UC-1, 3, 5, 6, 8-15):
+    - **A variant for a configuration that already is one is refused, naming that variant**: "This configuration is already saved as variant '<name>'." The GUI's Add Variant dialog said "Variant '...' added." and closed, with nothing added; it now ends on the error (FR-M4b). The REST server answers 409 with the existing variant's name and id - it answered 200 - and 400 for a configuration it cannot read, which was a 500 (IF-R5c).
+    - **A feature in several revisions no longer warns SURPLUS on checkout**: a module's revisions are alternatives, so one in the configuration explains the others; each of them was reported, on every checkout of such a feature, also of a committed variant.
+    - **`ecco` lists features with their ids** (`<feature> [<id>]`): two features of one name can only be told apart by the id, which a configuration takes, and nothing showed it.
+    - **REST: a commit's date shows the hour of the day**: 22:10 was shown as 10:10, without AM or PM. Requests formatting dates at the same time no longer share a formatter that is not safe for that.
+    - **A remote that cannot be reached is named**: the failure read "Connection refused" alone, now "Error connecting to remote <host>:<port>: ...".
+    - **A sync server started on port 0 reports the port it bound**, in the log and its server events, not 0.
+
+  * **`EccoService` is smaller** (no change in behaviour or files): from 2,194 lines to 1,555, the settings file moves to `RepositorySettings`, minimized conditions to `MinimizationService` and forks to `ForkService`, with their public methods kept on `EccoService`; its dead code and wrong comments are gone.
+
+  * **Tests and build**: `ChartsViewTest.aLoadThatFailsIsShown` no longer flakes - it waits for the view's first load - and `NotificationPanelTest.aCardGoesAwayByItself`, which failed once, says where the card was if it times out. Requirements name the end-to-end test that would fail if they broke (54 of them). Gradle wrapper 8.14.6.
+
   * **LilyPond: markup in LilyPond embedded in Scheme reads as markup** - in a markup function's body (`#{ \markup \small \upright #text #}`) the markup commands were read as a builtin and a variable, and markup words as notes (`c4.`, `(poco` split): lymodel's tokens take `#{ #}` as part of the Scheme around it, so its markup was never found. 5 of 986 corpus files read differently, all there; the fer variants not at all. No parser version: a repository holding such a file sees those tokens change once, at its next commit (`LilypondParseTest`).
 
   * **Artifact packs are compacted by bytes**: a pack is rewritten once less than half of its bytes are still current - it was once less than half of its artifacts were. A file's own artifact holds its order graph, a node per line, and every commit changing the file writes it again: in tinycc 324 such copies, 0.2% of the artifacts, were about 6 MB of the 25 MB of packs, and every pack was still current by count. An artifact's bytes are what it takes in its pack's stream, counted when a pack is read or written - nothing more is stored, the format is unchanged. On a copy of tinycc two commits leave 23.6 MB of packs instead of 25.8 MB, in the same time, with every configuration checked out as before (`ArtifactPackTest`).
