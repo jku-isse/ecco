@@ -42,8 +42,8 @@ import java.util.logging.Logger;
  * {@code stopServer} server, and the {@code fetch}/{@code pull}/{@code push} clients) for one
  * {@link EccoService} instance. {@code fork} is deliberately NOT part of this class -- it shares the
  * same "spin up a second nested {@code EccoService} for a LOCAL remote" idiom as {@code pull}/
- * {@code push} but is commit/checkout-orchestration-shaped (creates and initializes a new repository),
- * not sync-shaped, and stayed in {@link EccoService} for that reason.
+ * {@code push} but creates and initializes a new repository, which is not sync-shaped: see
+ * {@link ForkService}.
  */
 public class RemoteSyncService {
 
