@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.adapter.AdapterPreferences;
 import java.util.prefs.Preferences;
 
 /**

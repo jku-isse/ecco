@@ -3,75 +3,75 @@
   "name":"[Ljava.lang.invoke.MethodHandles$Lookup$ClassOption;"
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchModule",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchModule",
   "allDeclaredMethods":true
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchReader",
   "allDeclaredFields":true,
   "allDeclaredMethods":true,
   "allDeclaredConstructors":true
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$2f559",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchReader$$FastClassByGuice$$2f559",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$7fd62",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchReader$$FastClassByGuice$$7fd62",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$82709",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchReader$$FastClassByGuice$$82709",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$97b3a",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchReader$$FastClassByGuice$$97b3a",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$98b1c",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchReader$$FastClassByGuice$$98b1c",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$c9a9c",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchReader$$FastClassByGuice$$c9a9c",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$f3d34",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchReader$$FastClassByGuice$$f3d34",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchWriter",
   "allDeclaredFields":true,
   "allDeclaredMethods":true,
   "allDeclaredConstructors":true
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$10e579",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchWriter$$FastClassByGuice$$10e579",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$15df59",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchWriter$$FastClassByGuice$$15df59",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$170bab",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchWriter$$FastClassByGuice$$170bab",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$179ae3",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchWriter$$FastClassByGuice$$179ae3",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$1958e7",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchWriter$$FastClassByGuice$$1958e7",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$1a606c",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchWriter$$FastClassByGuice$$1a606c",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {
-  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$1ac5ef",
+  "name":"at.jku.isse.ecco.service.dispatch.DispatchWriter$$FastClassByGuice$$1ac5ef",
   "fields":[{"name":"GUICE$INVOKERS"}]
 },
 {

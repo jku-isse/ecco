@@ -5,6 +5,7 @@ import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.*;
 import at.jku.isse.ecco.adapter.*;
 import at.jku.isse.ecco.adapter.dispatch.*;
+import at.jku.isse.ecco.service.dispatch.*;
 import at.jku.isse.ecco.artifact.*;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.dao.*;

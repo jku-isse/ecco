@@ -2,9 +2,9 @@ package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.mining.MinimizationPreferences;
-import at.jku.isse.ecco.service.AdapterPreferences;
+import at.jku.isse.ecco.adapter.AdapterPreferences;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.LilypondPreferences;
+import at.jku.isse.ecco.adapter.LilypondPreferences;
 import at.jku.isse.ecco.service.LlmPreferences;
 import com.sun.net.httpserver.HttpServer;
 import javafx.scene.Node;

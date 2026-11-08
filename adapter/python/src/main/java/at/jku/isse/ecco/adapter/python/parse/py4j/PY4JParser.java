@@ -4,7 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.PythonFinder;
 import at.jku.isse.ecco.adapter.python.PythonParser;
 import at.jku.isse.ecco.adapter.python.PythonPlugin;
-import at.jku.isse.ecco.service.AdapterPreferences;
+import at.jku.isse.ecco.adapter.AdapterPreferences;
 import py4j.GatewayServerListener;
 import py4j.Py4JServerConnection;
 

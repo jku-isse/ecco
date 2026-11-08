@@ -3,6 +3,7 @@ package at.jku.isse.ecco.service.test;
 import at.jku.isse.ecco.adapter.*;
 import at.jku.isse.ecco.adapter.challenge.*;
 import at.jku.isse.ecco.adapter.dispatch.*;
+import at.jku.isse.ecco.service.dispatch.*;
 import at.jku.isse.ecco.adapter.runtime.*;
 import at.jku.isse.ecco.service.*;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;

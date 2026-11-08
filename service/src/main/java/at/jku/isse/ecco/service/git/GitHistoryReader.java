@@ -2,7 +2,7 @@ package at.jku.isse.ecco.service.git;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.SourcePosition;
-import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
+import at.jku.isse.ecco.service.dispatch.DispatchReader;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.Edit;
 import org.eclipse.jgit.diff.EditList;

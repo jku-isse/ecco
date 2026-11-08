@@ -1,5 +1,6 @@
-package at.jku.isse.ecco.adapter.dispatch;
+package at.jku.isse.ecco.service.dispatch;
 
+import at.jku.isse.ecco.adapter.dispatch.*;
 import com.google.inject.AbstractModule;
 
 public class DispatchModule extends AbstractModule {

@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.service.llm;
 
-import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
+import at.jku.isse.ecco.service.dispatch.DispatchReader;
 import at.jku.isse.ecco.feature.ConfigurationText;
 import at.jku.isse.ecco.service.git.GitHistoryReader;
 import com.fasterxml.jackson.databind.JsonNode;

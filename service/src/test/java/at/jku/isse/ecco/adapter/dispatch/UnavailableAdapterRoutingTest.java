@@ -42,14 +42,14 @@ public class UnavailableAdapterRoutingTest {
         Path adaptersFile = repoDir.resolve(".adapters");
         List<String> written = Files.readAllLines(adaptersFile);
 
-        java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(at.jku.isse.ecco.service.AdapterPreferences.class);
+        java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userRoot().node(at.jku.isse.ecco.adapter.AdapterPreferences.PREFERENCES_NODE);
         String key = "disabledAdapterPluginIds";
         String stored = prefs.get(key, null);
         try {
-            java.util.Set<String> disabled = new java.util.HashSet<>(at.jku.isse.ecco.service.AdapterPreferences.getDisabledPluginIds());
+            java.util.Set<String> disabled = new java.util.HashSet<>(at.jku.isse.ecco.adapter.AdapterPreferences.getDisabledPluginIds());
             // the challenge adapter, off by default, claims *.java too
             assertTrue(disabled.remove("at.jku.isse.ecco.adapter.challenge.JavaPlugin"), "off by default: " + disabled);
-            at.jku.isse.ecco.service.AdapterPreferences.setDisabledPluginIds(disabled);
+            at.jku.isse.ecco.adapter.AdapterPreferences.setDisabledPluginIds(disabled);
             Path content = Files.createDirectories(workDir.resolve("content"));
             Files.writeString(content.resolve("Main.java"), "class Main {\n}\n");
             try (EccoService service = new EccoService()) {

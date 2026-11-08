@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.lilypond.parser.py4j;
 
 import at.jku.isse.ecco.adapter.PythonFinder;
-import at.jku.isse.ecco.service.LilypondPreferences;
+import at.jku.isse.ecco.adapter.LilypondPreferences;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
