@@ -1,5 +1,5 @@
 package at.jku.isse.ecco.adapter.lilypond;
-import at.jku.isse.ecco.service.LilypondPreferences;
+import at.jku.isse.ecco.adapter.LilypondPreferences;
 import javafx.scene.image.Image;
 import java.io.BufferedReader;
 import java.io.IOException;

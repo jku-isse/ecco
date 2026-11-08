@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.service;
+package at.jku.isse.ecco.adapter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,8 +74,9 @@ public final class LilypondPreferences {
 		prefs().put(LYMODEL_PATH_KEY, lymodelPath == null ? "" : lymodelPath.trim());
 	}
 
+	/** See {@link AdapterPreferences#PREFERENCES_NODE}: where this class's package kept them before it moved. */
 	private static Preferences prefs() {
-		return Preferences.userNodeForPackage(LilypondPreferences.class);
+		return Preferences.userRoot().node(AdapterPreferences.PREFERENCES_NODE);
 	}
 
 }

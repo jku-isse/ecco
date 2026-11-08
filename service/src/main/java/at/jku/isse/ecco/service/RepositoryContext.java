@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.service;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
+import at.jku.isse.ecco.service.dispatch.DispatchReader;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
+import at.jku.isse.ecco.service.dispatch.DispatchWriter;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.dao.RemoteDao;
 import at.jku.isse.ecco.dao.RepositoryDao;

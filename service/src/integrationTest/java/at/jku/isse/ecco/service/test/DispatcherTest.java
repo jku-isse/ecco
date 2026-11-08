@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.service.test;
 
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
-import at.jku.isse.ecco.adapter.dispatch.DispatchModule;
-import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
+import at.jku.isse.ecco.service.dispatch.DispatchModule;
+import at.jku.isse.ecco.service.dispatch.DispatchReader;
 import at.jku.isse.ecco.storage.mem.MemModule;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Module;

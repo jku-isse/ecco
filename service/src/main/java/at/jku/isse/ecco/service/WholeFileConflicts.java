@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.service;
 
-import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
+import at.jku.isse.ecco.service.dispatch.DispatchReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;

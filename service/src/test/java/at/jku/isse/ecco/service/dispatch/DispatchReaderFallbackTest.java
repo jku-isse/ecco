@@ -1,5 +1,6 @@
-package at.jku.isse.ecco.adapter.dispatch;
+package at.jku.isse.ecco.service.dispatch;
 
+import at.jku.isse.ecco.adapter.dispatch.*;
 import at.jku.isse.ecco.adapter.AdapterUnavailableException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.file.FileReader;

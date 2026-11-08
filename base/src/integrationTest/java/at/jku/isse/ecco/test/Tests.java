@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Characterizes the exact java.nio.file.PathMatcher glob semantics that
- * {@link at.jku.isse.ecco.adapter.dispatch.DispatchReader}'s ignore-pattern matching (see
+ * {@link at.jku.isse.ecco.service.dispatch.DispatchReader}'s ignore-pattern matching (see
  * {@code EccoService#open()}, which registers ignore patterns like ".ecco" as globs) depends on -
  * in particular that a glob without "**" only matches an exact relative path, not any path ending
  * with it.

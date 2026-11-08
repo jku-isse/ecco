@@ -1,5 +1,6 @@
-package at.jku.isse.ecco.adapter.dispatch;
+package at.jku.isse.ecco.service.dispatch;
 
+import at.jku.isse.ecco.adapter.dispatch.*;
 import at.jku.isse.ecco.service.EccoService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;

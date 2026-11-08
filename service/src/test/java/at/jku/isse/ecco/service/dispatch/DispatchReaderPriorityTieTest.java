@@ -1,7 +1,8 @@
-package at.jku.isse.ecco.adapter.dispatch;
+package at.jku.isse.ecco.service.dispatch;
 
+import at.jku.isse.ecco.adapter.dispatch.*;
 import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.service.AdapterPreferences;
+import at.jku.isse.ecco.adapter.AdapterPreferences;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.EccoListener;
 import at.jku.isse.ecco.service.listener.ReadListener;
@@ -64,7 +65,7 @@ public class DispatchReaderPriorityTieTest {
         Files.writeString(content.resolve("b.cpp"), "int b() { return 2; }\n");
 
         // the shipped defaults, not this machine's stored adapter choices
-        Preferences prefs = Preferences.userNodeForPackage(AdapterPreferences.class);
+        Preferences prefs = Preferences.userRoot().node(AdapterPreferences.PREFERENCES_NODE);
         String stored = prefs.get(DISABLED_ADAPTERS_KEY, null);
         prefs.remove(DISABLED_ADAPTERS_KEY);
         try {

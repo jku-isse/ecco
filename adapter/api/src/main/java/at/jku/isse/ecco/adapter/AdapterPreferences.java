@@ -1,6 +1,4 @@
-package at.jku.isse.ecco.service;
-
-import at.jku.isse.ecco.adapter.ArtifactPlugin;
+package at.jku.isse.ecco.adapter;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -70,7 +68,15 @@ public final class AdapterPreferences {
 		prefs().put(PYTHON_ADAPTER_PYTHON_KEY, pythonPath == null ? "" : pythonPath.trim());
 	}
 
+	/**
+	 * The preferences node the adapters' preferences are kept in: that of the package
+	 * at.jku.isse.ecco.service, where this class and {@link LilypondPreferences} were when they took
+	 * it from their package (Preferences.userNodeForPackage) - named here, so that moving them kept
+	 * every user's settings. The service's own preferences (recent repositories, the LLM's) are there too.
+	 */
+	public static final String PREFERENCES_NODE = "/at/jku/isse/ecco/service";
+
 	private static Preferences prefs() {
-		return Preferences.userNodeForPackage(AdapterPreferences.class);
+		return Preferences.userRoot().node(PREFERENCES_NODE);
 	}
 }

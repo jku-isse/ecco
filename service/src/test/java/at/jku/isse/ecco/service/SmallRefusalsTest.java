@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.adapter.AdapterPreferences;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.core.Remote;
@@ -113,7 +114,7 @@ public class SmallRefusalsTest {
         try (EccoService service = init(work)) {
             // a repository to open
         }
-        Preferences prefs = Preferences.userNodeForPackage(AdapterPreferences.class);
+        Preferences prefs = Preferences.userRoot().node(AdapterPreferences.PREFERENCES_NODE);
         String key = "disabledAdapterPluginIds";
         String stored = prefs.get(key, null);
         try {
