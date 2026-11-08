@@ -141,3 +141,63 @@ If it does not, review this documentation.
 
 If, after reviewing the documentation, your plugin still does not show up, then this documentation is missing something.
 In that case, please create a new GitHub-Issue with a link to your branch or fork, so that it can be investigated.
+
+## How to write an adapter outside this repository
+
+An adapter does not have to live in this repository. It is written against `ecco-adapter-api` alone - `ArtifactPlugin`, `ArtifactReader`, `ArtifactWriter`, `ArtifactViewer`, `PluginArtifactData`, the listeners and the shared code viewer - and ECCO finds it on its class path.
+
+ECCO is not published to a Maven repository yet. Build it once and install it into your local Maven repository (`~/.m2`), from the root of this repository:
+```
+./gradlew publishToMavenLocal
+```
+This installs every module as `at.jku.isse.ecco:<module>:<version>`, the version being the one in `gradle.properties` (0.2.0 at the time of writing).
+
+Your adapter's `build.gradle`:
+```groovy
+plugins {
+  id 'java'
+}
+
+java {
+  sourceCompatibility = JavaVersion.VERSION_21
+  targetCompatibility = JavaVersion.VERSION_21
+}
+
+repositories {
+  mavenLocal()    // ECCO, installed with ./gradlew publishToMavenLocal
+  mavenCentral()
+}
+
+dependencies {
+  implementation 'at.jku.isse.ecco:ecco-adapter-api:0.2.0'
+  // tests build trees with SerEntityFactory, or commit and check out with EccoService
+  testImplementation 'at.jku.isse.ecco:ecco-service:0.2.0'
+  testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+  useJUnitPlatform()
+}
+```
+`ecco-adapter-api` brings Guice, Guava and `ecco-base` with it. If your adapter has a viewer (an `ArtifactViewer`), it also needs JavaFX - `ecco-adapter-api` compiles against JavaFX but does not pass it on, as only the GUI loads viewers; the [OpenJFX Gradle plugin](https://github.com/openjfx/javafx-gradle-plugin) adds it, as in this repository's adapters.
+
+The classes are the ones described above - a `-Reader`, `-Writer`, `-Module` and `-Plugin` - in a package of your own, and the plugin is registered the same way: a file `src/main/resources/META-INF/services/at.jku.isse.ecco.adapter.ArtifactPlugin` containing the fully qualified name of your `-Plugin` class.
+
+A test builds an ECCO tree with the entity factory ECCO stores repositories with:
+```java
+EntityFactory entityFactory = new SerEntityFactory();
+RootNode.Op root = entityFactory.createRootNode();
+Node.Op file = entityFactory.createNode(new PluginArtifactData(MyPlugin.class.getName(), Path.of("example.txt")));
+root.addChild(file);
+```
+
+To use the adapter, put its jar on ECCO's class path. With ECCO installed by `./gradlew :ecco-cli:installDist` (into `cli/build/install/ecco`), the command line runs as
+```
+java -cp "cli/build/install/ecco/lib/*:my-adapter.jar" at.jku.isse.ecco.cli.Main adapters
+```
+which lists your plugin among the others when it was found (`adapters` needs a repository: run it in one, or `init` one first). The GUI, installed by `./gradlew :ecco-gui:installDist`, starts the same way with its main class:
+```
+java -cp "gui/build/install/ecco-gui/lib/*:my-adapter.jar" at.jku.isse.ecco.gui.Launcher
+```
+On Windows, separate the class path entries with `;` instead of `:`.
