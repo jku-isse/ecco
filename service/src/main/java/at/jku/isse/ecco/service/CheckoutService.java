@@ -61,7 +61,7 @@ class CheckoutService {
         return owner.readTransaction(null, () -> this.composeInTransaction(configuration));
     }
     private Checkout composeInTransaction(Configuration configuration) {
-        Repository.Op repository = owner.repositoryDao.load();
+        Repository.Op repository = owner.context.repositoryDao.load();
         Map<String, LogicCondition> minimized = owner.minimizedConditionsInCheckout ? CheckoutConditions.valid(repository) : Map.of();
         if (owner.minimizedConditionsInCheckout)
             LOGGER.info("Checking out with minimized conditions for " + minimized.size() + " of " + repository.getAssociations().size() + " associations.");
@@ -111,7 +111,7 @@ class CheckoutService {
             Checkout checkout = this.compose(configuration);
 
             Set<Node> nodes = this.selectArtifacts(checkout);
-            owner.writer.write(owner.baseDir, nodes);
+            owner.context.writer.write(owner.baseDir, nodes);
 
             // TODO: check if rest of method is affected by code change to compose
             // write config file into base directory
@@ -124,7 +124,7 @@ class CheckoutService {
                 } catch (IOException e) {
                     throw new EccoException("Could not create configuration file.", e);
                 }
-                owner.listeners.fireWriteEvent(configFile, owner.writer);
+                owner.listeners.fireWriteEvent(configFile, owner.context.writer);
             }
 
             // write warnings file into base directory
@@ -175,7 +175,7 @@ class CheckoutService {
                 } catch (IOException e) {
                     throw new EccoException("Could not create warnings file.", e);
                 }
-                owner.listeners.fireWriteEvent(warningsFile, owner.writer);
+                owner.listeners.fireWriteEvent(warningsFile, owner.context.writer);
             }
 
             return checkout;
@@ -199,7 +199,7 @@ class CheckoutService {
         owner.checkInitialized();
         checkNotNull(configuration);
         List<String> unknown = owner.readTransaction(null, () -> {
-            Repository.Op repository = owner.repositoryDao.load();
+            Repository.Op repository = owner.context.repositoryDao.load();
             List<String> missing = new ArrayList<>();
             for (FeatureRevision revision : configuration.getFeatureRevisions()) {
                 Feature feature = repository.getFeature(revision.getFeature().getId());
@@ -234,7 +234,7 @@ class CheckoutService {
         checkout.setNode(node);
 
         Set<Node> nodes = new HashSet<>(node.getChildren());
-        owner.writer.write(directory, nodes);
+        owner.context.writer.write(directory, nodes);
 
         return checkout;
     }
@@ -261,6 +261,6 @@ class CheckoutService {
         if (fileNode == null) {
             throw new EccoException("Could not locate an enclosing file node (PluginArtifactData) for the given node.");
         }
-        return owner.writer.writeFile(owner.baseDir, fileNode);
+        return owner.context.writer.writeFile(owner.baseDir, fileNode);
     }
 }

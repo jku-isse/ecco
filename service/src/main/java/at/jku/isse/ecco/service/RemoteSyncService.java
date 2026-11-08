@@ -115,8 +115,8 @@ public class RemoteSyncService {
             if (this.getRemote(name) != null)
                 throw new EccoException("Remote with this name already exists.");
 
-            Remote remote = owner.entityFactory.createRemote(name, address, type);
-            remote = owner.remoteDao.storeRemote(remote);
+            Remote remote = owner.context.entityFactory.createRemote(name, address, type);
+            remote = owner.context.remoteDao.storeRemote(remote);
             return remote;
         });
     }
@@ -144,17 +144,17 @@ public class RemoteSyncService {
         }
 
         return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, null, () -> {
-            Remote remote = owner.remoteDao.loadRemote(name);
+            Remote remote = owner.context.remoteDao.loadRemote(name);
             if (remote == null)
                 throw new EccoException("Remote '" + name + "' does not exist.");
-            if (!newName.equals(name) && owner.remoteDao.loadRemote(newName) != null)
+            if (!newName.equals(name) && owner.context.remoteDao.loadRemote(newName) != null)
                 throw new EccoException("Remote with this name already exists.");
 
-            owner.remoteDao.removeRemote(name);
+            owner.context.remoteDao.removeRemote(name);
             remote.setName(newName);
             remote.setAddress(address);
             remote.setType(type);
-            remote = owner.remoteDao.storeRemote(remote);
+            remote = owner.context.remoteDao.storeRemote(remote);
             return remote;
         });
     }
@@ -163,7 +163,7 @@ public class RemoteSyncService {
         owner.checkInitialized();
 
         owner.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error removing remote.", () -> {
-            owner.remoteDao.removeRemote(name);
+            owner.context.remoteDao.removeRemote(name);
             return null;
         });
     }
@@ -172,7 +172,7 @@ public class RemoteSyncService {
         owner.checkInitialized();
 
         return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error retrieving remote.", () -> {
-            Remote remote = owner.remoteDao.loadRemote(name);
+            Remote remote = owner.context.remoteDao.loadRemote(name);
             return remote;
         });
     }
@@ -181,7 +181,7 @@ public class RemoteSyncService {
         owner.checkInitialized();
 
         return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error retrieving remotes.", () -> {
-            Collection<Remote> remotes = owner.remoteDao.loadAllRemotes();
+            Collection<Remote> remotes = owner.context.remoteDao.loadAllRemotes();
             return remotes;
         });
     }
@@ -219,7 +219,7 @@ public class RemoteSyncService {
     private void rollbackIfTransactionInProgress() {
         try {
             synchronized (owner) {
-                owner.transactionStrategy.rollback();
+                owner.context.transactionStrategy.rollback();
             }
         } catch (EccoException ignored) {
             // no transaction was active -- nothing to roll back
@@ -329,13 +329,13 @@ public class RemoteSyncService {
                             // (see the comment above the switch)
                             Collection<Feature> copiedFeatures;
                             synchronized (owner) {
-                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                                owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 // ended also when it fails: left open, a commit of the GUI's next could not write
                                 try {
-                                    Repository.Op repository = owner.repositoryDao.load();
-                                    copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), owner.entityFactory);
+                                    Repository.Op repository = owner.context.repositoryDao.load();
+                                    copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), owner.context.entityFactory);
                                 } finally {
-                                    owner.transactionStrategy.end();
+                                    owner.context.transactionStrategy.end();
                                 }
                             }
 
@@ -373,11 +373,11 @@ public class RemoteSyncService {
                         case "CLONE": { // a fork of everything: the repository as it is (Repository.Op#copyInto)
                             byte[] payload;
                             synchronized (owner) {
-                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                                owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 try {
-                                    payload = SyncObjectStreams.writeCopy(owner.repositoryDao.load());
+                                    payload = SyncObjectStreams.writeCopy(owner.context.repositoryDao.load());
                                 } finally {
-                                    owner.transactionStrategy.end();
+                                    owner.context.transactionStrategy.end();
                                 }
                             }
                             oos.writeObject(payload.length);
@@ -391,13 +391,13 @@ public class RemoteSyncService {
                             ArrayList<String> ids;
                             boolean mergeCommits;
                             synchronized (owner) {
-                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                                owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 try {
-                                    Repository.Op repository = owner.repositoryDao.load();
+                                    Repository.Op repository = owner.context.repositoryDao.load();
                                     ids = commitIds(repository);
                                     mergeCommits = repository.hasMergeCommits();
                                 } finally {
-                                    owner.transactionStrategy.end();
+                                    owner.context.transactionStrategy.end();
                                 }
                             }
                             oos.writeObject(ids);
@@ -413,14 +413,14 @@ public class RemoteSyncService {
                             Object reply;
                             synchronized (owner) {
                                 Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
-                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                                owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 try {
-                                    Repository.Op repository = owner.repositoryDao.load();
+                                    Repository.Op repository = owner.context.repositoryDao.load();
                                     // a repository with merge commits cannot be replayed: the client merges instead
                                     reply = repository.hasMergeCommits() ? MERGE
                                             : SyncObjectStreams.writeCopy(owner.copyOfCommits(repository, repository.commitsMissingIn(have, deselected)));
                                 } finally {
-                                    owner.transactionStrategy.end();
+                                    owner.context.transactionStrategy.end();
                                 }
                             }
                             if (reply instanceof byte[] payload) {
@@ -441,12 +441,12 @@ public class RemoteSyncService {
                             String reply;
                             synchronized (owner) {
                                 try {
-                                    owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                                    Repository.Op repository = owner.repositoryDao.load();
+                                    owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                                    Repository.Op repository = owner.context.repositoryDao.load();
                                     Map<String, String> takeOver = owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(commits), pushedSettings,
                                             owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
                                     owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
-                                    owner.repositoryDao.store(repository);
+                                    owner.context.repositoryDao.store(repository);
                                     owner.settings.endTakingOver(takeOver);
                                     reply = "OK";
                                 } catch (RuntimeException e) {
@@ -474,12 +474,12 @@ public class RemoteSyncService {
                             Repository.Op subsetRepository;
                             synchronized (owner) {
                                 Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
-                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                                owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 try {
-                                    Repository.Op repository = owner.repositoryDao.load();
-                                    subsetRepository = repository.subset(deselected, repository.getMaxOrder(), owner.entityFactory);
+                                    Repository.Op repository = owner.context.repositoryDao.load();
+                                    subsetRepository = repository.subset(deselected, repository.getMaxOrder(), owner.context.entityFactory);
                                 } finally {
-                                    owner.transactionStrategy.end();
+                                    owner.context.transactionStrategy.end();
                                 }
                             }
 
@@ -515,7 +515,7 @@ public class RemoteSyncService {
                             }
 
                             // copy it using this entity factory
-                            Repository.Op copiedRepository = subsetRepository.copy(owner.entityFactory);
+                            Repository.Op copiedRepository = subsetRepository.copy(owner.context.entityFactory);
 
                             // merge into this repository - under the service monitor (see the
                             // comment above the switch) - if both read the files the same way:
@@ -524,13 +524,13 @@ public class RemoteSyncService {
                             String reply;
                             synchronized (owner) {
                                 try {
-                                    owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                                    Repository.Op repository = owner.repositoryDao.load();
+                                    owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                                    Repository.Op repository = owner.context.repositoryDao.load();
                                     Map<String, String> takeOver = pushedSettings == null ? Map.of()
                                             : owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(copiedRepository), pushedSettings,
                                             owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
                                     repository.merge(copiedRepository);
-                                    owner.repositoryDao.store(repository);
+                                    owner.context.repositoryDao.store(repository);
                                     owner.settings.endTakingOver(takeOver);
                                     reply = "OK";
                                 } catch (RuntimeException e) {
@@ -624,11 +624,11 @@ public class RemoteSyncService {
         owner.checkInitialized();
 
         try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
             OperationCancelledException.check(cancelled);
 
             // load remote
-            Remote remote = owner.remoteDao.loadRemote(remoteName);
+            Remote remote = owner.context.remoteDao.loadRemote(remoteName);
             if (remote == null) {
                 throw new EccoException("Remote '" + remoteName + "' does not exist.");
             } else if (remote.getType() == Remote.Type.REMOTE) {
@@ -658,13 +658,13 @@ public class RemoteSyncService {
 
 
                     // copy it using this entity factory
-                    Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(features, owner.entityFactory);
+                    Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(features, owner.context.entityFactory);
                     OperationCancelledException.check(cancelled);
 
                     // store with remote
                     remote.getFeatures().clear();
                     remote.getFeatures().addAll(copiedFeatures);
-                    owner.remoteDao.storeRemote(remote);
+                    owner.context.remoteDao.storeRemote(remote);
                 } catch (Exception e) {
                     throw new EccoException("Error during remote fetch.", e);
                 }
@@ -680,19 +680,19 @@ public class RemoteSyncService {
                     parentService.open();
 
                     // copy features
-                    copiedFeatures = EccoUtil.deepCopyFeatures(parentService.getRepository().getFeatures(), owner.entityFactory);
+                    copiedFeatures = EccoUtil.deepCopyFeatures(parentService.getRepository().getFeatures(), owner.context.entityFactory);
                 }
 
                 OperationCancelledException.check(cancelled);
                 // merge into this repository
                 remote.getFeatures().clear();
                 remote.getFeatures().addAll(copiedFeatures);
-                owner.remoteDao.storeRemote(remote);
+                owner.context.remoteDao.storeRemote(remote);
             }
 
             // the last chance: what follows writes
             OperationCancelledException.check(cancelled);
-            owner.transactionStrategy.end();
+            owner.context.transactionStrategy.end();
         } catch (Error e) {
             owner.rollbackIfTransactionActive();
             throw e;
@@ -981,11 +981,11 @@ public class RemoteSyncService {
         // settings this repository takes over from the remote with its first files of a plugin
         Map<String, String> takeOver = Map.of();
         try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
             OperationCancelledException.check(cancelled);
 
             // load remote
-            Remote remote = owner.remoteDao.loadRemote(remoteName);
+            Remote remote = owner.context.remoteDao.loadRemote(remoteName);
             if (remote == null) {
                 throw new EccoException("Remote '" + remoteName + "' does not exist.");
             } else if (remote.getType() == Remote.Type.REMOTE) {
@@ -993,7 +993,7 @@ public class RemoteSyncService {
                 Map<String, String> remoteSettings = this.remoteSettings(remote);
                 // the remote's commits this repository does not have, replayed (Repository.Op#replay) -
                 // merged as before where either repository has merge commits or the remote is too old
-                Repository.Op repository = owner.repositoryDao.load();
+                Repository.Op repository = owner.context.repositoryDao.load();
                 Repository.Op commits;
                 try {
                     if (repository.hasMergeCommits()) {
@@ -1011,7 +1011,7 @@ public class RemoteSyncService {
                         takeOver = owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(commits), remoteSettings,
                                 owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
                     owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
-                    owner.repositoryDao.store(repository);
+                    owner.context.repositoryDao.store(repository);
                 } else try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
                     RemoteSyncService.connect(sChannel, socketAddressOf(remote));
@@ -1037,7 +1037,7 @@ public class RemoteSyncService {
 
 
                     // copy it using this entity factory
-                    Repository.Op copiedRepository = subsetRepository.copy(owner.entityFactory);
+                    Repository.Op copiedRepository = subsetRepository.copy(owner.context.entityFactory);
                     OperationCancelledException.check(cancelled);
 
                     // merge into this repository - if both read the files the same way
@@ -1045,7 +1045,7 @@ public class RemoteSyncService {
                         takeOver = owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(copiedRepository), remoteSettings,
                                 owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
                     repository.merge(copiedRepository);
-                    owner.repositoryDao.store(repository);
+                    owner.context.repositoryDao.store(repository);
                 } catch (Exception e) {
                     throw new EccoException("Error during remote pull.", e);
                 }
@@ -1053,7 +1053,7 @@ public class RemoteSyncService {
             } else if (remote.getType() == Remote.Type.LOCAL) {
                 // open parent repository - try-with-resources so a failure below still closes
                 // parentService instead of leaking whatever open()/init() acquired indefinitely.
-                Repository.Op repository = owner.repositoryDao.load();
+                Repository.Op repository = owner.context.repositoryDao.load();
                 // the parent's commits this repository does not have, to replay (Repository.Op#replay) -
                 // or, where either repository has merge commits, the subset to merge as before
                 Repository.Op commits = null;
@@ -1066,18 +1066,18 @@ public class RemoteSyncService {
                     parentSettings = parentService.settings.current();
 
                     try {
-                        parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                        parentService.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
-                        Repository.Op parentRepository = parentService.repositoryDao.load();
+                        Repository.Op parentRepository = parentService.context.repositoryDao.load();
                         Collection<FeatureRevision> deselected = parentService.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
                         if (parentRepository.hasMergeCommits() || repository.hasMergeCommits()) {
                             LOGGER.warning((repository.hasMergeCommits() ? "This repository" : "Remote '" + remote.getName() + "'") + MERGING);
-                            subsetParentRepository = parentRepository.subset(deselected, parentRepository.getMaxOrder(), owner.entityFactory);
+                            subsetParentRepository = parentRepository.subset(deselected, parentRepository.getMaxOrder(), owner.context.entityFactory);
                         } else {
                             commits = owner.copyOfCommits(parentRepository, parentRepository.commitsMissingIn(commitIds(repository), deselected));
                         }
 
-                        parentService.transactionStrategy.end();
+                        parentService.context.transactionStrategy.end();
                     } catch (Error e) {
                         parentService.rollbackIfTransactionActive();
                         throw e;
@@ -1097,7 +1097,7 @@ public class RemoteSyncService {
                     owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                 else
                     repository.merge(subsetParentRepository);
-                owner.repositoryDao.store(repository);
+                owner.context.repositoryDao.store(repository);
             }
 
             // the last chance: what follows writes
@@ -1137,19 +1137,19 @@ public class RemoteSyncService {
         owner.checkInitialized();
 
         try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+            owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
             OperationCancelledException.check(cancelled);
 
             // load remote
-            Remote remote = owner.remoteDao.loadRemote(remoteName);
+            Remote remote = owner.context.remoteDao.loadRemote(remoteName);
             if (remote == null) {
                 throw new EccoException("Remote '" + remoteName + "' does not exist.");
             } else if (remote.getType() == Remote.Type.REMOTE) {
 
                 // this repository's commits the remote does not have, for it to replay (Repository.Op#replay) -
                 // the subset to merge as before where either repository has merge commits or the remote is too old
-                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-                Repository.Op repository = owner.repositoryDao.load();
+                owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                Repository.Op repository = owner.context.repositoryDao.load();
                 Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
                 ArrayList<String> remoteIds;
                 try {
@@ -1160,12 +1160,12 @@ public class RemoteSyncService {
                         remoteIds = this.remoteCommitIds(remote);
                     }
                 } catch (Exception e) {
-                    owner.transactionStrategy.end();
+                    owner.context.transactionStrategy.end();
                     throw new EccoException("Error during remote push.", e);
                 }
                 if (remoteIds != null) {
                     Repository.Op commits = owner.copyOfCommits(repository, repository.commitsMissingIn(remoteIds, deselected));
-                    owner.transactionStrategy.end();
+                    owner.context.transactionStrategy.end();
                     // the last chance: the server replays what it gets
                     OperationCancelledException.check(cancelled);
                     boolean answers = this.mergeSettingsIntoRemote(remote, RepositorySettings.pluginsWithFiles(commits));
@@ -1176,11 +1176,11 @@ public class RemoteSyncService {
                     } catch (Exception e) {
                         throw new EccoException("Error during remote push.", e);
                     }
-                    owner.transactionStrategy.end();
+                    owner.context.transactionStrategy.end();
                     return;
                 }
-                Repository.Op subsetRepository = repository.subset(deselected, repository.getMaxOrder(), owner.entityFactory);
-                owner.transactionStrategy.end();
+                Repository.Op subsetRepository = repository.subset(deselected, repository.getMaxOrder(), owner.context.entityFactory);
+                owner.context.transactionStrategy.end();
                 // the last chance: the server merges what it gets
                 OperationCancelledException.check(cancelled);
                 // the remote merges only files it reads the same way - asked before sending anything
@@ -1201,7 +1201,7 @@ public class RemoteSyncService {
                     parentService.setRepositoryDir(EccoService.resolveRepositoryDir(Paths.get(remote.getAddress())));
                     parentService.open();
 
-                    Repository.Op repository = owner.repositoryDao.load();
+                    Repository.Op repository = owner.context.repositoryDao.load();
                     Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
                     OperationCancelledException.check(cancelled);
 
@@ -1209,14 +1209,14 @@ public class RemoteSyncService {
                     // commits it does not have, replayed (Repository.Op#replay), or, where either has merge
                     // commits, the subset merged as before
                     try {
-                        parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                        parentService.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
-                        Repository.Op parentRepository = parentService.repositoryDao.load();
+                        Repository.Op parentRepository = parentService.context.repositoryDao.load();
                         Repository.Op commits = null;
                         Repository.Op subsetRepository = null;
                         if (repository.hasMergeCommits() || parentRepository.hasMergeCommits()) {
                             LOGGER.warning((repository.hasMergeCommits() ? "This repository" : "Remote '" + remote.getName() + "'") + MERGING);
-                            subsetRepository = repository.subset(deselected, repository.getMaxOrder(), parentService.entityFactory);
+                            subsetRepository = repository.subset(deselected, repository.getMaxOrder(), parentService.context.entityFactory);
                         } else {
                             commits = parentService.copyOfCommits(repository, repository.commitsMissingIn(commitIds(parentRepository), deselected));
                         }
@@ -1227,7 +1227,7 @@ public class RemoteSyncService {
                             parentService.replayInto(parentRepository, commits, new ArrayList<>(commits.getCommits()));
                         else
                             parentRepository.merge(subsetRepository);
-                        parentService.repositoryDao.store(parentRepository);
+                        parentService.context.repositoryDao.store(parentRepository);
 
                         // the last chance: what follows writes the remote
                         OperationCancelledException.check(cancelled);
@@ -1243,7 +1243,7 @@ public class RemoteSyncService {
                 }
             }
 
-            owner.transactionStrategy.end();
+            owner.context.transactionStrategy.end();
         } catch (Error e) {
             owner.rollbackIfTransactionActive();
             throw e;

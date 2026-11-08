@@ -85,18 +85,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     private EvaluationStrategy defaultEvaluationStrategy;
     private MainTreeBuildingStrategy defaultMainTreeBuildingStrategy;
     private int defaultMaxOrder;
-    @Inject
-    DispatchReader reader;
-    @Inject
-    DispatchWriter writer;
-    @Inject
-    EntityFactory entityFactory;
-    @Inject
-    TransactionStrategy transactionStrategy;
-    @Inject
-    RepositoryDao repositoryDao;
-    @Inject
-    RemoteDao remoteDao;
+    /** The open repository's DAOs, reader and writer; null before the first open, kept after close (see {@link RepositoryContext}). */
+    RepositoryContext context;
 
 
     public Properties getProperties() {
@@ -155,15 +145,20 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     public EntityFactory getEntityFactory() {
-        return entityFactory;
+        return this.context == null ? null : this.context.entityFactory;
     }
 
     public DispatchReader getReader() {
-        return reader;
+        return this.context == null ? null : this.context.reader;
     }
 
+    /**
+     * Replaces the open repository's reader. Before the first open there is none to replace: open()
+     * injects its own, as it always overwrote a reader set before it.
+     */
     public void setReader(DispatchReader reader) {
-        this.reader = reader;
+        if (this.context != null)
+            this.context.reader = reader;
     }
 
     /**
@@ -467,13 +462,15 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
         // inject
         try {
-            injector.injectMembers(this);
+            RepositoryContext context = new RepositoryContext();
+            injector.injectMembers(context);
+            this.context = context;
             injector.injectMembers(this.evaluationStrategyFactory);
             injector.injectMembers(this.mainTreeBuildingStrategyFactory);
         } catch (CreationException creationException) {
             throw new EccoException("Error during dependency injection. The storage plugin may be faulty.", creationException);
         }
-        if (mustExist && !this.transactionStrategy.containsRepository()) {
+        if (mustExist && !this.context.transactionStrategy.containsRepository()) {
             Path nested = this.repositoryDir.resolve(REPOSITORY_DIR_NAME);
             throw new EccoException("Not an ECCO repository: " + this.repositoryDir
                     + (Files.isDirectory(nested) ? " (did you mean " + nested + "?)" : ""));
@@ -491,19 +488,19 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.defaultMainTreeBuildingStrategy = this.mainTreeBuildingStrategyFactory.getMainTreeBuildingStrategy(mainTreeBuildingStrategyName);
 
         this.injector = injector;
-        this.transactionStrategy.open();
-        this.repositoryDao.init();
-        this.remoteDao.init();
-        this.reader.init();
+        this.context.transactionStrategy.open();
+        this.context.repositoryDao.init();
+        this.context.remoteDao.init();
+        this.context.reader.init();
 
         // add default ignore patterns
-        this.reader.addIgnorePattern(REPOSITORY_DIR_NAME.toString());
-        this.reader.addIgnorePattern(CONFIG_FILE_NAME.toString());
-        this.reader.addIgnorePattern(WARNINGS_FILE_NAME.toString());
-        this.reader.addIgnorePattern(HASHES_FILE_NAME.toString());
+        this.context.reader.addIgnorePattern(REPOSITORY_DIR_NAME.toString());
+        this.context.reader.addIgnorePattern(CONFIG_FILE_NAME.toString());
+        this.context.reader.addIgnorePattern(WARNINGS_FILE_NAME.toString());
+        this.context.reader.addIgnorePattern(HASHES_FILE_NAME.toString());
 
-        this.reader.addListener(this);
-        this.writer.addListener(this);
+        this.context.reader.addListener(this);
+        this.context.writer.addListener(this);
         this.initialized = true;
         this.listeners.fireStatusChangedEvent();
         LOGGER.info("Repository opened.");
@@ -524,11 +521,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         if (this.serverRunning())
             this.stopServer();
         this.initialized = false;
-        this.reader.removeListener(this);
-        this.writer.removeListener(this);
-        this.repositoryDao.close();
-        this.remoteDao.close();
-        this.transactionStrategy.close();
+        this.context.reader.removeListener(this);
+        this.context.writer.removeListener(this);
+        this.context.repositoryDao.close();
+        this.context.remoteDao.close();
+        this.context.transactionStrategy.close();
         this.listeners.fireStatusChangedEvent();
         LOGGER.info("Repository closed.");
     }
@@ -568,8 +565,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.checkInitialized();
 
         return this.readTransaction("Error when retrieving repository.", () -> {
-            this.repositoryDao.init();
-            return this.repositoryDao.load();
+            this.context.repositoryDao.init();
+            return this.context.repositoryDao.load();
         });
     }
 
@@ -669,11 +666,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     synchronized void replay(Repository.Op source, List<? extends Commit> commits) {
         this.checkInitialized();
         try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-            Repository.Op repository = this.repositoryDao.load();
+            this.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            Repository.Op repository = this.context.repositoryDao.load();
             this.replayInto(repository, source, commits);
-            this.repositoryDao.store(repository);
-            this.transactionStrategy.end();
+            this.context.repositoryDao.store(repository);
+            this.context.transactionStrategy.end();
         } catch (RuntimeException | Error e) {
             this.rollbackIfTransactionActive();
             throw e;
@@ -708,7 +705,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             replayed.setCommitMessage(commit.getCommitMessage());
             // a variant for each configuration committed, as a commit records (CommitService)
             if (repository.getVariants().stream().noneMatch(variant -> variant.getConfiguration().equals(replayed.getConfiguration()))) {
-                Variant variant = this.entityFactory.createVariant("Commit", replayed.getConfiguration(), UUID.randomUUID().toString());
+                Variant variant = this.context.entityFactory.createVariant("Commit", replayed.getConfiguration(), UUID.randomUUID().toString());
                 variant.setDescription(commit.getCommitMessage());
                 repository.addVariant(variant);
             }
@@ -721,7 +718,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     /** [commits] of [repository], with the associations holding their content, as a repository of their own - to send or replay. */
     Repository.Op copyOfCommits(Repository.Op repository, List<? extends Commit> commits) {
-        Repository.Op copy = this.entityFactory.createRepository();
+        Repository.Op copy = this.context.entityFactory.createRepository();
         repository.copyCommitsInto(copy, commits);
         return copy;
     }
@@ -811,13 +808,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         try {
             this.openRepository(false);
             this.settings.writeForNewRepository();
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-            Repository.Op repository = this.repositoryDao.load();
+            this.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            Repository.Op repository = this.context.repositoryDao.load();
             repository.setMaxOrder(this.defaultMaxOrder);
             repository.setEvaluationStrategy(this.defaultEvaluationStrategy);
             repository.setMaintreeBuildingStrategy(this.defaultMainTreeBuildingStrategy);
-            this.repositoryDao.store(repository);
-            this.transactionStrategy.end();
+            this.context.repositoryDao.store(repository);
+            this.context.transactionStrategy.end();
         } catch (Error e) {
             this.abandonNewRepository(e);
             throw e;
@@ -842,7 +839,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.listeners.setWriteInProgress(true);
         try {
             this.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, errorMessage, () -> {
-                this.repositoryDao.store(transaction.apply(this.repositoryDao.load()));
+                this.context.repositoryDao.store(transaction.apply(this.context.repositoryDao.load()));
                 return null;
             });
             this.listeners.fireStatusChangedEvent();
@@ -866,9 +863,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      */
     <T> T inTransaction(TransactionStrategy.TRANSACTION kind, String errorMessage, TransactionWork<T> work) {
         try {
-            this.transactionStrategy.begin(kind);
+            this.context.transactionStrategy.begin(kind);
             T result = work.run();
-            this.transactionStrategy.end();
+            this.context.transactionStrategy.end();
             return result;
         } catch (Error e) {
             this.rollbackIfTransactionActive();
@@ -895,10 +892,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * active" case (as RemoteSyncService does); also safe before open() ever injected a strategy.
      */
     void rollbackIfTransactionActive() {
-        if (this.transactionStrategy == null)
+        if (this.context == null || this.context.transactionStrategy == null)
             return;
         try {
-            this.transactionStrategy.rollback();
+            this.context.transactionStrategy.rollback();
         } catch (EccoException ignored) {
             // no transaction was active
         }
@@ -1058,7 +1055,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.checkInitialized();
 
         this.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Store error", () -> {
-            this.repositoryDao.store(this.repositoryDao.load());
+            this.context.repositoryDao.store(this.context.repositoryDao.load());
             return null;
         });
     }
@@ -1118,7 +1115,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      */
     public synchronized void enableFeatureTraceBoosting(){
         this.checkInitialized();
-        BoostedAssociationMerger merger = this.entityFactory.createBoostedAssociationMerger();
+        BoostedAssociationMerger merger = this.context.entityFactory.createBoostedAssociationMerger();
         this.writeTransaction("Error while enabling feature trace boosting.", repository -> {
             repository.setMaintreeBuildingStrategy(merger);
             return repository;
@@ -1131,7 +1128,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      */
     public synchronized void disableFeatureTraceBoosting(){
         this.checkInitialized();
-        AssociationMerger merger = this.entityFactory.createAssociationMerger();
+        AssociationMerger merger = this.context.entityFactory.createAssociationMerger();
         this.writeTransaction("Error while disabling feature trace boosting.", repository -> {
             repository.setMaintreeBuildingStrategy(merger);
             return repository;
@@ -1515,11 +1512,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         checkArgument(!paths.isEmpty());
 
         return this.readTransaction("Error during map.", () -> {
-            Repository.Op repository = this.repositoryDao.load();
+            Repository.Op repository = this.context.repositoryDao.load();
 
-            Set<Node.Op> nodes = this.reader.readSpecificFiles(this.baseDir, paths.toArray(new Path[0]));
+            Set<Node.Op> nodes = this.context.reader.readSpecificFiles(this.baseDir, paths.toArray(new Path[0]));
 
-            RootNode.Op rootNode = this.entityFactory.createRootNode();
+            RootNode.Op rootNode = this.context.entityFactory.createRootNode();
             for (Node.Op node : nodes) {
                 rootNode.addChild(node);
             }

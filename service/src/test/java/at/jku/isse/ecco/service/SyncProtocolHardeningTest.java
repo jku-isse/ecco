@@ -128,10 +128,10 @@ public class SyncProtocolHardeningTest {
 			// what push sends, without asking with MERGE_SETTINGS first
 			Repository.Op subset;
 			synchronized (client) {
-				client.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-				Repository.Op repository = client.repositoryDao.load();
-				subset = repository.subset(List.of(), repository.getMaxOrder(), client.entityFactory);
-				client.transactionStrategy.end();
+				client.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+				Repository.Op repository = client.context.repositoryDao.load();
+				subset = repository.subset(List.of(), repository.getMaxOrder(), client.context.entityFactory);
+				client.context.transactionStrategy.end();
 			}
 			RemoteSyncService sync = new RemoteSyncService(client);
 			EccoException thrown = assertThrows(EccoException.class,

@@ -65,7 +65,7 @@ final class ForkService {
                 originCopy = this.receiveCopy(hostname, port);
             else
                 // leaving revisions out: the origin's commits without them, to replay
-                originCommits = this.owner.remoteSyncService.receiveCommits(this.owner.entityFactory.createRemote(EccoService.ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE),
+                originCommits = this.owner.remoteSyncService.receiveCommits(this.owner.context.entityFactory.createRemote(EccoService.ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE),
                         new ArrayList<>(), deselectedFeatureRevisionsString);
         } catch (Error e) {
             this.owner.abandonNewRepository(e);
@@ -76,15 +76,15 @@ final class ForkService {
         }
         if (originCopy != null || originCommits != null) {
             try {
-                this.owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                Repository.Op repository = this.owner.repositoryDao.load();
+                this.owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                Repository.Op repository = this.owner.context.repositoryDao.load();
                 if (originCopy != null)
                     originCopy.copyInto(repository);
                 else
                     this.owner.replayInto(repository, originCommits, new ArrayList<>(originCommits.getCommits()));
-                this.owner.repositoryDao.store(repository);
-                this.owner.remoteDao.storeRemote(this.owner.entityFactory.createRemote(EccoService.ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE));
-                this.owner.transactionStrategy.end();
+                this.owner.context.repositoryDao.store(repository);
+                this.owner.context.remoteDao.storeRemote(this.owner.context.entityFactory.createRemote(EccoService.ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE));
+                this.owner.context.transactionStrategy.end();
             } catch (Error e) {
                 this.owner.abandonNewRepository(e);
                 throw e;
@@ -119,7 +119,7 @@ final class ForkService {
 
 
             // copy it using this entity factory
-            copiedRepository = subsetRepository.copy(this.owner.entityFactory);
+            copiedRepository = subsetRepository.copy(this.owner.context.entityFactory);
         } catch (Error e) {
             this.owner.abandonNewRepository(e);
             throw e;
@@ -129,18 +129,18 @@ final class ForkService {
         }
 
         try {
-            this.owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            this.owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
             // merge into this repository
-            Repository.Op repository = this.owner.repositoryDao.load();
+            Repository.Op repository = this.owner.context.repositoryDao.load();
             repository.merge(copiedRepository);
-            this.owner.repositoryDao.store(repository);
+            this.owner.context.repositoryDao.store(repository);
 
             // after fork add used remote as default origin remote
-            Remote remote = this.owner.entityFactory.createRemote(EccoService.ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE);
-            this.owner.remoteDao.storeRemote(remote);
+            Remote remote = this.owner.context.entityFactory.createRemote(EccoService.ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE);
+            this.owner.context.remoteDao.storeRemote(remote);
 
-            this.owner.transactionStrategy.end();
+            this.owner.context.transactionStrategy.end();
         } catch (Error e) {
             this.owner.abandonNewRepository(e);
             throw e;
@@ -205,32 +205,32 @@ final class ForkService {
             // which open() creates in a repository old enough not to have them
             originService.open();
 
-            originService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+            originService.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
-            Repository.Op originRepository = originService.repositoryDao.load();
+            Repository.Op originRepository = originService.context.repositoryDao.load();
             Collection<FeatureRevision> deselected = originService.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
             if (deselected.isEmpty()) {
                 // a fork of everything is a copy, commits and counts included (Repository.Op#copyInto)
-                this.owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                Repository.Op repository = this.owner.repositoryDao.load();
+                this.owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                Repository.Op repository = this.owner.context.repositoryDao.load();
                 originRepository.copyInto(repository);
-                this.owner.repositoryDao.store(repository);
-                this.owner.transactionStrategy.end();
+                this.owner.context.repositoryDao.store(repository);
+                this.owner.context.transactionStrategy.end();
                 subsetOriginRepository = null;
             } else if (!originRepository.hasMergeCommits()) {
                 // a fork leaving revisions out: the origin's commits without them, replayed (Repository.Op#replay)
                 Repository.Op commits = this.owner.copyOfCommits(originRepository, originRepository.commitsMissingIn(List.of(), deselected));
-                this.owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                Repository.Op repository = this.owner.repositoryDao.load();
+                this.owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                Repository.Op repository = this.owner.context.repositoryDao.load();
                 this.owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
-                this.owner.repositoryDao.store(repository);
-                this.owner.transactionStrategy.end();
+                this.owner.context.repositoryDao.store(repository);
+                this.owner.context.transactionStrategy.end();
                 subsetOriginRepository = null;
             } else {
-                subsetOriginRepository = originRepository.subset(deselected, originRepository.getMaxOrder(), this.owner.entityFactory);
+                subsetOriginRepository = originRepository.subset(deselected, originRepository.getMaxOrder(), this.owner.context.entityFactory);
             }
 
-            originService.transactionStrategy.end();
+            originService.context.transactionStrategy.end();
         } catch (Error e) {
             this.owner.rollbackIfTransactionActive();
             originService.rollbackIfTransactionActive();
@@ -250,20 +250,20 @@ final class ForkService {
         }
 
         try {
-            this.owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            this.owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
             // merge into this repository, unless it is a copy already
             if (subsetOriginRepository != null) {
-                Repository.Op repository = this.owner.repositoryDao.load();
+                Repository.Op repository = this.owner.context.repositoryDao.load();
                 repository.merge(subsetOriginRepository);
-                this.owner.repositoryDao.store(repository);
+                this.owner.context.repositoryDao.store(repository);
             }
 
             // after fork add used remote as default origin remote
-            Remote remote = this.owner.entityFactory.createRemote(EccoService.ORIGIN_REMOTE_NAME, originRepositoryDir.toString(), Remote.Type.LOCAL);
-            this.owner.remoteDao.storeRemote(remote);
+            Remote remote = this.owner.context.entityFactory.createRemote(EccoService.ORIGIN_REMOTE_NAME, originRepositoryDir.toString(), Remote.Type.LOCAL);
+            this.owner.context.remoteDao.storeRemote(remote);
 
-            this.owner.transactionStrategy.end();
+            this.owner.context.transactionStrategy.end();
         } catch (Error e) {
             this.owner.abandonNewRepository(e);
             throw e;
@@ -279,29 +279,29 @@ final class ForkService {
         Repository.Op subsetOriginRepository;
 
         try {
-            origService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+            origService.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
             Repository.Op originRepository = (Repository.Op) origService.getRepository();
             Collection<FeatureRevision> deselected = origService.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
             Repository.Op repository = (Repository.Op) this.owner.getRepository();
             if (deselected.isEmpty() && repository.getAssociations().isEmpty() && repository.getCommits().isEmpty()) {
                 // a fork of everything into an empty repository is a copy (Repository.Op#copyInto)
-                this.owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                this.owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                 originRepository.copyInto(repository);
-                this.owner.repositoryDao.store(repository);
-                this.owner.transactionStrategy.end();
+                this.owner.context.repositoryDao.store(repository);
+                this.owner.context.transactionStrategy.end();
                 subsetOriginRepository = null;
             } else if (!originRepository.hasMergeCommits() && !repository.hasMergeCommits()) {
                 // the origin's commits this repository does not have, without the revisions left out, replayed (Repository.Op#replay)
                 Repository.Op commits = this.owner.copyOfCommits(originRepository, originRepository.commitsMissingIn(RemoteSyncService.commitIds(repository), deselected));
-                this.owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                this.owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                 this.owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
-                this.owner.repositoryDao.store(repository);
-                this.owner.transactionStrategy.end();
+                this.owner.context.repositoryDao.store(repository);
+                this.owner.context.transactionStrategy.end();
                 subsetOriginRepository = null;
             } else {
-                subsetOriginRepository = originRepository.subset(deselected, originRepository.getMaxOrder(), this.owner.entityFactory);
+                subsetOriginRepository = originRepository.subset(deselected, originRepository.getMaxOrder(), this.owner.context.entityFactory);
             }
-            origService.transactionStrategy.end();
+            origService.context.transactionStrategy.end();
         } catch (Error e) {
             this.owner.rollbackIfTransactionActive();
             origService.rollbackIfTransactionActive();
@@ -319,9 +319,9 @@ final class ForkService {
             Repository.Op repository = (Repository.Op) this.owner.getRepository();
             repository.merge(subsetOriginRepository);
 
-            this.owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-            this.owner.repositoryDao.store(repository);
-            this.owner.transactionStrategy.end();
+            this.owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            this.owner.context.repositoryDao.store(repository);
+            this.owner.context.transactionStrategy.end();
         } catch (Error e) {
             this.owner.rollbackIfTransactionActive();
             throw e;

@@ -43,7 +43,7 @@ public class VariantManager {
             if (variant.getConfiguration().equals(configuration))
                 throw new EccoException("This configuration is already saved as variant '" + variant.getName() + "'.");
         owner.writeTransaction("Error during adding a variant.", repository -> {
-            Variant memVariant = owner.entityFactory.createVariant(name, configuration, UUID.randomUUID().toString());
+            Variant memVariant = owner.context.entityFactory.createVariant(name, configuration, UUID.randomUUID().toString());
             memVariant.setDescription(description);
             repository.addVariant(memVariant);
             return repository;
@@ -101,7 +101,7 @@ public class VariantManager {
         owner.checkInitialized();
 
         owner.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error changing a feature revision of the variant.", () -> {
-            Repository.Op repository = owner.repositoryDao.load();
+            Repository.Op repository = owner.context.repositoryDao.load();
 
             Variant variant = owner.getRepository().getVariant(id);
             FeatureRevision[] featureRevisions = variant.getConfiguration().getFeatureRevisions();
@@ -123,9 +123,9 @@ public class VariantManager {
             }
             // the repository's revisions themselves - printed (ids cut to 7 characters) and parsed
             // again, a revision sharing those characters with another was not found
-            variant.setConfiguration(owner.entityFactory.createConfiguration(newFeatureRevisions));
+            variant.setConfiguration(owner.context.entityFactory.createConfiguration(newFeatureRevisions));
 
-            owner.repositoryDao.store(repository);
+            owner.context.repositoryDao.store(repository);
             return null;
         });
     }
@@ -134,7 +134,7 @@ public class VariantManager {
         owner.checkInitialized();
 
         owner.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error removing a feature revision from the variant.", () -> {
-            Repository.Op repository = owner.repositoryDao.load();
+            Repository.Op repository = owner.context.repositoryDao.load();
 
             Variant variant = owner.getRepository().getVariant(id);
             FeatureRevision[] featureRevisions = variant.getConfiguration().getFeatureRevisions();
@@ -153,7 +153,7 @@ public class VariantManager {
             Configuration newConfiguration = owner.parseConfigurationString(config);
             variant.setConfiguration(newConfiguration);
 
-            owner.repositoryDao.store(repository);
+            owner.context.repositoryDao.store(repository);
             return null;
         });
     }

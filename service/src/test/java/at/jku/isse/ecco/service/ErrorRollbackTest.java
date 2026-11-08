@@ -70,11 +70,11 @@ public class ErrorRollbackTest {
         Path origin = newRepository();
         Path target = newRepository();
         try (EccoService originService = open(origin); EccoService targetService = open(target)) {
-            RepositoryDao repositoryDao = originService.repositoryDao;
-            originService.repositoryDao = failing(RepositoryDao.class, repositoryDao);
+            RepositoryDao repositoryDao = originService.context.repositoryDao;
+            originService.context.repositoryDao = failing(RepositoryDao.class, repositoryDao);
             // forkAlreadyOpen reads the origin through getRepository(), which loads it
             assertThrows(InjectedError.class, () -> targetService.forkAlreadyOpen(originService, ""));
-            originService.repositoryDao = repositoryDao;
+            originService.context.repositoryDao = repositoryDao;
             assertNotNull(originService.getRepository());
         }
     }
@@ -90,14 +90,14 @@ public class ErrorRollbackTest {
         service.setBaseDir(Files.createTempDirectory("error-rollback-out"));
         service.addRemote("origin", "localhost:2");
 
-        RepositoryDao repositoryDao = service.repositoryDao;
-        RemoteDao remoteDao = service.remoteDao;
-        service.repositoryDao = failing(RepositoryDao.class, repositoryDao);
-        service.remoteDao = failing(RemoteDao.class, remoteDao);
+        RepositoryDao repositoryDao = service.context.repositoryDao;
+        RemoteDao remoteDao = service.context.remoteDao;
+        service.context.repositoryDao = failing(RepositoryDao.class, repositoryDao);
+        service.context.remoteDao = failing(RemoteDao.class, remoteDao);
         Executable call = () -> operation.accept(service, configuration);
         assertThrows(InjectedError.class, call, name + ": the Error itself, not wrapped");
-        service.repositoryDao = repositoryDao;
-        service.remoteDao = remoteDao;
+        service.context.repositoryDao = repositoryDao;
+        service.context.remoteDao = remoteDao;
 
         // a write after the Error is stored, and the repository closes - a variant of a configuration
         // that is none yet: the commit's is one, and a variant of it is refused
