@@ -129,7 +129,7 @@ public interface Condition extends Persistable {
 	}
 
 	/**
-	 * The module revisions no other one absorbs (one with a subset of its literals: X | X & Y = X) -
+	 * The module revisions no other one absorbs (one with a subset of its literals: {@code X | X & Y = X}) -
 	 * the terms of {@link #toLogicString()} and {@link #toDisplayString()}; the others change nothing.
 	 */
 	default List<ModuleRevision> getAbsorbedModuleRevisions() {

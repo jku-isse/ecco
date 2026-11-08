@@ -33,3 +33,5 @@ test {
         events "passed", "skipped", "failed"
     }
 }
+// the sources jar takes in the generated parser (src/main/java/.../antlr): generate it first
+sourcesJar.dependsOn generateGrammarSource

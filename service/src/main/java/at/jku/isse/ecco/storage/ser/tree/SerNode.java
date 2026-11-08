@@ -138,7 +138,7 @@ public class SerNode implements Node, Node.Op {
 		return this.numberOfChildren;
 	}
 
-	/** No artifact (and, unlike {@link #SerNode(Artifact.Op)}, no feature trace) - used for a root node, which never has an artifact, and by {@link #createNode()} for building a tree bottom-up. */
+	/** No artifact (and, unlike {@link #SerNode(Artifact.Op)}, no feature trace) - used for a root node, which never has an artifact, and by {@link at.jku.isse.ecco.storage.ser.dao.SerEntityFactory#createNode()} for building a tree bottom-up. */
 	public SerNode() {
 	}
 

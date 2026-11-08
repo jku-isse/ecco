@@ -13,9 +13,9 @@ import java.util.stream.Collectors;
 
 /**
  * How conditions read for people, the same everywhere they are shown (views, command line, REST,
- * the .warnings file): a disjunction of terms, each a conjunction of literals - "A & !B | C" -,
+ * the .warnings file): a disjunction of terms, each a conjunction of literals - {@code "A & !B | C"} -,
  * "true" and "false". A literal is a feature, with its displayed revision ("A.1a2b3c4") or without,
- * or "!" and a feature for its absence. Terms another term absorbs (X | X & Y = X) are left out;
+ * or "!" and a feature for its absence. Terms another term absorbs ({@code X | X & Y = X}) are left out;
  * terms are sorted, and literals with the features first, then the absent ones.
  * <p>
  * The logic strings conditions are stored and evaluated as are {@link Condition#toLogicString()}.
@@ -38,7 +38,7 @@ public final class ConditionText {
 		return literals;
 	}
 
-	/** One module revision as a term, "A.1a2b3c4 & !B" - "true" if it has no literals. */
+	/** One module revision as a term, {@code "A.1a2b3c4 & !B"} - "true" if it has no literals. */
 	public static String term(ModuleRevision revision) {
 		return join(List.of(literals(revision, true)));
 	}

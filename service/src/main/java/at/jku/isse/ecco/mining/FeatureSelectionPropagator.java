@@ -9,7 +9,7 @@ import java.util.Set;
  * suggestions after one feature was just toggled, without ever overriding that feature's own new
  * state -- only other features get adjusted to resolve a violation. Free of any GUI dependency
  * (same rationale as {@link ConstraintMiner} itself) so it's directly unit-testable; see
- * {@link at.jku.isse.ecco.gui.io.FeatureTogglePanel} for the JavaFX wiring that calls this against
+ * {@code at.jku.isse.ecco.gui.io.FeatureTogglePanel} for the JavaFX wiring that calls this against
  * real checkboxes.
  */
 public final class FeatureSelectionPropagator {

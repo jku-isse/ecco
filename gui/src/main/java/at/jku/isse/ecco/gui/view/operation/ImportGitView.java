@@ -80,15 +80,15 @@ import java.util.stream.Collectors;
  *     <li>{@link #step1()} - pick the local repo and a commit range from a table of its history,
  *     optionally opt out of LLM suggestions via a checkbox (disabled when no model is configured,
  *     checked by default otherwise), and pick the review cadence (default 1 = every commit).</li>
- *     <li>{@link #startImport(List, boolean, int)} kicks off a loop, driven by
- *     {@link #processNextCommit(List, int, boolean, int)}, that for each commit in turn either
+ *     <li>{@link #startImport(List, boolean, boolean)} kicks off a loop, driven by
+ *     {@link #processNextCommit(List, int, boolean, boolean)}, that for each commit in turn either
  *     shows it for review (each one, if "Review each commit" is on) or imports it unattended:
  *     <ul>
  *         <li>the first commit into an empty repository is BASE - the root of the feature model,
  *         the code base as first imported - without asking the LLM; later features are told apart
  *         in it, each with the parent the LLM names for it when it is new (logged, see
  *         {@link FeatureSuggestionLog.Entry#parents}, and shown in the Feature Model tab).</li>
- *         <li>{@link #suggestOneCommit(List, int, boolean, int)} - on a review commit, if
+ *         <li>{@link #suggestOneCommit(List, int, boolean, boolean)} - on a review commit, if
  *         suggestions weren't opted out of, asks a local LLM (via {@link LlmFeatureSuggestionClient},
  *         configured through {@link LlmPreferences}) for JUST that one commit's suggested
  *         feature(s), given its message/diff and the feature hierarchy inferred so far from
@@ -97,7 +97,7 @@ import java.util.stream.Collectors;
  *         the LLM can tell a genuinely new capability built on an existing feature from a change
  *         to that feature itself) - one request per commit rather than one batched request up
  *         front, so the user reviews each suggestion before the next one is even asked for.</li>
- *         <li>{@link #showCommitReview(List, int, boolean, int, String, String, String)} - shows that
+ *         <li>{@link #showCommitReview(List, int, boolean, boolean, String, String, String)} - shows that
  *         single commit's message and an editable configuration field, pre-filled with the LLM's
  *         suggestion merged onto whatever was actually imported so far (or blank if suggestions
  *         were skipped/failed), with live constraint-violation feedback. The user picks Import,
@@ -105,13 +105,13 @@ import java.util.stream.Collectors;
  *         was already imported). If importing the commit fails, the same screen comes back with the
  *         error and the configuration that was tried, so the commit can be corrected and imported
  *         again, or skipped - nothing of a failed commit is kept.</li>
- *         <li>{@link #autoImportOneCommit(List, int, boolean, int)} - on a non-review commit
+ *         <li>{@link #autoImportOneCommit(List, int, boolean, boolean)} - on a non-review commit
  *         (review interval &gt; 1), does the same LLM lookup unattended and imports immediately
  *         with whatever it suggests (or the unchanged running configuration if suggestions are
  *         off or fail) - no editable form, no constraint-violation confirmation, since nobody is
  *         necessarily watching. Still shows a Stop button, since this can run for a while
  *         unattended.</li>
- *         <li>{@link #importOneCommit(List, int, boolean, int, String)} - the actual import,
+ *         <li>{@link #importOneCommit(List, int, boolean, boolean, String)} - the actual import,
  *         reached from either path above: the commit's tree is extracted to a fresh temp
  *         directory (never the clone's own working directory, which may be in active use) and
  *         committed via the same {@code service.setBaseDir(...)}/{@code service.commit(...)}
@@ -1141,7 +1141,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 	/**
 	 * The actual import of ONE commit - extract, {@code setBaseDir}, {@code commit} - then advances
-	 * {@link #processNextCommit(List, int, boolean, int)} to the next one on success. Reached from
+	 * {@link #processNextCommit(List, int, boolean, boolean)} to the next one on success. Reached from
 	 * both {@link #showCommitReview} (Import button) and {@link #autoImportOneCommit} (unattended).
 	 */
 	private void importOneCommit(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm, boolean reviewEach, String configurationText) {
