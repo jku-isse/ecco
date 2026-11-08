@@ -7,7 +7,7 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.stage.Stage;

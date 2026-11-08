@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.storage.ser.dao;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.service.SyncedFolders;
+import at.jku.isse.ecco.storage.SyncedFolders;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;

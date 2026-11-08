@@ -2,7 +2,7 @@ package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.gui.PluginNames;
 import at.jku.isse.ecco.gui.ConstraintWarnings;
-import at.jku.isse.ecco.service.CommitCancelledException;
+import at.jku.isse.ecco.adapter.CommitCancelledException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
@@ -11,7 +11,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;

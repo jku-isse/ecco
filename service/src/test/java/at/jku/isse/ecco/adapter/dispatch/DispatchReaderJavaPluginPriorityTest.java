@@ -2,7 +2,7 @@ package at.jku.isse.ecco.adapter.dispatch;
 
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 

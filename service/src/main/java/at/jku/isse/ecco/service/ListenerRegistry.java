@@ -3,9 +3,9 @@ package at.jku.isse.ecco.service;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import at.jku.isse.ecco.service.listener.ReadListener;
-import at.jku.isse.ecco.service.listener.ServerListener;
+import at.jku.isse.ecco.service.ServerListener;
 import at.jku.isse.ecco.service.listener.WriteListener;
 
 import java.nio.file.Path;

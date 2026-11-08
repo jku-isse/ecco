@@ -64,7 +64,7 @@ final class MinimizationService {
     }
 
     private String repositoryBasis() {
-        return MinimizationBasis.ofRepository(ConfigurationBridge.readConfigurations(this.owner),
+        return MinimizationBasis.ofRepository(ConfigurationBridge.readConfigurations(this.owner.getCommits()),
                 AcceptedConstraints.acceptedSignatures(this.owner.getRepository().getConstraints()));
     }
 

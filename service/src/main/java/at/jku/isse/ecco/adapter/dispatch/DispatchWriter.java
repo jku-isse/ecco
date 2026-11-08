@@ -5,7 +5,6 @@ import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
@@ -24,6 +23,9 @@ import java.util.stream.Stream;
 public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path> {
 
 	protected static final Logger LOGGER = Logger.getLogger(DispatchWriter.class.getName());
+
+	/** The file a checkout writes into the base directory: the hash of each file it wrote, which the next commit compares against. */
+	public static final Path HASHES_FILE_NAME = Paths.get(".hashes");
 
 
 	@Override
@@ -119,7 +121,7 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 		}
 
 		// write hashes file into base directory
-		Path hashesFile = base.resolve(EccoService.HASHES_FILE_NAME);
+		Path hashesFile = base.resolve(HASHES_FILE_NAME);
 		if (Files.exists(hashesFile)) {
 			throw new EccoException("Hashes file already exists in base directory.");
 		} else {

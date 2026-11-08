@@ -14,7 +14,7 @@ import at.jku.isse.ecco.gui.view.graph.KnowledgeGraphView;
 import at.jku.isse.ecco.gui.view.operation.*;
 import at.jku.isse.ecco.gui.view.operation.ForkView;
 import at.jku.isse.ecco.gui.view.operation.InitView;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import de.jangassen.MenuToolkit;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -505,7 +505,7 @@ public class MainView extends BorderPane implements EccoListener {
 	 *                 (Import from Git) where forcing the user to sit and wait through possibly
 	 *                 dozens of review/auto-import steps before touching the rest of the app is the
 	 *                 actual complaint. The main window and this dialog both still react to the same
-	 *                 {@link at.jku.isse.ecco.service.listener.EccoListener} broadcasts either way -
+	 *                 {@link at.jku.isse.ecco.service.EccoListener} broadcasts either way -
 	 *                 modality only ever controlled whether the OS let the user click into the main
 	 *                 window while a background write was in flight, never whether that was safe;
 	 *                 see {@code at.jku.isse.ecco.service.ListenerRegistry}'s own javadoc for the
@@ -562,7 +562,7 @@ public class MainView extends BorderPane implements EccoListener {
 
 		java.nio.file.Path repository = initialized ? this.eccoService.getRepositoryDir() : null;
 		if (repository != null && !repository.equals(this.warnedRepository))
-			at.jku.isse.ecco.service.SyncedFolders.warning(repository).ifPresent(Notifications::info);
+			at.jku.isse.ecco.storage.SyncedFolders.warning(repository).ifPresent(Notifications::info);
 		this.warnedRepository = repository;
 
 		this.newButton.setDisable(initialized);

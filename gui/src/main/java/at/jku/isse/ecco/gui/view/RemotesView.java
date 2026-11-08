@@ -8,7 +8,7 @@ import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.RepositoryAccess;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.RemoteDetailView;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;

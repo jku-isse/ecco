@@ -445,7 +445,7 @@ public class ConstraintSuggestionsViewTest {
 
     /** The suggestion with this signature, mined from the repository's configurations at the loosest thresholds. */
     private static ConstraintMiner.Suggestion mined(EccoService service, String signature) {
-        return new ConstraintMiner(1, 0.0, null).mine(ConfigurationBridge.readConfigurations(service)).stream()
+        return new ConstraintMiner(1, 0.0, null).mine(ConfigurationBridge.readConfigurations(service.getCommits())).stream()
                 .filter(s -> ConstraintSuggestionPreferences.signatureOf(s).equals(signature)).findFirst().orElseThrow();
     }
 }

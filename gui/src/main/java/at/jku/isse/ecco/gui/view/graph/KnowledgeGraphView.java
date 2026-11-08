@@ -15,7 +15,7 @@ import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.gui.view.KnowledgeGraphLayout;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import com.google.inject.Inject;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;

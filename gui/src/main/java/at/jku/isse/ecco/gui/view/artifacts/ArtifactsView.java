@@ -15,7 +15,7 @@ import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.gui.io.FeatureTogglePanel;
 import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;

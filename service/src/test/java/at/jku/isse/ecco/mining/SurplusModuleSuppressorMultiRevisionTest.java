@@ -103,7 +103,7 @@ public class SurplusModuleSuppressorMultiRevisionTest {
             // should mine as hard; accepted precisely so suppression has *something* to reason
             // with, proving a revision mismatch survives even in the presence of an unrelated,
             // correctly-accepted constraint (not just when the feature model is empty)
-            List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
+            List<Set<String>> configs = ConfigurationBridge.readConfigurations(service.getCommits());
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
             ConstraintMiner.Suggestion excludesCoreExtra = null;
             for (ConstraintMiner.Suggestion suggestion : mined) {

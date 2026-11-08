@@ -74,7 +74,7 @@ public class PresenceConditionMinimizerRealChoirConfigTest {
             // mine, then accept every hard suggestion -- a "reviewer who trusts exception-free
             // rules" stance, same as PresenceConditionMinimizerRealRepoTest, but here there's real
             // REQUIRES structure (not just one MANDATORY feature) to actually exercise.
-            List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
+            List<Set<String>> configs = ConfigurationBridge.readConfigurations(service.getCommits());
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
 
             List<ConstraintMiner.Suggestion> hardSuggestions = new ArrayList<>();

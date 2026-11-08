@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.cli.usecase;
 
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

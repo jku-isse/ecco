@@ -24,7 +24,7 @@ import at.jku.isse.ecco.cli.command.suggestconstraints.ConstraintDecisionCommand
 import at.jku.isse.ecco.cli.command.suggestconstraints.SuggestConstraintsCommand;
 import at.jku.isse.ecco.cli.command.traces.TracesCommand;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.SyncedFolders;
+import at.jku.isse.ecco.storage.SyncedFolders;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.*;

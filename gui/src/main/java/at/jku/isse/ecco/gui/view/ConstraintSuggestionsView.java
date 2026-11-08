@@ -11,7 +11,7 @@ import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -413,7 +413,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
      * meanwhile, and {@code done} runs after it, on the FX thread; a failure is shown. Each service
      * call is ONE transaction for the whole selection -- see {@code EccoService#acceptConstraints}.
      * Deliberately does NOT also call {@link #refresh()}: storing a decision already fires a real
-     * {@link at.jku.isse.ecco.service.listener.EccoListener} status-changed event through
+     * {@link at.jku.isse.ecco.service.EccoListener} status-changed event through
      * {@code EccoService}, which this view's own {@link #statusChangedEvent} already reacts to by
      * calling {@link #refresh()} (and which {@code FeaturesView} reacts to on its own, since it's a
      * listener too).
@@ -468,7 +468,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                 double confidence = this.confidence;
                 // rejections kept per machine by earlier versions (a no-op once they are moved)
                 ConstraintSuggestionsView.this.service.moveLocalRejectionsIntoRepository();
-                List<Set<String>> configs = ConfigurationBridge.readConfigurations(ConstraintSuggestionsView.this.service);
+                List<Set<String>> configs = ConfigurationBridge.readConfigurations(ConstraintSuggestionsView.this.service.getCommits());
                 List<ConstraintMiner.Suggestion> mined =
                         new ConstraintMiner(minWitness, confidence, null).mine(configs);
 

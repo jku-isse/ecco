@@ -14,7 +14,7 @@ import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.gui.view.detail.CheckoutDetailView;
 import at.jku.isse.ecco.gui.view.operation.OperationView;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;

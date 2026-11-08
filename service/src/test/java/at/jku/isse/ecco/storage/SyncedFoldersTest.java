@@ -1,5 +1,6 @@
-package at.jku.isse.ecco.service;
+package at.jku.isse.ecco.storage;
 
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.EccoException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

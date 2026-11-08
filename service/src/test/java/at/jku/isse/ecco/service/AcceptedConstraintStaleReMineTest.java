@@ -54,7 +54,7 @@ public class AcceptedConstraintStaleReMineTest {
                 service.commit("extra " + i, "Extra");
             }
 
-            List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
+            List<Set<String>> configs = ConfigurationBridge.readConfigurations(service.getCommits());
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
             ConstraintMiner.Suggestion excludesCoreExtra = null;
             for (ConstraintMiner.Suggestion suggestion : mined) {

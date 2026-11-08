@@ -15,7 +15,7 @@ import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.LlmPreferences;
 import at.jku.isse.ecco.service.git.GitCommitInfo;
 import at.jku.isse.ecco.service.git.GitHistoryReader;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import at.jku.isse.ecco.service.llm.FeatureSuggestionLog;
 import at.jku.isse.ecco.service.llm.ImportedFeatureTraces;
 import at.jku.isse.ecco.service.llm.SuggestionConfidence;

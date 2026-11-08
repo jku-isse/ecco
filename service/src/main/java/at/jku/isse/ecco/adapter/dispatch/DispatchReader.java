@@ -7,8 +7,7 @@ import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.SourcePosition;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.service.CommitCancelledException;
-import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.adapter.CommitCancelledException;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
@@ -569,7 +568,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 			// read file hashes if they exist
 			Properties hashes = new Properties();
-			Path hashesFile = base.resolve(EccoService.HASHES_FILE_NAME);
+			Path hashesFile = base.resolve(DispatchWriter.HASHES_FILE_NAME);
 			if (Files.exists(hashesFile)) {
 				try (Reader reader = Files.newBufferedReader(hashesFile)) {
 					hashes.load(reader);

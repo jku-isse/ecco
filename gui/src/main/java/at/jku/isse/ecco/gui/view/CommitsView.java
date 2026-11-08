@@ -7,7 +7,7 @@ import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.artifacts.ArtifactTreeView;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;

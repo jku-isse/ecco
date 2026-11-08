@@ -10,7 +10,7 @@ import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.GraphCameraControls;
 import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;

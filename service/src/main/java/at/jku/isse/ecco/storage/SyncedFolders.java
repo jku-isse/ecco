@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.service;
+package at.jku.isse.ecco.storage;
 
 import java.io.IOException;
 import java.nio.file.Files;

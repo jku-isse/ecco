@@ -65,7 +65,7 @@ public class ParallelMinimizationTest {
 
             service.acceptConstraint(Constraint.Kind.MANDATORY, "Core", null);
 
-            List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
+            List<Set<String>> configs = ConfigurationBridge.readConfigurations(service.getCommits());
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
             Set<String> accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
             List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();

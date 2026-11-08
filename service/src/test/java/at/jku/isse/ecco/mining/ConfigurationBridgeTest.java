@@ -61,7 +61,7 @@ public class ConfigurationBridgeTest {
 				serviceB.setBaseDir(yDir);
 				serviceB.commit("commit y", "Y");
 
-				List<Set<String>> configs = assertDoesNotThrow(() -> ConfigurationBridge.readConfigurations(serviceB),
+				List<Set<String>> configs = assertDoesNotThrow(() -> ConfigurationBridge.readConfigurations(serviceB.getCommits()),
 						"a MERGE commit's null configuration must not crash readConfigurations()");
 
 				assertEquals(2, configs.size(),

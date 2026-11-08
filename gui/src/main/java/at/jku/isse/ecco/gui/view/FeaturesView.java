@@ -9,7 +9,7 @@ import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.llm.FeatureSuggestionLog;
 import at.jku.isse.ecco.service.llm.ImportedFeatureTraces;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import javafx.application.Platform;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -797,7 +797,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	static List<ImportedFeatureTraces.RelationSuggestion> relationSuggestions(EccoService service) {
 		return ImportedFeatureTraces.consistentWith(
 				loggedRelationSuggestions(FeatureSuggestionLog.location(), String.valueOf(service.getRepositoryDir())),
-				at.jku.isse.ecco.mining.ConfigurationBridge.readConfigurations(service));
+				at.jku.isse.ecco.mining.ConfigurationBridge.readConfigurations(service.getCommits()));
 	}
 
 	/** What the suggestion log was read to, by log, repository, and the log's size and time - see {@link #loggedRelationSuggestions}. */
