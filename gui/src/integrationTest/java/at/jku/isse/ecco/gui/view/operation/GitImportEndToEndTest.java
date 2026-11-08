@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.service.gitimport.GitImport;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.LlmPreferences;
@@ -257,7 +258,7 @@ public class GitImportEndToEndTest {
         List<GitCommitInfo> oldestFirst = new ArrayList<>(reader.listCommits(clone));
         Collections.reverse(oldestFirst);
         // the window leaves out what comes after the last tag
-        int last = ImportGitView.lastTagged(oldestFirst, tags);
+        int last = GitImport.lastTagged(oldestFirst, tags);
         assertEquals(4, last);
         ImportGitView view = onFx(() -> {
             ImportGitView v = new ImportGitView(service);

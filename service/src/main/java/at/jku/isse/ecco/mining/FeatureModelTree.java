@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.gui.view;
+package at.jku.isse.ecco.mining;
 
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Pure computation behind the Feature Model tab (see {@link FeaturesView}): places every feature in
+ * Pure computation behind the Feature Model tab (see {@code FeaturesView} in the GUI; also the Git import's suggestions, {@code GitImport}): places every feature in
  * a software-product-line-style tree using the repository's commit history, with no dependency on
  * JavaFX/GraphStream so the algorithm can be reasoned about and tested on its own.
  * <p>

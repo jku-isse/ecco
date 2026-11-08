@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.service.gitimport.GitImport;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.git.GitCommitInfo;
@@ -104,8 +105,8 @@ public class ImportGitViewTaggedTest {
             view.suggester = commit -> {
                 asked.add(commit.getMessage());
                 if (failing.contains(commit.getMessage()))
-                    return new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(List.of(""), "the LLM is down"), "stub", 1);
-                return new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(List.of(SUGGESTED.get(commit.getMessage())), null), "stub", 1);
+                    return new GitImport.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(List.of(""), "the LLM is down"), "stub", 1);
+                return new GitImport.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(List.of(SUGGESTED.get(commit.getMessage())), null), "stub", 1);
             };
             view.startTaggedImport(clone, tags, commits, true, reviewEach);
             return view;
@@ -121,9 +122,9 @@ public class ImportGitViewTaggedTest {
         Path clone = history(tmp.resolve("clone"), tags);
         List<GitCommitInfo> commits = oldestFirst(clone);
         // the dialog leaves out what comes after the last tag: it would be suggested for no commit
-        int last = ImportGitView.lastTagged(commits, tags);
+        int last = GitImport.lastTagged(commits, tags);
         assertEquals(6, last);
-        assertEquals(-1, ImportGitView.lastTagged(commits.subList(2, 4), tags));
+        assertEquals(-1, GitImport.lastTagged(commits.subList(2, 4), tags));
         EccoService service = repository(tmp.resolve("repo"));
         List<String> asked = Collections.synchronizedList(new ArrayList<>());
 
@@ -230,10 +231,10 @@ public class ImportGitViewTaggedTest {
     @Test
     public void aTaggedCommitRevisesWhatTheCommitsSinceTheLastImportRevised() {
         // A imported and revised since, B imported and not, N new since: only imported ones get a new revision
-        assertEquals("BASE, A', B, N", ImportGitView.releaseConfigurationText("BASE, A, B, N'", Set.of("A", "N"), Set.of("BASE", "A", "B")));
-        assertEquals("BASE, A, B'", ImportGitView.releaseConfigurationText("BASE, A, B'", Set.of(), Set.of("BASE", "A", "B")));
+        assertEquals("BASE, A', B, N", GitImport.releaseConfigurationText("BASE, A, B, N'", Set.of("A", "N"), Set.of("BASE", "A", "B")));
+        assertEquals("BASE, A, B'", GitImport.releaseConfigurationText("BASE, A, B'", Set.of(), Set.of("BASE", "A", "B")));
         // the generic features keep one revision
-        assertEquals("BASE, A', misc", ImportGitView.releaseConfigurationText("BASE, A, misc'", Set.of("A", "misc"), Set.of("BASE", "A", "misc")));
+        assertEquals("BASE, A', misc", GitImport.releaseConfigurationText("BASE, A, misc'", Set.of("A", "misc"), Set.of("BASE", "A", "misc")));
     }
 
     private static EccoService repository(Path dir) throws Exception {

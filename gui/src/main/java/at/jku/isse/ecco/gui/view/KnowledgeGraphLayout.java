@@ -25,7 +25,7 @@ import java.util.Set;
  * {@code gui.view.graph}): lays out Features, Commits, Associations, and Variants in one lane per
  * entity type, plus the direct (object-reference) relationships between them, with no dependency on
  * JavaFX/GraphStream so the algorithm can be reasoned about and tested on its own - mirrors
- * {@link FeatureModelTree}'s separation of pure layout from rendering.
+ * {@link at.jku.isse.ecco.mining.FeatureModelTree}'s separation of pure layout from rendering.
  * <p>
  * Deliberately scoped to <em>structural</em> relationships only - real object references already in
  * the domain model - not computed/semantic ones (e.g. whether a presence condition implies a feature
