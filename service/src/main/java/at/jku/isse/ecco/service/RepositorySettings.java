@@ -146,7 +146,7 @@ final class RepositorySettings {
 
     /** The plugins whose files this repository holds - in a read-only transaction of its own. */
     Set<String> pluginsWithFiles() {
-        return this.owner.readTransaction(null, () -> pluginsWithFiles(this.owner.repositoryDao.load()));
+        return this.owner.readTransaction(null, () -> pluginsWithFiles(this.owner.context.repositoryDao.load()));
     }
 
     /**
@@ -223,7 +223,7 @@ final class RepositorySettings {
         Map<String, String> before = settings.isEmpty() ? null : this.current();
         this.takeOver(settings);
         try {
-            this.owner.transactionStrategy.end();
+            this.owner.context.transactionStrategy.end();
         } catch (RuntimeException | Error e) {
             if (before != null) {
                 try {

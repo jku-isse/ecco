@@ -72,9 +72,9 @@ class CommitService {
         this.committing = true;
         owner.listeners.setWriteInProgress(true);
         try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
-            Repository.Op repository = owner.repositoryDao.load();
+            Repository.Op repository = owner.context.repositoryDao.load();
             repository.addFeatureRevisions(configuration.getFeatureRevisions());
             owner.settings.adopt(repository);
             Set<Node.Op> nodes = this.readFiles(directory);
@@ -103,17 +103,17 @@ class CommitService {
                 }
             }
             if (!hasConfiguration) {
-                Variant memVariant = owner.entityFactory.createVariant("Commit", configuration, UUID.randomUUID().toString());
+                Variant memVariant = owner.context.entityFactory.createVariant("Commit", configuration, UUID.randomUUID().toString());
                 memVariant.setDescription(commitMessage);
                 repository.addVariant(memVariant);
             }
             commit.setCommitMessage(commitMessage);
 
             this.checkCancelled();
-            owner.repositoryDao.store(repository);
+            owner.context.repositoryDao.store(repository);
 
             long endStrategyTime = System.currentTimeMillis();
-            owner.transactionStrategy.end();
+            owner.context.transactionStrategy.end();
             endStrategyTime = System.currentTimeMillis() - endStrategyTime;
 
             LOGGER.info(Repository.class.getName() + ".extract(): " + extractTime +
@@ -183,6 +183,6 @@ class CommitService {
     }
 
     Set<Node.Op> readFiles(Path directory) {
-        return owner.reader.read(directory, new Path[]{Paths.get("")});
+        return owner.context.reader.read(directory, new Path[]{Paths.get("")});
     }
 }

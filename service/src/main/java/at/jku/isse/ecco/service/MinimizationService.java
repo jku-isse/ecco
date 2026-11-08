@@ -117,7 +117,7 @@ final class MinimizationService {
         synchronized (this.owner) {
             this.owner.checkInitialized();
             read = this.owner.readTransaction("Error reading the repository for minimization.", () -> {
-                Repository.Op repository = this.owner.repositoryDao.load();
+                Repository.Op repository = this.owner.context.repositoryDao.load();
                 return new Read(CheckoutConditions.bases(repository), CheckoutConditions.read(repository.getAssociations(),
                         this.owner.acceptedSuggestions(repository), repository.getFeatures()));
             });
@@ -141,6 +141,6 @@ final class MinimizationService {
     /** The stored checkout conditions that are still valid, by association id - see {@link CheckoutConditions#valid}. */
     Map<String, LogicCondition> validCheckoutConditions() {
         this.owner.checkInitialized();
-        return this.owner.readTransaction(null, () -> CheckoutConditions.valid(this.owner.repositoryDao.load()));
+        return this.owner.readTransaction(null, () -> CheckoutConditions.valid(this.owner.context.repositoryDao.load()));
     }
 }

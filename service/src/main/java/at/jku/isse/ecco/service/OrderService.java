@@ -106,7 +106,7 @@ class OrderService {
             if (composed == null)
                 throw new EccoException(file + " is not part of the checkout of " + configurationString + ".");
             Node read = null;
-            for (Node root : owner.reader.readSpecificFiles(owner.baseDir, new Path[]{file})) {
+            for (Node root : owner.context.reader.readSpecificFiles(owner.baseDir, new Path[]{file})) {
                 read = findFile(root, file);
                 if (read != null) break;
             }

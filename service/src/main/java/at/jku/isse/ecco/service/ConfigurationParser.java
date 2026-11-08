@@ -55,12 +55,12 @@ class ConfigurationParser {
         }
 
         if (entries.isEmpty()) {
-            return owner.entityFactory.createConfiguration(new FeatureRevision[0]);
+            return owner.context.entityFactory.createConfiguration(new FeatureRevision[0]);
         }
 
         String text = configurationString;
         return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error parsing configuration string: " + configurationString, () -> {
-            Repository.Op repository = owner.repositoryDao.load();
+            Repository.Op repository = owner.context.repositoryDao.load();
 
             Set<FeatureRevision> featureRevisions = new HashSet<>();
             // the features of this string not in the repository yet, by name: "X.1, X.2" names one
@@ -115,7 +115,7 @@ class ConfigurationParser {
                     throw new EccoException("Feature " + featureRevision.getFeature().getName() + " is selected twice, in different revisions: a configuration selects one revision of a feature.");
             }
 
-            Configuration configuration = owner.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
+            Configuration configuration = owner.context.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
             configuration.setOriginalConfigString(text);
             return configuration;
         });
@@ -153,7 +153,7 @@ class ConfigurationParser {
      * ParseConfigurationPhantomRevisionTest. Committing adds the revision to the repository by id.
      */
     private Feature temporaryCopyOf(Feature feature) {
-        return owner.entityFactory.createFeature(feature.getId(), feature.getName());
+        return owner.context.entityFactory.createFeature(feature.getId(), feature.getName());
     }
 
     private Feature getFeature(Repository.Op repository, ConfigurationText.Entry entry, Map<String, Feature> newFeatures) {
@@ -177,7 +177,7 @@ class ConfigurationParser {
                             + featureName.substring(1) + ", leave it out.");
                 }
                 // a temporary feature object, the same for each mention in this configuration
-                feature = newFeatures.computeIfAbsent(featureName, name -> owner.entityFactory.createFeature(UUID.randomUUID().toString(), name));
+                feature = newFeatures.computeIfAbsent(featureName, name -> owner.context.entityFactory.createFeature(UUID.randomUUID().toString(), name));
             } else if (features.size() == 1) {
                 feature = features.iterator().next();
             } else {
@@ -206,7 +206,7 @@ class ConfigurationParser {
                 return featureRevisions;
             }
 
-            Repository.Op repository = owner.repositoryDao.load();
+            Repository.Op repository = owner.context.repositoryDao.load();
 
             for (ConfigurationText.Entry entry : entries) {
                 String featureName = entry.feature();
