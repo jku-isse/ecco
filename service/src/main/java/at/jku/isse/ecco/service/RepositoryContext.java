@@ -2,6 +2,7 @@ package at.jku.isse.ecco.service;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
+import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.dao.RemoteDao;
@@ -10,6 +11,7 @@ import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.repository.Repository;
 import com.google.inject.Inject;
 
+import java.util.Collection;
 import java.util.function.Function;
 
 /**
@@ -68,6 +70,32 @@ final class RepositoryContext {
 				this.listeners.fireStatusChangedEvent();
 			} finally {
 				this.listeners.setWriteInProgress(false);
+			}
+		}
+	}
+
+	/**
+	 * The repository, read in a transaction of its own - what {@link EccoService#getRepository()}
+	 * answers. Holds the service's monitor, as that synchronized method did for the services calling it.
+	 */
+	Repository repository() {
+		synchronized (this.lock) {
+			return this.read("Error when retrieving repository.", () -> {
+				this.repositoryDao.init();
+				return this.repositoryDao.load();
+			});
+		}
+	}
+
+	/** The repository's commits - what {@link EccoService#getCommits()} answers; holds the service's monitor, as {@link #repository()}. */
+	Collection<Commit> commits() {
+		synchronized (this.lock) {
+			// no rollback here: this never begins a transaction itself, and repository() already rolls
+			// its own back - a second rollback() throws "No transaction active", replacing the real error
+			try {
+				return this.repository().getCommits();
+			} catch (EccoException e) {
+				throw new EccoException("Error when retrieving commits.", e);
 			}
 		}
 	}

@@ -212,24 +212,95 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     final ListenerRegistry listeners = new ListenerRegistry(this);
 
-    private final VariantManager variantManager = new VariantManager(this);
 
-    private final ConstraintService constraintService = new ConstraintService(this);
+    // # SERVICES ######################################################################################################
+    // what this facade delegates to: each is given what it reads of the facade (ServiceState) and
+    // the other services it uses, made in that order - none of them refers to EccoService
 
-    final RemoteSyncService remoteSyncService = new RemoteSyncService(this);
+    /** What the services read of this service, live - see {@link ServiceState}. */
+    private final class State implements ServiceState {
+        @Override
+        public RepositoryContext context() {
+            return EccoService.this.context();
+        }
 
-    private final ForkService forkService = new ForkService(this);
+        @Override
+        public RepositoryContext currentContext() {
+            return EccoService.this.context;
+        }
 
-    private final ConfigurationParser configurationParser = new ConfigurationParser(this);
+        @Override
+        public void checkInitialized() {
+            EccoService.this.checkInitialized();
+        }
 
-    private final CheckoutService checkoutService = new CheckoutService(this);
-    private final OrderService orderService = new OrderService(this);
+        @Override
+        public boolean isInitialized() {
+            return EccoService.this.isInitialized();
+        }
 
-    private final CommitService commitService = new CommitService(this);
+        @Override
+        public Path baseDir() {
+            return EccoService.this.baseDir;
+        }
 
-    private final MinimizationService minimizationService = new MinimizationService(this);
+        @Override
+        public Path repositoryDir() {
+            return EccoService.this.getRepositoryDir();
+        }
 
-    final RepositorySettings settings = new RepositorySettings(this);
+        @Override
+        public boolean repositoryDirectoryExists() {
+            return EccoService.this.repositoryDirectoryExists();
+        }
+
+        @Override
+        public Collection<ArtifactPlugin> artifactPlugins() {
+            return EccoService.this.getArtifactPlugins();
+        }
+
+        @Override
+        public Object lock() {
+            return EccoService.this;
+        }
+
+        @Override
+        public void init() {
+            EccoService.this.init();
+        }
+
+        @Override
+        public void abandonNewRepository(Throwable cause) {
+            EccoService.this.abandonNewRepository(cause);
+        }
+    }
+
+    private final ServiceState state = new State();
+
+    final CheckoutOptions checkoutOptions = new CheckoutOptions();
+
+    final RepositorySettings settings = new RepositorySettings(this.state);
+
+    private final ConfigurationParser configurationParser = new ConfigurationParser(this.state);
+
+    private final ConstraintService constraintService = new ConstraintService(this.state, this.checkoutOptions);
+
+    private final CheckoutService checkoutService = new CheckoutService(this.state, this.listeners, this.checkoutOptions, this.constraintService);
+
+    private final CommitService commitService = new CommitService(this.state, this.listeners, this.settings);
+
+    private final OrderService orderService = new OrderService(this.state, this.configurationParser, this.checkoutService, this.commitService);
+
+    private final VariantManager variantManager = new VariantManager(this.state, this.configurationParser);
+
+    private final MinimizationService minimizationService = new MinimizationService(this.state, this.constraintService);
+
+    /** Package-visible: a sync with a remote on disk replays into, and copies from, that remote's service. */
+    final CommitReplay commitReplay = new CommitReplay(this.state);
+
+    final RemoteSyncService remoteSyncService = new RemoteSyncService(this.state, this.listeners, this.settings, this.configurationParser, this.commitReplay);
+
+    private final ForkService forkService = new ForkService(this.state, this.listeners, this.settings, this.commitReplay, this.remoteSyncService);
 
     public boolean isWriteInProgress() {
         return this.listeners.isWriteInProgress();
@@ -248,12 +319,12 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     @Override
     public void readProgressEvent(double progress, long bytes) {
-        this.listeners.fireOperationProgressEvent("READ", progress);
+        this.listeners.readProgressEvent(progress, bytes);
     }
 
     @Override
     public void writeProgressEvent(double progress, long bytes) {
-        this.listeners.fireOperationProgressEvent("WRITE", progress);
+        this.listeners.writeProgressEvent(progress, bytes);
     }
 
     @Override
@@ -564,10 +635,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public synchronized Repository getRepository() {
         this.checkInitialized();
 
-        return this.context.read("Error when retrieving repository.", () -> {
-            this.context.repositoryDao.init();
-            return this.context.repositoryDao.load();
-        });
+        return this.context.repository();
     }
 
     /**
@@ -661,66 +729,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     /**
      * Commits [commits] of [source] here, in their order, as committing their content would - each
-     * keeping its id, date and message (Repository.Op#replay) - in one transaction.
+     * keeping its id, date and message (Repository.Op#replay) - in one transaction: see {@link CommitReplay#replay}.
      */
     synchronized void replay(Repository.Op source, List<? extends Commit> commits) {
-        this.checkInitialized();
-        try {
-            this.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-            Repository.Op repository = this.context.repositoryDao.load();
-            this.replayInto(repository, source, commits);
-            this.context.repositoryDao.store(repository);
-            this.context.transactionStrategy.end();
-        } catch (RuntimeException | Error e) {
-            this.rollbackIfTransactionActive();
-            throw e;
-        }
-    }
-
-    /**
-     * Commits [commits] of [source] in [repository] (this service's, loaded in a write transaction), in
-     * their order - see {@link #replay} - and takes over the decisions of [source] it has not made
-     * (Repository.Op#mergeDecisions); stored by the caller. A commit [repository] already has is left
-     * out: two pushes that asked for the commits missing before either was taken in send the same.
-     */
-    void replayInto(Repository.Op repository, Repository.Op source, List<? extends Commit> commits) {
-        // as a commit and a merge do (the source was checked when copied: Repository.Op#copyCommitsInto)
-        repository.checkArtifactFormats();
-        repository.mergeDecisions(source);
-        Set<String> had = new HashSet<>();
-        for (Commit commit : repository.getCommits())
-            had.add(commit.getId());
-        boolean replayedAny = false;
-        for (Commit commit : commits) {
-            // a merge commit has no configuration and nothing to replay
-            if (commit.getConfiguration() == null || !had.add(commit.getId()))
-                continue;
-            replayedAny = true;
-            List<Association.Op> associations = new ArrayList<>();
-            for (Association association : commit.getAssociations())
-                associations.add((Association.Op) association);
-            Commit replayed = repository.replay(commit.getConfiguration(), associations, commit.getUsername());
-            replayed.setId(commit.getId());
-            replayed.setDate(commit.getDate());
-            replayed.setCommitMessage(commit.getCommitMessage());
-            // a variant for each configuration committed, as a commit records (CommitService)
-            if (repository.getVariants().stream().noneMatch(variant -> variant.getConfiguration().equals(replayed.getConfiguration()))) {
-                Variant variant = this.context.entityFactory.createVariant("Commit", replayed.getConfiguration(), UUID.randomUUID().toString());
-                variant.setDescription(commit.getCommitMessage());
-                repository.addVariant(variant);
-            }
-        }
-        if (replayedAny) {
-            repository.setRetroactiveConditions();
-            repository.invalidateMainTree();
-        }
-    }
-
-    /** [commits] of [repository], with the associations holding their content, as a repository of their own - to send or replay. */
-    Repository.Op copyOfCommits(Repository.Op repository, List<? extends Commit> commits) {
-        Repository.Op copy = this.context.entityFactory.createRepository();
-        repository.copyCommitsInto(copy, commits);
-        return copy;
+        this.commitReplay.replay(source, commits);
     }
 
     public synchronized void fork(Path originRepositoryDir) {
@@ -1077,8 +1089,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         });
     }
 
-    volatile boolean surplusSuppressionEnabled = true;
-
     /**
      * Controls whether {@link #compose} suppresses {@link Checkout#getSurplusModules()} entries
      * already provably implied by the accepted feature model (see {@link SurplusModuleSuppressor}).
@@ -1088,10 +1098,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param enabled Whether surplus-module suppression should run.
      */
     public synchronized void setSurplusSuppressionEnabled(boolean enabled) {
-        this.surplusSuppressionEnabled = enabled;
+        this.checkoutOptions.surplusSuppressionEnabled = enabled;
     }
-
-    volatile boolean surplusAbsorptionEnabled = true;
 
     /**
      * Controls whether {@link #compose} removes {@link Checkout#getSurplusModules()} entries that are
@@ -1104,13 +1112,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param enabled Whether surplus-lattice absorption should run.
      */
     public synchronized void setSurplusAbsorptionEnabled(boolean enabled) {
-        this.surplusAbsorptionEnabled = enabled;
+        this.checkoutOptions.surplusAbsorptionEnabled = enabled;
     }
-
-    volatile boolean constraintViolationWarningsEnabled = true;
-    // off by default: checkout uses the associations' own conditions unless asked otherwise - see
-    // setMinimizedConditionsInCheckout
-    volatile boolean minimizedConditionsInCheckout = false;
 
     /**
      * Controls whether {@link #compose} and {@link #checkConstraintViolations} warn when a
@@ -1122,7 +1125,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param enabled Whether constraint-violation warnings should be computed.
      */
     public synchronized void setConstraintViolationWarningsEnabled(boolean enabled) {
-        this.constraintViolationWarningsEnabled = enabled;
+        this.checkoutOptions.constraintViolationWarningsEnabled = enabled;
     }
 
     /**
@@ -1299,11 +1302,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * Off by default.
      */
     public synchronized void setMinimizedConditionsInCheckout(boolean enabled) {
-        this.minimizedConditionsInCheckout = enabled;
+        this.checkoutOptions.minimizedConditionsInCheckout = enabled;
     }
 
     public boolean isMinimizedConditionsInCheckout() {
-        return this.minimizedConditionsInCheckout;
+        return this.checkoutOptions.minimizedConditionsInCheckout;
     }
 
     /** See {@link MinimizationService#minimizeConditionsForCheckout}: not synchronized, the minimization itself runs without this service's lock. */

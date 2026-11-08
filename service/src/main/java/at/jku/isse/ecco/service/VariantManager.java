@@ -15,17 +15,24 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Owns variant CRUD (add/remove/update) and per-variant feature-revision edits for one
- * {@link EccoService} instance. Shares the owner's {@code repositoryDao}/{@code transactionStrategy}
- * (package-visible on {@link EccoService}) rather than getting its own Guice-injected copies, since
+ * {@link EccoService} instance. Shares the service's {@code repositoryDao}/{@code transactionStrategy}
+ * (its {@link RepositoryContext}) rather than getting its own Guice-injected copies, since
  * {@code SerRepositoryDao} is not bound as a singleton and a second instance would not necessarily
- * share state with the owner's.
+ * share state with the service's.
  */
 public class VariantManager {
 
-    private final EccoService owner;
+    private final ServiceState state;
 
-    public VariantManager(EccoService owner) {
-        this.owner = owner;
+    private final ConfigurationParser configurationParser;
+
+    public VariantManager(ServiceState state, ConfigurationParser configurationParser) {
+
+    
+    this.state = state;
+
+    
+    this.configurationParser = configurationParser;
     }
 
     /**
@@ -36,10 +43,10 @@ public class VariantManager {
      * @throws EccoException naming the variant the configuration already is
      */
     public void addVariant(Configuration configuration, String name, String description) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         checkNotNull(configuration);
-        for (Variant variant : owner.getRepository().getVariants())
+        for (Variant variant : this.state.context().repository().getVariants())
             if (variant.getConfiguration().equals(configuration))
                 throw new EccoException("This configuration is already saved as variant '" + variant.getName() + "'.");
         context.write("Error during adding a variant.", repository -> {
@@ -51,13 +58,13 @@ public class VariantManager {
     }
 
     public void removeVariant(String id) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(id);
         context.write(repository -> removeVariantById(repository, id));
     }
 
     public void removeVariant(Configuration configuration) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(configuration);
         context.write(repository -> removeVariantByConfiguration(repository, configuration));
     }
@@ -83,7 +90,7 @@ public class VariantManager {
     }
 
     public void updateVariant(Configuration configuration, String name, String id) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         checkNotNull(configuration);
         context.write("Error updating the variant.", repository -> {
@@ -98,16 +105,16 @@ public class VariantManager {
     }
 
     public void updateFeatureRevision(FeatureRevision featureRevision, String featureRevisionUpdate, String id) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         context.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error changing a feature revision of the variant.", () -> {
             Repository.Op repository = context.repositoryDao.load();
 
-            Variant variant = owner.getRepository().getVariant(id);
+            Variant variant = this.state.context().repository().getVariant(id);
             FeatureRevision[] featureRevisions = variant.getConfiguration().getFeatureRevisions();
             FeatureRevision[] newFeatureRevisions = new FeatureRevision[featureRevisions.length];
             int count = 0;
-            Collection<? extends Feature> features = owner.getRepository().getFeatures();
+            Collection<? extends Feature> features = this.state.context().repository().getFeatures();
             FeatureRevision featureRevisionToUpdate = null;
             for (Feature feature : features) {
                 if (feature.getName().equals(featureRevisionUpdate.substring(0, featureRevisionUpdate.indexOf(".")))) {
@@ -131,12 +138,12 @@ public class VariantManager {
     }
 
     public void removeFeatureRevision(FeatureRevision featureRevision, String id) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         context.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error removing a feature revision from the variant.", () -> {
             Repository.Op repository = context.repositoryDao.load();
 
-            Variant variant = owner.getRepository().getVariant(id);
+            Variant variant = this.state.context().repository().getVariant(id);
             FeatureRevision[] featureRevisions = variant.getConfiguration().getFeatureRevisions();
             FeatureRevision[] newFeatureRevisions = new FeatureRevision[featureRevisions.length];
             int count = 0;
@@ -150,7 +157,7 @@ public class VariantManager {
             }
             String config = sb.length() > 0 ? sb.substring(1) : ""; // remove first ','
             variant.getConfiguration().setFeatureRevisions(newFeatureRevisions);
-            Configuration newConfiguration = owner.parseConfigurationString(config);
+            Configuration newConfiguration = this.configurationParser.parseConfigurationString(config);
             variant.setConfiguration(newConfiguration);
 
             context.repositoryDao.store(repository);

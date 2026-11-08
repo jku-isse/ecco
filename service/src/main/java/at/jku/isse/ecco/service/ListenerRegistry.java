@@ -3,9 +3,7 @@ package at.jku.isse.ecco.service;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.service.EccoListener;
 import at.jku.isse.ecco.service.listener.ReadListener;
-import at.jku.isse.ecco.service.ServerListener;
 import at.jku.isse.ecco.service.listener.WriteListener;
 
 import java.nio.file.Path;
@@ -16,16 +14,17 @@ import java.util.logging.Logger;
 
 /**
  * Owns the {@link EccoListener} registry and the write-in-progress flag for one {@link EccoService}
- * instance, and broadcasts service events to registered listeners.
+ * instance, and broadcasts service events to registered listeners - also the read and write progress
+ * of the streams a fork, fetch, pull or push transfers a repository over.
  */
-public class ListenerRegistry {
+public class ListenerRegistry implements ProgressInputStream.ProgressListener, ProgressOutputStream.ProgressListener {
 
     private static final Logger LOGGER = Logger.getLogger(ListenerRegistry.class.getName());
 
     private final EccoService owner;
 
     // CopyOnWriteArrayList: fire*Event methods can now run on background threads (e.g.
-    // addVariant()/EccoService.writeTransaction() firing after a GUI action's own background Thread/Task), while
+    // addVariant()/RepositoryContext.write() firing after a GUI action's own background Thread/Task), while
     // GUI dialogs add/removeListener from the FX thread -- a plain ArrayList would risk
     // ConcurrentModificationException across those threads.
     private final Collection<EccoListener> listeners = new CopyOnWriteArrayList<>();
@@ -57,6 +56,16 @@ public class ListenerRegistry {
         this.owner = owner;
     }
 
+    @Override
+    public void readProgressEvent(double progress, long bytes) {
+        this.fireOperationProgressEvent("READ", progress);
+    }
+
+    @Override
+    public void writeProgressEvent(double progress, long bytes) {
+        this.fireOperationProgressEvent("WRITE", progress);
+    }
+
     public boolean isWriteInProgress() {
         return this.writeInProgress;
     }
@@ -78,7 +87,7 @@ public class ListenerRegistry {
 
     // A listener throwing must never abort the broadcast to the remaining listeners -- and, since
     // fire*Event methods are called from inside write-transaction try blocks (e.g. addVariant(),
-    // EccoService.writeTransaction()), an uncaught exception here would be caught by that method's own
+    // RepositoryContext.write()), an uncaught exception here would be caught by that method's own
     // catch-and-rollback, incorrectly rolling back a transaction that already committed
     // (repositoryDao.store()/transactionStrategy.end() already ran). Isolating each listener call
     // makes that impossible.

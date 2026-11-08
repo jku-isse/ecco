@@ -27,14 +27,21 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class ConstraintService {
 
-    private final EccoService owner;
+    private final ServiceState state;
 
-    public ConstraintService(EccoService owner) {
-        this.owner = owner;
+    private final CheckoutOptions options;
+
+    public ConstraintService(ServiceState state, CheckoutOptions options) {
+
+    
+    this.state = state;
+
+    
+    this.options = options;
     }
 
     public List<ConstraintMiner.Suggestion> acceptedSuggestions(Repository repository) {
-        List<Set<String>> configs = ConfigurationBridge.readConfigurations(owner.getCommits());
+        List<Set<String>> configs = ConfigurationBridge.readConfigurations(this.state.context().commits());
         List<ConstraintMiner.Suggestion> mined =
                 new ConstraintMiner(EccoService.ACCEPTED_CONSTRAINT_MIN_WITNESS, EccoService.ACCEPTED_CONSTRAINT_CONFIDENCE, null).mine(configs);
         Set<String> accepted = AcceptedConstraints.acceptedSignatures(repository.getConstraints());
@@ -48,13 +55,13 @@ public class ConstraintService {
     }
 
     public void acceptConstraint(ConstraintMiner.Suggestion suggestion) {
-        owner.checkInitialized();
+        this.state.checkInitialized();
         checkNotNull(suggestion);
         acceptConstraint(suggestion.kind, suggestion.a, suggestion.b);
     }
 
     public void acceptConstraint(Constraint.Kind kind, String featureA, String featureB) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(kind);
         checkNotNull(featureA);
         context.write(repository -> {
@@ -89,7 +96,7 @@ public class ConstraintService {
      * re-scans, not one. No-op if {@code suggestions} is empty (no transaction, no event).
      */
     public void acceptConstraints(List<ConstraintMiner.Suggestion> suggestions) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(suggestions);
         if (suggestions.isEmpty()) return;
         context.write(repository -> {
@@ -102,7 +109,7 @@ public class ConstraintService {
     }
 
     public void unacceptConstraint(Constraint.Kind kind, String featureA, String featureB) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(kind);
         checkNotNull(featureA);
         context.write(repository -> {
@@ -115,7 +122,7 @@ public class ConstraintService {
 
     /** Batched "move back to pending" for multiple accepted constraints - see {@link #acceptConstraints}. */
     public void unacceptConstraints(List<ConstraintSuggestionPreferences.AcceptedConstraint> constraints) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(constraints);
         if (constraints.isEmpty()) return;
         context.write(repository -> {
@@ -135,7 +142,7 @@ public class ConstraintService {
      * acceptance of the same suggestion. No-op if {@code suggestions} is empty.
      */
     public void rejectConstraints(List<ConstraintMiner.Suggestion> suggestions) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(suggestions);
         if (suggestions.isEmpty()) return;
         context.write(repository -> {
@@ -149,7 +156,7 @@ public class ConstraintService {
 
     /** Rejects one constraint given by kind and features - see {@link #rejectConstraints}. */
     public void rejectConstraint(Constraint.Kind kind, String featureA, String featureB) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(kind);
         checkNotNull(featureA);
         context.write(repository -> {
@@ -160,7 +167,7 @@ public class ConstraintService {
 
     /** "Move back to pending" for rejected suggestions, in one transaction. No-op if empty. */
     public void unrejectConstraints(List<ConstraintSuggestionPreferences.AcceptedConstraint> constraints) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(constraints);
         if (constraints.isEmpty()) return;
         context.write(repository -> {
@@ -181,8 +188,8 @@ public class ConstraintService {
      * @return how many rejections the preferences held; 0 means nothing was written
      */
     public int moveLocalRejectionsIntoRepository() {
-        RepositoryContext context = owner.context();
-        Set<String> local = ConstraintSuggestionPreferences.getRejected(owner.getRepositoryDir());
+        RepositoryContext context = this.state.context();
+        Set<String> local = ConstraintSuggestionPreferences.getRejected(this.state.repositoryDir());
         if (local.isEmpty()) return 0;
         context.write(repository -> {
             for (String signature : local) {
@@ -192,14 +199,14 @@ public class ConstraintService {
             }
             return repository;
         });
-        ConstraintSuggestionPreferences.forget(owner.getRepositoryDir());
+        ConstraintSuggestionPreferences.forget(this.state.repositoryDir());
         return local.size();
     }
 
     public List<String> checkConstraintViolations(Configuration configuration) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(configuration);
-        if (!owner.constraintViolationWarningsEnabled) return List.of();
+        if (!this.options.constraintViolationWarningsEnabled) return List.of();
         // inside a transaction, like EccoService.compose() - see ReadWithoutTransactionTest
         return context.read(null, () -> {
             Repository.Op repository = context.repositoryDao.load();
@@ -218,10 +225,10 @@ public class ConstraintService {
      * would make a feature its own ancestor.
      */
     public void acceptFeatureParents(java.util.Map<String, String> parents) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(parents);
         if (parents.isEmpty()) return;
-        java.util.Map<String, String> after = new java.util.HashMap<>(owner.getRepository().getFeatureParents());
+        java.util.Map<String, String> after = new java.util.HashMap<>(this.state.context().repository().getFeatureParents());
         for (java.util.Map.Entry<String, String> parent : parents.entrySet()) {
             if (Repository.makesCycle(after, parent.getKey(), parent.getValue()))
                 throw new at.jku.isse.ecco.EccoException("Making " + parent.getValue() + " the parent of " + parent.getKey()
@@ -241,7 +248,7 @@ public class ConstraintService {
 
     /** Rejects [parents] (feature, parent) in one transaction; an acceptance of one goes, with its REQUIRES. */
     public void rejectFeatureParents(List<java.util.Map.Entry<String, String>> parents) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(parents);
         if (parents.isEmpty()) return;
         context.write(repository -> {
@@ -256,7 +263,7 @@ public class ConstraintService {
 
     /** "Move back to pending" for the accepted parents of [features], with their REQUIRES. */
     public void unacceptFeatureParents(java.util.Collection<String> features) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(features);
         if (features.isEmpty()) return;
         context.write(repository -> {
@@ -268,7 +275,7 @@ public class ConstraintService {
 
     /** "Move back to pending" for rejected parents (feature, parent). */
     public void unrejectFeatureParents(List<java.util.Map.Entry<String, String>> parents) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(parents);
         if (parents.isEmpty()) return;
         context.write(repository -> {

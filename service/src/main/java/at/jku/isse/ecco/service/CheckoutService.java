@@ -40,10 +40,27 @@ class CheckoutService {
 
     private static final Logger LOGGER = Logger.getLogger(CheckoutService.class.getName());
 
-    private final EccoService owner;
+    private final ServiceState state;
 
-    CheckoutService(EccoService owner) {
-        this.owner = owner;
+    private final ListenerRegistry listeners;
+
+    private final CheckoutOptions options;
+
+    private final ConstraintService constraintService;
+
+    CheckoutService(ServiceState state, ListenerRegistry listeners, CheckoutOptions options, ConstraintService constraintService) {
+
+    
+    this.state = state;
+
+    
+    this.listeners = listeners;
+
+    
+    this.options = options;
+
+    
+    this.constraintService = constraintService;
     }
 
     /**
@@ -53,7 +70,7 @@ class CheckoutService {
      * @return Checkout with composed artifacts.
      */
     Checkout compose(Configuration configuration) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(configuration);
         // read inside a transaction like every other read: outside of one, load() returns whatever
         // database the last transaction left loaded - none right after open() (NPE), or a stale one
@@ -61,22 +78,22 @@ class CheckoutService {
         return context.read(null, () -> this.composeInTransaction(configuration));
     }
     private Checkout composeInTransaction(Configuration configuration) {
-        Repository.Op repository = owner.context.repositoryDao.load();
-        Map<String, LogicCondition> minimized = owner.minimizedConditionsInCheckout ? CheckoutConditions.valid(repository) : Map.of();
-        if (owner.minimizedConditionsInCheckout)
+        Repository.Op repository = this.state.currentContext().repositoryDao.load();
+        Map<String, LogicCondition> minimized = this.options.minimizedConditionsInCheckout ? CheckoutConditions.valid(repository) : Map.of();
+        if (this.options.minimizedConditionsInCheckout)
             LOGGER.info("Checking out with minimized conditions for " + minimized.size() + " of " + repository.getAssociations().size() + " associations.");
         Checkout checkout = repository.compose(configuration, minimized);
         WholeFileConflicts.find(checkout, repository);
-        if (owner.surplusAbsorptionEnabled && !checkout.getSurplusModules().isEmpty()) {
+        if (this.options.surplusAbsorptionEnabled && !checkout.getSurplusModules().isEmpty()) {
             try {
                 SurplusLatticeAbsorber.suppressAbsorbed(checkout, repository);
             } catch (RuntimeException e) {
                 LOGGER.log(Level.WARNING, "Surplus-lattice absorption failed; leaving surplus warnings as-is.", e);
             }
         }
-        if (owner.surplusSuppressionEnabled && !checkout.getSurplusModules().isEmpty()) {
+        if (this.options.surplusSuppressionEnabled && !checkout.getSurplusModules().isEmpty()) {
             try {
-                List<ConstraintMiner.Suggestion> acceptedSuggestions = owner.acceptedSuggestions(repository);
+                List<ConstraintMiner.Suggestion> acceptedSuggestions = this.constraintService.acceptedSuggestions(repository);
                 Formula revisionAwareFeatureModel =
                         FeatureModelFormula.compileRevisionAware(acceptedSuggestions, repository.getFeatures());
                 Set<ModuleRevision> desiredModules =
@@ -86,9 +103,9 @@ class CheckoutService {
                 LOGGER.log(Level.WARNING, "Surplus-module suppression failed; leaving surplus warnings as-is.", e);
             }
         }
-        if (owner.constraintViolationWarningsEnabled) {
+        if (this.options.constraintViolationWarningsEnabled) {
             try {
-                List<ConstraintMiner.Suggestion> acceptedSuggestions = owner.acceptedSuggestions(repository);
+                List<ConstraintMiner.Suggestion> acceptedSuggestions = this.constraintService.acceptedSuggestions(repository);
                 Set<String> selectedFeatures = ConfigurationBridge.tokensOf(configuration);
                 checkout.getConstraintWarnings().addAll(
                         ConstraintViolationChecker.checkViolations(selectedFeatures, acceptedSuggestions));
@@ -106,16 +123,16 @@ class CheckoutService {
      */
     Checkout checkout(Configuration configuration) {
         this.checkCommitted(configuration);
-        owner.listeners.setWriteInProgress(true);
+        this.listeners.setWriteInProgress(true);
         try {
             Checkout checkout = this.compose(configuration);
 
             Set<Node> nodes = this.selectArtifacts(checkout);
-            owner.context.writer.write(owner.baseDir, nodes);
+            this.state.currentContext().writer.write(this.state.baseDir(), nodes);
 
             // TODO: check if rest of method is affected by code change to compose
             // write config file into base directory
-            Path configFile = owner.baseDir.resolve(EccoService.CONFIG_FILE_NAME);
+            Path configFile = this.state.baseDir().resolve(EccoService.CONFIG_FILE_NAME);
             if (Files.exists(configFile)) {
                 throw new EccoException("Configuration file already exists in base directory.");
             } else {
@@ -124,11 +141,11 @@ class CheckoutService {
                 } catch (IOException e) {
                     throw new EccoException("Could not create configuration file.", e);
                 }
-                owner.listeners.fireWriteEvent(configFile, owner.context.writer);
+                this.listeners.fireWriteEvent(configFile, this.state.currentContext().writer);
             }
 
             // write warnings file into base directory
-            Path warningsFile = owner.baseDir.resolve(EccoService.WARNINGS_FILE_NAME);
+            Path warningsFile = this.state.baseDir().resolve(EccoService.WARNINGS_FILE_NAME);
             if (Files.exists(warningsFile)) {
                 throw new EccoException("Warnings file already exists in base directory.");
             } else {
@@ -175,17 +192,17 @@ class CheckoutService {
                 } catch (IOException e) {
                     throw new EccoException("Could not create warnings file.", e);
                 }
-                owner.listeners.fireWriteEvent(warningsFile, owner.context.writer);
+                this.listeners.fireWriteEvent(warningsFile, this.state.currentContext().writer);
             }
 
             return checkout;
         } finally {
-            owner.listeners.setWriteInProgress(false);
+            this.listeners.setWriteInProgress(false);
         }
     }
     Set<Node> selectArtifacts(Checkout checkout) {
         for (Association selectedAssociation : checkout.getSelectedAssociations()) {
-            owner.listeners.fireAssociationSelectedEvent(selectedAssociation);
+            this.listeners.fireAssociationSelectedEvent(selectedAssociation);
         }
         // nodes (artifacts) to write to files
         return new HashSet<>(checkout.getNode().getChildren());
@@ -196,7 +213,7 @@ class CheckoutService {
      * which creates it, but a checkout of it wrote nothing of that feature, without an error (gap #81).
      */
     void checkCommitted(Configuration configuration) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(configuration);
         List<String> unknown = context.read(null, () -> {
             Repository.Op repository = context.repositoryDao.load();
@@ -223,12 +240,12 @@ class CheckoutService {
     }
 
     Checkout checkout(Node node) {
-        return this.checkout(node, owner.baseDir);
+        return this.checkout(node, this.state.baseDir());
     }
 
     /** Writes the artifacts of [node] into [directory] - the base directory is left as it is. */
     Checkout checkout(Node node, Path directory) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         Checkout checkout = new Checkout();
         checkout.setNode(node);
@@ -253,7 +270,7 @@ class CheckoutService {
      * @return The path(s) written.
      */
     Path[] writeCheckoutFile(Node node) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         Node fileNode = node;
         while (fileNode != null && !(fileNode.getArtifact().getData() instanceof PluginArtifactData)) {
             fileNode = fileNode.getParent();
@@ -261,6 +278,6 @@ class CheckoutService {
         if (fileNode == null) {
             throw new EccoException("Could not locate an enclosing file node (PluginArtifactData) for the given node.");
         }
-        return context.writer.writeFile(owner.baseDir, fileNode);
+        return context.writer.writeFile(this.state.baseDir(), fileNode);
     }
 }
