@@ -1,3 +1,0 @@
-
-# ECCO Runtime Observation Adapter
-
