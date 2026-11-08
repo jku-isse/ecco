@@ -36,14 +36,14 @@ public class VariantManager {
      * @throws EccoException naming the variant the configuration already is
      */
     public void addVariant(Configuration configuration, String name, String description) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
 
         checkNotNull(configuration);
         for (Variant variant : owner.getRepository().getVariants())
             if (variant.getConfiguration().equals(configuration))
                 throw new EccoException("This configuration is already saved as variant '" + variant.getName() + "'.");
-        owner.writeTransaction("Error during adding a variant.", repository -> {
-            Variant memVariant = owner.context.entityFactory.createVariant(name, configuration, UUID.randomUUID().toString());
+        context.write("Error during adding a variant.", repository -> {
+            Variant memVariant = context.entityFactory.createVariant(name, configuration, UUID.randomUUID().toString());
             memVariant.setDescription(description);
             repository.addVariant(memVariant);
             return repository;
@@ -51,15 +51,15 @@ public class VariantManager {
     }
 
     public void removeVariant(String id) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(id);
-        owner.writeTransaction(repository -> removeVariantById(repository, id));
+        context.write(repository -> removeVariantById(repository, id));
     }
 
     public void removeVariant(Configuration configuration) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(configuration);
-        owner.writeTransaction(repository -> removeVariantByConfiguration(repository, configuration));
+        context.write(repository -> removeVariantByConfiguration(repository, configuration));
     }
 
     private Repository.Op removeVariantById(Repository.Op repository, String id) {
@@ -83,10 +83,10 @@ public class VariantManager {
     }
 
     public void updateVariant(Configuration configuration, String name, String id) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
 
         checkNotNull(configuration);
-        owner.writeTransaction("Error updating the variant.", repository -> {
+        context.write("Error updating the variant.", repository -> {
             Variant variant = repository.getVariant(id);
             if (variant != null) {
                 repository.updateVariant(variant, configuration, name);
@@ -98,10 +98,10 @@ public class VariantManager {
     }
 
     public void updateFeatureRevision(FeatureRevision featureRevision, String featureRevisionUpdate, String id) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
 
-        owner.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error changing a feature revision of the variant.", () -> {
-            Repository.Op repository = owner.context.repositoryDao.load();
+        context.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error changing a feature revision of the variant.", () -> {
+            Repository.Op repository = context.repositoryDao.load();
 
             Variant variant = owner.getRepository().getVariant(id);
             FeatureRevision[] featureRevisions = variant.getConfiguration().getFeatureRevisions();
@@ -123,18 +123,18 @@ public class VariantManager {
             }
             // the repository's revisions themselves - printed (ids cut to 7 characters) and parsed
             // again, a revision sharing those characters with another was not found
-            variant.setConfiguration(owner.context.entityFactory.createConfiguration(newFeatureRevisions));
+            variant.setConfiguration(context.entityFactory.createConfiguration(newFeatureRevisions));
 
-            owner.context.repositoryDao.store(repository);
+            context.repositoryDao.store(repository);
             return null;
         });
     }
 
     public void removeFeatureRevision(FeatureRevision featureRevision, String id) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
 
-        owner.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error removing a feature revision from the variant.", () -> {
-            Repository.Op repository = owner.context.repositoryDao.load();
+        context.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error removing a feature revision from the variant.", () -> {
+            Repository.Op repository = context.repositoryDao.load();
 
             Variant variant = owner.getRepository().getVariant(id);
             FeatureRevision[] featureRevisions = variant.getConfiguration().getFeatureRevisions();
@@ -153,7 +153,7 @@ public class VariantManager {
             Configuration newConfiguration = owner.parseConfigurationString(config);
             variant.setConfiguration(newConfiguration);
 
-            owner.context.repositoryDao.store(repository);
+            context.repositoryDao.store(repository);
             return null;
         });
     }

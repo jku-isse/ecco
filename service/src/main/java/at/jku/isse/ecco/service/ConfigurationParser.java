@@ -59,7 +59,7 @@ class ConfigurationParser {
         }
 
         String text = configurationString;
-        return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error parsing configuration string: " + configurationString, () -> {
+        return owner.context.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error parsing configuration string: " + configurationString, () -> {
             Repository.Op repository = owner.context.repositoryDao.load();
 
             Set<FeatureRevision> featureRevisions = new HashSet<>();
@@ -199,7 +199,7 @@ class ConfigurationParser {
             throw new EccoException("Invalid feature revisions string provided.");
         }
 
-        return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error parsing feature revisions string: " + featureRevisionsString, () -> {
+        return owner.context.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error parsing feature revisions string: " + featureRevisionsString, () -> {
             Collection<FeatureRevision> featureRevisions = new ArrayList<>();
 
             if (entries.isEmpty()) {

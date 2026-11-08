@@ -59,7 +59,7 @@ class CommitService {
 
     /** As above, the files in [directory] - the base directory is left as it is. */
     Commit commit(String commitMessage, Configuration configuration, String committer, Path directory) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(configuration);
         // presence conditions are built from the features of the commits an artifact occurs in: what
         // is committed without any feature gets no condition that can ever hold, so no checkout
@@ -72,9 +72,9 @@ class CommitService {
         this.committing = true;
         owner.listeners.setWriteInProgress(true);
         try {
-            owner.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
-            Repository.Op repository = owner.context.repositoryDao.load();
+            Repository.Op repository = context.repositoryDao.load();
             repository.addFeatureRevisions(configuration.getFeatureRevisions());
             owner.settings.adopt(repository);
             Set<Node.Op> nodes = this.readFiles(directory);
@@ -103,17 +103,17 @@ class CommitService {
                 }
             }
             if (!hasConfiguration) {
-                Variant memVariant = owner.context.entityFactory.createVariant("Commit", configuration, UUID.randomUUID().toString());
+                Variant memVariant = context.entityFactory.createVariant("Commit", configuration, UUID.randomUUID().toString());
                 memVariant.setDescription(commitMessage);
                 repository.addVariant(memVariant);
             }
             commit.setCommitMessage(commitMessage);
 
             this.checkCancelled();
-            owner.context.repositoryDao.store(repository);
+            context.repositoryDao.store(repository);
 
             long endStrategyTime = System.currentTimeMillis();
-            owner.context.transactionStrategy.end();
+            context.transactionStrategy.end();
             endStrategyTime = System.currentTimeMillis() - endStrategyTime;
 
             LOGGER.info(Repository.class.getName() + ".extract(): " + extractTime +
@@ -123,10 +123,10 @@ class CommitService {
 
             return commit;
         } catch (CommitCancelledException e) {
-            owner.rollbackIfTransactionActive();
+            context.rollbackIfActive();
             throw e;
         } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
+            context.rollbackIfActive();
             // a reader may wrap the cancellation thrown from its read event
             for (Throwable cause = e; cause != null; cause = cause.getCause())
                 if (cause instanceof CommitCancelledException cancelled)
@@ -135,7 +135,7 @@ class CommitService {
         } catch (Error e) {
             // out of memory, typically: an open transaction made every later operation fail, and
             // close() too - reporting "Not all transactions have been ended" instead of this
-            owner.rollbackIfTransactionActive();
+            context.rollbackIfActive();
             throw e;
         } finally {
             this.committing = false;

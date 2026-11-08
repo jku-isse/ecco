@@ -146,7 +146,7 @@ final class RepositorySettings {
 
     /** The plugins whose files this repository holds - in a read-only transaction of its own. */
     Set<String> pluginsWithFiles() {
-        return this.owner.readTransaction(null, () -> pluginsWithFiles(this.owner.context.repositoryDao.load()));
+        return this.owner.context.read(null, () -> pluginsWithFiles(this.owner.context.repositoryDao.load()));
     }
 
     /**

@@ -53,12 +53,12 @@ class CheckoutService {
      * @return Checkout with composed artifacts.
      */
     Checkout compose(Configuration configuration) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(configuration);
         // read inside a transaction like every other read: outside of one, load() returns whatever
         // database the last transaction left loaded - none right after open() (NPE), or a stale one
         // if another process committed since (see ReadWithoutTransactionTest)
-        return owner.readTransaction(null, () -> this.composeInTransaction(configuration));
+        return context.read(null, () -> this.composeInTransaction(configuration));
     }
     private Checkout composeInTransaction(Configuration configuration) {
         Repository.Op repository = owner.context.repositoryDao.load();
@@ -196,10 +196,10 @@ class CheckoutService {
      * which creates it, but a checkout of it wrote nothing of that feature, without an error (gap #81).
      */
     void checkCommitted(Configuration configuration) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(configuration);
-        List<String> unknown = owner.readTransaction(null, () -> {
-            Repository.Op repository = owner.context.repositoryDao.load();
+        List<String> unknown = context.read(null, () -> {
+            Repository.Op repository = context.repositoryDao.load();
             List<String> missing = new ArrayList<>();
             for (FeatureRevision revision : configuration.getFeatureRevisions()) {
                 Feature feature = repository.getFeature(revision.getFeature().getId());
@@ -228,13 +228,13 @@ class CheckoutService {
 
     /** Writes the artifacts of [node] into [directory] - the base directory is left as it is. */
     Checkout checkout(Node node, Path directory) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
 
         Checkout checkout = new Checkout();
         checkout.setNode(node);
 
         Set<Node> nodes = new HashSet<>(node.getChildren());
-        owner.context.writer.write(directory, nodes);
+        context.writer.write(directory, nodes);
 
         return checkout;
     }
@@ -253,7 +253,7 @@ class CheckoutService {
      * @return The path(s) written.
      */
     Path[] writeCheckoutFile(Node node) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         Node fileNode = node;
         while (fileNode != null && !(fileNode.getArtifact().getData() instanceof PluginArtifactData)) {
             fileNode = fileNode.getParent();
@@ -261,6 +261,6 @@ class CheckoutService {
         if (fileNode == null) {
             throw new EccoException("Could not locate an enclosing file node (PluginArtifactData) for the given node.");
         }
-        return owner.context.writer.writeFile(owner.baseDir, fileNode);
+        return context.writer.writeFile(owner.baseDir, fileNode);
     }
 }
