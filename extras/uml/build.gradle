@@ -1,9 +1,0 @@
-
-ecco.adapter = true
-
-dependencies {
-	compile fileTree(dir: 'lib', include: '*.jar')
-
-	compile project(':at.jku.isse.ecco.base')
-	compile project(':at.jku.isse.ecco.service')
-}

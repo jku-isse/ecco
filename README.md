@@ -228,7 +228,9 @@ Further adapters are included but not mapped by default: `golang`, `java` (line-
 | [`adapter`](adapter) | The artifact adapters. |
 | [`extras/ly`](extras/ly) | A utility that fills a repository from numbered variant directories (used for the LilyPond experiments). |
 | [`examples`](examples) | Example variants to commit, e.g. C, LilyPond, markdown, image, and TypeScript variants. |
-| [`storage`](storage), `adapter/java6`, `adapter/java8`, `adapter/designspace`, other `extras` | Earlier storage backends and adapters, not part of the build. |
+| [`experiments`](experiments) | The harness scoring the Git import's LLM feature suggestions. |
+
+Earlier storage backends (`storage/neo4j`, `extras/jackson`, `extras/jpa`, `extras/xml`), adapters (`adapter/java6`, `adapter/java8`, `adapter/designspace`, `extras/cpp`, `extras/emf`, `extras/php`, `extras/runtime`, `extras/uml`, `extras/generic`), the `preprocessor` and the research harnesses that need data never checked in were not part of the build; they are kept, at the paths they had, on the branch `archive/unbuilt-modules`.
 
 The architecture is drawn in [`doc/ecco-architecture.drawio`](doc/ecco-architecture.drawio) (open it with [diagrams.net](https://app.diagrams.net)). It is generated: change [`doc/gen_architecture_drawio.py`](doc/gen_architecture_drawio.py) and run `python3 doc/gen_architecture_drawio.py`.
 

@@ -1,3 +1,0 @@
-
-# ECCO C/C++ Adapter
-
