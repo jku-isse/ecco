@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 /**
  * Persists which artifact adapters (by {@link ArtifactPlugin#getPluginId()}) the user has
- * deactivated, so {@link EccoService} can skip binding them. This is a small, per-user runtime
+ * deactivated, so {@code EccoService} can skip binding them. This is a small, per-user runtime
  * setting (backed by {@link Preferences}, e.g. the platform registry/plist), distinct from the
  * bundled {@code ecco.properties} classpath resource, which is packaged deployment config rather
  * than something a user toggles at runtime.

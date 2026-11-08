@@ -401,7 +401,7 @@ public abstract class TransferView extends OperationView {
 			return this.featureVersion;
 		}
 
-		/** "A", and "A.3f2a9c1" for a revision - it said "FEATURE", "<id> - A" and the bare revision id. */
+		/** "A", and "A.3f2a9c1" for a revision - it said "FEATURE", "&lt;id&gt; - A" and the bare revision id. */
 		@Override
 		public String toString() {
 			if (this.feature == null)

@@ -9,7 +9,7 @@ import java.util.prefs.Preferences;
  * paths (see {@code at.jku.isse.ecco.adapter.lilypond.LilypondCompiler} in the adapter-lilypond
  * module). Blank/empty by default, in which case the compiler falls back to the bundled
  * {@code lilypond-config.properties} classpath resource. Same small, per-user runtime setting
- * pattern as {@link AdapterPreferences}/{@link LlmPreferences} (backed by {@link Preferences})
+ * pattern as {@link AdapterPreferences}/{@code LlmPreferences} (backed by {@link Preferences})
  * rather than the bundled properties file, which is packaged deployment config, not something a
  * user edits at runtime.
  *

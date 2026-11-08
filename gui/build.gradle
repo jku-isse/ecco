@@ -323,3 +323,10 @@ repositories {
 	mavenCentral()
 }
 bundle.dependsOn += copyScripts
+
+// javadoc looks for sources on the class path unless given a source path, and gs-ui-javafx's jar
+// holds its .java files: javadoc then parsed them and failed on javafx.embed.swing, which this
+// module does not use - only the module's own sources are documented
+javadoc {
+	options.addStringOption('sourcepath', file('src/main/java').path)
+}
