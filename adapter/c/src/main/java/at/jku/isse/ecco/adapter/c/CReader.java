@@ -10,7 +10,6 @@ import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.c.translator.CEccoVisitor;
 import at.jku.isse.ecco.adapter.c.parser.generated.CLexer;
 import at.jku.isse.ecco.adapter.c.parser.generated.CParser;
-import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -36,7 +35,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
 
-    protected static final Logger LOGGER = Logger.getLogger(DispatchWriter.class.getName());
+    protected static final Logger LOGGER = Logger.getLogger(CReader.class.getName());
 
     private final EntityFactory entityFactory;
 

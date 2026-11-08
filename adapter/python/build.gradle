@@ -15,7 +15,9 @@ dependencies {
 
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.14.1'
 
-    implementation project(':ecco-service')
+    implementation project(':ecco-adapter-api')
+    // the tests build trees with the service's SerEntityFactory, some open repositories
+    testImplementation project(':ecco-service')
     if (use_py4j_parser.toBoolean()) {
         println '> include py4j dependency'
         implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'

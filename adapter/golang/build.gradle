@@ -19,7 +19,9 @@ dependencies {
     antlr libs.antlr4.core
 
     implementation project(':ecco-base')
-    implementation project(':ecco-service')
+    implementation project(':ecco-adapter-api')
+    // the tests build trees with the service's SerEntityFactory, some open repositories
+    testImplementation project(':ecco-service')
 
     testImplementation platform(libs.junit.bom)
     testImplementation libs.junit.jupiter

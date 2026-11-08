@@ -2,7 +2,6 @@ package at.jku.isse.ecco.adapter.runtime;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.runtime.data.*;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -29,7 +28,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class RuntimeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
-    protected static final Logger LOGGER = Logger.getLogger(DispatchWriter.class.getName());
+    protected static final Logger LOGGER = Logger.getLogger(RuntimeReader.class.getName());
 
     private final EntityFactory entityFactory;
 

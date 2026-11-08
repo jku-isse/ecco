@@ -1,0 +1,32 @@
+plugins {
+	alias(libs.plugins.openjfx.javafxplugin)
+}
+
+apply plugin: 'java-library'
+
+// What an artifact adapter is written against: the plugin, reader, writer, viewer and exporter
+// interfaces (at.jku.isse.ecco.adapter), the artifact data the dispatch stores for files
+// (at.jku.isse.ecco.adapter.dispatch - PluginArtifactData and the text formats), the shared code
+// viewer (at.jku.isse.ecco.adapter.view), the read/write/export listeners
+// (at.jku.isse.ecco.service.listener) and the adapters' preferences. Moved out of ecco-service
+// with their packages unchanged: the artifact data are stored in repositories under their class
+// names, and the preferences are kept under their package's node (Preferences.userNodeForPackage).
+// The adapters depend on this module alone, so a change to the service does not recompile them.
+
+// compileOnly: the shared viewer (at.jku.isse.ecco.adapter.view.SourceSpanViewer) is only ever
+// loaded inside the GUI, which brings JavaFX - cli and rest never touch it.
+javafx {
+	version = libs.versions.javafx.get()
+	modules = ['javafx.base', 'javafx.controls', 'javafx.graphics']
+	configurations = ['compileOnly', 'testImplementation']
+}
+
+dependencies {
+	implementation libs.guava
+
+	// ArtifactPlugin.getModule() returns a Guice module
+	api libs.guice.core
+	api project(':ecco-base')
+
+	testImplementation libs.junit.jupiter
+}
