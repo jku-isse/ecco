@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.service.gitimport.GitImport;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.git.GitCommitInfo;
 import at.jku.isse.ecco.service.git.GitHistoryReader;
@@ -114,7 +115,7 @@ public class ImportGitViewRetryTest {
     public void describeFailureListsEachMessageOnce() {
         Exception inner = new IllegalStateException("A commit needs at least one feature.");
         assertEquals("Error during commit. - caused by: A commit needs at least one feature.",
-                ImportGitView.describeFailure(new RuntimeException("Error during commit.", new RuntimeException("Error during commit.", inner))));
+                GitImport.describeFailure(new RuntimeException("Error during commit.", new RuntimeException("Error during commit.", inner))));
     }
 
     /** two commits, neither with a .config */

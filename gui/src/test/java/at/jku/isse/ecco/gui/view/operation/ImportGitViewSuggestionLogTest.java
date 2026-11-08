@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.service.gitimport.GitImport;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.git.GitCommitInfo;
 import at.jku.isse.ecco.service.git.GitHistoryReader;
@@ -150,7 +151,7 @@ public class ImportGitViewSuggestionLogTest {
             v.suggester = commit -> {
                 asked.add(commit.getMessage());
                 String feature = commit.getMessage().toUpperCase();
-                return new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(List.of(feature), null, List.of(),
+                return new GitImport.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(List.of(feature), null, List.of(),
                         List.of(Map.of(feature, "BASE"))), "stub", 1);
             };
             // not reviewed: imported unattended
@@ -166,7 +167,7 @@ public class ImportGitViewSuggestionLogTest {
         assertTrue(entries.get(1).contains("\"parents\":{\"SECOND\":\"BASE\"}"), entries.get(1));
 
         Map<String, String> told = new java.util.TreeMap<>();
-        for (LlmFeatureSuggestionClient.KnownFeature known : view.suggestionInput(oldestFirst.get(3)).knownFeatures())
+        for (LlmFeatureSuggestionClient.KnownFeature known : view.run.suggestionInput(oldestFirst.get(3)).knownFeatures())
             told.put(known.name(), String.valueOf(known.parentName()));
         assertEquals(Map.of("BASE", "null", "SECOND", "BASE", "THIRD", "BASE", "FOURTH", "BASE"), told, "THIRD is not under SECOND");
         service.close();
@@ -203,7 +204,7 @@ public class ImportGitViewSuggestionLogTest {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                return new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(List.of(commit.getMessage().toUpperCase()), null), "stub", 1);
+                return new GitImport.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(List.of(commit.getMessage().toUpperCase()), null), "stub", 1);
             };
             javafx.stage.Stage s = new javafx.stage.Stage();
             s.setScene(new Scene(v));
@@ -274,7 +275,7 @@ public class ImportGitViewSuggestionLogTest {
                 ImportGitView v = new ImportGitView(service);
                 new Scene(v);
                 v.reviewUncertain = reviewUncertain;
-                v.suggester = commit -> new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
+                v.suggester = commit -> new GitImport.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
                         List.of(commit.getMessage().equals("first") ? "BASE" : commit.getMessage().toUpperCase()), null, List.of()), "stub", 1,
                         commit.getMessage().equals("third") ? new SuggestionConfidence(0.15, "BASE changed exactly these positions before") : null);
                 // not reviewed: imported unattended unless a suggestion is uncertain
@@ -316,7 +317,7 @@ public class ImportGitViewSuggestionLogTest {
             v.suggester = commit -> {
                 if (commit.getMessage().equals("third"))
                     throw new IllegalStateException("java.net.ConnectException: Connection refused");
-                return new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
+                return new GitImport.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
                         List.of(commit.getMessage().equals("first") ? "BASE" : ""),
                         commit.getMessage().equals("second") ? "Connection refused" : null, List.of()), "stub", 1, null);
             };
@@ -355,7 +356,7 @@ public class ImportGitViewSuggestionLogTest {
         ImportGitView view = onFx(() -> {
             ImportGitView v = new ImportGitView(service);
             new Scene(v);
-            v.suggester = commit -> new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
+            v.suggester = commit -> new GitImport.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
                     List.of(commit.getMessage().equals("first") ? "BASE" : "X"), null, List.of()), "stub", 1, null);
             v.startImport(clone, oldestFirst, true, false);
             return v;
@@ -388,7 +389,7 @@ public class ImportGitViewSuggestionLogTest {
         ImportGitView view = onFx(() -> {
             ImportGitView v = new ImportGitView(service);
             new Scene(v);
-            v.suggester = commit -> new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
+            v.suggester = commit -> new GitImport.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
                     List.of("BASE"), null, List.of()), "stub", 1, null);
             v.startImport(clone, oldestFirst, true, true); // each reviewed: it waits
             return v;
@@ -436,7 +437,7 @@ public class ImportGitViewSuggestionLogTest {
 
         List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
         Collections.reverse(oldestFirst);
-        ImportGitView.SuggestionInput input = view.suggestionInput(oldestFirst.get(2));
+        GitImport.SuggestionInput input = view.run.suggestionInput(oldestFirst.get(2));
         service.close();
 
         assertEquals(Set.of("Doc > Usage"), input.commit().changes().get("README.md").positions());
@@ -493,8 +494,8 @@ public class ImportGitViewSuggestionLogTest {
 
     @Test
     public void diffLinesCountsWhatTheTruncationLeftOut() {
-        assertEquals(3, ImportGitView.diffLines("a\nb\nc"));
-        assertEquals(402, ImportGitView.diffLines("a\nb\n... (diff truncated, 400 more lines)"));
+        assertEquals(3, GitImport.diffLines("a\nb\nc"));
+        assertEquals(402, GitImport.diffLines("a\nb\n... (diff truncated, 400 more lines)"));
     }
 
     private static Path gitHistory(Path dir, String... messages) throws Exception {
@@ -524,7 +525,7 @@ public class ImportGitViewSuggestionLogTest {
         return onFx(() -> {
             ImportGitView view = new ImportGitView(service);
             new Scene(view);
-            view.suggester = commit -> new ImportGitView.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
+            view.suggester = commit -> new GitImport.Suggested(new LlmFeatureSuggestionClient.SuggestionBatch(
                     List.of(commit.getMessage().equals("first") ? "BASE" : commit.getMessage().toUpperCase()), null,
                     List.of(new LlmFeatureSuggestionClient.Usage(100, 5, 42))), "stub", 7);
             view.startImport(clone, oldestFirst, true, reviewEach);

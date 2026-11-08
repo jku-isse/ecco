@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.gui.view.operation;
+package at.jku.isse.ecco.service.gitimport;
 
 import org.junit.jupiter.api.Test;
 
@@ -9,34 +9,34 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * {@link ImportGitView#defaultConfigurationText}, {@link ImportGitView#applyConfigurationToRunning},
- * {@link ImportGitView#parseFeatureTokens} is pure,
+ * {@link GitImport#defaultConfigurationText}, {@link GitImport#applyConfigurationToRunning},
+ * {@link GitImport#parseFeatureTokens} is pure,
  * JavaFX-free functions specifically so they can be exercised like this - they drive the per-commit
  * interactive import loop's "what should this commit's configuration default to" and "should this
  * commit pause for review or auto-import" logic.
  */
-public class ImportGitViewAccumulateConfigurationsTest {
+public class GitImportConfigurationTextTest {
 
 	@Test
 	public void laterCommitCarriesForwardEarlierFeatures() {
 		// the exact real-world regression this guards against: v1 introduces "A", v2 only adds "B"
 		// but the resulting default configuration must still include "A" too, not just "B"
 		LinkedHashSet<String> running = new LinkedHashSet<>();
-		String firstDefault = ImportGitView.defaultConfigurationText(running, "A");
+		String firstDefault = GitImport.defaultConfigurationText(running, "A");
 		assertEquals("A", firstDefault);
 
-		ImportGitView.applyConfigurationToRunning(running, firstDefault);
-		String secondDefault = ImportGitView.defaultConfigurationText(running, "B");
+		GitImport.applyConfigurationToRunning(running, firstDefault);
+		String secondDefault = GitImport.defaultConfigurationText(running, "B");
 		assertEquals("A, B", secondDefault);
 	}
 
 	@Test
 	public void duplicateFeatureAcrossCommitsIsNotRepeated() {
 		LinkedHashSet<String> running = new LinkedHashSet<>();
-		ImportGitView.applyConfigurationToRunning(running, "A, B");
+		GitImport.applyConfigurationToRunning(running, "A, B");
 
 		// named again: a new revision of it, not a second A
-		assertEquals("A', B", ImportGitView.defaultConfigurationText(running, "A"));
+		assertEquals("A', B", GitImport.defaultConfigurationText(running, "A"));
 	}
 
 	/**
@@ -49,19 +49,19 @@ public class ImportGitViewAccumulateConfigurationsTest {
 	@Test
 	public void aKnownFeatureTheSuggestionNamesGetsANewRevision() {
 		LinkedHashSet<String> running = new LinkedHashSet<>(java.util.List.of("BASE", "A", "B"));
-		assertEquals("BASE, A', B, C", ImportGitView.defaultConfigurationText(running, java.util.Set.of(), "A, C"));
+		assertEquals("BASE, A', B, C", GitImport.defaultConfigurationText(running, java.util.Set.of(), "A, C"));
 		// known from the repository though not running: named, a new revision
-		assertEquals("BASE, A, B, D'", ImportGitView.defaultConfigurationText(running, java.util.Set.of("D"), "D"));
+		assertEquals("BASE, A, B, D'", GitImport.defaultConfigurationText(running, java.util.Set.of("D"), "D"));
 		// a removal stays one
-		assertEquals("BASE, B", ImportGitView.defaultConfigurationText(running, java.util.Set.of(), "-A"));
+		assertEquals("BASE, B", GitImport.defaultConfigurationText(running, java.util.Set.of(), "-A"));
 		// the generic features keep one revision: zip4j's tags revised "misc" in 37 of 40 commits
 		LinkedHashSet<String> withGeneric = new LinkedHashSet<>(java.util.List.of("BASE", "A", "misc", "documentation"));
-		assertEquals("BASE, A', misc, documentation", ImportGitView.defaultConfigurationText(withGeneric, java.util.Set.of(), "A, misc, documentation"));
+		assertEquals("BASE, A', misc, documentation", GitImport.defaultConfigurationText(withGeneric, java.util.Set.of(), "A, misc, documentation"));
 		// nothing suggested: nothing revised
-		assertEquals("BASE, A, B", ImportGitView.defaultConfigurationText(running, java.util.Set.of(), ""));
+		assertEquals("BASE, A, B", GitImport.defaultConfigurationText(running, java.util.Set.of(), ""));
 
 		// the running features are the plain names
-		ImportGitView.applyConfigurationToRunning(running, "BASE, A', B, C");
+		GitImport.applyConfigurationToRunning(running, "BASE, A', B, C");
 		assertEquals(java.util.List.of("BASE", "A", "B", "C"), java.util.List.copyOf(running));
 	}
 
@@ -70,10 +70,10 @@ public class ImportGitViewAccumulateConfigurationsTest {
 		// a commit the LLM couldn't classify (or suggestions were skipped) shouldn't look like it
 		// dropped every previously-imported feature
 		LinkedHashSet<String> running = new LinkedHashSet<>();
-		ImportGitView.applyConfigurationToRunning(running, "A");
+		GitImport.applyConfigurationToRunning(running, "A");
 
-		assertEquals("A", ImportGitView.defaultConfigurationText(running, ""));
-		assertEquals("A", ImportGitView.defaultConfigurationText(running, null));
+		assertEquals("A", GitImport.defaultConfigurationText(running, ""));
+		assertEquals("A", GitImport.defaultConfigurationText(running, null));
 	}
 
 	@Test
@@ -81,37 +81,37 @@ public class ImportGitViewAccumulateConfigurationsTest {
 		// applyConfigurationToRunning is only ever called for an actually-imported commit - a
 		// skipped commit's suggestion must not leak into the next commit's default
 		LinkedHashSet<String> running = new LinkedHashSet<>();
-		ImportGitView.applyConfigurationToRunning(running, "A");
+		GitImport.applyConfigurationToRunning(running, "A");
 
 		// commit 2 is shown "A, B" as a default but the user Skips it - running is untouched
-		String skippedDefault = ImportGitView.defaultConfigurationText(running, "B");
+		String skippedDefault = GitImport.defaultConfigurationText(running, "B");
 		assertEquals("A, B", skippedDefault);
 
 		// commit 3's default must build on "A" only, not "A, B"
-		assertEquals("A", ImportGitView.defaultConfigurationText(running, ""));
+		assertEquals("A", GitImport.defaultConfigurationText(running, ""));
 	}
 
 	@Test
 	public void allBlankStaysBlank() {
 		// the non-LLM ("Suggest features" unchecked) path with nothing imported yet must remain a no-op
-		assertEquals("", ImportGitView.defaultConfigurationText(new LinkedHashSet<>(), ""));
+		assertEquals("", GitImport.defaultConfigurationText(new LinkedHashSet<>(), ""));
 	}
 
 	@Test
 	public void whitespaceAroundFeatureNamesIsTrimmed() {
 		LinkedHashSet<String> running = new LinkedHashSet<>();
-		String firstDefault = ImportGitView.defaultConfigurationText(running, " A ,B");
+		String firstDefault = GitImport.defaultConfigurationText(running, " A ,B");
 		assertEquals("A, B", firstDefault);
 
-		ImportGitView.applyConfigurationToRunning(running, firstDefault);
-		assertEquals("A, B, C", ImportGitView.defaultConfigurationText(running, "C"));
+		GitImport.applyConfigurationToRunning(running, firstDefault);
+		assertEquals("A, B, C", GitImport.defaultConfigurationText(running, "C"));
 	}
 
 	@Test
 	public void parseFeatureTokensHandlesNullAndBlank() {
-		assertEquals(new LinkedHashSet<>(), ImportGitView.parseFeatureTokens(null));
-		assertEquals(new LinkedHashSet<>(), ImportGitView.parseFeatureTokens(""));
-		assertEquals(new LinkedHashSet<>(java.util.List.of("A", "B")), ImportGitView.parseFeatureTokens(" A , B ,"));
+		assertEquals(new LinkedHashSet<>(), GitImport.parseFeatureTokens(null));
+		assertEquals(new LinkedHashSet<>(), GitImport.parseFeatureTokens(""));
+		assertEquals(new LinkedHashSet<>(java.util.List.of("A", "B")), GitImport.parseFeatureTokens(" A , B ,"));
 	}
 
 	@Test
@@ -120,26 +120,26 @@ public class ImportGitViewAccumulateConfigurationsTest {
 		// own implementation, and the LLM signals that with a "-name" token (see
 		// LlmFeatureSuggestionClient's SYSTEM_PROMPT) instead of silently carrying it forward forever
 		LinkedHashSet<String> running = new LinkedHashSet<>();
-		ImportGitView.applyConfigurationToRunning(running, "A, B");
+		GitImport.applyConfigurationToRunning(running, "A, B");
 
-		String afterRemoval = ImportGitView.defaultConfigurationText(running, "-A");
+		String afterRemoval = GitImport.defaultConfigurationText(running, "-A");
 		assertEquals("B", afterRemoval);
 	}
 
 	@Test
 	public void suggestionCanAddAndRemoveInTheSameCommit() {
 		LinkedHashSet<String> running = new LinkedHashSet<>();
-		ImportGitView.applyConfigurationToRunning(running, "A, B");
+		GitImport.applyConfigurationToRunning(running, "A, B");
 
-		assertEquals("B, C", ImportGitView.defaultConfigurationText(running, "C, -A"));
+		assertEquals("B, C", GitImport.defaultConfigurationText(running, "C, -A"));
 	}
 
 	@Test
 	public void removingAFeatureNotCurrentlyRunningIsANoOp() {
 		LinkedHashSet<String> running = new LinkedHashSet<>();
-		ImportGitView.applyConfigurationToRunning(running, "A");
+		GitImport.applyConfigurationToRunning(running, "A");
 
-		assertEquals("A", ImportGitView.defaultConfigurationText(running, "-Z"));
+		assertEquals("A", GitImport.defaultConfigurationText(running, "-Z"));
 	}
 
 	@Test
@@ -148,7 +148,7 @@ public class ImportGitViewAccumulateConfigurationsTest {
 		// least one character after "-" before treating a token as a removal (see its trimmed.length() > 1
 		// guard), so this edge case can't silently no-op into losing the token entirely
 		LinkedHashSet<String> running = new LinkedHashSet<>();
-		assertEquals("-", ImportGitView.defaultConfigurationText(running, "-"));
+		assertEquals("-", GitImport.defaultConfigurationText(running, "-"));
 	}
 
 }

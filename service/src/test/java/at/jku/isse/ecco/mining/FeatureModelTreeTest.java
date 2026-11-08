@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.gui.view;
+package at.jku.isse.ecco.mining;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.service.EccoService;
