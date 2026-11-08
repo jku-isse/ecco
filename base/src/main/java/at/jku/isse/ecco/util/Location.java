@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.util;
 
-import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.Persistable;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.dao;
 
+import at.jku.isse.ecco.Persistable;
 import com.google.inject.Inject;
 
 public abstract class JpaAbstractGenericDao<T extends Persistable> implements GenericDao<T> {

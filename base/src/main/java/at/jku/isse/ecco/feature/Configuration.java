@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.feature;
 
-import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.Persistable;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import org.logicng.datastructures.Assignment;

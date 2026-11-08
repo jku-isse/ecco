@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.dao;
+package at.jku.isse.ecco;
 
 import java.io.Serializable;
 

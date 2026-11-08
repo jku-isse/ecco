@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.core;
 
-import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.Persistable;
 
 import java.net.URLDecoder;
 import java.net.URLEncoder;

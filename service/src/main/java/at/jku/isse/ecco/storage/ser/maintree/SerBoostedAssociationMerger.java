@@ -5,7 +5,7 @@ import at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditi
 import at.jku.isse.ecco.featuretrace.ProactiveTraceCheck;
 
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.Persistable;
 import at.jku.isse.ecco.maintree.building.BoostConditionVisitor;
 import at.jku.isse.ecco.maintree.building.BoostVisitor;
 import at.jku.isse.ecco.maintree.building.BoostedAssociationMerger;

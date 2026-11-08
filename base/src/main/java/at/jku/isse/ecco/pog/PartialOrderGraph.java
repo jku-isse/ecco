@@ -2,7 +2,7 @@ package at.jku.isse.ecco.pog;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.Persistable;
 import at.jku.isse.ecco.util.Permutation;
 import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet;
 import org.eclipse.collections.api.set.primitive.MutableIntSet;

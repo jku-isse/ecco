@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.Persistable;
 
 public interface EntityDao<T extends Persistable> extends GenericDao {
 

@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.dao;
 
+import at.jku.isse.ecco.Persistable;
+
 /**
  * A data access object that handles {@link Persistable}s of a certain type.
  *

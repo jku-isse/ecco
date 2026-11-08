@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.artifact;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.Persistable;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 

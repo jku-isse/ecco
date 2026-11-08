@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.counter;
 
-import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.Persistable;
 
 public interface Counter<T> extends Persistable {
 
