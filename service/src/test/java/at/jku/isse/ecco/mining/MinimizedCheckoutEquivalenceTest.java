@@ -47,7 +47,7 @@ public class MinimizedCheckoutEquivalenceTest {
             String newA = feature(service, "A").getLatestRevision().toString();
             assertNotEquals(oldA, newA);
 
-            List<ConstraintMiner.Suggestion> hard = new ConstraintMiner(4, 1.0, null).mine(ConfigurationBridge.readConfigurations(service))
+            List<ConstraintMiner.Suggestion> hard = new ConstraintMiner(4, 1.0, null).mine(ConfigurationBridge.readConfigurations(service.getCommits()))
                     .stream().filter(ConstraintMiner.Suggestion::isHard).toList();
             service.acceptConstraints(hard);
             assertFalse(service.acceptedSuggestions(service.getRepository()).isEmpty(), "the test needs trusted constraints");

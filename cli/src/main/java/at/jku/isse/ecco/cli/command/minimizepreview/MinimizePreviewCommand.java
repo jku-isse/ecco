@@ -57,7 +57,7 @@ public class MinimizePreviewCommand implements Command {
 
         eccoService.open();
 
-        List<Set<String>> configs = ConfigurationBridge.readConfigurations(eccoService);
+        List<Set<String>> configs = ConfigurationBridge.readConfigurations(eccoService.getCommits());
         List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(minWitness, confidence, null).mine(configs);
         Set<String> accepted = AcceptedConstraints.acceptedSignatures(eccoService.getRepository().getConstraints());
 

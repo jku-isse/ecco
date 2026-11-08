@@ -1,7 +1,8 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.adapter.CommitCancelledException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 

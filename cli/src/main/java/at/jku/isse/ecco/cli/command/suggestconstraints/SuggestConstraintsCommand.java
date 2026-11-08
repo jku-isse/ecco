@@ -57,7 +57,7 @@ public class SuggestConstraintsCommand implements Command {
         try {
             // rejections kept per machine by earlier GUI versions (a no-op once they are moved)
             eccoService.moveLocalRejectionsIntoRepository();
-            configs = ConfigurationBridge.readConfigurations(eccoService);
+            configs = ConfigurationBridge.readConfigurations(eccoService.getCommits());
             accepted = AcceptedConstraints.acceptedSignatures(eccoService.getRepository().getConstraints());
             rejected = AcceptedConstraints.acceptedSignatures(eccoService.getRepository().getRejectedConstraints());
             trusted = accepted.isEmpty() ? Set.of() : eccoService.acceptedSuggestions(eccoService.getRepository()).stream()

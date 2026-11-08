@@ -7,7 +7,7 @@ import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.GraphCameraControls;
 import at.jku.isse.ecco.gui.TabVisibilityAware;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.ConditionText;

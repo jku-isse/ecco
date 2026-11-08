@@ -11,7 +11,7 @@ import at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl;
 import at.jku.isse.ecco.gui.view.graph.PartialOrderGraphView;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import javafx.application.Platform;

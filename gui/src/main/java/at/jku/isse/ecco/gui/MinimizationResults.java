@@ -10,7 +10,7 @@ import at.jku.isse.ecco.mining.ParallelMinimization;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import at.jku.isse.ecco.tree.RootNode;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
@@ -104,7 +104,7 @@ public class MinimizationResults implements EccoListener {
                 Set<String> accepted;
                 List<Association> associations = new ArrayList<>();
                 synchronized (service) {
-                    configs = ConfigurationBridge.readConfigurations(service);
+                    configs = ConfigurationBridge.readConfigurations(service.getCommits());
                     accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
                     for (Association association : service.getRepository().getAssociations())
                         associations.add(new ConditionSnapshot(association.getId(), association.computeCondition()));

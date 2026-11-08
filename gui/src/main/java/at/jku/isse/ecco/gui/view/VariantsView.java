@@ -12,7 +12,7 @@ import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.VariantDetailView;
 import at.jku.isse.ecco.gui.view.operation.VariantView;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;

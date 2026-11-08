@@ -1,6 +1,4 @@
-package at.jku.isse.ecco.service.listener;
-
-import at.jku.isse.ecco.service.EccoService;
+package at.jku.isse.ecco.service;
 
 public interface ServerListener {
 

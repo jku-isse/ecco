@@ -11,7 +11,7 @@ import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.gui.view.operation.OperationView;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import javafx.beans.property.*;

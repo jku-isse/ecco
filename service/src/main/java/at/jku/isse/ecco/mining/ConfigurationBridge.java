@@ -3,9 +3,9 @@ package at.jku.isse.ecco.mining;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.service.EccoService;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -21,16 +21,17 @@ import java.util.Set;
  * already a positive selection -- everything else is implicitly negative at
  * the repository level -- so no sign check is needed.
  *
- * <p>Caller is responsible for {@link EccoService#open()}/{@code close()}.
+ * <p>Takes the commits, not the service, so that mining does not depend on {@code EccoService};
+ * callers pass {@code service.getCommits()}.
  */
 public final class ConfigurationBridge {
 
     private ConfigurationBridge() {
     }
 
-    public static List<Set<String>> readConfigurations(EccoService service) {
+    public static List<Set<String>> readConfigurations(Collection<? extends Commit> commits) {
         List<Set<String>> configs = new ArrayList<>();
-        for (Commit commit : service.getCommits()) {
+        for (Commit commit : commits) {
             Configuration configuration = commit.getConfiguration();
             // a MERGE commit (Repository.extract(Association.Op, Commit)) never gets a
             // configuration of its own -- it reorganizes existing associations rather than

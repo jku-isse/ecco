@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.adapter.CommitCancelledException;
 import at.jku.isse.ecco.*;
 import at.jku.isse.ecco.adapter.*;
 import at.jku.isse.ecco.adapter.dispatch.*;

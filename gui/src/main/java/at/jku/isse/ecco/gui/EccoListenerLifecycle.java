@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.gui;
 
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoListener;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.stage.Window;

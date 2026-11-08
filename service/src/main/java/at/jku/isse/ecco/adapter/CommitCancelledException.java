@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.service;
+package at.jku.isse.ecco.adapter;
 
 import at.jku.isse.ecco.EccoException;
 

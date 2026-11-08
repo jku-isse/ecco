@@ -34,7 +34,7 @@ public class ConstraintService {
     }
 
     public List<ConstraintMiner.Suggestion> acceptedSuggestions(Repository repository) {
-        List<Set<String>> configs = ConfigurationBridge.readConfigurations(owner);
+        List<Set<String>> configs = ConfigurationBridge.readConfigurations(owner.getCommits());
         List<ConstraintMiner.Suggestion> mined =
                 new ConstraintMiner(EccoService.ACCEPTED_CONSTRAINT_MIN_WITNESS, EccoService.ACCEPTED_CONSTRAINT_CONFIDENCE, null).mine(configs);
         Set<String> accepted = AcceptedConstraints.acceptedSignatures(repository.getConstraints());
@@ -83,7 +83,7 @@ public class ConstraintService {
      * version was observed to make accepting many suggestions at once (e.g. from
      * {@code ConstraintSuggestionsView}'s multi-select) take a long time on the FX thread: each
      * individual accept does a full repository persist AND fires a real
-     * {@link at.jku.isse.ecco.service.listener.EccoListener} event that every open tab (the Feature
+     * {@link at.jku.isse.ecco.service.EccoListener} event that every open tab (the Feature
      * Model graph, this class's own {@code ConstraintSuggestionsView} re-mining, ...) reacts to with
      * its own full, O(commits x features) re-scan - so N accepted suggestions did N of those
      * re-scans, not one. No-op if {@code suggestions} is empty (no transaction, no event).

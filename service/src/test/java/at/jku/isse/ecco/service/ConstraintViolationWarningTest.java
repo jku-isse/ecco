@@ -51,7 +51,7 @@ public class ConstraintViolationWarningTest {
 
             List<ConstraintMiner.Suggestion> hypotheses =
                     new ConstraintMiner(4, 0.9, null).mine(
-                            at.jku.isse.ecco.mining.ConfigurationBridge.readConfigurations(service));
+                            at.jku.isse.ecco.mining.ConfigurationBridge.readConfigurations(service.getCommits()));
             ConstraintMiner.Suggestion excludesCoreExtra = hypotheses.stream()
                     .filter(s -> s.kind == Constraint.Kind.EXCLUDES
                             && ((s.a.equals("Core") && "Extra".equals(s.b)) || (s.a.equals("Extra") && "Core".equals(s.b))))
@@ -100,7 +100,7 @@ public class ConstraintViolationWarningTest {
 
             List<ConstraintMiner.Suggestion> hypotheses =
                     new ConstraintMiner(4, 0.9, null).mine(
-                            at.jku.isse.ecco.mining.ConfigurationBridge.readConfigurations(service));
+                            at.jku.isse.ecco.mining.ConfigurationBridge.readConfigurations(service.getCommits()));
             ConstraintMiner.Suggestion excludesCoreExtra = hypotheses.stream()
                     .filter(s -> s.kind == Constraint.Kind.EXCLUDES
                             && ((s.a.equals("Core") && "Extra".equals(s.b)) || (s.a.equals("Extra") && "Core".equals(s.b))))

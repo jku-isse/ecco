@@ -5,7 +5,7 @@ import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.file.FileReader;
 import at.jku.isse.ecco.adapter.text.TextReader;
 import at.jku.isse.ecco.core.Checkout;
-import at.jku.isse.ecco.service.CommitCancelledException;
+import at.jku.isse.ecco.adapter.CommitCancelledException;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.service.EccoService;

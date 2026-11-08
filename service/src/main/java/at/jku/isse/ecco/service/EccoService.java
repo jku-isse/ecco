@@ -67,7 +67,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public static final Path DEFAULT_REPOSITORY_DIR = DEFAULT_BASE_DIR.resolve(REPOSITORY_DIR_NAME);
     public static final Path CONFIG_FILE_NAME = Paths.get(".config");
     public static final Path WARNINGS_FILE_NAME = Paths.get(".warnings");
-    public static final Path HASHES_FILE_NAME = Paths.get(".hashes");
+    public static final Path HASHES_FILE_NAME = DispatchWriter.HASHES_FILE_NAME;
     /** The per-repository settings: what each plugin chose when the repository was created. */
     public static final Path SETTINGS_FILE_NAME = Paths.get(".settings");
 

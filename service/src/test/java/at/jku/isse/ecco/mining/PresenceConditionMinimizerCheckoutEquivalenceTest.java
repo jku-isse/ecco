@@ -81,7 +81,7 @@ public class PresenceConditionMinimizerCheckoutEquivalenceTest {
 
             // same pipeline as MinimizePreviewCommand/ArtifactsView's "Minimize Presence
             // Conditions" button: re-mine fresh, filter to accepted signatures, compile once.
-            List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
+            List<Set<String>> configs = ConfigurationBridge.readConfigurations(service.getCommits());
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
             Set<String> accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
             List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();
