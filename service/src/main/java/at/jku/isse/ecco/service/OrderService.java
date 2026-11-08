@@ -21,10 +21,27 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 class OrderService {
 
-    private final EccoService owner;
+    private final ServiceState state;
 
-    OrderService(EccoService owner) {
-        this.owner = owner;
+    private final ConfigurationParser configurationParser;
+
+    private final CheckoutService checkoutService;
+
+    private final CommitService commitService;
+
+    OrderService(ServiceState state, ConfigurationParser configurationParser, CheckoutService checkoutService, CommitService commitService) {
+
+    
+    this.state = state;
+
+    
+    this.configurationParser = configurationParser;
+
+    
+    this.checkoutService = checkoutService;
+
+    
+    this.commitService = commitService;
     }
 
     /** See {@link EccoService#recordOrder}. */
@@ -43,7 +60,7 @@ class OrderService {
      * @return how many precedences were added
      */
     int recordOrders(Map<Node, List<? extends Node>> orders) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         Map<Artifact.Op<?>, List<Artifact<?>>> byArtifact = new LinkedHashMap<>();
         for (Map.Entry<Node, List<? extends Node>> order : orders.entrySet()) {
             if (!(order.getKey().getArtifact() instanceof Artifact.Op<?> artifact) || !artifact.isOrdered() || artifact.getPartialOrderGraph() == null)
@@ -92,13 +109,13 @@ class OrderService {
      * @return how many precedences were added; 0 if the repository already had the files' order
      */
     int recordOrderOfFiles(List<Path> files) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(files);
-        String configurationString = owner.getConfigStringFromFile(owner.baseDir);
+        String configurationString = this.commitService.getConfigStringFromFile(this.state.baseDir());
         if (configurationString.isEmpty())
-            throw new EccoException("The working directory holds no checkout: " + owner.baseDir.resolve(EccoService.CONFIG_FILE_NAME) + " is missing or empty.");
-        Configuration configuration = owner.parseConfigurationString(configurationString);
-        Checkout checkout = owner.compose(configuration);
+            throw new EccoException("The working directory holds no checkout: " + this.state.baseDir().resolve(EccoService.CONFIG_FILE_NAME) + " is missing or empty.");
+        Configuration configuration = this.configurationParser.parseConfigurationString(configurationString);
+        Checkout checkout = this.checkoutService.compose(configuration);
 
         Map<Node, List<? extends Node>> orders = new LinkedHashMap<>();
         for (Path file : files) {
@@ -106,7 +123,7 @@ class OrderService {
             if (composed == null)
                 throw new EccoException(file + " is not part of the checkout of " + configurationString + ".");
             Node read = null;
-            for (Node root : context.reader.readSpecificFiles(owner.baseDir, new Path[]{file})) {
+            for (Node root : context.reader.readSpecificFiles(this.state.baseDir(), new Path[]{file})) {
                 read = findFile(root, file);
                 if (read != null) break;
             }

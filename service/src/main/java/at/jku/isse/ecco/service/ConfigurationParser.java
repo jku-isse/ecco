@@ -30,10 +30,12 @@ class ConfigurationParser {
     /** The length revision ids are truncated to for display (FeatureRevision#getFeatureRevisionString). */
     private static final int DISPLAYED_ID_LENGTH = 7;
 
-    private final EccoService owner;
+    private final ServiceState state;
 
-    ConfigurationParser(EccoService owner) {
-        this.owner = owner;
+    ConfigurationParser(ServiceState state) {
+
+    
+    this.state = state;
     }
 
     /**
@@ -44,6 +46,13 @@ class ConfigurationParser {
      * @return The configuration object.
      */
     Configuration parseConfigurationString(String configurationString) {
+        // holds the service, as EccoService's synchronized parseConfigurationString did for every service calling it
+        synchronized (this.state.lock()) {
+            return this.parseConfigurationStringHolding(configurationString);
+        }
+    }
+
+    private Configuration parseConfigurationStringHolding(String configurationString) {
         checkNotNull(configurationString);
         // spaces around the whole (" A, B ", a pasted line) are no part of it
         configurationString = configurationString.strip();
@@ -55,12 +64,12 @@ class ConfigurationParser {
         }
 
         if (entries.isEmpty()) {
-            return owner.context.entityFactory.createConfiguration(new FeatureRevision[0]);
+            return this.state.currentContext().entityFactory.createConfiguration(new FeatureRevision[0]);
         }
 
         String text = configurationString;
-        return owner.context.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error parsing configuration string: " + configurationString, () -> {
-            Repository.Op repository = owner.context.repositoryDao.load();
+        return this.state.currentContext().inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error parsing configuration string: " + configurationString, () -> {
+            Repository.Op repository = this.state.currentContext().repositoryDao.load();
 
             Set<FeatureRevision> featureRevisions = new HashSet<>();
             // the features of this string not in the repository yet, by name: "X.1, X.2" names one
@@ -115,7 +124,7 @@ class ConfigurationParser {
                     throw new EccoException("Feature " + featureRevision.getFeature().getName() + " is selected twice, in different revisions: a configuration selects one revision of a feature.");
             }
 
-            Configuration configuration = owner.context.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
+            Configuration configuration = this.state.currentContext().entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
             configuration.setOriginalConfigString(text);
             return configuration;
         });
@@ -153,7 +162,7 @@ class ConfigurationParser {
      * ParseConfigurationPhantomRevisionTest. Committing adds the revision to the repository by id.
      */
     private Feature temporaryCopyOf(Feature feature) {
-        return owner.context.entityFactory.createFeature(feature.getId(), feature.getName());
+        return this.state.currentContext().entityFactory.createFeature(feature.getId(), feature.getName());
     }
 
     private Feature getFeature(Repository.Op repository, ConfigurationText.Entry entry, Map<String, Feature> newFeatures) {
@@ -177,7 +186,7 @@ class ConfigurationParser {
                             + featureName.substring(1) + ", leave it out.");
                 }
                 // a temporary feature object, the same for each mention in this configuration
-                feature = newFeatures.computeIfAbsent(featureName, name -> owner.context.entityFactory.createFeature(UUID.randomUUID().toString(), name));
+                feature = newFeatures.computeIfAbsent(featureName, name -> this.state.currentContext().entityFactory.createFeature(UUID.randomUUID().toString(), name));
             } else if (features.size() == 1) {
                 feature = features.iterator().next();
             } else {
@@ -189,6 +198,13 @@ class ConfigurationParser {
 
 
     Collection<FeatureRevision> parseFeatureRevisionsString(String featureRevisionsString) {
+        // holds the service, as EccoService's synchronized parseFeatureRevisionsString did for every service calling it
+        synchronized (this.state.lock()) {
+            return this.parseFeatureRevisionsStringHolding(featureRevisionsString);
+        }
+    }
+
+    private Collection<FeatureRevision> parseFeatureRevisionsStringHolding(String featureRevisionsString) {
         if (featureRevisionsString == null)
             throw new EccoException("No feature revisions string provided.");
 
@@ -199,14 +215,14 @@ class ConfigurationParser {
             throw new EccoException("Invalid feature revisions string provided.");
         }
 
-        return owner.context.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error parsing feature revisions string: " + featureRevisionsString, () -> {
+        return this.state.currentContext().inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error parsing feature revisions string: " + featureRevisionsString, () -> {
             Collection<FeatureRevision> featureRevisions = new ArrayList<>();
 
             if (entries.isEmpty()) {
                 return featureRevisions;
             }
 
-            Repository.Op repository = owner.context.repositoryDao.load();
+            Repository.Op repository = this.state.currentContext().repositoryDao.load();
 
             for (ConfigurationText.Entry entry : entries) {
                 String featureName = entry.feature();

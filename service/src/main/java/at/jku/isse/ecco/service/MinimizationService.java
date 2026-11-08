@@ -20,10 +20,17 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 final class MinimizationService {
 
-    private final EccoService owner;
+    private final ServiceState state;
 
-    MinimizationService(EccoService owner) {
-        this.owner = owner;
+    private final ConstraintService constraintService;
+
+    MinimizationService(ServiceState state, ConstraintService constraintService) {
+
+    
+    this.state = state;
+
+    
+    this.constraintService = constraintService;
     }
 
     /**
@@ -33,10 +40,10 @@ final class MinimizationService {
      * computed before a commit that landed during the run.
      */
     Map<String, String> minimizationBases() {
-        this.owner.checkInitialized();
+        this.state.checkInitialized();
         String repositoryBasis = this.repositoryBasis();
         Map<String, String> bases = new HashMap<>();
-        for (Association association : this.owner.getRepository().getAssociations())
+        for (Association association : this.state.context().repository().getAssociations())
             bases.put(association.getId(), MinimizationBasis.of(association, repositoryBasis));
         return bases;
     }
@@ -48,10 +55,10 @@ final class MinimizationService {
      * relied on; its minimized condition is then left out rather than shown or used stale.
      */
     Map<String, String> validMinimizedConditions() {
-        this.owner.checkInitialized();
+        this.state.checkInitialized();
         Map<String, String> valid = new HashMap<>();
         String repositoryBasis = null;
-        for (Association association : this.owner.getRepository().getAssociations()) {
+        for (Association association : this.state.context().repository().getAssociations()) {
             Association.Op op = (Association.Op) association;
             if (op.getMinimizedCondition() == null || op.getMinimizedConditionBasis() == null)
                 continue;
@@ -64,8 +71,8 @@ final class MinimizationService {
     }
 
     private String repositoryBasis() {
-        return MinimizationBasis.ofRepository(ConfigurationBridge.readConfigurations(this.owner.getCommits()),
-                AcceptedConstraints.acceptedSignatures(this.owner.getRepository().getConstraints()));
+        return MinimizationBasis.ofRepository(ConfigurationBridge.readConfigurations(this.state.context().commits()),
+                AcceptedConstraints.acceptedSignatures(this.state.context().repository().getConstraints()));
     }
 
     /**
@@ -80,7 +87,7 @@ final class MinimizationService {
      * @param basisByAssociationId     association id -&gt; fingerprint, from {@link #minimizationBases}
      */
     void persistMinimizedConditions(Map<String, String> minimizedByAssociationId, Map<String, String> basisByAssociationId) {
-        RepositoryContext context = this.owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(minimizedByAssociationId);
         checkNotNull(basisByAssociationId);
         if (minimizedByAssociationId.isEmpty()) return;
@@ -114,17 +121,17 @@ final class MinimizationService {
         record Read(Map<String, String> bases, CheckoutConditions.Input input) {
         }
         Read read;
-        synchronized (this.owner) {
-            RepositoryContext context = this.owner.context();
+        synchronized (this.state.lock()) {
+            RepositoryContext context = this.state.context();
             read = context.read("Error reading the repository for minimization.", () -> {
                 Repository.Op repository = context.repositoryDao.load();
                 return new Read(CheckoutConditions.bases(repository), CheckoutConditions.read(repository.getAssociations(),
-                        this.owner.acceptedSuggestions(repository), repository.getFeatures()));
+                        this.constraintService.acceptedSuggestions(repository), repository.getFeatures()));
             });
         }
         Map<String, String> bases = read.bases();
         Map<String, LogicCondition> minimized = CheckoutConditions.minimize(read.input());
-        this.owner.context.write("Error persisting checkout conditions.", repository -> {
+        this.state.currentContext().write("Error persisting checkout conditions.", repository -> {
             for (Association.Op association : repository.getAssociations()) {
                 LogicCondition condition = minimized.get(association.getId());
                 String basis = bases.get(association.getId());
@@ -140,7 +147,7 @@ final class MinimizationService {
 
     /** The stored checkout conditions that are still valid, by association id - see {@link CheckoutConditions#valid}. */
     Map<String, LogicCondition> validCheckoutConditions() {
-        RepositoryContext context = this.owner.context();
+        RepositoryContext context = this.state.context();
         return context.read(null, () -> CheckoutConditions.valid(context.repositoryDao.load()));
     }
 }

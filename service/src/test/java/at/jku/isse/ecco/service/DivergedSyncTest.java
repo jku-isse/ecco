@@ -70,7 +70,7 @@ public class DivergedSyncTest {
         Repository.Op stale;
         try (EccoService service = open(b); EccoService origin = open(a)) {
             Repository.Op repository = (Repository.Op) service.getRepository();
-            stale = service.copyOfCommits(repository, repository.commitsMissingIn(RemoteSyncService.commitIds((Repository.Op) origin.getRepository()), List.of()));
+            stale = service.commitReplay.copyOfCommits(repository, repository.commitsMissingIn(RemoteSyncService.commitIds((Repository.Op) origin.getRepository()), List.of()));
         }
         push(b, a);
         List<String> commits = commits(a);

@@ -133,7 +133,7 @@ public class SyncProtocolHardeningTest {
 				subset = repository.subset(List.of(), repository.getMaxOrder(), client.context.entityFactory);
 				client.context.transactionStrategy.end();
 			}
-			RemoteSyncService sync = new RemoteSyncService(client);
+			RemoteSyncService sync = client.remoteSyncService;
 			EccoException thrown = assertThrows(EccoException.class,
 					() -> sync.sendPush(client.getRemote("origin"), subset, client.settings.current()));
 
@@ -250,7 +250,7 @@ public class SyncProtocolHardeningTest {
 			Map<String, String> before = server.service.settings.current();
 			assertFalse(before.containsKey(LilypondPlugin.MUSICAL_TOKENS_SETTING));
 
-			assertTrue(new RemoteSyncService(client).mergeSettingsIntoRemote(client.getRemote("origin"), java.util.Set.of(LilypondPlugin.class.getName())),
+			assertTrue(client.remoteSyncService.mergeSettingsIntoRemote(client.getRemote("origin"), java.util.Set.of(LilypondPlugin.class.getName())),
 					"answered");
 			assertEquals(before, server.service.settings.current(), "nothing taken over before a push arrives");
 		}

@@ -49,10 +49,32 @@ public class RemoteSyncService {
 
     private static final Logger LOGGER = Logger.getLogger(RemoteSyncService.class.getName());
 
-    private final EccoService owner;
+    private final ServiceState state;
 
-    public RemoteSyncService(EccoService owner) {
-        this.owner = owner;
+    private final ListenerRegistry listeners;
+
+    private final RepositorySettings repositorySettings;
+
+    private final ConfigurationParser configurationParser;
+
+    private final CommitReplay commitReplay;
+
+    public RemoteSyncService(ServiceState state, ListenerRegistry listeners, RepositorySettings repositorySettings, ConfigurationParser configurationParser, CommitReplay commitReplay) {
+
+    
+    this.state = state;
+
+    
+    this.listeners = listeners;
+
+    
+    this.repositorySettings = repositorySettings;
+
+    
+    this.configurationParser = configurationParser;
+
+    
+    this.commitReplay = commitReplay;
     }
 
     /** How long connecting to a remote may take. */
@@ -82,7 +104,7 @@ public class RemoteSyncService {
     }
 
     public Remote addRemote(String name, String address) {
-        owner.checkInitialized();
+        this.state.checkInitialized();
 
         Path path;
         try {
@@ -109,7 +131,7 @@ public class RemoteSyncService {
     }
 
     public Remote addRemote(String name, String address, Remote.Type type) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         return context.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error adding remote.", () -> {
             if (this.getRemote(name) != null)
@@ -129,7 +151,7 @@ public class RemoteSyncService {
      *                       address does not fit the type; the remote is then unchanged.
      */
     public Remote updateRemote(String name, String newName, String address, Remote.Type type) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         if (newName == null || newName.isBlank())
             throw new EccoException("Remote name must not be empty.");
@@ -160,7 +182,7 @@ public class RemoteSyncService {
     }
 
     public void removeRemote(String name) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         context.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error removing remote.", () -> {
             context.remoteDao.removeRemote(name);
@@ -169,7 +191,7 @@ public class RemoteSyncService {
     }
 
     public Remote getRemote(String name) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         return context.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error retrieving remote.", () -> {
             Remote remote = context.remoteDao.loadRemote(name);
@@ -178,7 +200,7 @@ public class RemoteSyncService {
     }
 
     public Collection<Remote> getRemotes() {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         return context.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error retrieving remotes.", () -> {
             Collection<Remote> remotes = context.remoteDao.loadAllRemotes();
@@ -218,8 +240,8 @@ public class RemoteSyncService {
      */
     private void rollbackIfTransactionInProgress() {
         try {
-            synchronized (owner) {
-                owner.context.transactionStrategy.rollback();
+            synchronized (this.state.lock()) {
+                this.state.currentContext().transactionStrategy.rollback();
             }
         } catch (EccoException ignored) {
             // no transaction was active -- nothing to roll back
@@ -244,7 +266,7 @@ public class RemoteSyncService {
      *                      repository and push into it.
      */
     public void startServer(int port, boolean allInterfaces) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         if (!this.serverLock.tryLock())
             throw new EccoException("Server is already running.");
@@ -261,8 +283,8 @@ public class RemoteSyncService {
             // the port bound, which for port 0 is one the system chose
             String scope = allInterfaces ? " (all interfaces)" : " (local connections only)";
             LOGGER.info("Server started on port " + this.serverPort + scope + ".");
-            owner.listeners.fireServerEvent("Server started on port " + this.serverPort + scope + ".");
-            owner.listeners.fireServerStartedEvent(this.serverPort);
+            this.listeners.fireServerEvent("Server started on port " + this.serverPort + scope + ".");
+            this.listeners.fireServerStartedEvent(this.serverPort);
 
             while (!serverShutdown) {
                 try (SocketChannel sChannel = ssChannel.accept()) {
@@ -273,7 +295,7 @@ public class RemoteSyncService {
                     // determine if it is a push (receive data) or a pull (send data)
                     String command = (String) ois.readObject();
                     LOGGER.info("COMMAND: " + command);
-                    owner.listeners.fireServerEvent("New connection from " + sChannel.getRemoteAddress() + " with command '" + command + "'.");
+                    this.listeners.fireServerEvent("New connection from " + sChannel.getRemoteAddress() + " with command '" + command + "'.");
 
                     // Every repository/transaction section below runs under the EccoService monitor,
                     // like EccoService's own synchronized operations: the transaction strategy keeps
@@ -287,9 +309,9 @@ public class RemoteSyncService {
                             // the settings, or why they cannot be told: a closed connection is taken
                             // for an older server, which was then synced with unchecked
                             Object reply;
-                            synchronized (owner) {
+                            synchronized (this.state.lock()) {
                                 try {
-                                    reply = new HashMap<>(owner.settings.current());
+                                    reply = new HashMap<>(this.repositorySettings.current());
                                 } catch (RuntimeException e) {
                                     reply = "Could not tell its settings: " + messages(e);
                                 }
@@ -306,12 +328,12 @@ public class RemoteSyncService {
                             Set<String> plugins = (Set<String>) ois.readObject();
                             String remoteName = (String) ois.readObject();
                             String reply;
-                            synchronized (owner) {
+                            synchronized (this.state.lock()) {
                                 try {
                                     // compared only: the push takes them over in its own transaction - written
                                     // here, a push that failed or was cancelled afterwards left them
-                                    owner.settings.toTakeOver(plugins, settings, owner.settings.current(),
-                                            owner.settings.pluginsWithFiles(), "push to '" + remoteName + "'");
+                                    this.repositorySettings.toTakeOver(plugins, settings, this.repositorySettings.current(),
+                                            this.repositorySettings.pluginsWithFiles(), "push to '" + remoteName + "'");
                                     reply = "OK";
                                 } catch (EccoException e) {
                                     reply = e.getMessage();
@@ -328,7 +350,7 @@ public class RemoteSyncService {
                             // copy features using mem entity factory - under the service monitor
                             // (see the comment above the switch)
                             Collection<Feature> copiedFeatures;
-                            synchronized (owner) {
+                            synchronized (this.state.lock()) {
                                 context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 // ended also when it fails: left open, a commit of the GUI's next could not write
                                 try {
@@ -372,7 +394,7 @@ public class RemoteSyncService {
                         }
                         case "CLONE": { // a fork of everything: the repository as it is (Repository.Op#copyInto)
                             byte[] payload;
-                            synchronized (owner) {
+                            synchronized (this.state.lock()) {
                                 context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 try {
                                     payload = SyncObjectStreams.writeCopy(context.repositoryDao.load());
@@ -390,7 +412,7 @@ public class RemoteSyncService {
                         case "COMMIT_IDS": { // before a push of commits: which this repository has
                             ArrayList<String> ids;
                             boolean mergeCommits;
-                            synchronized (owner) {
+                            synchronized (this.state.lock()) {
                                 context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 try {
                                     Repository.Op repository = context.repositoryDao.load();
@@ -411,14 +433,14 @@ public class RemoteSyncService {
                             List<String> have = (List<String>) ois.readObject();
                             String deselectedFeatureRevisionsString = (String) ois.readObject();
                             Object reply;
-                            synchronized (owner) {
-                                Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
+                            synchronized (this.state.lock()) {
+                                Collection<FeatureRevision> deselected = this.configurationParser.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
                                 context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 try {
                                     Repository.Op repository = context.repositoryDao.load();
                                     // a repository with merge commits cannot be replayed: the client merges instead
                                     reply = repository.hasMergeCommits() ? MERGE
-                                            : SyncObjectStreams.writeCopy(owner.copyOfCommits(repository, repository.commitsMissingIn(have, deselected)));
+                                            : SyncObjectStreams.writeCopy(this.commitReplay.copyOfCommits(repository, repository.commitsMissingIn(have, deselected)));
                                 } finally {
                                     context.transactionStrategy.end();
                                 }
@@ -439,20 +461,20 @@ public class RemoteSyncService {
                             Map<String, String> pushedSettings = (Map<String, String>) ois.readObject();
                             String pushedFrom = (String) ois.readObject();
                             String reply;
-                            synchronized (owner) {
+                            synchronized (this.state.lock()) {
                                 try {
                                     context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                                     Repository.Op repository = context.repositoryDao.load();
-                                    Map<String, String> takeOver = owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(commits), pushedSettings,
-                                            owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
-                                    owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
+                                    Map<String, String> takeOver = this.repositorySettings.toTakeOver(RepositorySettings.pluginsWithFiles(commits), pushedSettings,
+                                            this.repositorySettings.current(), RepositorySettings.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
+                                    this.commitReplay.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                                     context.repositoryDao.store(repository);
-                                    owner.settings.endTakingOver(takeOver);
+                                    this.repositorySettings.endTakingOver(takeOver);
                                     reply = "OK";
                                 } catch (RuntimeException e) {
                                     context.rollbackIfActive();
                                     LOGGER.warning("Push refused: " + messages(e));
-                                    owner.listeners.fireServerEvent("Push refused: " + messages(e));
+                                    this.listeners.fireServerEvent("Push refused: " + messages(e));
                                     reply = messages(e);
                                 }
                             }
@@ -472,8 +494,8 @@ public class RemoteSyncService {
                             // compute subset repository using mem entity factory - under the service
                             // monitor (see the comment above the switch)
                             Repository.Op subsetRepository;
-                            synchronized (owner) {
-                                Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
+                            synchronized (this.state.lock()) {
+                                Collection<FeatureRevision> deselected = this.configurationParser.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
                                 context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 try {
                                     Repository.Op repository = context.repositoryDao.load();
@@ -522,21 +544,21 @@ public class RemoteSyncService {
                             // checked here, in the same transaction, also when MERGE_SETTINGS said
                             // yes - a client need not ask, and the settings could have changed since
                             String reply;
-                            synchronized (owner) {
+                            synchronized (this.state.lock()) {
                                 try {
                                     context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                                     Repository.Op repository = context.repositoryDao.load();
                                     Map<String, String> takeOver = pushedSettings == null ? Map.of()
-                                            : owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(copiedRepository), pushedSettings,
-                                            owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
+                                            : this.repositorySettings.toTakeOver(RepositorySettings.pluginsWithFiles(copiedRepository), pushedSettings,
+                                            this.repositorySettings.current(), RepositorySettings.pluginsWithFiles(repository), "push to '" + pushedFrom + "'");
                                     repository.merge(copiedRepository);
                                     context.repositoryDao.store(repository);
-                                    owner.settings.endTakingOver(takeOver);
+                                    this.repositorySettings.endTakingOver(takeOver);
                                     reply = "OK";
                                 } catch (RuntimeException e) {
                                     context.rollbackIfActive();
                                     LOGGER.warning("Push refused: " + messages(e));
-                                    owner.listeners.fireServerEvent("Push refused: " + messages(e));
+                                    this.listeners.fireServerEvent("Push refused: " + messages(e));
                                     reply = messages(e);
                                 }
                             }
@@ -555,7 +577,7 @@ public class RemoteSyncService {
                     // a payload nested too deeply to read - sent by mistake or on purpose - fails
                     // this request only; it stopped the server
                     LOGGER.warning("Error receiving request: nested too deeply.");
-                    owner.listeners.fireServerEvent("Error receiving request: nested too deeply.");
+                    this.listeners.fireServerEvent("Error receiving request: nested too deeply.");
                     this.rollbackIfTransactionInProgress();
                 } catch (Error e) {
                     this.rollbackIfTransactionInProgress();
@@ -572,11 +594,11 @@ public class RemoteSyncService {
                     if (!ssChannel.isOpen())
                         break;
                     LOGGER.warning("Error receiving request.");
-                    owner.listeners.fireServerEvent("Error receiving request: " + e.getMessage());
+                    this.listeners.fireServerEvent("Error receiving request: " + e.getMessage());
                     e.printStackTrace();
                 } catch (Exception e) {
                     LOGGER.warning("Error receiving request.");
-                    owner.listeners.fireServerEvent("Error receiving request: " + e.getMessage());
+                    this.listeners.fireServerEvent("Error receiving request: " + e.getMessage());
                     e.printStackTrace();
                     this.rollbackIfTransactionInProgress();
                 }
@@ -590,8 +612,8 @@ public class RemoteSyncService {
         }
 
         LOGGER.info("Server stopped.");
-        owner.listeners.fireServerEvent("Server stopped.");
-        owner.listeners.fireServerStoppedEvent();
+        this.listeners.fireServerEvent("Server stopped.");
+        this.listeners.fireServerStoppedEvent();
     }
 
     public void stopServer() {
@@ -621,7 +643,7 @@ public class RemoteSyncService {
      * {@link OperationCancelledException} and changes nothing (its transaction is rolled back).
      */
     public void fetch(String remoteName, java.util.function.BooleanSupplier cancelled) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         try {
             context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
@@ -648,13 +670,13 @@ public class RemoteSyncService {
                     int size = (Integer) ois.readObject();
                     progressInputStream.setMaxBytes(size);
                     progressInputStream.resetProgress();
-                    progressInputStream.addListener(owner);
+                    progressInputStream.addListener(this.listeners);
 
                     // retrieve features
                     @SuppressWarnings("unchecked")
                     Collection<Feature> features = (Collection<Feature>) ois.readObject();
 
-                    progressInputStream.removeListener(owner);
+                    progressInputStream.removeListener(this.listeners);
 
 
                     // copy it using this entity factory
@@ -752,11 +774,11 @@ public class RemoteSyncService {
             }
             progressInputStream.setMaxBytes((Integer) reply);
             progressInputStream.resetProgress();
-            progressInputStream.addListener(owner);
+            progressInputStream.addListener(this.listeners);
             try {
                 return SyncObjectStreams.readCopy((byte[]) ois.readObject());
             } finally {
-                progressInputStream.removeListener(owner);
+                progressInputStream.removeListener(this.listeners);
             }
         }
     }
@@ -797,14 +819,14 @@ public class RemoteSyncService {
             oos.writeObject("PUSH_COMMITS");
             pos.setMaxBytes(payload.length);
             pos.resetProgress();
-            pos.addListener(owner);
+            pos.addListener(this.listeners);
             oos.writeObject(payload);
             oos.writeObject(new HashMap<>(settings));
             oos.writeObject(remote.getName());
             // see sendPush for why both are necessary
             oos.flush();
             sChannel.shutdownOutput();
-            pos.removeListener(owner);
+            pos.removeListener(this.listeners);
             this.readPushReply(sChannel, remote, answers);
         }
     }
@@ -865,7 +887,7 @@ public class RemoteSyncService {
             RemoteSyncService.connect(sChannel, socketAddressOf(remote));
             ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
             oos.writeObject("MERGE_SETTINGS");
-            oos.writeObject(new HashMap<>(owner.settings.current()));
+            oos.writeObject(new HashMap<>(this.repositorySettings.current()));
             oos.writeObject(new HashSet<>(plugins));
             oos.writeObject(remote.getName());
             oos.flush();
@@ -914,7 +936,7 @@ public class RemoteSyncService {
             pos.setMaxBytes(byteOutputStream.size());
             pos.resetProgress();
 
-            pos.addListener(owner);
+            pos.addListener(this.listeners);
             SyncObjectStreams.writeRepository(oos, subsetRepository);
             // the settings the files were read with, for the remote to check
             oos.writeObject(new HashMap<>(settings));
@@ -934,7 +956,7 @@ public class RemoteSyncService {
             // all -- see the FETCH case in startServer() for that one).
             oos.flush();
             sChannel.shutdownOutput();
-            pos.removeListener(owner);
+            pos.removeListener(this.listeners);
 
             this.readPushReply(sChannel, remote, answers);
         }
@@ -976,7 +998,7 @@ public class RemoteSyncService {
      * {@link OperationCancelledException} and changes nothing (its transaction is rolled back).
      */
     public void pull(String remoteName, String deselectedFeatureRevisionsString, java.util.function.BooleanSupplier cancelled) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         // settings this repository takes over from the remote with its first files of a plugin
         Map<String, String> takeOver = Map.of();
@@ -1008,9 +1030,9 @@ public class RemoteSyncService {
                 if (commits != null) {
                     OperationCancelledException.check(cancelled);
                     if (remoteSettings != null)
-                        takeOver = owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(commits), remoteSettings,
-                                owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
-                    owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
+                        takeOver = this.repositorySettings.toTakeOver(RepositorySettings.pluginsWithFiles(commits), remoteSettings,
+                                this.repositorySettings.current(), RepositorySettings.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
+                    this.commitReplay.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                     context.repositoryDao.store(repository);
                 } else try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
@@ -1028,12 +1050,12 @@ public class RemoteSyncService {
                     int size = (Integer) ois.readObject();
                     progressInputStream.setMaxBytes(size);
                     progressInputStream.resetProgress();
-                    progressInputStream.addListener(owner);
+                    progressInputStream.addListener(this.listeners);
 
                     // retrieve remote repository
                     Repository.Op subsetRepository = SyncObjectStreams.readRepository(ois);
 
-                    progressInputStream.removeListener(owner);
+                    progressInputStream.removeListener(this.listeners);
 
 
                     // copy it using this entity factory
@@ -1042,8 +1064,8 @@ public class RemoteSyncService {
 
                     // merge into this repository - if both read the files the same way
                     if (remoteSettings != null)
-                        takeOver = owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(copiedRepository), remoteSettings,
-                                owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
+                        takeOver = this.repositorySettings.toTakeOver(RepositorySettings.pluginsWithFiles(copiedRepository), remoteSettings,
+                                this.repositorySettings.current(), RepositorySettings.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
                     repository.merge(copiedRepository);
                     context.repositoryDao.store(repository);
                 } catch (Exception e) {
@@ -1074,7 +1096,7 @@ public class RemoteSyncService {
                             LOGGER.warning((repository.hasMergeCommits() ? "This repository" : "Remote '" + remote.getName() + "'") + MERGING);
                             subsetParentRepository = parentRepository.subset(deselected, parentRepository.getMaxOrder(), context.entityFactory);
                         } else {
-                            commits = owner.copyOfCommits(parentRepository, parentRepository.commitsMissingIn(commitIds(repository), deselected));
+                            commits = this.commitReplay.copyOfCommits(parentRepository, parentRepository.commitsMissingIn(commitIds(repository), deselected));
                         }
 
                         parentService.context.transactionStrategy.end();
@@ -1091,10 +1113,10 @@ public class RemoteSyncService {
                 OperationCancelledException.check(cancelled);
                 // into this repository - if both read the files the same way
                 Repository.Op received = commits != null ? commits : subsetParentRepository;
-                takeOver = owner.settings.toTakeOver(RepositorySettings.pluginsWithFiles(received), parentSettings,
-                        owner.settings.current(), RepositorySettings.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
+                takeOver = this.repositorySettings.toTakeOver(RepositorySettings.pluginsWithFiles(received), parentSettings,
+                        this.repositorySettings.current(), RepositorySettings.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
                 if (commits != null)
-                    owner.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
+                    this.commitReplay.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                 else
                     repository.merge(subsetParentRepository);
                 context.repositoryDao.store(repository);
@@ -1102,7 +1124,7 @@ public class RemoteSyncService {
 
             // the last chance: what follows writes
             OperationCancelledException.check(cancelled);
-            owner.settings.endTakingOver(takeOver);
+            this.repositorySettings.endTakingOver(takeOver);
         } catch (Error e) {
             context.rollbackIfActive();
             throw e;
@@ -1134,7 +1156,7 @@ public class RemoteSyncService {
      * sent: the server merges it.
      */
     public void push(String remoteName, String deselectedFeatureRevisionsString, java.util.function.BooleanSupplier cancelled) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
 
         try {
             context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
@@ -1150,7 +1172,7 @@ public class RemoteSyncService {
                 // the subset to merge as before where either repository has merge commits or the remote is too old
                 context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                 Repository.Op repository = context.repositoryDao.load();
-                Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
+                Collection<FeatureRevision> deselected = this.configurationParser.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
                 ArrayList<String> remoteIds;
                 try {
                     if (repository.hasMergeCommits()) {
@@ -1164,13 +1186,13 @@ public class RemoteSyncService {
                     throw new EccoException("Error during remote push.", e);
                 }
                 if (remoteIds != null) {
-                    Repository.Op commits = owner.copyOfCommits(repository, repository.commitsMissingIn(remoteIds, deselected));
+                    Repository.Op commits = this.commitReplay.copyOfCommits(repository, repository.commitsMissingIn(remoteIds, deselected));
                     context.transactionStrategy.end();
                     // the last chance: the server replays what it gets
                     OperationCancelledException.check(cancelled);
                     boolean answers = this.mergeSettingsIntoRemote(remote, RepositorySettings.pluginsWithFiles(commits));
                     try {
-                        this.sendPushCommits(remote, commits, owner.settings.current(), answers);
+                        this.sendPushCommits(remote, commits, this.repositorySettings.current(), answers);
                     } catch (EccoException e) {
                         throw e;
                     } catch (Exception e) {
@@ -1187,7 +1209,7 @@ public class RemoteSyncService {
                 boolean answers = this.mergeSettingsIntoRemote(remote, RepositorySettings.pluginsWithFiles(subsetRepository));
 
                 try {
-                    this.sendPush(remote, subsetRepository, owner.settings.current(), answers);
+                    this.sendPush(remote, subsetRepository, this.repositorySettings.current(), answers);
                 } catch (EccoException e) {
                     throw e;
                 } catch (Exception e) {
@@ -1202,7 +1224,7 @@ public class RemoteSyncService {
                     parentService.open();
 
                     Repository.Op repository = context.repositoryDao.load();
-                    Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
+                    Collection<FeatureRevision> deselected = this.configurationParser.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
                     OperationCancelledException.check(cancelled);
 
                     // into parent repository - if both read the files the same way: this repository's
@@ -1218,13 +1240,13 @@ public class RemoteSyncService {
                             LOGGER.warning((repository.hasMergeCommits() ? "This repository" : "Remote '" + remote.getName() + "'") + MERGING);
                             subsetRepository = repository.subset(deselected, repository.getMaxOrder(), parentService.context.entityFactory);
                         } else {
-                            commits = parentService.copyOfCommits(repository, repository.commitsMissingIn(commitIds(parentRepository), deselected));
+                            commits = parentService.commitReplay.copyOfCommits(repository, repository.commitsMissingIn(commitIds(parentRepository), deselected));
                         }
                         Map<String, String> takeOver = parentService.settings.toTakeOver(RepositorySettings.pluginsWithFiles(commits != null ? commits : subsetRepository),
-                                owner.settings.current(), parentService.settings.current(), RepositorySettings.pluginsWithFiles(parentRepository),
+                                this.repositorySettings.current(), parentService.settings.current(), RepositorySettings.pluginsWithFiles(parentRepository),
                                 "push to '" + remote.getName() + "'");
                         if (commits != null)
-                            parentService.replayInto(parentRepository, commits, new ArrayList<>(commits.getCommits()));
+                            parentService.commitReplay.replayInto(parentRepository, commits, new ArrayList<>(commits.getCommits()));
                         else
                             parentRepository.merge(subsetRepository);
                         parentService.context.repositoryDao.store(parentRepository);

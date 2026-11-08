@@ -32,20 +32,22 @@ import java.util.stream.Collectors;
  */
 final class RepositorySettings {
 
-    private final EccoService owner;
+    private final ServiceState state;
 
-    RepositorySettings(EccoService owner) {
-        this.owner = owner;
+    RepositorySettings(ServiceState state) {
+
+    
+    this.state = state;
     }
 
     private Path file() {
-        return this.owner.getRepositoryDir().resolve(EccoService.SETTINGS_FILE_NAME);
+        return this.state.repositoryDir().resolve(EccoService.SETTINGS_FILE_NAME);
     }
 
     /** Records each plugin's settings for a new repository (see ArtifactPlugin#newRepositorySettings). */
     void writeForNewRepository() throws IOException {
         Properties settings = new Properties();
-        for (ArtifactPlugin plugin : this.owner.getArtifactPlugins()) {
+        for (ArtifactPlugin plugin : this.state.artifactPlugins()) {
             settings.putAll(plugin.newRepositorySettings());
         }
         write(this.file(), settings, "Chosen when this repository was created; changing them changes how files are read.");
@@ -89,7 +91,7 @@ final class RepositorySettings {
         }
         Set<String> pluginsWithFiles = null;
         boolean adopted = false;
-        for (ArtifactPlugin plugin : this.owner.getArtifactPlugins()) {
+        for (ArtifactPlugin plugin : this.state.artifactPlugins()) {
             Map<String, String> own = plugin.newRepositorySettings();
             if (own.isEmpty() || own.keySet().stream().anyMatch(settings::containsKey))
                 continue;
@@ -141,12 +143,12 @@ final class RepositorySettings {
 
     /** This repository's settings, empty if it has none. */
     Map<String, String> current() {
-        return read(this.owner.getRepositoryDir());
+        return read(this.state.repositoryDir());
     }
 
     /** The plugins whose files this repository holds - in a read-only transaction of its own. */
     Set<String> pluginsWithFiles() {
-        return this.owner.context.read(null, () -> pluginsWithFiles(this.owner.context.repositoryDao.load()));
+        return this.state.currentContext().read(null, () -> pluginsWithFiles(this.state.currentContext().repositoryDao.load()));
     }
 
     /**
@@ -165,7 +167,7 @@ final class RepositorySettings {
     Map<String, String> toTakeOver(Set<String> incomingPlugins, Map<String, String> incomingSettings,
                                    Map<String, String> receivingSettings, Set<String> receivingPlugins, String action) {
         Map<String, String> takeOver = new TreeMap<>();
-        for (ArtifactPlugin plugin : this.owner.getArtifactPlugins()) {
+        for (ArtifactPlugin plugin : this.state.artifactPlugins()) {
             Set<String> keys = plugin.newRepositorySettings().keySet();
             if (keys.isEmpty() || !incomingPlugins.contains(plugin.getPluginId()))
                 continue;
@@ -223,7 +225,7 @@ final class RepositorySettings {
         Map<String, String> before = settings.isEmpty() ? null : this.current();
         this.takeOver(settings);
         try {
-            this.owner.context.transactionStrategy.end();
+            this.state.currentContext().transactionStrategy.end();
         } catch (RuntimeException | Error e) {
             if (before != null) {
                 try {

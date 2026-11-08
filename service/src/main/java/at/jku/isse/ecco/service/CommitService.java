@@ -38,7 +38,11 @@ class CommitService {
 
     private static final Logger LOGGER = Logger.getLogger(CommitService.class.getName());
 
-    private final EccoService owner;
+    private final ServiceState state;
+
+    private final ListenerRegistry listeners;
+
+    private final RepositorySettings repositorySettings;
 
     // set from another thread (the GUI's Cancel) while commit() runs; checked only before anything is
     // stored, so a cancelled commit is rolled back like a failed one and a commit that is already
@@ -46,20 +50,28 @@ class CommitService {
     private volatile boolean cancelRequested;
     private volatile boolean committing;
 
-    CommitService(EccoService owner) {
-        this.owner = owner;
+    CommitService(ServiceState state, ListenerRegistry listeners, RepositorySettings repositorySettings) {
+
+    
+    this.state = state;
+
+    
+    this.listeners = listeners;
+
+    
+    this.repositorySettings = repositorySettings;
     }
 
     /**
      * Commits the files in the base directory as the given configuration and returns the resulting commit object.
      */
     Commit commit(String commitMessage, Configuration configuration, String committer) {
-        return this.commit(commitMessage, configuration, committer, owner.baseDir);
+        return this.commit(commitMessage, configuration, committer, this.state.baseDir());
     }
 
     /** As above, the files in [directory] - the base directory is left as it is. */
     Commit commit(String commitMessage, Configuration configuration, String committer, Path directory) {
-        RepositoryContext context = owner.context();
+        RepositoryContext context = this.state.context();
         checkNotNull(configuration);
         // presence conditions are built from the features of the commits an artifact occurs in: what
         // is committed without any feature gets no condition that can ever hold, so no checkout
@@ -70,13 +82,13 @@ class CommitService {
 
         this.cancelRequested = false;
         this.committing = true;
-        owner.listeners.setWriteInProgress(true);
+        this.listeners.setWriteInProgress(true);
         try {
             context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
             Repository.Op repository = context.repositoryDao.load();
             repository.addFeatureRevisions(configuration.getFeatureRevisions());
-            owner.settings.adopt(repository);
+            this.repositorySettings.adopt(repository);
             Set<Node.Op> nodes = this.readFiles(directory);
             this.checkCancelled();
             ArrayList<Variant> variants = repository.getVariants();
@@ -119,7 +131,7 @@ class CommitService {
             LOGGER.info(Repository.class.getName() + ".extract(): " + extractTime +
                     "ms, .transactionStrategy.end(): " + endStrategyTime + "ms");
 
-            owner.listeners.fireStatusChangedEvent();
+            this.listeners.fireStatusChangedEvent();
 
             return commit;
         } catch (CommitCancelledException e) {
@@ -140,7 +152,7 @@ class CommitService {
         } finally {
             this.committing = false;
             this.cancelRequested = false;
-            owner.listeners.setWriteInProgress(false);
+            this.listeners.setWriteInProgress(false);
         }
     }
 
@@ -183,6 +195,6 @@ class CommitService {
     }
 
     Set<Node.Op> readFiles(Path directory) {
-        return owner.context.reader.read(directory, new Path[]{Paths.get("")});
+        return this.state.currentContext().reader.read(directory, new Path[]{Paths.get("")});
     }
 }
