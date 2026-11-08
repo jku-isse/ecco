@@ -462,7 +462,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
         // inject
         try {
-            RepositoryContext context = new RepositoryContext();
+            RepositoryContext context = new RepositoryContext(this, this.listeners);
             injector.injectMembers(context);
             this.context = context;
             injector.injectMembers(this.evaluationStrategyFactory);
@@ -564,7 +564,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public synchronized Repository getRepository() {
         this.checkInitialized();
 
-        return this.readTransaction("Error when retrieving repository.", () -> {
+        return this.context.read("Error when retrieving repository.", () -> {
             this.context.repositoryDao.init();
             return this.context.repositoryDao.load();
         });
@@ -826,79 +826,21 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
-     * Runs {@code transaction} on the repository inside a READ_WRITE transaction, stores the result
-     * and fires a status change - the shared write path of VariantManager and ConstraintService (both
-     * used to carry their own identical copy). Rolls back quietly on failure, so a failed begin()
-     * can't replace the real error with "No transaction active".
+     * The open repository's context; throws {@link ServiceNotInitializedException} if no repository
+     * is open - the check every operation of the services starts with.
      */
-    synchronized void writeTransaction(java.util.function.Function<Repository.Op, Repository.Op> transaction) {
-        this.writeTransaction("Error during repository write transaction.", transaction);
-    }
-
-    synchronized void writeTransaction(String errorMessage, java.util.function.Function<Repository.Op, Repository.Op> transaction) {
-        this.listeners.setWriteInProgress(true);
-        try {
-            this.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, errorMessage, () -> {
-                this.context.repositoryDao.store(transaction.apply(this.context.repositoryDao.load()));
-                return null;
-            });
-            this.listeners.fireStatusChangedEvent();
-        } finally {
-            this.listeners.setWriteInProgress(false);
-        }
-    }
-
-    /** Work done in a transaction - see {@link #inTransaction}. */
-    @FunctionalInterface
-    interface TransactionWork<T> {
-        T run() throws Exception;
+    RepositoryContext context() {
+        this.checkInitialized();
+        return this.context;
     }
 
     /**
-     * Runs {@code work} in a transaction of {@code kind}: ends it when the work is done, rolls it back
-     * if anything fails - also an Error, also when begin() itself failed (quietly then, see
-     * {@link #rollbackIfTransactionActive}). A failure is reported as an EccoException saying
-     * {@code errorMessage}, with the failure as its cause; with no message, a runtime exception or
-     * Error is passed on as it is. The one place the begin/end/rollback sequence is written.
-     */
-    <T> T inTransaction(TransactionStrategy.TRANSACTION kind, String errorMessage, TransactionWork<T> work) {
-        try {
-            this.context.transactionStrategy.begin(kind);
-            T result = work.run();
-            this.context.transactionStrategy.end();
-            return result;
-        } catch (Error e) {
-            this.rollbackIfTransactionActive();
-            throw e;
-        } catch (RuntimeException e) {
-            this.rollbackIfTransactionActive();
-            if (errorMessage == null)
-                throw e;
-            throw new EccoException(errorMessage, e);
-        } catch (Exception e) {
-            this.rollbackIfTransactionActive();
-            throw new EccoException(errorMessage != null ? errorMessage : "Error in a repository transaction.", e);
-        }
-    }
-
-    /** {@link #inTransaction} reading the repository. */
-    <T> T readTransaction(String errorMessage, TransactionWork<T> work) {
-        return this.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, errorMessage, work);
-    }
-
-    /**
-     * Rolls back the current transaction if there is one. TransactionStrategy has no "is a
-     * transaction active" query, so this probes via rollback() and ignores the "no transaction
-     * active" case (as RemoteSyncService does); also safe before open() ever injected a strategy.
+     * {@link RepositoryContext#rollbackIfActive()}, also safe before open() ever created a context
+     * and after close() - for undoing an init or fork that failed part way.
      */
     void rollbackIfTransactionActive() {
-        if (this.context == null || this.context.transactionStrategy == null)
-            return;
-        try {
-            this.context.transactionStrategy.rollback();
-        } catch (EccoException ignored) {
-            // no transaction was active
-        }
+        if (this.context != null)
+            this.context.rollbackIfActive();
     }
 
     /**
@@ -1054,7 +996,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public synchronized void store() {
         this.checkInitialized();
 
-        this.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Store error", () -> {
+        this.context.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Store error", () -> {
             this.context.repositoryDao.store(this.context.repositoryDao.load());
             return null;
         });
@@ -1099,7 +1041,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public synchronized void setFeatureDescription(String featureId, String description) {
         this.checkInitialized();
         checkNotNull(featureId);
-        this.writeTransaction("Error updating the feature description.", repository -> {
+        this.context.write("Error updating the feature description.", repository -> {
             Feature feature = repository.getFeature(featureId);
             if (feature == null)
                 throw new EccoException("Feature does not exist: " + featureId);
@@ -1116,7 +1058,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public synchronized void enableFeatureTraceBoosting(){
         this.checkInitialized();
         BoostedAssociationMerger merger = this.context.entityFactory.createBoostedAssociationMerger();
-        this.writeTransaction("Error while enabling feature trace boosting.", repository -> {
+        this.context.write("Error while enabling feature trace boosting.", repository -> {
             repository.setMaintreeBuildingStrategy(merger);
             return repository;
         });
@@ -1129,7 +1071,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public synchronized void disableFeatureTraceBoosting(){
         this.checkInitialized();
         AssociationMerger merger = this.context.entityFactory.createAssociationMerger();
-        this.writeTransaction("Error while disabling feature trace boosting.", repository -> {
+        this.context.write("Error while disabling feature trace boosting.", repository -> {
             repository.setMaintreeBuildingStrategy(merger);
             return repository;
         });
@@ -1511,7 +1453,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         checkNotNull(paths);
         checkArgument(!paths.isEmpty());
 
-        return this.readTransaction("Error during map.", () -> {
+        return this.context.read("Error during map.", () -> {
             Repository.Op repository = this.context.repositoryDao.load();
 
             Set<Node.Op> nodes = this.context.reader.readSpecificFiles(this.baseDir, paths.toArray(new Path[0]));

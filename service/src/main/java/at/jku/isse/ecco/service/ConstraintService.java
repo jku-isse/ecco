@@ -54,10 +54,10 @@ public class ConstraintService {
     }
 
     public void acceptConstraint(Constraint.Kind kind, String featureA, String featureB) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(kind);
         checkNotNull(featureA);
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             accept(repository, kind, featureA, featureB);
             return repository;
         });
@@ -89,10 +89,10 @@ public class ConstraintService {
      * re-scans, not one. No-op if {@code suggestions} is empty (no transaction, no event).
      */
     public void acceptConstraints(List<ConstraintMiner.Suggestion> suggestions) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(suggestions);
         if (suggestions.isEmpty()) return;
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             for (ConstraintMiner.Suggestion suggestion : suggestions) {
                 checkNotNull(suggestion);
                 accept(repository, suggestion.kind, suggestion.a, suggestion.b);
@@ -102,10 +102,10 @@ public class ConstraintService {
     }
 
     public void unacceptConstraint(Constraint.Kind kind, String featureA, String featureB) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(kind);
         checkNotNull(featureA);
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             String id = Constraint.buildId(kind.name(), featureA, featureB);
             Constraint existing = repository.getConstraint(id);
             if (existing != null) repository.removeConstraint(existing);
@@ -115,10 +115,10 @@ public class ConstraintService {
 
     /** Batched "move back to pending" for multiple accepted constraints - see {@link #acceptConstraints}. */
     public void unacceptConstraints(List<ConstraintSuggestionPreferences.AcceptedConstraint> constraints) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(constraints);
         if (constraints.isEmpty()) return;
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             for (ConstraintSuggestionPreferences.AcceptedConstraint constraint : constraints) {
                 checkNotNull(constraint);
                 String id = Constraint.buildId(constraint.kind.name(), constraint.a, constraint.b);
@@ -135,10 +135,10 @@ public class ConstraintService {
      * acceptance of the same suggestion. No-op if {@code suggestions} is empty.
      */
     public void rejectConstraints(List<ConstraintMiner.Suggestion> suggestions) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(suggestions);
         if (suggestions.isEmpty()) return;
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             for (ConstraintMiner.Suggestion suggestion : suggestions) {
                 checkNotNull(suggestion);
                 reject(repository, suggestion.kind, suggestion.a, suggestion.b);
@@ -149,10 +149,10 @@ public class ConstraintService {
 
     /** Rejects one constraint given by kind and features - see {@link #rejectConstraints}. */
     public void rejectConstraint(Constraint.Kind kind, String featureA, String featureB) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(kind);
         checkNotNull(featureA);
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             reject(repository, kind, featureA, featureB);
             return repository;
         });
@@ -160,10 +160,10 @@ public class ConstraintService {
 
     /** "Move back to pending" for rejected suggestions, in one transaction. No-op if empty. */
     public void unrejectConstraints(List<ConstraintSuggestionPreferences.AcceptedConstraint> constraints) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(constraints);
         if (constraints.isEmpty()) return;
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             for (ConstraintSuggestionPreferences.AcceptedConstraint constraint : constraints) {
                 checkNotNull(constraint);
                 Constraint existing = repository.getRejectedConstraint(Constraint.buildId(constraint.kind.name(), constraint.a, constraint.b));
@@ -181,10 +181,10 @@ public class ConstraintService {
      * @return how many rejections the preferences held; 0 means nothing was written
      */
     public int moveLocalRejectionsIntoRepository() {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         Set<String> local = ConstraintSuggestionPreferences.getRejected(owner.getRepositoryDir());
         if (local.isEmpty()) return 0;
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             for (String signature : local) {
                 ConstraintSuggestionPreferences.AcceptedConstraint parsed = ConstraintSuggestionPreferences.parseSignature(signature);
                 if (parsed != null && repository.getConstraint(signature) == null)
@@ -197,12 +197,12 @@ public class ConstraintService {
     }
 
     public List<String> checkConstraintViolations(Configuration configuration) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(configuration);
         if (!owner.constraintViolationWarningsEnabled) return List.of();
         // inside a transaction, like EccoService.compose() - see ReadWithoutTransactionTest
-        return owner.readTransaction(null, () -> {
-            Repository.Op repository = owner.context.repositoryDao.load();
+        return context.read(null, () -> {
+            Repository.Op repository = context.repositoryDao.load();
             List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions(repository);
             Set<String> selectedFeatures = ConfigurationBridge.tokensOf(configuration);
             return ConstraintViolationChecker.checkViolations(selectedFeatures, acceptedSuggestions);
@@ -218,7 +218,7 @@ public class ConstraintService {
      * would make a feature its own ancestor.
      */
     public void acceptFeatureParents(java.util.Map<String, String> parents) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(parents);
         if (parents.isEmpty()) return;
         java.util.Map<String, String> after = new java.util.HashMap<>(owner.getRepository().getFeatureParents());
@@ -228,7 +228,7 @@ public class ConstraintService {
                         + " would make " + parent.getKey() + " its own ancestor.");
             after.put(parent.getKey(), parent.getValue());
         }
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             parents.forEach((feature, parent) -> {
                 withdrawParent(repository, feature);
                 repository.removeRejectedFeatureParent(feature, parent);
@@ -241,10 +241,10 @@ public class ConstraintService {
 
     /** Rejects [parents] (feature, parent) in one transaction; an acceptance of one goes, with its REQUIRES. */
     public void rejectFeatureParents(List<java.util.Map.Entry<String, String>> parents) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(parents);
         if (parents.isEmpty()) return;
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             for (java.util.Map.Entry<String, String> parent : parents) {
                 if (parent.getValue().equals(repository.getFeatureParents().get(parent.getKey())))
                     withdrawParent(repository, parent.getKey());
@@ -256,10 +256,10 @@ public class ConstraintService {
 
     /** "Move back to pending" for the accepted parents of [features], with their REQUIRES. */
     public void unacceptFeatureParents(java.util.Collection<String> features) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(features);
         if (features.isEmpty()) return;
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             for (String feature : features)
                 withdrawParent(repository, feature);
             return repository;
@@ -268,10 +268,10 @@ public class ConstraintService {
 
     /** "Move back to pending" for rejected parents (feature, parent). */
     public void unrejectFeatureParents(List<java.util.Map.Entry<String, String>> parents) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(parents);
         if (parents.isEmpty()) return;
-        owner.writeTransaction(repository -> {
+        context.write(repository -> {
             for (java.util.Map.Entry<String, String> parent : parents)
                 repository.removeRejectedFeatureParent(parent.getKey(), parent.getValue());
             return repository;

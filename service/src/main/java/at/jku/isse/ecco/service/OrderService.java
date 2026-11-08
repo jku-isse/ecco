@@ -43,7 +43,7 @@ class OrderService {
      * @return how many precedences were added
      */
     int recordOrders(Map<Node, List<? extends Node>> orders) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         Map<Artifact.Op<?>, List<Artifact<?>>> byArtifact = new LinkedHashMap<>();
         for (Map.Entry<Node, List<? extends Node>> order : orders.entrySet()) {
             if (!(order.getKey().getArtifact() instanceof Artifact.Op<?> artifact) || !artifact.isOrdered() || artifact.getPartialOrderGraph() == null)
@@ -57,7 +57,7 @@ class OrderService {
             return 0;
 
         int[] added = {0};
-        owner.writeTransaction("Error recording the order.", repository -> {
+        context.write("Error recording the order.", repository -> {
             Map<Artifact.Op<?>, List<Association.Op>> containing = new HashMap<>();
             for (Artifact.Op<?> artifact : byArtifact.keySet()) {
                 List<Association.Op> associations = new ArrayList<>();
@@ -92,7 +92,7 @@ class OrderService {
      * @return how many precedences were added; 0 if the repository already had the files' order
      */
     int recordOrderOfFiles(List<Path> files) {
-        owner.checkInitialized();
+        RepositoryContext context = owner.context();
         checkNotNull(files);
         String configurationString = owner.getConfigStringFromFile(owner.baseDir);
         if (configurationString.isEmpty())
@@ -106,7 +106,7 @@ class OrderService {
             if (composed == null)
                 throw new EccoException(file + " is not part of the checkout of " + configurationString + ".");
             Node read = null;
-            for (Node root : owner.context.reader.readSpecificFiles(owner.baseDir, new Path[]{file})) {
+            for (Node root : context.reader.readSpecificFiles(owner.baseDir, new Path[]{file})) {
                 read = findFile(root, file);
                 if (read != null) break;
             }

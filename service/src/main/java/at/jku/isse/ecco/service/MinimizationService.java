@@ -80,12 +80,12 @@ final class MinimizationService {
      * @param basisByAssociationId     association id -&gt; fingerprint, from {@link #minimizationBases}
      */
     void persistMinimizedConditions(Map<String, String> minimizedByAssociationId, Map<String, String> basisByAssociationId) {
-        this.owner.checkInitialized();
+        RepositoryContext context = this.owner.context();
         checkNotNull(minimizedByAssociationId);
         checkNotNull(basisByAssociationId);
         if (minimizedByAssociationId.isEmpty()) return;
 
-        this.owner.writeTransaction("Error persisting minimized conditions.", repository -> {
+        context.write("Error persisting minimized conditions.", repository -> {
             for (Association.Op association : repository.getAssociations()) {
                 String minimizedCondition = minimizedByAssociationId.get(association.getId());
                 String basis = basisByAssociationId.get(association.getId());
@@ -115,16 +115,16 @@ final class MinimizationService {
         }
         Read read;
         synchronized (this.owner) {
-            this.owner.checkInitialized();
-            read = this.owner.readTransaction("Error reading the repository for minimization.", () -> {
-                Repository.Op repository = this.owner.context.repositoryDao.load();
+            RepositoryContext context = this.owner.context();
+            read = context.read("Error reading the repository for minimization.", () -> {
+                Repository.Op repository = context.repositoryDao.load();
                 return new Read(CheckoutConditions.bases(repository), CheckoutConditions.read(repository.getAssociations(),
                         this.owner.acceptedSuggestions(repository), repository.getFeatures()));
             });
         }
         Map<String, String> bases = read.bases();
         Map<String, LogicCondition> minimized = CheckoutConditions.minimize(read.input());
-        this.owner.writeTransaction("Error persisting checkout conditions.", repository -> {
+        this.owner.context.write("Error persisting checkout conditions.", repository -> {
             for (Association.Op association : repository.getAssociations()) {
                 LogicCondition condition = minimized.get(association.getId());
                 String basis = bases.get(association.getId());
@@ -140,7 +140,7 @@ final class MinimizationService {
 
     /** The stored checkout conditions that are still valid, by association id - see {@link CheckoutConditions#valid}. */
     Map<String, LogicCondition> validCheckoutConditions() {
-        this.owner.checkInitialized();
-        return this.owner.readTransaction(null, () -> CheckoutConditions.valid(this.owner.context.repositoryDao.load()));
+        RepositoryContext context = this.owner.context();
+        return context.read(null, () -> CheckoutConditions.valid(context.repositoryDao.load()));
     }
 }
