@@ -1,5 +1,6 @@
-package at.jku.isse.ecco;
+package at.jku.isse.ecco.util;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Feature;

@@ -3,7 +3,7 @@ package at.jku.isse.ecco.repository;
 import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.featuretrace.ProactiveTraceCheck;
-import at.jku.isse.ecco.EccoUtil;
+import at.jku.isse.ecco.util.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.featuretrace.RejectedTrace;

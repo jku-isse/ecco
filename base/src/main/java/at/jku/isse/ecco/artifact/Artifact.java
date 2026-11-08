@@ -279,7 +279,7 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 
 		/**
 		 * @param replacingArtifact The artifact that replaces this one, or {@code null} to clear a
-		 *                          previously-set replacement once a caller (e.g. {@link at.jku.isse.ecco.EccoUtil#deepCopyTree})
+		 *                          previously-set replacement once a caller (e.g. {@link at.jku.isse.ecco.util.EccoUtil#deepCopyTree})
 		 *                          is done consuming it -- this field is otherwise never reset on its
 		 *                          own and can leak stale state into a later, unrelated operation that
 		 *                          happens to touch the same (e.g. shared/non-unique) artifact again.

@@ -1,5 +1,6 @@
-package at.jku.isse.ecco;
+package at.jku.isse.ecco.util;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -7,7 +8,6 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.util.Trees;
 
 import java.io.IOException;
 import java.io.InputStream;
