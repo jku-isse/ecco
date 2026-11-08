@@ -7,7 +7,7 @@ import at.jku.isse.ecco.adapter.designspace.artifact.OperationArtifact;
 import at.jku.isse.ecco.adapter.designspace.exception.MultipleWorkspaceException;
 import at.jku.isse.ecco.adapter.designspace.exception.NoWorkspaceException;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.service.listener.ReadListener;
+import at.jku.isse.ecco.adapter.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 

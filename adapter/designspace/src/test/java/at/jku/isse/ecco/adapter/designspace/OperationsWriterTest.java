@@ -5,7 +5,7 @@ import at.jku.isse.designspace.sdk.core.operations.ElementCreate;
 import at.jku.isse.designspace.sdk.core.operations.ElementDelete;
 import at.jku.isse.designspace.sdk.core.operations.ElementUpdate;
 import at.jku.isse.designspace.sdk.core.operations.Operation;
-import at.jku.isse.ecco.service.listener.WriteListener;
+import at.jku.isse.ecco.adapter.listener.WriteListener;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;

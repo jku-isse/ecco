@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.service;
 
 import at.jku.isse.ecco.core.Variant;
-import at.jku.isse.ecco.service.listener.ReadListener;
-import at.jku.isse.ecco.service.listener.WriteListener;
+import at.jku.isse.ecco.adapter.listener.ReadListener;
+import at.jku.isse.ecco.adapter.listener.WriteListener;
 import at.jku.isse.ecco.core.Association;
 
 public interface EccoListener extends ReadListener, WriteListener, ServerListener {

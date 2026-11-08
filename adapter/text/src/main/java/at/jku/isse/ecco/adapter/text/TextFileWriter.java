@@ -6,7 +6,7 @@ import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
-import at.jku.isse.ecco.service.listener.WriteListener;
+import at.jku.isse.ecco.adapter.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
 import java.io.BufferedWriter;

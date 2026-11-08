@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.adapter;
 
-import at.jku.isse.ecco.service.listener.ExportListener;
+import at.jku.isse.ecco.adapter.listener.ExportListener;
 
 public interface ArtifactExporter<I, O> {
 

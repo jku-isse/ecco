@@ -13,7 +13,7 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.EccoListener;
-import at.jku.isse.ecco.service.listener.ReadListener;
+import at.jku.isse.ecco.adapter.listener.ReadListener;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import com.google.common.io.RecursiveDeleteOption;

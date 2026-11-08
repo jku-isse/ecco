@@ -5,7 +5,7 @@ import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.designspace.artifact.OperationArtifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.WriteListener;
+import at.jku.isse.ecco.adapter.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 

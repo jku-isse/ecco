@@ -2,7 +2,7 @@ package at.jku.isse.ecco.adapter.image;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.service.listener.WriteListener;
+import at.jku.isse.ecco.adapter.listener.WriteListener;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import javafx.application.Platform;
