@@ -3,7 +3,9 @@ ecco.adapter = true
 dependencies {
 	implementation fileTree(dir: 'lib', include: '*.jar')
 
-	implementation project(':ecco-service')
+	implementation project(':ecco-adapter-api')
+	// the tests build trees with the service's SerEntityFactory, some open repositories
+	testImplementation project(':ecco-service')
 
 	testImplementation libs.opencsv
 	testImplementation libs.java.diff.utils

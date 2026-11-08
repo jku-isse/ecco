@@ -8,6 +8,7 @@ include 'rest'
 include 'util'
 include 'logic'
 
+include 'adapter-api'
 include 'adapter-file'
 include 'adapter-text'
 include 'adapter-markdown'
@@ -31,6 +32,7 @@ project(':gui').projectDir = file('gui')
 project(':util').projectDir = file('util')
 project(':logic').projectDir = file('logic')
 
+project(':adapter-api').projectDir = file('adapter/api')
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')
 project(':adapter-markdown').projectDir = file('adapter/markdown')

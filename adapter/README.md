@@ -56,7 +56,11 @@ repositories {
 }
 
 dependencies {
-  implementation project(':ecco-service')
+  // what an adapter is written against: ArtifactPlugin, ArtifactReader/Writer/Viewer, PluginArtifactData,
+  // the listeners and the shared code viewer - not the service itself
+  implementation project(':ecco-adapter-api')
+  // tests build trees with the service's SerEntityFactory, or open a repository with EccoService
+  testImplementation project(':ecco-service')
   testImplementation platform('org.junit:junit-bom:5.9.1')
   testImplementation 'org.junit.jupiter:junit-jupiter'
 }

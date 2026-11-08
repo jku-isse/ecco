@@ -10,7 +10,9 @@ javafx {
 }
 
 dependencies {
-	implementation project(':ecco-service')
+	implementation project(':ecco-adapter-api')
+	// the tests build trees with the service's SerEntityFactory, some open repositories
+	testImplementation project(':ecco-service')
 }
 
 ospackage {
