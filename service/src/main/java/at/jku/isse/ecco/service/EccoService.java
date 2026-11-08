@@ -19,7 +19,7 @@ import at.jku.isse.ecco.maintree.factory.MainTreeBuildingStrategyFactory;
 import at.jku.isse.ecco.mining.*;
 import at.jku.isse.ecco.module.*;
 import at.jku.isse.ecco.repository.*;
-import at.jku.isse.ecco.service.listener.*;
+import at.jku.isse.ecco.adapter.listener.*;
 import at.jku.isse.ecco.storage.*;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.*;

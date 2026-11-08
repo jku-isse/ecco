@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.text;
 
 import at.jku.isse.ecco.adapter.ArtifactExporter;
-import at.jku.isse.ecco.service.listener.ExportListener;
+import at.jku.isse.ecco.adapter.listener.ExportListener;
 import at.jku.isse.ecco.tree.Node;
 
 import java.nio.file.Path;

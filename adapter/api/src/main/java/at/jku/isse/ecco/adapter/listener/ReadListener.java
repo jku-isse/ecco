@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.service.listener;
+package at.jku.isse.ecco.adapter.listener;
 
 import at.jku.isse.ecco.adapter.ArtifactReader;
 

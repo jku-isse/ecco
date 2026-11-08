@@ -16,7 +16,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.featuretrace.parser.VevosConditionHandler;
 import at.jku.isse.ecco.featuretrace.parser.VevosFileConditionContainer;
-import at.jku.isse.ecco.service.listener.ReadListener;
+import at.jku.isse.ecco.adapter.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import org.antlr.v4.runtime.*;

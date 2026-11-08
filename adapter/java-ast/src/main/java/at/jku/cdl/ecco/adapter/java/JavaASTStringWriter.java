@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Set;
 
 import at.jku.isse.ecco.adapter.ArtifactWriter;
-import at.jku.isse.ecco.service.listener.WriteListener;
+import at.jku.isse.ecco.adapter.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
 public class JavaASTStringWriter implements ArtifactWriter<Set<Node>, String> {

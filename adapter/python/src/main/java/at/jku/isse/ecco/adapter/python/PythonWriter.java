@@ -2,7 +2,7 @@ package at.jku.isse.ecco.adapter.python;
 
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.service.listener.WriteListener;
+import at.jku.isse.ecco.adapter.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
 import java.io.IOException;
