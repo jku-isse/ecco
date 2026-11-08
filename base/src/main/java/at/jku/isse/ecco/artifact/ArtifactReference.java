@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.artifact;
 
-import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.Persistable;
 
 /**
  * Public interface for artifact references that represent the dependency of a source artifact on a target artifact.

@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.logic.LogicCondition;
-import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureLiterals;

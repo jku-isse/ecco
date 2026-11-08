@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.feature;
 
-import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.Persistable;
 
 /**
  * Represents a revision of a feature.
