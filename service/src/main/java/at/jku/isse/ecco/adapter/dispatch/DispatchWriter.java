@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.dispatch;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoUtil;
+import at.jku.isse.ecco.util.EccoUtil;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.artifact.Artifact;
