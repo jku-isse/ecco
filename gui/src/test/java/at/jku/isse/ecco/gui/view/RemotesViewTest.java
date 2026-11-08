@@ -248,12 +248,21 @@ public class RemotesViewTest {
      * A new view whose initial listing has run: it is two runLaters deep and replaces the table's
      * rows with the remotes as they were when the view was built.
      */
+    /**
+     * The view with its first load done: the constructor's runLater starts the read of the remotes in
+     * the background (RepositoryAccess, a thread named "Remotes"), which shows them through another
+     * runLater. Two FX passes were not enough - a read that started late listed a remote the test
+     * added next, as if the view had refreshed (refreshListsRemotesAddedElsewhere failed so).
+     */
     private static RemotesView loaded(EccoService service) throws Exception {
         RemotesView view = onFx(() -> new RemotesView(service));
         onFx(() -> {
-        });
+        }); // the constructor's runLater ran: the read has started
+        for (Thread thread : Thread.getAllStackTraces().keySet())
+            if (thread.getName().equals("Remotes"))
+                thread.join(10_000);
         onFx(() -> {
-        });
+        }); // its result is shown
         return view;
     }
 
