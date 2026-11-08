@@ -532,40 +532,6 @@
   "allDeclaredMethods":true
 },
 {
-  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao",
-  "allDeclaredFields":true,
-  "allDeclaredMethods":true,
-  "allDeclaredConstructors":true
-},
-{
-  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$102e487",
-  "fields":[{"name":"GUICE$INVOKERS"}]
-},
-{
-  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$10499f1",
-  "fields":[{"name":"GUICE$INVOKERS"}]
-},
-{
-  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$1049a04",
-  "fields":[{"name":"GUICE$INVOKERS"}]
-},
-{
-  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$1062a88",
-  "fields":[{"name":"GUICE$INVOKERS"}]
-},
-{
-  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$1069659",
-  "fields":[{"name":"GUICE$INVOKERS"}]
-},
-{
-  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$10a4587",
-  "fields":[{"name":"GUICE$INVOKERS"}]
-},
-{
-  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$10de64a",
-  "fields":[{"name":"GUICE$INVOKERS"}]
-},
-{
   "name":"at.jku.isse.ecco.storage.ser.dao.SerEntityFactory",
   "allDeclaredFields":true,
   "allDeclaredMethods":true,
