@@ -5,10 +5,9 @@ plugins {
 apply plugin: 'java-library'
 
 // What an artifact adapter is written against: the plugin, reader, writer, viewer and exporter
-// interfaces (at.jku.isse.ecco.adapter), the artifact data the dispatch stores for files
-// (at.jku.isse.ecco.adapter.dispatch - PluginArtifactData and the text formats), the shared code
-// viewer (at.jku.isse.ecco.adapter.view), the read/write/export listeners
-// (at.jku.isse.ecco.adapter.listener) and the adapters' preferences (AdapterPreferences,
+// interfaces with their read/write/export listeners (at.jku.isse.ecco.adapter), the artifact data the
+// dispatch stores for files (at.jku.isse.ecco.adapter.dispatch - PluginArtifactData and the text
+// formats), the shared code viewer (at.jku.isse.ecco.adapter.view) and the adapters' preferences (AdapterPreferences,
 // LilypondPreferences). Moved out of ecco-service. The artifact data kept their package - repositories
 // store them under their class names - and at.jku.isse.ecco.adapter.dispatch is now this module's
 // alone: the service's dispatch (DispatchReader, DispatchWriter, ...) moved to

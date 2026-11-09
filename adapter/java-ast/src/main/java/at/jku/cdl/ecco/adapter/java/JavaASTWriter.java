@@ -8,7 +8,7 @@ import java.util.Set;
 
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.listener.WriteListener;
+import at.jku.isse.ecco.adapter.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
 public class JavaASTWriter implements ArtifactWriter<Set<Node>, Path> {

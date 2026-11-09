@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.adapter;
 
-import at.jku.isse.ecco.adapter.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.List;

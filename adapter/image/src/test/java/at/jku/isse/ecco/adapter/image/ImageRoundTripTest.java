@@ -384,7 +384,7 @@ public class ImageRoundTripTest {
     @Test
     public void readerListenersCanBeAddedAndRemoved() {
         ImageReader reader = new ImageReader(new SerEntityFactory());
-        at.jku.isse.ecco.adapter.listener.ReadListener listener = new at.jku.isse.ecco.adapter.listener.ReadListener() {
+        at.jku.isse.ecco.adapter.ReadListener listener = new at.jku.isse.ecco.adapter.ReadListener() {
         };
         reader.addListener(listener);
         reader.removeListener(listener);
