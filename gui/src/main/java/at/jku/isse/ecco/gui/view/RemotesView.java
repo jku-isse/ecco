@@ -1,12 +1,12 @@
 package at.jku.isse.ecco.gui.view;
 
-import at.jku.isse.ecco.gui.TaskFailures;
+import at.jku.isse.ecco.gui.common.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.RepositoryAccess;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.RepositoryAccess;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.RemoteDetailView;
 import at.jku.isse.ecco.service.EccoListener;
 import javafx.application.Platform;

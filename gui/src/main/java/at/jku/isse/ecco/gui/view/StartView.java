@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
-import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.RecentRepositories;
 import javafx.concurrent.Task;
@@ -222,7 +222,7 @@ public class StartView extends VBox {
 			this.setDisable(false);
 			RecentRepositories.removeRecentRepository(repositoryDir);
 			this.refresh();
-			at.jku.isse.ecco.gui.Notifications.success("Deleted the repository of " + folderOf(repositoryDir) + " - its files are kept.");
+			at.jku.isse.ecco.gui.common.Notifications.success("Deleted the repository of " + folderOf(repositoryDir) + " - its files are kept.");
 		});
 		task.setOnFailed(event -> {
 			this.setDisable(false);
@@ -236,7 +236,7 @@ public class StartView extends VBox {
 	/** Whether to delete [repositoryDir]: asked, Cancel the default. Package-visible for testing. */
 	boolean confirmDelete(Path repositoryDir) {
 		javafx.scene.control.ButtonType delete = new javafx.scene.control.ButtonType("Delete Repository", javafx.scene.control.ButtonBar.ButtonData.OTHER);
-		at.jku.isse.ecco.gui.OwnedAlert alert = new at.jku.isse.ecco.gui.OwnedAlert(javafx.scene.control.Alert.AlertType.WARNING,
+		at.jku.isse.ecco.gui.common.OwnedAlert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(javafx.scene.control.Alert.AlertType.WARNING,
 				repositoryDir + " - its commits, features, associations and variants - is deleted. This cannot be undone.\n\n"
 						+ "The files you work on in " + folderOf(repositoryDir) + " are kept.",
 				delete, javafx.scene.control.ButtonType.CANCEL);

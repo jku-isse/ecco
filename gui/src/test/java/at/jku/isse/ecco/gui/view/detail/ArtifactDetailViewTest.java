@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl;
+import at.jku.isse.ecco.gui.common.AssociationInfoImpl;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
 import javafx.scene.control.Label;

@@ -197,8 +197,8 @@ public class CommitViewTest {
                 String log = onFx(() -> view.logArea.getText());
                 assertTrue(log.contains("Committed v1 in "), log);
                 assertFalse(log.contains("Committed v2") || log.contains("Committed v3"), log);
-                String error = onFx(() -> splitItems(view).stream().filter(n -> n instanceof at.jku.isse.ecco.gui.ErrorDetails)
-                        .map(n -> ((at.jku.isse.ecco.gui.ErrorDetails) n).summary() + "\n" + ((at.jku.isse.ecco.gui.ErrorDetails) n).stackTrace()).findFirst().orElse(null));
+                String error = onFx(() -> splitItems(view).stream().filter(n -> n instanceof at.jku.isse.ecco.gui.common.ErrorDetails)
+                        .map(n -> ((at.jku.isse.ecco.gui.common.ErrorDetails) n).summary() + "\n" + ((at.jku.isse.ecco.gui.common.ErrorDetails) n).stackTrace()).findFirst().orElse(null));
                 assertNotNull(error, "the failure is shown");
                 assertTrue(error.contains("at least one feature"), error);
             } finally {

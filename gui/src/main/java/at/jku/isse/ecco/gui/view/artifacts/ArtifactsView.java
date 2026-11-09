@@ -1,14 +1,15 @@
 package at.jku.isse.ecco.gui.view.artifacts;
 
-import at.jku.isse.ecco.gui.TaskFailures;
+import at.jku.isse.ecco.gui.common.AssociationInfoImpl;
+import at.jku.isse.ecco.gui.common.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.gui.CategoricalColorPalette;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.MinimizationResults;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.CategoricalColorPalette;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.MinimizationResults;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.gui.io.ConfigurationPickerDialog;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
@@ -43,7 +44,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class ArtifactsView extends BorderPane implements EccoListener, at.jku.isse.ecco.gui.TabVisibilityAware {
+public class ArtifactsView extends BorderPane implements EccoListener, at.jku.isse.ecco.gui.common.TabVisibilityAware {
 
     private static final double BAR_WIDTH = 60;
     private static final double BAR_HEIGHT = 10;
@@ -69,7 +70,7 @@ public class ArtifactsView extends BorderPane implements EccoListener, at.jku.is
 
     public ArtifactsView(final EccoService service, MinimizationResults minimizationResults) {
         this.service = service;
-        this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Artifacts", service, ArtifactsView::computeRefresh, this::applyRefresh,
+        this.refresher = new at.jku.isse.ecco.gui.common.LatestRefresh<>("Artifacts", service, ArtifactsView::computeRefresh, this::applyRefresh,
                 failure -> new ExceptionAlert(failure).show());
         this.minimizationResults = minimizationResults;
 
@@ -482,7 +483,7 @@ public class ArtifactsView extends BorderPane implements EccoListener, at.jku.is
             this.artifactTreeView.setRootNode(null);
             return;
         }
-        at.jku.isse.ecco.gui.RepositoryAccess.read(this.service, "Compose", svc -> {
+        at.jku.isse.ecco.gui.common.RepositoryAccess.read(this.service, "Compose", svc -> {
                     LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
                     for (Association association : ticked)
                         rootNode.addOrigNode(association.getRootNode());
@@ -557,11 +558,11 @@ public class ArtifactsView extends BorderPane implements EccoListener, at.jku.is
     /**
      * The associations, their artifact counts and conditions, read again after every change of the
      * repository - the latest only, one at a time, not while the tab is hidden, and holding the
-     * service's lock, see {@link at.jku.isse.ecco.gui.LatestRefresh}: each change started a
+     * service's lock, see {@link at.jku.isse.ecco.gui.common.LatestRefresh}: each change started a
      * computation of its own (1.3 s of conditions for tinycc), also with the tab hidden, and read
      * the counters while the next commit changed them.
      */
-    private final at.jku.isse.ecco.gui.LatestRefresh<RefreshResult> refresher;
+    private final at.jku.isse.ecco.gui.common.LatestRefresh<RefreshResult> refresher;
 
     private void refresh() {
         this.refresher.request();

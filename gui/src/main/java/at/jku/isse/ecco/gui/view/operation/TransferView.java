@@ -3,7 +3,7 @@ package at.jku.isse.ecco.gui.view.operation;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.gui.RepositoryAccess;
+import at.jku.isse.ecco.gui.common.RepositoryAccess;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;

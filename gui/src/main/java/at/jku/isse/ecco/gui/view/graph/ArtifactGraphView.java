@@ -4,11 +4,11 @@ import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.gui.CategoricalColorPalette;
-import at.jku.isse.ecco.gui.EditableSpinner;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.GraphCameraControls;
-import at.jku.isse.ecco.gui.TabVisibilityAware;
+import at.jku.isse.ecco.gui.common.CategoricalColorPalette;
+import at.jku.isse.ecco.gui.common.EditableSpinner;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.GraphCameraControls;
+import at.jku.isse.ecco.gui.common.TabVisibilityAware;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.EccoListener;
 import javafx.application.Platform;
@@ -120,7 +120,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 
 		this.layout = new SpringBox(false);
 
-		at.jku.isse.ecco.gui.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, null);
+		at.jku.isse.ecco.gui.common.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, null);
 
 		// must run after `graph` is constructed above: setSelected(true) (DEFAULT_SHOW_LABELS)
 		// changes the checkbox away from its own JavaFX default of false, which synchronously fires
@@ -156,7 +156,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 			ArtifactGraphView.this.refreshGraph();
 		});
 
-		Button exportButton = at.jku.isse.ecco.gui.GraphViews.exportButton(() -> ArtifactGraphView.this.graph, "artifact-graph.graphml", toolBar::setDisable);
+		Button exportButton = at.jku.isse.ecco.gui.common.GraphViews.exportButton(() -> ArtifactGraphView.this.graph, "artifact-graph.graphml", toolBar::setDisable);
 
 		CheckBox showLabelsCheckbox = new CheckBox("Show Labels");
 		showLabelsCheckbox.selectedProperty().addListener((ov, old_val, new_val) -> {
@@ -271,7 +271,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 		}
 
 		setCenter(null);
-		at.jku.isse.ecco.gui.GraphViews.closeViewer(viewer, this.graph);
+		at.jku.isse.ecco.gui.common.GraphViews.closeViewer(viewer, this.graph);
 		view = null;
 		viewer = null;
 	}

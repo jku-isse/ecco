@@ -1,11 +1,11 @@
 package at.jku.isse.ecco.gui.view.operation;
 
-import at.jku.isse.ecco.gui.PluginNames;
-import at.jku.isse.ecco.gui.ConstraintWarnings;
+import at.jku.isse.ecco.gui.common.PluginNames;
+import at.jku.isse.ecco.gui.common.ConstraintWarnings;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.LlmPreferences;
@@ -292,7 +292,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 			Path selectedPath = selectedDirectory.toPath();
 			if (!Files.exists(selectedPath.resolve(".git"))) {
-				Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING, "Not a git repository (no .git found):\n" + selectedPath);
+				Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.WARNING, "Not a git repository (no .git found):\n" + selectedPath);
 				alert.showAndWait();
 				return;
 			}
@@ -372,7 +372,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 			boolean useLlm = suggestFeaturesCheckBox.isSelected();
 			if (useLlm && LlmPreferences.getModelName().isBlank()) {
-				Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING,
+				Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.WARNING,
 						"No LLM model name is configured (Preferences → LLM), so feature suggestions " +
 								"would fail for every commit. Skipping suggestions - you can still fill in each " +
 								"commit's configuration by hand on the next screen.");
@@ -800,7 +800,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		importButton.setOnAction(event -> {
 			String warning = constraintWarningLabel.getText();
 			if (!folds && warning != null && !warning.isEmpty()) {
-				Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION, warning + "\n\nDo you want to import anyway?");
+				Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.CONFIRMATION, warning + "\n\nDo you want to import anyway?");
 				alert.setHeaderText("Constraint violation");
 				Optional<ButtonType> result = alert.showAndWait();
 				if (result.isEmpty() || result.get() != ButtonType.OK) return;
@@ -1017,7 +1017,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.runEnded = true;
 		this.service.removeListener(this);
 		this.commitDetailView.showCommit(null);
-		this.splitPane.getItems().setAll(this.logArea, new at.jku.isse.ecco.gui.ErrorDetails(exception));
+		this.splitPane.getItems().setAll(this.logArea, new at.jku.isse.ecco.gui.common.ErrorDetails(exception));
 		this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 		this.splitPane.setPadding(new Insets(0, 10, 10, 10));
 		this.setCenter(this.splitPane);

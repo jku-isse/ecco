@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui;
 
+import at.jku.isse.ecco.gui.common.TableColumns;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;

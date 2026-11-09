@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.gui.MinimizationResults;
+import at.jku.isse.ecco.gui.common.MinimizationResults;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.stage.Stage;
 import javafx.stage.Window;

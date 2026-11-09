@@ -3,10 +3,10 @@ package at.jku.isse.ecco.gui.view.graph;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.DependencyGraph;
-import at.jku.isse.ecco.gui.EditableSpinner;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.GraphCameraControls;
-import at.jku.isse.ecco.gui.TabVisibilityAware;
+import at.jku.isse.ecco.gui.common.EditableSpinner;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.GraphCameraControls;
+import at.jku.isse.ecco.gui.common.TabVisibilityAware;
 import at.jku.isse.ecco.service.EccoListener;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Condition;
@@ -49,7 +49,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	private boolean showLabels = true;
 	private volatile boolean simplifyLabels = true;
 	private volatile boolean hideImpliedDependencies = true;
-	private final at.jku.isse.ecco.gui.LatestRefresh<Dependencies> refresher;
+	private final at.jku.isse.ecco.gui.common.LatestRefresh<Dependencies> refresher;
 	private boolean hideTransitiveDependencies = true;
 
 	/**
@@ -91,14 +91,14 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 
 	public DependencyGraphView(EccoService service) {
 		this.service = service;
-		this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Dependency Graph", service, this::computeDependencies, this::showDependencies,
+		this.refresher = new at.jku.isse.ecco.gui.common.LatestRefresh<>("Dependency Graph", service, this::computeDependencies, this::showDependencies,
 				failure -> new ExceptionAlert(failure).show());
 
 
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
 
-		Button exportButton = at.jku.isse.ecco.gui.GraphViews.exportButton(() -> DependencyGraphView.this.graph, "dependency-graph.graphml", toolBar::setDisable);
+		Button exportButton = at.jku.isse.ecco.gui.common.GraphViews.exportButton(() -> DependencyGraphView.this.graph, "dependency-graph.graphml", toolBar::setDisable);
 		toolBar.getItems().add(exportButton);
 		toolBar.getItems().add(new Separator());
 
@@ -179,7 +179,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 
 		this.layout = new SpringBox(false);
 
-		at.jku.isse.ecco.gui.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, null);
+		at.jku.isse.ecco.gui.common.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, null);
 
 		showLabelsCheckbox.setSelected(this.showLabels);
 
@@ -212,7 +212,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		}
 
 		setCenter(null);
-		at.jku.isse.ecco.gui.GraphViews.closeViewer(viewer, this.graph);
+		at.jku.isse.ecco.gui.common.GraphViews.closeViewer(viewer, this.graph);
 		view = null;
 		viewer = null;
 	}
@@ -230,7 +230,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 
 	/**
 	 * The dependencies and their conditions, in the background holding the service's lock - the
-	 * latest only, not while hidden (see {@link at.jku.isse.ecco.gui.LatestRefresh}): computed on the
+	 * latest only, not while hidden (see {@link at.jku.isse.ecco.gui.common.LatestRefresh}): computed on the
 	 * Swing thread, they took 2.5 s there for tinycc, for each commit, and read the counters while
 	 * the next commit changed them.
 	 */

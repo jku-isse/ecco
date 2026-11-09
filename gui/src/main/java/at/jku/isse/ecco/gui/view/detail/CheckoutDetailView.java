@@ -5,8 +5,8 @@ import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.module.ModuleRevision;
@@ -275,7 +275,7 @@ public class CheckoutDetailView extends BorderPane {
 		grid.add(descriptionField, 1, 1);
 
 		Dialog<ButtonType> dialog = new Dialog<>();
-		at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(dialog);
+		at.jku.isse.ecco.gui.common.Dialogs.ownByFocusedWindow(dialog);
 		dialog.setTitle("Save as Variant");
 		dialog.setHeaderText(null);
 		dialog.getDialogPane().setContent(grid);
@@ -307,11 +307,11 @@ public class CheckoutDetailView extends BorderPane {
 				}
 				if (duplicate != null) {
 					// a notification, as other quick operations report - it was a message box to dismiss
-					javafx.application.Platform.runLater(() -> at.jku.isse.ecco.gui.Notifications.info(
+					javafx.application.Platform.runLater(() -> at.jku.isse.ecco.gui.common.Notifications.info(
 							"This configuration is already saved as variant '" + existingName + "'."));
 					return;
 				}
-				javafx.application.Platform.runLater(() -> at.jku.isse.ecco.gui.Notifications.success("Saved as variant '" + name + "'."));
+				javafx.application.Platform.runLater(() -> at.jku.isse.ecco.gui.common.Notifications.success("Saved as variant '" + name + "'."));
 			} catch (RuntimeException e) {
 				javafx.application.Platform.runLater(() -> new ExceptionAlert(e).showAndWait());
 			}
@@ -344,7 +344,7 @@ public class CheckoutDetailView extends BorderPane {
 		textArea.setPrefRowCount(30);
 
 		Dialog<Void> dialog = new Dialog<>();
-		at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(dialog);
+		at.jku.isse.ecco.gui.common.Dialogs.ownByFocusedWindow(dialog);
 		dialog.setTitle("Warnings");
 		dialog.setHeaderText("Full, unfiltered diagnostics -- " + warningsFile);
 		dialog.setResizable(true);
@@ -370,7 +370,7 @@ public class CheckoutDetailView extends BorderPane {
 				// defense-in-depth: only the eager (Node.Op) composition path used by this view's
 				// normal checkout flow is directly editable; the lazy LazyCompositionNode path
 				// belongs to a different view (ArtifactsView's "Compose Selected").
-				new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.ERROR,
+				new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.ERROR,
 						"This order warning cannot be reordered directly here -- re-run checkout via the normal Checkout tab and try again.")
 						.showAndWait();
 				return;
@@ -400,7 +400,7 @@ public class CheckoutDetailView extends BorderPane {
 	 */
 	void commitFix(Path directory, String configurationString, String commitMessage) {
 		Path checkoutBaseDirToReplay = this.currentBaseDir;
-		at.jku.isse.ecco.gui.RepositoryAccess.read(this.service, "Constraint check", service -> {
+		at.jku.isse.ecco.gui.common.RepositoryAccess.read(this.service, "Constraint check", service -> {
 			try {
 				return service.checkConstraintViolations(service.parseConfigurationString(configurationString));
 			} catch (RuntimeException e) {
@@ -444,7 +444,7 @@ public class CheckoutDetailView extends BorderPane {
 
 	/** Whether to commit a fix that violates [violations] anyway. Package-visible for testing. */
 	boolean confirmDespiteViolations(List<String> violations) {
-		Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION,
+		Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.CONFIRMATION,
 				"The fix violates accepted constraint(s):\n" + String.join("\n", violations) + "\n\nCommit it anyway?");
 		alert.setHeaderText("Constraint violation");
 		return alert.showAndWait().filter(button -> button == ButtonType.OK).isPresent();
@@ -551,7 +551,7 @@ public class CheckoutDetailView extends BorderPane {
 		static final ButtonType COMMIT = new ButtonType("Commit and Re-check", ButtonBar.ButtonData.OK_DONE);
 
 		ApplyFixDialog(EccoService service, Path defaultDirectory, String suggestedConfigurationString) {
-			at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(this);
+			at.jku.isse.ecco.gui.common.Dialogs.ownByFocusedWindow(this);
 			setTitle("Apply Fix");
 			setHeaderText("Commit the missing content from a variant folder under this configuration, then check out again to verify.");
 			getDialogPane().getButtonTypes().addAll(COMMIT, ButtonType.CANCEL);
@@ -574,7 +574,7 @@ public class CheckoutDetailView extends BorderPane {
 			Label configurationLabel = new Label("Configuration: ");
 			gridPane.add(configurationLabel, 0, row, 1, 1);
 			TextField configurationField = new TextField(suggestedConfigurationString);
-			configurationField.setPromptText(at.jku.isse.ecco.gui.view.operation.OperationView.COMMIT_CONFIGURATION_HINT);
+			configurationField.setPromptText(at.jku.isse.ecco.gui.common.ConfigurationHints.CONFIGURATION);
 			gridPane.add(at.jku.isse.ecco.gui.io.ConfigurationPickerDialog.withPicker(configurationField, service), 1, row, 2, 1);
 			row++;
 

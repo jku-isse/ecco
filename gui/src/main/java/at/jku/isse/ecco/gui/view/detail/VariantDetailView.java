@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.gui.view.detail;
 
-import at.jku.isse.ecco.gui.TaskFailures;
+import at.jku.isse.ecco.gui.common.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;

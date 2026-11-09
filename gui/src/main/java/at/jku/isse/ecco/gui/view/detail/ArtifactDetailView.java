@@ -5,9 +5,9 @@ import at.jku.isse.ecco.adapter.AssociationInfo;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.RepositoryAccess;
-import at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.RepositoryAccess;
+import at.jku.isse.ecco.gui.common.AssociationInfoImpl;
 import at.jku.isse.ecco.gui.view.graph.PartialOrderGraphView;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.service.EccoService;
@@ -327,7 +327,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	private String describe(Details details) {
 		StringBuilder text = new StringBuilder(details.described());
 		if (details.association() != null) {
-			text.append("\n\nAssociation: ").append(at.jku.isse.ecco.gui.TableColumns.shortIds(details.association().getId()));
+			text.append("\n\nAssociation: ").append(at.jku.isse.ecco.gui.common.TableColumns.shortIds(details.association().getId()));
 			String condition = this.minimizedConditionOf(details.association());
 			if (condition == null)
 				condition = details.condition();

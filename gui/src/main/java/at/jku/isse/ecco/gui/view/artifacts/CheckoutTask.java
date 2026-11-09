@@ -2,8 +2,8 @@ package at.jku.isse.ecco.gui.view.artifacts;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.Notifications;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.Notifications;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.concurrent.Task;
 

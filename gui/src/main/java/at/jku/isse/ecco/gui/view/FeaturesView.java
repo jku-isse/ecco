@@ -2,11 +2,11 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.mining.FeatureModelTree;
 import at.jku.isse.ecco.core.Constraint;
-import at.jku.isse.ecco.gui.CategoricalColorPalette;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.GraphCameraControls;
-import at.jku.isse.ecco.gui.MinimizationResults;
-import at.jku.isse.ecco.gui.TabVisibilityAware;
+import at.jku.isse.ecco.gui.common.CategoricalColorPalette;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.GraphCameraControls;
+import at.jku.isse.ecco.gui.common.MinimizationResults;
+import at.jku.isse.ecco.gui.common.TabVisibilityAware;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.llm.FeatureSuggestionLog;
 import at.jku.isse.ecco.service.llm.ImportedFeatureTraces;
@@ -120,7 +120,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	 * layout/freeze cycle) and skip freezing anything.
 	 */
 	private int layoutGeneration = 0;
-	private final at.jku.isse.ecco.gui.LatestRefresh<FeatureModelSnapshot> refresher;
+	private final at.jku.isse.ecco.gui.common.LatestRefresh<FeatureModelSnapshot> refresher;
 
 	/**
 	 * The legend's keys for the suggested relations: shown only when there are any, and they name
@@ -133,13 +133,13 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 
 	public FeaturesView(EccoService service, MinimizationResults minimizationResults) {
 		this.service = service;
-		this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Feature Model", service, s -> this.buildSnapshot(), this::showSnapshot,
-				failure -> new at.jku.isse.ecco.gui.ExceptionAlert(failure).show());
+		this.refresher = new at.jku.isse.ecco.gui.common.LatestRefresh<>("Feature Model", service, s -> this.buildSnapshot(), this::showSnapshot,
+				failure -> new at.jku.isse.ecco.gui.common.ExceptionAlert(failure).show());
 
 		this.toolBar = new ToolBar();
 		this.setTop(toolBar);
 
-		Button exportButton = at.jku.isse.ecco.gui.GraphViews.exportButton(() -> FeaturesView.this.graph, "feature-model.graphml", toolBar::setDisable);
+		Button exportButton = at.jku.isse.ecco.gui.common.GraphViews.exportButton(() -> FeaturesView.this.graph, "feature-model.graphml", toolBar::setDisable);
 
 		CheckBox showLabelsCheckbox = new CheckBox("Show Labels");
 		showLabelsCheckbox.selectedProperty().addListener((ov, oldVal, newVal) -> {
@@ -173,9 +173,9 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		// guarantee, not an emergent property of a force simulation - unlike the other graph tabs,
 		// this one is a static tree, not a physics-driven graph.
 
-		at.jku.isse.ecco.gui.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
+		at.jku.isse.ecco.gui.common.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
 		// trackpad pinch: a separate gesture from two-finger scroll, so it needs its own handler.
-		at.jku.isse.ecco.gui.GraphViews.zoomOnPinch(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
+		at.jku.isse.ecco.gui.common.GraphViews.zoomOnPinch(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
 
 		showLabelsCheckbox.setSelected(this.showLabels);
 
@@ -281,7 +281,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		}
 
 		this.graphContainer.setCenter(new Pane());
-		at.jku.isse.ecco.gui.GraphViews.closeViewer(viewer, this.graph);
+		at.jku.isse.ecco.gui.common.GraphViews.closeViewer(viewer, this.graph);
 		view = null;
 		viewer = null;
 	}
@@ -340,7 +340,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 
 	/**
 	 * Builds a fresh snapshot - in the background, holding the service's lock, the latest only (see
-	 * {@link at.jku.isse.ecco.gui.LatestRefresh}) - and queues it for rendering. It was built on the
+	 * {@link at.jku.isse.ecco.gui.common.LatestRefresh}) - and queues it for rendering. It was built on the
 	 * FX thread, reading the suggestion log of every import there, and waiting for a running commit.
 	 */
 	private void refreshGraph() {

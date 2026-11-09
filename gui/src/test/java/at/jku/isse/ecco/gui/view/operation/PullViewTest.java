@@ -398,7 +398,7 @@ public class PullViewTest {
 
     /** The error step's message and exception text, null while no error is shown. */
     static String errorText(OperationView view) {
-        at.jku.isse.ecco.gui.ErrorDetails details = (at.jku.isse.ecco.gui.ErrorDetails) find(view.getCenter(), n -> n instanceof at.jku.isse.ecco.gui.ErrorDetails);
+        at.jku.isse.ecco.gui.common.ErrorDetails details = (at.jku.isse.ecco.gui.common.ErrorDetails) find(view.getCenter(), n -> n instanceof at.jku.isse.ecco.gui.common.ErrorDetails);
         if (details == null)
             return null;
         // the cause in words first; the stack trace is folded away under Details

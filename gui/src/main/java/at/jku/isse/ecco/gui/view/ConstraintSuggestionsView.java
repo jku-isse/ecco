@@ -1,11 +1,11 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.core.Constraint;
-import at.jku.isse.ecco.gui.EditableSpinner;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.MinimizationResults;
-import at.jku.isse.ecco.gui.RepositoryAccess;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.EditableSpinner;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.MinimizationResults;
+import at.jku.isse.ecco.gui.common.RepositoryAccess;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.mining.AcceptedConstraints;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
@@ -352,7 +352,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
 
     /** Says why a decision was refused (a parent that would close a cycle). Package-visible for testing. */
     void refused(String why) {
-        Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING, why);
+        Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.WARNING, why);
         alert.setHeaderText("Not accepted");
         if (this.getScene() != null) alert.initOwner(this.getScene().getWindow());
         alert.showAndWait();
@@ -442,19 +442,19 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
     /** The thresholds the next refresh mines with - set on the FX thread, read by the refresh in the background. */
     private volatile int minWitness;
     private volatile double confidence;
-    private at.jku.isse.ecco.gui.LatestRefresh<Runnable> refresher;
+    private at.jku.isse.ecco.gui.common.LatestRefresh<Runnable> refresher;
 
     /**
      * Mines and lists the suggestions again - in the background, holding the service's lock, the
-     * latest only (see {@link at.jku.isse.ecco.gui.LatestRefresh}): each change started a mining of
+     * latest only (see {@link at.jku.isse.ecco.gui.common.LatestRefresh}): each change started a mining of
      * its own, read the repository while a commit changed it.
      */
     private void refresh() {
         if (!service.isInitialized()) return;
         if (this.refresher == null)
-            this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Constraint suggestions", this.service, this::computeRows, Runnable::run, failure -> {
+            this.refresher = new at.jku.isse.ecco.gui.common.LatestRefresh<>("Constraint suggestions", this.service, this::computeRows, Runnable::run, failure -> {
                 top.setDisable(false);
-                new at.jku.isse.ecco.gui.ExceptionAlert(failure).show();
+                new at.jku.isse.ecco.gui.common.ExceptionAlert(failure).show();
             });
         top.setDisable(true);
         this.minWitness = minWitnessSpinner.getValue();
