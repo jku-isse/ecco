@@ -1,11 +1,12 @@
 package at.jku.isse.ecco.util;
 
+import at.jku.isse.ecco.dao.EccoUtil;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditionSetterVisitor;
+import at.jku.isse.ecco.tree.RetroactiveConditionSetterVisitor;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.test.util.TestArtifactData;
 import at.jku.isse.ecco.tree.Node;

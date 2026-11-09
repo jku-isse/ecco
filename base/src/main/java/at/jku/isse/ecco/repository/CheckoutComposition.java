@@ -2,7 +2,7 @@ package at.jku.isse.ecco.repository;
 
 import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.featuretrace.ProactiveTraceCheck;
-import at.jku.isse.ecco.featuretrace.RejectedTrace;
+import at.jku.isse.ecco.core.RejectedTrace;
 import at.jku.isse.ecco.composition.CheckoutComposer;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.*;
@@ -70,7 +70,7 @@ final class CheckoutComposition {
 		// locate each remaining missing module's positive features in the existing associations, for diagnostics
 		Map<ModuleRevision, String> missingLocations = new HashMap<>();
 		for (ModuleRevision missingModuleRevision : trimmedMissingModules) {
-			missingLocations.put(missingModuleRevision, ModuleRevisions.describeLocation(missingModuleRevision, repository.getAssociations()));
+			missingLocations.put(missingModuleRevision, describeLocation(missingModuleRevision, repository.getAssociations()));
 		}
 
 		// compute surplus
@@ -119,5 +119,42 @@ final class CheckoutComposition {
 		checkout.getSelectedAssociations().addAll(selectedAssociations);
 
 		return checkout;
+	}
+
+	/**
+	 * For each positive {@link at.jku.isse.ecco.feature.FeatureRevision} in {@code moduleRevision}, scans {@code associations}
+	 * (the full, unfiltered collection -- a missing combination by definition isn't part of any
+	 * association selected for the requested configuration) for one whose {@link
+	 * Association#computeCondition()} contains a {@link Module} with that feature in its positive
+	 * array, and reports the first match's association id (full id, matching the SURPLUS
+	 * diagnostic's existing convention). Notes per-feature when a feature was never committed at
+	 * all, e.g. {@code "FeatureA in association <id>; FeatureB not found in any association"}.
+	 */
+	static String describeLocation(ModuleRevision moduleRevision, Collection<? extends Association> associations) {
+		List<String> parts = new ArrayList<>();
+		for (FeatureRevision featureRevision : moduleRevision.getPos()) {
+			Feature feature = featureRevision.getFeature();
+			String associationId = findAssociationContaining(feature, associations);
+			if (associationId != null) {
+				parts.add(feature.getName() + " in association " + associationId);
+			} else {
+				parts.add(feature.getName() + " not found in any association");
+			}
+		}
+		// same reasoning as describe(): getPos() array order isn't guaranteed, so sort for a
+		// deterministic rendering of the same underlying combination.
+		parts.sort(Comparator.naturalOrder());
+		return String.join("; ", parts);
+	}
+
+	private static String findAssociationContaining(Feature feature, Collection<? extends Association> associations) {
+		for (Association association : associations) {
+			for (Module module : association.computeCondition().getModules().keySet()) {
+				if (Arrays.asList(module.getPos()).contains(feature)) {
+					return association.getId();
+				}
+			}
+		}
+		return null;
 	}
 }

@@ -1,9 +1,6 @@
-package at.jku.isse.ecco.maintree.retroactive.condition.setter;
+package at.jku.isse.ecco.tree;
 
 import at.jku.isse.ecco.logic.LogicCondition;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.RootNode;
 
 public class RetroactiveConditionSetterVisitor implements Node.Op.NodeVisitor{
 
@@ -12,10 +9,6 @@ public class RetroactiveConditionSetterVisitor implements Node.Op.NodeVisitor{
 
     public RetroactiveConditionSetterVisitor(LogicCondition retroactiveCondition){
         this.retroactiveCondition = retroactiveCondition;
-    }
-
-    public RetroactiveConditionSetterVisitor(Association association){
-        this.retroactiveCondition = association.computeCondition().toLogicCondition();
     }
 
     @Override

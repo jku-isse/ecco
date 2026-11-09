@@ -6,7 +6,7 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.test.util.TestArtifactData;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.util.Trees;
+import at.jku.isse.ecco.tree.Trees;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

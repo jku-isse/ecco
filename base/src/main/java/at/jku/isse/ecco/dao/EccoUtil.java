@@ -1,9 +1,9 @@
-package at.jku.isse.ecco.util;
+package at.jku.isse.ecco.dao;
 
+import at.jku.isse.ecco.tree.Trees;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.pog.PartialOrderGraph;

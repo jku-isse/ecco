@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.repository;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.util.EccoUtil;
+import at.jku.isse.ecco.dao.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.counter.ModuleCounter;
@@ -16,7 +16,7 @@ import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
-import at.jku.isse.ecco.util.Trees;
+import at.jku.isse.ecco.tree.Trees;
 import java.util.*;
 import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;

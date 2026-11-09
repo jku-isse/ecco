@@ -11,7 +11,7 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.adapter.CommitCancelledException;
 import at.jku.isse.ecco.adapter.ReadListener;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.util.Trees;
+import at.jku.isse.ecco.tree.Trees;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import java.io.IOException;

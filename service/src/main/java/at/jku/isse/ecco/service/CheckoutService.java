@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.service;
 
 import at.jku.isse.ecco.logic.LogicCondition;
-import at.jku.isse.ecco.featuretrace.RejectedTrace;
+import at.jku.isse.ecco.core.RejectedTrace;
 import at.jku.isse.ecco.*;
 import at.jku.isse.ecco.adapter.*;
 import at.jku.isse.ecco.adapter.dispatch.*;

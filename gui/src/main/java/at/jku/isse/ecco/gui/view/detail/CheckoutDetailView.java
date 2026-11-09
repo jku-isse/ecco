@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.gui.view.detail;
 
-import at.jku.isse.ecco.featuretrace.RejectedTrace;
+import at.jku.isse.ecco.core.RejectedTrace;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;

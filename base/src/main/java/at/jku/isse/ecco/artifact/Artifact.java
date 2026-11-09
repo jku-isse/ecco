@@ -25,17 +25,17 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 	public static final String PROPERTY_UNMODIFIED = "unmodified";
 
 //	/**
-//	 * This property is set by some tree operations (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)} and then subsequently used by other tree operations (see for example {@link at.jku.isse.ecco.util.Trees#updateArtifactReferences(Node.Op)}.
+//	 * This property is set by some tree operations (see for example {@link at.jku.isse.ecco.tree.Trees#slice(Node.Op, Node.Op)} and then subsequently used by other tree operations (see for example {@link at.jku.isse.ecco.tree.Trees#updateArtifactReferences(Node.Op)}.
 //	 */
 //	public static final String PROPERTY_REPLACING_ARTIFACT = "replacingArtifact";
 
 	/**
-	 * Artifacts can be marked by setting this property. Other operations can then use this property (see for example {@link at.jku.isse.ecco.util.Trees#extractMarked(Node.Op)}).
+	 * Artifacts can be marked by setting this property. Other operations can then use this property (see for example {@link at.jku.isse.ecco.tree.Trees#extractMarked(Node.Op)}).
 	 */
 	public static final String PROPERTY_MARKED_FOR_EXTRACTION = "marked";
 
 	/**
-	 * This property is set by {@link at.jku.isse.ecco.util.Trees#map(Node.Op, Node.Op)} and contains another artifact from another tree that maps to this one.
+	 * This property is set by {@link at.jku.isse.ecco.tree.Trees#map(Node.Op, Node.Op)} and contains another artifact from another tree that maps to this one.
 	 */
 	public static final String PROPERTY_MAPPED_ARTIFACT = "mapped";
 
@@ -80,7 +80,7 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 
 	/**
 	 * An artifact that is atomic will not be split up further, even if it has children.
-	 * In other words, the children of an atomic artifact (or more accurately, the children of nodes containing an atomic artifact) will not be split up by any tree operation (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)}).
+	 * In other words, the children of an atomic artifact (or more accurately, the children of nodes containing an atomic artifact) will not be split up by any tree operation (see for example {@link at.jku.isse.ecco.tree.Trees#slice(Node.Op, Node.Op)}).
 	 *
 	 * @return True if the artifact is atomic, false otherwise.
 	 */
@@ -93,7 +93,7 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 	 * As a consequence of this, and because the children of an artifact must be unique, the child artifacts of an unordered artifact must be uniquely identifiable just by their contained data object, as it is the only means of identification aside from their sequence number (see {@link at.jku.isse.ecco.artifact.Artifact#equals(Object)}.
 	 * In other words, no two child artifacts can contain equal data objects.
 	 *
-	 * <i>Ordered</i> artifacts are assigned a sequence graph (see {@link at.jku.isse.ecco.pog.PartialOrderGraph}) the first time they are being processed by any operation (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)}).
+	 * <i>Ordered</i> artifacts are assigned a sequence graph (see {@link at.jku.isse.ecco.pog.PartialOrderGraph}) the first time they are being processed by any operation (see for example {@link at.jku.isse.ecco.tree.Trees#slice(Node.Op, Node.Op)}).
 	 * This process is called <i>sequencing</i> of an ordered artifact. During this process the children of the ordered artifact are assigned sequence numbers based on their order of occurrence.
 	 * This assigned sequence number is used as an additional means of identifying the child artifacts. This makes it possible to have child artifacts containing equal data objects but different sequence numbers.
 	 * This is for example necessary when the child artifacts represent statements in a programming language: statements are not unique, the same statement can appear multiple times in a sequence of statements, and the position of a statement in the sequence matters. This is what the sequence number is used for.
@@ -105,7 +105,7 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 	/**
 	 * Determines whether the artifact contains a sequence graph.
 	 * An unordered node will never be sequenced (i.e. never contain a sequence graph).
-	 * An ordered node will initially (after its creation) also not be sequenced. After being processed for the first time by any operation (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)}) it will be assigned a sequence graph.
+	 * An ordered node will initially (after its creation) also not be sequenced. After being processed for the first time by any operation (see for example {@link at.jku.isse.ecco.tree.Trees#slice(Node.Op, Node.Op)}) it will be assigned a sequence graph.
 	 *
 	 * @return True when the artifact has a sequence graph assigned, false otherwise
 	 */
@@ -279,7 +279,7 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 
 		/**
 		 * @param replacingArtifact The artifact that replaces this one, or {@code null} to clear a
-		 *                          previously-set replacement once a caller (e.g. {@link at.jku.isse.ecco.util.EccoUtil#deepCopyTree})
+		 *                          previously-set replacement once a caller (e.g. {@link at.jku.isse.ecco.dao.EccoUtil#deepCopyTree})
 		 *                          is done consuming it -- this field is otherwise never reset on its
 		 *                          own and can leak stale state into a later, unrelated operation that
 		 *                          happens to touch the same (e.g. shared/non-unique) artifact again.

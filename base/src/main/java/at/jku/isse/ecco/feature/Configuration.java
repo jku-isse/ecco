@@ -1,8 +1,6 @@
 package at.jku.isse.ecco.feature;
 
 import at.jku.isse.ecco.Persistable;
-import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleRevision;
 import org.logicng.datastructures.Assignment;
 import org.logicng.formulas.Literal;
 
@@ -41,52 +39,6 @@ public interface Configuration extends Persistable {
     String getOriginalConfigString();
 
     void setFeatureRevisions(FeatureRevision[] featureRevisions);
-
-    default boolean contains(Module module) {
-        // check if all positive features of the module are contained in the configuration
-        for (Feature feature : module.getPos()) {
-            boolean found = false;
-            for (FeatureRevision confFeatureRevision : this.getFeatureRevisions()) {
-                if (confFeatureRevision.getFeature().equals(feature)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) return false;
-        }
-        // check if no negative features of the module are contained in the configuration
-        for (Feature feature : module.getNeg()) {
-            for (FeatureRevision confFeatureRevision : this.getFeatureRevisions()) {
-                if (confFeatureRevision.getFeature().equals(feature)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    default boolean contains(ModuleRevision moduleRevision) {
-        // check if all positive features revisiosn of the module are contained in the configuration
-        for (FeatureRevision featureRevision : moduleRevision.getPos()) {
-            boolean found = false;
-            for (FeatureRevision confFeatureRevision : this.getFeatureRevisions()) {
-                if (confFeatureRevision.equals(featureRevision)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) return false;
-        }
-        // check if no negative features of the module are contained in the configuration
-        for (Feature feature : moduleRevision.getNeg()) {
-            for (FeatureRevision confFeatureRevision : this.getFeatureRevisions()) {
-                if (confFeatureRevision.getFeature().equals(feature)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
 
     /**
      * The assignment feature-trace conditions are evaluated with: for each selected feature revision,

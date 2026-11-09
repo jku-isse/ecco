@@ -9,7 +9,7 @@ import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditionSetterVisitor;
+import at.jku.isse.ecco.tree.RetroactiveConditionSetterVisitor;
 import at.jku.isse.ecco.tree.RootNode;
 
 /**
@@ -237,7 +237,7 @@ public interface Association extends Persistable {
 
 		/** Sets the retroactive condition of its unique nodes; whether any of them changed. */
 		default boolean setRetroactiveConditions(){
-			RetroactiveConditionSetterVisitor visitor = new RetroactiveConditionSetterVisitor(this);
+			RetroactiveConditionSetterVisitor visitor = new RetroactiveConditionSetterVisitor(this.computeCondition().toLogicCondition());
 			this.getRootNode().traverse(visitor);
 			return visitor.changedAny();
 		}

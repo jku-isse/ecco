@@ -1,10 +1,8 @@
-package at.jku.isse.ecco.util;
+package at.jku.isse.ecco.tree;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.RootNode;
 
 import java.util.*;
 import java.util.stream.Collectors;

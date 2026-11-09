@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.util;
 
+import at.jku.isse.ecco.tree.Trees;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;

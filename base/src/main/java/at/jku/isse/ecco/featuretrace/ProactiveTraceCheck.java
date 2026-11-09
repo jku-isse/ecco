@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.featuretrace;
 
+import at.jku.isse.ecco.core.RejectedTrace;
 import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.core.Association;

@@ -2,10 +2,10 @@ package at.jku.isse.ecco.repository;
 
 import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.featuretrace.ProactiveTraceCheck;
-import at.jku.isse.ecco.util.EccoUtil;
+import at.jku.isse.ecco.dao.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
-import at.jku.isse.ecco.featuretrace.RejectedTrace;
+import at.jku.isse.ecco.core.RejectedTrace;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.Persistable;
@@ -19,7 +19,7 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
-import at.jku.isse.ecco.util.Trees;
+import at.jku.isse.ecco.tree.Trees;
 
 import java.util.*;
 

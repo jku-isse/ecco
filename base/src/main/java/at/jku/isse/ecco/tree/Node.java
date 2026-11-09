@@ -4,7 +4,6 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.Persistable;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
-import at.jku.isse.ecco.util.Trees;
 
 import java.util.*;
 import java.util.function.Function;
@@ -105,7 +104,7 @@ public interface Node extends Persistable {
 
 
 	/**
-	 * See {@link at.jku.isse.ecco.util.Trees#countArtifacts(Node)}
+	 * See {@link at.jku.isse.ecco.tree.Trees#countArtifacts(Node)}
 	 *
 	 * @return The number of artifacts contained in the tree.
 	 */
@@ -114,7 +113,7 @@ public interface Node extends Persistable {
 	}
 
 	/**
-	 * See {@link at.jku.isse.ecco.util.Trees#computeDepth(Node)}
+	 * See {@link at.jku.isse.ecco.tree.Trees#computeDepth(Node)}
 	 *
 	 * @return The depth of the tree.
 	 */
@@ -123,7 +122,7 @@ public interface Node extends Persistable {
 	}
 
 	/**
-	 * See {@link at.jku.isse.ecco.util.Trees#countArtifactsPerDepth(Node)}
+	 * See {@link at.jku.isse.ecco.tree.Trees#countArtifactsPerDepth(Node)}
 	 *
 	 * @return A map containing the number of artifacts (value) per depth (key).
 	 */
@@ -132,7 +131,7 @@ public interface Node extends Persistable {
 	}
 
 	/**
-	 * See {@link at.jku.isse.ecco.util.Trees#print(Node)}
+	 * See {@link at.jku.isse.ecco.tree.Trees#print(Node)}
 	 */
 	default void print() {
 		Trees.print(this);
@@ -340,7 +339,7 @@ public interface Node extends Persistable {
 
 
 		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)}
+		 * See {@link at.jku.isse.ecco.tree.Trees#slice(Node.Op, Node.Op)}
 		 *
 		 * @param node The other node to slice with this one.
 		 */
@@ -349,7 +348,7 @@ public interface Node extends Persistable {
 		}
 
 		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#merge(Node.Op, Node.Op)}
+		 * See {@link at.jku.isse.ecco.tree.Trees#merge(Node.Op, Node.Op)}
 		 *
 		 * @param node The other node to merge with this one.
 		 */
@@ -358,21 +357,21 @@ public interface Node extends Persistable {
 		}
 
 		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#sequence(Node.Op)}
+		 * See {@link at.jku.isse.ecco.tree.Trees#sequence(Node.Op)}
 		 */
 		default void sequence() {
 			Trees.sequence(this);
 		}
 
 		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#updateArtifactReferences(Node.Op)}
+		 * See {@link at.jku.isse.ecco.tree.Trees#updateArtifactReferences(Node.Op)}
 		 */
 		default void updateArtifactReferences() {
 			Trees.updateArtifactReferences(this);
 		}
 
 		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#extractMarked(Node.Op)}
+		 * See {@link at.jku.isse.ecco.tree.Trees#extractMarked(Node.Op)}
 		 *
 		 * @return The tree containing the marked nodes of this tree.
 		 */
@@ -381,7 +380,7 @@ public interface Node extends Persistable {
 		}
 
 		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#checkConsistency(Node.Op)}
+		 * See {@link at.jku.isse.ecco.tree.Trees#checkConsistency(Node.Op)}
 		 */
 		default void checkConsistency() {
 			Trees.checkConsistency(this);
