@@ -1,12 +1,12 @@
 package at.jku.isse.ecco.gui.view.operation;
 
-import at.jku.isse.ecco.gui.PluginNames;
+import at.jku.isse.ecco.gui.common.PluginNames;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.gui.ConstraintWarnings;
-import at.jku.isse.ecco.gui.ExceptionTextArea;
+import at.jku.isse.ecco.gui.common.ConstraintWarnings;
+import at.jku.isse.ecco.gui.common.ExceptionTextArea;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.adapter.CommitCancelledException;
 import at.jku.isse.ecco.service.EccoService;
@@ -111,7 +111,7 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 		TextField configurationField = new TextField();
 		// read in the background, holding the service's lock: on the FX thread (Cmd+K, the ribbon) the
 		// window froze behind a commit or checkout running meanwhile; filled in unless typed in by then
-		at.jku.isse.ecco.gui.RepositoryAccess.read(this.service, "Last commit's configuration", CommitBaseDirView::lastCommitConfigurationString,
+		at.jku.isse.ecco.gui.common.RepositoryAccess.read(this.service, "Last commit's configuration", CommitBaseDirView::lastCommitConfigurationString,
 				configuration -> {
 					if (configurationField.getText().isEmpty())
 						configurationField.setText(configuration);
@@ -232,7 +232,7 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 						CommitBaseDirView.this.splitPane.getItems().setAll(CommitBaseDirView.this.logArea);
 						CommitBaseDirView.this.showCancelledHeader("Cancelled: nothing was committed.");
 					} else {
-						CommitBaseDirView.this.splitPane.getItems().setAll(CommitBaseDirView.this.logArea, new at.jku.isse.ecco.gui.ErrorDetails(this.getException()));
+						CommitBaseDirView.this.splitPane.getItems().setAll(CommitBaseDirView.this.logArea, new at.jku.isse.ecco.gui.common.ErrorDetails(this.getException()));
 						CommitBaseDirView.this.showErrorHeader();
 					}
 				}
@@ -247,7 +247,7 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 	 * test stands in for the user's answer).
 	 */
 	boolean confirmCommitAnyway(String violations) {
-		Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION, violations + "\n\nDo you want to commit anyway?");
+		Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.CONFIRMATION, violations + "\n\nDo you want to commit anyway?");
 		alert.setHeaderText("Constraint violation");
 		Optional<ButtonType> result = alert.showAndWait();
 		return result.isPresent() && result.get() == ButtonType.OK;

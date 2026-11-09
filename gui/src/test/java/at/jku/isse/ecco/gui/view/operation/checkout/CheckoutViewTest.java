@@ -247,7 +247,7 @@ public class CheckoutViewTest {
             checkout(view, file, "BASE, A");
             waitUntil("checkout failed", () -> view.button("Done") != null);
             assertTrue(onFx(() -> view.toolBarStyles().contains("error")));
-            assertTrue(onFx(() -> view.result() instanceof at.jku.isse.ecco.gui.ErrorDetails));
+            assertTrue(onFx(() -> view.result() instanceof at.jku.isse.ecco.gui.common.ErrorDetails));
             assertEquals("x\n", Files.readString(file));
 
             // the checkout itself fails: a configuration that cannot be parsed
@@ -255,7 +255,7 @@ public class CheckoutViewTest {
             checkout(second, tmp.resolve("out"), "BASE, A, (");
             waitUntil("checkout failed", () -> second.button("Done") != null);
             assertTrue(onFx(() -> second.toolBarStyles().contains("error")));
-            assertTrue(onFx(() -> second.result() instanceof at.jku.isse.ecco.gui.ErrorDetails));
+            assertTrue(onFx(() -> second.result() instanceof at.jku.isse.ecco.gui.common.ErrorDetails));
         }
     }
 

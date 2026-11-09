@@ -2,12 +2,12 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
-import at.jku.isse.ecco.gui.EccoListenerLifecycle;
+import at.jku.isse.ecco.gui.common.EccoListenerLifecycle;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.RepositoryAccess;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.RepositoryAccess;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.gui.view.operation.OperationView;
 import at.jku.isse.ecco.service.EccoService;

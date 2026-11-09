@@ -1,15 +1,15 @@
 package at.jku.isse.ecco.gui.view.operation;
 
-import at.jku.isse.ecco.gui.PluginNames;
-import at.jku.isse.ecco.gui.ConstraintWarnings;
+import at.jku.isse.ecco.gui.common.PluginNames;
+import at.jku.isse.ecco.gui.common.ConstraintWarnings;
 import at.jku.isse.ecco.adapter.CommitCancelledException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.gui.ExceptionTextArea;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.ExceptionTextArea;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.EccoListener;
 import javafx.animation.PauseTransition;
@@ -298,7 +298,7 @@ public class CommitView extends OperationView implements EccoListener {
 	void selectFoldersUnder(Path selectedPath) {
 		List<Path> subfolders = listSubfolders(selectedPath);
 		if (subfolders.isEmpty()) {
-			Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING, "The selected folder has no subfolders:\n" + selectedPath);
+			Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.WARNING, "The selected folder has no subfolders:\n" + selectedPath);
 			alert.showAndWait();
 			return;
 		}
@@ -329,7 +329,7 @@ public class CommitView extends OperationView implements EccoListener {
 	private void wireCommitButton(Button commitButton) {
 		commitButton.setOnAction(event -> {
 			if (folderData.isEmpty()) {
-				Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING, "Add at least one folder to commit.");
+				Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.WARNING, "Add at least one folder to commit.");
 				alert.showAndWait();
 				return;
 			}
@@ -405,7 +405,7 @@ public class CommitView extends OperationView implements EccoListener {
 								committed.get(), foldersToCommit.size()));
 					} else {
 						// show exception textarea instead of commit detail view
-						CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new at.jku.isse.ecco.gui.ErrorDetails(this.getException()));
+						CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new at.jku.isse.ecco.gui.common.ErrorDetails(this.getException()));
 						CommitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 						CommitView.this.showErrorHeader();
 					}
@@ -453,7 +453,7 @@ public class CommitView extends OperationView implements EccoListener {
 	 */
 	List<Path> chooseSubfolders(Path parent, List<Path> subfolders) {
 		Dialog<List<Path>> dialog = new Dialog<>();
-		at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(dialog);
+		at.jku.isse.ecco.gui.common.Dialogs.ownByFocusedWindow(dialog);
 		dialog.setTitle("Select Folders");
 		dialog.setHeaderText("Select which subfolders of\n" + parent + "\nto add:");
 		dialog.initOwner(this.getScene().getWindow());
@@ -740,7 +740,7 @@ public class CommitView extends OperationView implements EccoListener {
 	 * test stands in for the user's answer).
 	 */
 	boolean confirmCommitAnyway(String violations) {
-		Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION,
+		Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.CONFIRMATION,
 				violations + "\n\nDo you want to commit anyway?");
 		alert.setHeaderText("Constraint violation");
 		Optional<ButtonType> result = alert.showAndWait();

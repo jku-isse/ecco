@@ -1,8 +1,9 @@
 package at.jku.isse.ecco.gui.view.artifacts;
 
+import at.jku.isse.ecco.gui.common.AssociationInfoImpl;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.gui.MinimizationResults;
+import at.jku.isse.ecco.gui.common.MinimizationResults;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryVisitor;
 import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
 import at.jku.isse.ecco.service.EccoService;

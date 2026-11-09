@@ -306,7 +306,7 @@ public class PartialOrderGraphView extends BorderPane {
 		List<String> origins = new ArrayList<>();
 		for (at.jku.isse.ecco.core.Association association : ordered.subList(0, Math.min(ORIGINS, ordered.size())))
 			origins.add(conditions.computeIfAbsent(association, describe)
-					+ " (association " + at.jku.isse.ecco.gui.TableColumns.shortIds(association.getId()) + ")");
+					+ " (association " + at.jku.isse.ecco.gui.common.TableColumns.shortIds(association.getId()) + ")");
 		if (ordered.size() > ORIGINS)
 			origins.add("and " + (ordered.size() - ORIGINS) + " more associations");
 		return origins;
@@ -596,7 +596,7 @@ public class PartialOrderGraphView extends BorderPane {
 		this.requests.incrementAndGet(); // a graph still being read is not drawn
 
 		if (null != viewer) {
-			at.jku.isse.ecco.gui.GraphViews.closeViewer(viewer, this.graph);
+			at.jku.isse.ecco.gui.common.GraphViews.closeViewer(viewer, this.graph);
 			view = null;
 			viewer = null;
 		}

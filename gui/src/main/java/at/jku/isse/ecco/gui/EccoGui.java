@@ -1,5 +1,8 @@
 package at.jku.isse.ecco.gui;
 
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.NotificationPanel;
+import at.jku.isse.ecco.gui.common.Notifications;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.EccoListener;

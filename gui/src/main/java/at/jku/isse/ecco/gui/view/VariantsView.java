@@ -1,14 +1,14 @@
 package at.jku.isse.ecco.gui.view;
 
-import at.jku.isse.ecco.gui.ConstraintWarnings;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.LatestRefresh;
-import at.jku.isse.ecco.gui.RepositoryAccess;
+import at.jku.isse.ecco.gui.common.ConstraintWarnings;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.LatestRefresh;
+import at.jku.isse.ecco.gui.common.RepositoryAccess;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.VariantDetailView;
 import at.jku.isse.ecco.gui.view.operation.VariantView;
 import at.jku.isse.ecco.service.EccoService;
@@ -547,7 +547,7 @@ public class VariantsView extends BorderPane implements EccoListener {
 
     private void openDialog(String title, Parent content) {
         // the main window's way: with Cmd+W, Cmd+Q and Esc, which these lacked
-        at.jku.isse.ecco.gui.Dialogs.open(this.getScene().getWindow(), title, content, Modality.WINDOW_MODAL);
+        at.jku.isse.ecco.gui.common.Dialogs.open(this.getScene().getWindow(), title, content, Modality.WINDOW_MODAL);
     }
 
 

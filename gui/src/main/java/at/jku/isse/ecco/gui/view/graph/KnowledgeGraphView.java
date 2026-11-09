@@ -6,13 +6,12 @@ import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.gui.CategoricalColorPalette;
-import at.jku.isse.ecco.gui.EditableSpinner;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.GraphCameraControls;
-import at.jku.isse.ecco.gui.RepositoryAccess;
-import at.jku.isse.ecco.gui.TabVisibilityAware;
-import at.jku.isse.ecco.gui.view.KnowledgeGraphLayout;
+import at.jku.isse.ecco.gui.common.CategoricalColorPalette;
+import at.jku.isse.ecco.gui.common.EditableSpinner;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.GraphCameraControls;
+import at.jku.isse.ecco.gui.common.RepositoryAccess;
+import at.jku.isse.ecco.gui.common.TabVisibilityAware;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.EccoListener;
@@ -191,8 +190,8 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		// deliberately no layout sink/enableAutoLayout(): node positions come straight from
 		// KnowledgeGraphLayout.compute(), same as FeaturesView.
 
-		at.jku.isse.ecco.gui.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
-		at.jku.isse.ecco.gui.GraphViews.zoomOnPinch(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
+		at.jku.isse.ecco.gui.common.GraphViews.zoomOnScroll(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
+		at.jku.isse.ecco.gui.common.GraphViews.zoomOnPinch(this, () -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera);
 
 		showLabelsCheckbox.setSelected(this.showLabels);
 
@@ -334,7 +333,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		this.displayToolBar.getItems().add(new Separator());
 		this.displayToolBar.getItems().addAll(GraphCameraControls.build(() -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera));
 
-		Button exportButton = at.jku.isse.ecco.gui.GraphViews.exportButton(() -> KnowledgeGraphView.this.graph, "knowledge-graph.graphml", this::setToolBarsDisabled);
+		Button exportButton = at.jku.isse.ecco.gui.common.GraphViews.exportButton(() -> KnowledgeGraphView.this.graph, "knowledge-graph.graphml", this::setToolBarsDisabled);
 		this.displayToolBar.getItems().addAll(new Separator(), exportButton);
 
 		return showLabelsCheckbox;
@@ -449,7 +448,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		}
 
 		this.graphContainer.setCenter(new Pane());
-		at.jku.isse.ecco.gui.GraphViews.closeViewer(viewer, this.graph);
+		at.jku.isse.ecco.gui.common.GraphViews.closeViewer(viewer, this.graph);
 		view = null;
 		viewer = null;
 	}
@@ -794,7 +793,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		Association association = node.getContainingAssociation();
 		if (association != null && !infos.containsKey(association.getId())) {
 			at.jku.isse.ecco.module.Condition condition = association.computeCondition();
-			at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl info = new at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl(
+			at.jku.isse.ecco.gui.common.AssociationInfoImpl info = new at.jku.isse.ecco.gui.common.AssociationInfoImpl(
 					association, null, 0, condition.toDisplayString());
 			info.setHoverText(at.jku.isse.ecco.adapter.view.AssociationColors.hoverText(association.getId(), condition));
 			infos.put(association.getId(), info);

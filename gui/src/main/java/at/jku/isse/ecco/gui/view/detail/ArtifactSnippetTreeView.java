@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.gui.CategoricalColorPalette;
+import at.jku.isse.ecco.gui.common.CategoricalColorPalette;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import javafx.geometry.Insets;

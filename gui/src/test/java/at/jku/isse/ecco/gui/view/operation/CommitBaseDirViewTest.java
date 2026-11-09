@@ -172,8 +172,8 @@ public class CommitBaseDirViewTest {
 
                 assertTrue(onFx(() -> view.toolBar.getStyleClass().contains("error")));
                 assertEquals(0, service.getCommits().size());
-                String error = onFx(() -> splitItems(view).stream().filter(n -> n instanceof at.jku.isse.ecco.gui.ErrorDetails)
-                        .map(n -> ((at.jku.isse.ecco.gui.ErrorDetails) n).summary() + "\n" + ((at.jku.isse.ecco.gui.ErrorDetails) n).stackTrace()).findFirst().orElse(null));
+                String error = onFx(() -> splitItems(view).stream().filter(n -> n instanceof at.jku.isse.ecco.gui.common.ErrorDetails)
+                        .map(n -> ((at.jku.isse.ecco.gui.common.ErrorDetails) n).summary() + "\n" + ((at.jku.isse.ecco.gui.common.ErrorDetails) n).stackTrace()).findFirst().orElse(null));
                 assertNotNull(error, "the failure is shown");
                 assertTrue(error.contains("at least one feature"), error);
             } finally {

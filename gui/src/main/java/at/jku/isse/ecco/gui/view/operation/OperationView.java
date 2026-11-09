@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.gui.view.operation;
 
 
-import at.jku.isse.ecco.gui.ExceptionTextArea;
-import at.jku.isse.ecco.gui.Notifications;
+import at.jku.isse.ecco.gui.common.ExceptionTextArea;
+import at.jku.isse.ecco.gui.common.Notifications;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -143,7 +143,7 @@ public abstract class OperationView extends BorderPane {
 
 	/** "Error opening repository: Not an ECCO repository: ..." - [what] and the causes of [exception]. */
 	protected void showInputError(String what, Throwable exception) {
-		this.showInputError(what.replaceAll("\\.$", "") + ": " + at.jku.isse.ecco.gui.ExceptionAlert.describe(exception));
+		this.showInputError(what.replaceAll("\\.$", "") + ": " + at.jku.isse.ecco.gui.common.ExceptionAlert.describe(exception));
 	}
 
 	/** The error said above the form, null if there is none. Package-visible for testing. */
@@ -251,7 +251,7 @@ public abstract class OperationView extends BorderPane {
 	/** The prompt of a configuration field to check out or save - nothing said how to write one. */
 	public static final String CONFIGURATION_HINT = "Features, comma-separated: A (its latest revision), A.3f2a9c1 (that revision)";
 	/** The prompt of a configuration field to commit with. */
-	public static final String COMMIT_CONFIGURATION_HINT = "Features, comma-separated: A, A.3f2a9c1 (that revision), A' (a new revision of A)";
+	public static final String COMMIT_CONFIGURATION_HINT = at.jku.isse.ecco.gui.common.ConfigurationHints.CONFIGURATION;
 	/** Added to {@link #COMMIT_CONFIGURATION_HINT} where a blank field reads the folder's .config file. */
 	public static final String BLANK_READS_CONFIG_FILE = "; blank: the folder's .config file";
 
@@ -316,7 +316,7 @@ public abstract class OperationView extends BorderPane {
 		// scene never laid the view out again - it stayed that narrow inside the wider window
 		if (this.getScene() != null && this.getScene().getWindow() != null) {
 			// a size the user gave this dialog before (see Dialogs) only grows
-			if (this.getScene().getWindow().getProperties().containsKey(at.jku.isse.ecco.gui.Dialogs.SIZE_GIVEN))
+			if (this.getScene().getWindow().getProperties().containsKey(at.jku.isse.ecco.gui.common.Dialogs.SIZE_GIVEN))
 				this.growToFit();
 			else
 				this.getScene().getWindow().sizeToScene();
@@ -436,7 +436,7 @@ public abstract class OperationView extends BorderPane {
 		gridPane.add(label, 0, 0);
 
 		if (ex != null) {
-			gridPane.add(new at.jku.isse.ecco.gui.ErrorDetails(ex), 0, 1);
+			gridPane.add(new at.jku.isse.ecco.gui.common.ErrorDetails(ex), 0, 1);
 		}
 
 		this.setCenter(gridPane);

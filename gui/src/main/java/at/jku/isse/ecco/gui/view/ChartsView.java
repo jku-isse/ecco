@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.gui.view;
 
-import at.jku.isse.ecco.gui.TabVisibilityAware;
-import at.jku.isse.ecco.gui.TableColumns;
-import at.jku.isse.ecco.gui.TaskFailures;
+import at.jku.isse.ecco.gui.common.TabVisibilityAware;
+import at.jku.isse.ecco.gui.common.TableColumns;
+import at.jku.isse.ecco.gui.common.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactReader;
@@ -59,7 +59,7 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 	private volatile boolean tabVisible = true;
 
 	/** A later load supersedes one still running; see {@link #refresh()}. */
-	private final at.jku.isse.ecco.gui.LatestRefresh<Runnable> refresher;
+	private final at.jku.isse.ecco.gui.common.LatestRefresh<Runnable> refresher;
 	/** Whether "Advanced: Modules per Order" is open - read by the refresh in the background. */
 	private volatile boolean advancedOpen;
 
@@ -74,8 +74,8 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 
 	public ChartsView(EccoService service) {
 		this.service = service;
-		this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Charts", service, this::computeCharts, Runnable::run,
-				failure -> new at.jku.isse.ecco.gui.ExceptionAlert(failure).show());
+		this.refresher = new at.jku.isse.ecco.gui.common.LatestRefresh<>("Charts", service, this::computeCharts, Runnable::run,
+				failure -> new at.jku.isse.ecco.gui.common.ExceptionAlert(failure).show());
 
 
 		ScrollPane scrollPane = new ScrollPane();
@@ -201,7 +201,7 @@ public class ChartsView extends BorderPane implements EccoListener, TabVisibilit
 
 	/**
 	 * The charts' data, read in the background holding the service's lock - the latest only, not
-	 * while the tab is hidden (see {@link at.jku.isse.ecco.gui.LatestRefresh}) - and how to show it,
+	 * while the tab is hidden (see {@link at.jku.isse.ecco.gui.common.LatestRefresh}) - and how to show it,
 	 * on the FX thread.
 	 */
 	private Runnable computeCharts(EccoService service) {

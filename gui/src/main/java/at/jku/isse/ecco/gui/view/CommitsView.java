@@ -3,7 +3,7 @@ package at.jku.isse.ecco.gui.view;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.gui.view.artifacts.ArtifactTreeView;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.EccoService;
@@ -39,15 +39,15 @@ public class CommitsView extends BorderPane implements EccoListener {
 	 * Lists the commits again: they were read on the FX thread at first (waiting for the service's
 	 * lock while a commit ran) and listed from the repository's own collection, which a commit adds to.
 	 */
-	private final at.jku.isse.ecco.gui.LatestRefresh<List<Commit>> refresher;
+	private final at.jku.isse.ecco.gui.common.LatestRefresh<List<Commit>> refresher;
 
 	public CommitsView(EccoService service) {
 		this.service = service;
-		this.refresher = new at.jku.isse.ecco.gui.LatestRefresh<>("Commits", service, svc -> List.copyOf(svc.getCommits()), commits -> {
+		this.refresher = new at.jku.isse.ecco.gui.common.LatestRefresh<>("Commits", service, svc -> List.copyOf(svc.getCommits()), commits -> {
 			this.setDisable(false);
 			this.commitsData.clear();
 			this.commitsData.addAll(commits);
-		}, failure -> new at.jku.isse.ecco.gui.ExceptionAlert(failure).show());
+		}, failure -> new at.jku.isse.ecco.gui.common.ExceptionAlert(failure).show());
 
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
@@ -89,7 +89,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 			// its details, and its artifacts as a tree to pick from (it showed the first node of them
 			// that had a viewer) - read holding the service's lock, in the background: a commit
 			// running meanwhile changes the associations, their conditions and trees
-			at.jku.isse.ecco.gui.RepositoryAccess.read(service, "Commit details", svc -> {
+			at.jku.isse.ecco.gui.common.RepositoryAccess.read(service, "Commit details", svc -> {
 				CommitDetailView.Details details = CommitDetailView.read(newValue);
 				LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
 				for (Association association : newValue.getAssociations())
@@ -100,7 +100,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 					return;
 				commitDetailView.show(shown.details());
 				artifactTreeView.setRootNode(shown.artifacts());
-			}, failure -> new at.jku.isse.ecco.gui.ExceptionAlert(failure).show());
+			}, failure -> new at.jku.isse.ecco.gui.common.ExceptionAlert(failure).show());
 		});
 
 		// enabled with exactly two selected: with any other number it opened an error with a stack trace
@@ -115,7 +115,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 				return;
 			CommitComparisonView commitComparisonView = new CommitComparisonView(service, selectedCommits.get(0), selectedCommits.get(1));
 			// over the main window, with Cmd+W and Esc: it had no owner - "window modal" to nothing
-			at.jku.isse.ecco.gui.Dialogs.open(this.getScene().getWindow(), "Commit Comparison", commitComparisonView, Modality.WINDOW_MODAL);
+			at.jku.isse.ecco.gui.common.Dialogs.open(this.getScene().getWindow(), "Commit Comparison", commitComparisonView, Modality.WINDOW_MODAL);
 		});
 
 		SplitPane top = new SplitPane(commitsTable, commitDetailView);

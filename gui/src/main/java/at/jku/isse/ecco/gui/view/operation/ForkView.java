@@ -159,7 +159,7 @@ public class ForkView extends OperationView {
 			}
 			Path baseDir = repositoryDir.getParent();
 			if (baseDir != null && !Files.exists(baseDir)) {
-				Alert confirm = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION,
+				Alert confirm = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.CONFIRMATION,
 						"The directory\n" + baseDir + "\ndoes not exist. Create it?",
 						ButtonType.YES, ButtonType.CANCEL);
 				confirm.setHeaderText("Create Directory");

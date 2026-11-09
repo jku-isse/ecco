@@ -1,14 +1,14 @@
 package at.jku.isse.ecco.gui.view.operation.checkout;
 
-import at.jku.isse.ecco.gui.ConstraintWarnings;
+import at.jku.isse.ecco.gui.common.ConstraintWarnings;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.gui.ExceptionTextArea;
-import at.jku.isse.ecco.gui.RepositoryAccess;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.ExceptionTextArea;
+import at.jku.isse.ecco.gui.common.RepositoryAccess;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.gui.view.detail.CheckoutDetailView;
@@ -349,7 +349,7 @@ public class CheckoutView extends OperationView implements EccoListener {
      * @return true if the user confirmed.
      */
     boolean askToProceedAnyway(String description, String actionVerb) {
-        Alert alert = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.CONFIRMATION,
+        Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.CONFIRMATION,
                 description + "\n\nDo you want to " + actionVerb + " anyway?");
         alert.setHeaderText("Constraint violation");
         Optional<ButtonType> result = alert.showAndWait();
@@ -372,7 +372,7 @@ public class CheckoutView extends OperationView implements EccoListener {
     }
 
     protected void checkoutFailed(Throwable exception) {
-        this.handleCheckoutResult(null, new at.jku.isse.ecco.gui.ErrorDetails(exception));
+        this.handleCheckoutResult(null, new at.jku.isse.ecco.gui.common.ErrorDetails(exception));
         this.showErrorHeader();
     }
 

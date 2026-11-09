@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
-import at.jku.isse.ecco.gui.EditableSpinner;
+import at.jku.isse.ecco.gui.common.EditableSpinner;
 import at.jku.isse.ecco.mining.MinimizationPreferences;
 import at.jku.isse.ecco.adapter.AdapterPreferences;
 import at.jku.isse.ecco.service.EccoService;

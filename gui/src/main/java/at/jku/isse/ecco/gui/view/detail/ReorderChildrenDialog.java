@@ -6,8 +6,8 @@ import javafx.collections.transformation.FilteredList;
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
-import at.jku.isse.ecco.gui.RepositoryAccess;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.RepositoryAccess;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.LlmPreferences;
@@ -106,7 +106,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 
 	/** @param suggester asked for an order by "Suggest order"; null disables it (no model chosen) */
 	public ReorderChildrenDialog(EccoService service, Node.Op node, OrderSuggester suggester) {
-		at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(this);
+		at.jku.isse.ecco.gui.common.Dialogs.ownByFocusedWindow(this);
 		setTitle("Reorder Children");
 		setHeaderText("Choose the order for the children of: " + node.getArtifact());
 		setResizable(true);
@@ -179,7 +179,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			while (file.getParent() != null && !(file.getArtifact() != null && file.getArtifact().getData() instanceof at.jku.isse.ecco.adapter.dispatch.PluginArtifactData))
 				file = file.getParent();
 			return new Read(node, Order.of(node), children, texts, markers, ArtifactDiagnostics.describePath(node), copy,
-					at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl.hoverTexts(copy.copyOf(file)));
+					at.jku.isse.ecco.gui.common.AssociationInfoImpl.hoverTexts(copy.copyOf(file)));
 		}
 	}
 

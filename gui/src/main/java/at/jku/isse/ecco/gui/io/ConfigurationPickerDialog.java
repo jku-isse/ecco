@@ -40,7 +40,7 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 
 	/** Starting from [initial], the text of the field it was opened for. */
 	public ConfigurationPickerDialog(EccoService service, String initial) {
-		at.jku.isse.ecco.gui.Dialogs.ownByFocusedWindow(this);
+		at.jku.isse.ecco.gui.common.Dialogs.ownByFocusedWindow(this);
 		setTitle("Exact Configuration"); // named as the button that opens it
 		setHeaderText("Check a feature to include it below, or type/edit the configuration string directly - they stay in sync.");
 		setResizable(true);
@@ -152,14 +152,14 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 		// the features read in the background, holding the service's lock: read on the FX thread, the
 		// window froze while a commit ran, and a commit adding a feature failed the copy of them
 		this.reading = true;
-		at.jku.isse.ecco.gui.RepositoryAccess.read(service, "Configuration features", FeatureRow::read, features -> {
+		at.jku.isse.ecco.gui.common.RepositoryAccess.read(service, "Configuration features", FeatureRow::read, features -> {
 			this.reading = false;
 			showFeatures.accept(features);
 			showString.run(); // the string given or typed meanwhile
 			filterRows.run();
 		}, failure -> {
 			this.reading = false;
-			new at.jku.isse.ecco.gui.ExceptionAlert(failure).show();
+			new at.jku.isse.ecco.gui.common.ExceptionAlert(failure).show();
 		}, () -> this.reading = false); // the repository closed: nothing to show
 
 		ScrollPane scrollPane = new ScrollPane(rowsContainer);
@@ -202,7 +202,7 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 			return;
 		}
 		this.parsing = true;
-		at.jku.isse.ecco.gui.RepositoryAccess.read(service, "Configuration", s -> {
+		at.jku.isse.ecco.gui.common.RepositoryAccess.read(service, "Configuration", s -> {
 			try {
 				return new Parsed(s.parseConfigurationString(text), null);
 			} catch (RuntimeException e) {

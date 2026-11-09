@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.gui.view.operation;
 
-import at.jku.isse.ecco.gui.EccoListenerLifecycle;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.EccoListenerLifecycle;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.EccoListener;
 import javafx.application.Platform;
@@ -170,7 +170,7 @@ public class ServerView extends OperationView implements EccoListener {
 	 * yes. Package-visible for testing.
 	 */
 	boolean confirmAllInterfaces(int port) {
-		Alert confirm = new at.jku.isse.ecco.gui.OwnedAlert(Alert.AlertType.WARNING,
+		Alert confirm = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.WARNING,
 				"Synchronization has no authentication. Anyone who can reach port " + port
 						+ " of this machine can read the whole repository and push into it.\n\n"
 						+ "Only do this on a network you trust.",

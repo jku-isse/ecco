@@ -5,7 +5,7 @@ import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl;
+import at.jku.isse.ecco.gui.common.AssociationInfoImpl;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Key;

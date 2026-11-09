@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.core.Constraint;
-import at.jku.isse.ecco.gui.MinimizationResults;
+import at.jku.isse.ecco.gui.common.MinimizationResults;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;

@@ -1,10 +1,11 @@
 package at.jku.isse.ecco.gui.view.artifacts;
 
+import at.jku.isse.ecco.gui.common.AssociationInfoImpl;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.RepositoryAccess;
-import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.common.ExceptionAlert;
+import at.jku.isse.ecco.gui.common.RepositoryAccess;
+import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;

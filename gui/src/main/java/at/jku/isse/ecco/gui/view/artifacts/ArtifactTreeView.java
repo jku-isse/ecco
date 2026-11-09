@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.artifacts;
 
+import at.jku.isse.ecco.gui.common.AssociationInfoImpl;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.RootNode;
