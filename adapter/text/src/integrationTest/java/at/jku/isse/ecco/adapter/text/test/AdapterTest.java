@@ -3,7 +3,7 @@ package at.jku.isse.ecco.adapter.text.test;
 import at.jku.isse.ecco.adapter.text.*;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.*;
-import at.jku.isse.ecco.util.Trees;
+import at.jku.isse.ecco.tree.Trees;
 import org.junit.jupiter.api.*;
 
 import java.net.*;

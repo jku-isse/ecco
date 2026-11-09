@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.core;
 
-import at.jku.isse.ecco.featuretrace.RejectedTrace;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.tree.Node;

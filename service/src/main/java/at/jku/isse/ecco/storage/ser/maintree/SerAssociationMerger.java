@@ -2,12 +2,12 @@ package at.jku.isse.ecco.storage.ser.maintree;
 
 import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.featuretrace.ProactiveTraceCheck;
-import at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditionSetterVisitor;
+import at.jku.isse.ecco.tree.RetroactiveConditionSetterVisitor;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.Persistable;
 import at.jku.isse.ecco.maintree.building.AssociationMerger;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.util.Trees;
+import at.jku.isse.ecco.tree.Trees;
 
 import java.util.Collection;
 import java.util.Map;

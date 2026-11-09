@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.maintree;
 
-import at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditionSetterVisitor;
+import at.jku.isse.ecco.tree.RetroactiveConditionSetterVisitor;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;

@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.c;
 
 import at.jku.isse.ecco.core.Checkout;
-import at.jku.isse.ecco.featuretrace.RejectedTrace;
+import at.jku.isse.ecco.core.RejectedTrace;
 import at.jku.isse.ecco.service.EccoService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;

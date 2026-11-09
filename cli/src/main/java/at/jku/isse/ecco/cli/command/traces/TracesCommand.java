@@ -5,7 +5,7 @@ import at.jku.isse.ecco.cli.writer.OutWriter;
 import at.jku.isse.ecco.cli.writer.SystemWriter;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.util.Trees;
+import at.jku.isse.ecco.tree.Trees;
 import net.sourceforge.argparse4j.inf.Namespace;
 
 public class TracesCommand implements Command {

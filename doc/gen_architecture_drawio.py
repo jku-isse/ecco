@@ -102,7 +102,7 @@ dm = p.box(310, 30, 560, 210, 'domain model', 'base', parent=B, container=True)
 items(p, dm, 10, 28, 170, 52, ['<b>core</b><br>Association · Commit · Variant · Constraint · Remote · Checkout · Diff · DependencyGraph',
       '<b>feature</b><br>Feature · FeatureRevision · Configuration · ConfigurationText · FeatureLiterals',
       '<b>module / counter</b><br>Module · ModuleRevision · Condition (presence conditions) · ConditionText · counters',
-      '<b>tree</b> + util.Trees<br>Node · RootNode · treeFusion / slice / merge',
+      '<b>tree</b> + Trees<br>Node · RootNode · treeFusion / slice / merge',
       '<b>artifact</b><br>Artifact · ArtifactData · references',
       '<b>pog</b><br>PartialOrderGraph (sibling ordering)',
       '<b>maintree</b><br>building · factory · retroactive',

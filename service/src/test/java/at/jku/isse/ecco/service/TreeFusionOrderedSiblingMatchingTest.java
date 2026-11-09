@@ -5,7 +5,7 @@ import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.util.Trees;
+import at.jku.isse.ecco.tree.Trees;
 
 import org.junit.jupiter.api.Test;
 

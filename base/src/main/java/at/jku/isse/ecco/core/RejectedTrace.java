@@ -1,7 +1,7 @@
-package at.jku.isse.ecco.featuretrace;
+package at.jku.isse.ecco.core;
 
 /**
- * A proactive feature trace that contradicts the commit history, found by {@link ProactiveTraceCheck}:
+ * A proactive feature trace that contradicts the commit history, found by {@link at.jku.isse.ecco.featuretrace.ProactiveTraceCheck}:
  * it was not used, and its artifact kept its retroactive condition.
  *
  * @param location   where the artifact is: file and line where the adapter recorded one, else its path in the tree

@@ -29,26 +29,26 @@ public class ConfigurationTest {
     }
 
     @Test
-    public void containsModuleTrueWhenAllPositiveFeaturesAreSelected() {
+    public void aModuleHoldsTrueWhenAllPositiveFeaturesAreSelected() {
         FeatureRevision revisionA = revisionOf("A");
         Configuration configuration = ef.createConfiguration(new FeatureRevision[]{revisionA});
         Module module = repository.addModule(new Feature[]{revisionA.getFeature()}, new Feature[0]);
 
-        assertTrue(configuration.contains(module));
+        assertTrue(module.holds(configuration));
     }
 
     @Test
-    public void containsModuleFalseWhenAPositiveFeatureIsNotSelected() {
+    public void aModuleHoldsFalseWhenAPositiveFeatureIsNotSelected() {
         FeatureRevision revisionA = revisionOf("A");
         FeatureRevision revisionB = revisionOf("B");
         Configuration configuration = ef.createConfiguration(new FeatureRevision[]{revisionA});
         Module module = repository.addModule(new Feature[]{revisionA.getFeature(), revisionB.getFeature()}, new Feature[0]);
 
-        assertFalse(configuration.contains(module));
+        assertFalse(module.holds(configuration));
     }
 
     @Test
-    public void containsModuleFalseWhenANegativeFeatureIsSelected() {
+    public void aModuleHoldsFalseWhenANegativeFeatureIsSelected() {
         // SerModule requires at least one positive feature (SerModule.java:32), so this needs a
         // second, satisfied positive feature alongside the negative one to isolate the negative-
         // feature check from the (separately tested) positive-feature check.
@@ -57,21 +57,21 @@ public class ConfigurationTest {
         Configuration configuration = ef.createConfiguration(new FeatureRevision[]{revisionA, revisionC});
         Module module = repository.addModule(new Feature[]{revisionA.getFeature()}, new Feature[]{revisionC.getFeature()});
 
-        assertFalse(configuration.contains(module));
+        assertFalse(module.holds(configuration));
     }
 
     @Test
-    public void containsModuleTrueWhenANegativeFeatureIsNotSelected() {
+    public void aModuleHoldsTrueWhenANegativeFeatureIsNotSelected() {
         FeatureRevision revisionA = revisionOf("A");
         FeatureRevision revisionC = revisionOf("C");
         Configuration configuration = ef.createConfiguration(new FeatureRevision[]{revisionA});
         Module module = repository.addModule(new Feature[]{revisionA.getFeature()}, new Feature[]{revisionC.getFeature()});
 
-        assertTrue(configuration.contains(module));
+        assertTrue(module.holds(configuration));
     }
 
     @Test
-    public void containsModuleRevisionRequiresTheExactRevisionNotJustTheFeature() {
+    public void aModuleRevisionHoldsRequiresTheExactRevisionNotJustTheFeature() {
         FeatureRevision revisionA1 = revisionOf("A");
         Feature featureA = revisionA1.getFeature();
         FeatureRevision revisionA2 = featureA.addRevision(UUID.randomUUID().toString());
@@ -80,8 +80,8 @@ public class ConfigurationTest {
         ModuleRevision moduleRevisionOfA1 = module.addRevision(new FeatureRevision[]{revisionA1}, new Feature[0]);
         ModuleRevision moduleRevisionOfA2 = module.addRevision(new FeatureRevision[]{revisionA2}, new Feature[0]);
 
-        assertTrue(configuration.contains(moduleRevisionOfA1));
-        assertFalse(configuration.contains(moduleRevisionOfA2), "the configuration selects revision A1, not A2, even though both belong to feature A");
+        assertTrue(moduleRevisionOfA1.holds(configuration));
+        assertFalse(moduleRevisionOfA2.holds(configuration), "the configuration selects revision A1, not A2, even though both belong to feature A");
     }
 
     @Test

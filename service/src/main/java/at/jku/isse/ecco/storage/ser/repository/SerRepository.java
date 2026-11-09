@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.storage.ser.repository;
 
 import at.jku.isse.ecco.featuretrace.ProactiveTraceCheck;
-import at.jku.isse.ecco.featuretrace.RejectedTrace;
+import at.jku.isse.ecco.core.RejectedTrace;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
