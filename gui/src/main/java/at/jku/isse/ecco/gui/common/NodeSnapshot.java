@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.gui.view.detail;
+package at.jku.isse.ecco.gui.common;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.graph;
 
+import at.jku.isse.ecco.gui.common.PluginIds;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
@@ -12,7 +13,6 @@ import at.jku.isse.ecco.gui.common.ExceptionAlert;
 import at.jku.isse.ecco.gui.common.GraphCameraControls;
 import at.jku.isse.ecco.gui.common.RepositoryAccess;
 import at.jku.isse.ecco.gui.common.TabVisibilityAware;
-import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.EccoListener;
 import com.google.inject.Inject;
@@ -756,7 +756,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		at.jku.isse.ecco.tree.Node contentNode = findRepresentativeContentNode(association.getRootNode());
 		if (contentNode == null) return null;
 
-		String pluginId = ArtifactDetailView.getPluginId(contentNode);
+		String pluginId = PluginIds.of(contentNode);
 		if (pluginId == null) return null;
 
 		// only what the preview shows is copied: the file around the content node, and the path down
@@ -773,7 +773,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 			path.add(root);
 		}
 		at.jku.isse.ecco.tree.Node shown = file;
-		at.jku.isse.ecco.gui.view.detail.NodeSnapshot copy = at.jku.isse.ecco.gui.view.detail.NodeSnapshot.of(root,
+		at.jku.isse.ecco.gui.common.NodeSnapshot copy = at.jku.isse.ecco.gui.common.NodeSnapshot.of(root,
 				node -> path.contains(node) || within(node, shown));
 		// unselected, so the default look - only for the hover texts, which compute conditions
 		java.util.Map<String, at.jku.isse.ecco.adapter.AssociationInfo> infos = new java.util.HashMap<>();

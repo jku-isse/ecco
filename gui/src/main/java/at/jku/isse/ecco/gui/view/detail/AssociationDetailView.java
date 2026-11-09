@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.detail;
 
+import at.jku.isse.ecco.gui.common.NodeSnapshot;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.gui.common.ExceptionAlert;

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.gui.common.PluginIds;
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.gui.common.EccoListenerLifecycle;
@@ -162,7 +163,7 @@ public class CommitComparisonView extends OperationView implements EccoListener 
     /** As {@link ArtifactDetailView#findNodeWithArtifactViewerRec}, by the plugins that have a viewer - holding the service's lock. */
     private static Node firstWithViewer(Node node, Set<String> pluginIds) {
         for (Node child : node.getChildren()) {
-            if (pluginIds.contains(ArtifactDetailView.getPluginId(child)))
+            if (pluginIds.contains(PluginIds.of(child)))
                 return child;
             Node found = firstWithViewer(child, pluginIds);
             if (found != null)
