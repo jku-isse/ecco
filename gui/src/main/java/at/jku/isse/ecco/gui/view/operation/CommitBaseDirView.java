@@ -6,7 +6,6 @@ import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.common.ConstraintWarnings;
-import at.jku.isse.ecco.gui.common.ExceptionTextArea;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.adapter.CommitCancelledException;
 import at.jku.isse.ecco.service.EccoService;
