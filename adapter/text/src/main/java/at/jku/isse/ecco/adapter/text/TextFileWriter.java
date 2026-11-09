@@ -9,9 +9,7 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.adapter.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;

@@ -9,13 +9,10 @@ import at.jku.isse.ecco.tree.RootNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
 import java.util.ArrayDeque;
 import java.util.HashMap;
-import java.util.HexFormat;
 import java.util.Map;
 import java.util.stream.Stream;
 

@@ -7,7 +7,6 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 

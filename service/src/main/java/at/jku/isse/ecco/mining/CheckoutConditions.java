@@ -6,8 +6,6 @@ import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.module.Condition;
-import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
 import org.logicng.formulas.Formula;
 

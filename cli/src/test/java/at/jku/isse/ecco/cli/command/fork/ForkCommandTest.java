@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 public class ForkCommandTest {

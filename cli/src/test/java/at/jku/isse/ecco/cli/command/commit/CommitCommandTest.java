@@ -4,7 +4,6 @@ import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.cli.writer.StringWriter;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.junit.jupiter.api.BeforeEach;

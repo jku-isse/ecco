@@ -2,7 +2,6 @@ package at.jku.isse.ecco.gui.io;
 
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;

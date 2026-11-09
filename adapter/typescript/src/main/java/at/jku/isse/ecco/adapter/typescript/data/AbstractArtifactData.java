@@ -2,7 +2,6 @@ package at.jku.isse.ecco.adapter.typescript.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
 
-import java.util.Objects;
 
 public class AbstractArtifactData implements ArtifactData {
 

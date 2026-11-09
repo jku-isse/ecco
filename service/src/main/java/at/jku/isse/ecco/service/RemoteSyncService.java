@@ -2,8 +2,6 @@ package at.jku.isse.ecco.service;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.EccoUtil;
-import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.TransactionStrategy;

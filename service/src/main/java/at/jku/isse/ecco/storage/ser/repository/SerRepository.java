@@ -5,7 +5,6 @@ import at.jku.isse.ecco.core.RejectedTrace;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
-import at.jku.isse.ecco.featuretrace.evaluation.ProactiveBasedEvaluation;
 import at.jku.isse.ecco.maintree.building.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;

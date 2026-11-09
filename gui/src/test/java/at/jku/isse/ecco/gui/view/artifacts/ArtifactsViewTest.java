@@ -12,7 +12,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.paint.Color;
-import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

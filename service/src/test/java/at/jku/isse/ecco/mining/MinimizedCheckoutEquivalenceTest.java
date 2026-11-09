@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.mining;
 
-import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.service.EccoService;
 import org.junit.jupiter.api.Test;

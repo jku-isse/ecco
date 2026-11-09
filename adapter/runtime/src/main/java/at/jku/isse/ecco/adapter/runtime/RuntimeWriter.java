@@ -4,15 +4,8 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.runtime.data.*;
-import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.adapter.WriteListener;
 import at.jku.isse.ecco.tree.Node;
-import com.github.javaparser.ParseResult;
-import com.github.javaparser.ParseStart;
-import com.github.javaparser.StringProvider;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.printer.lexicalpreservation.LexicalPreservingPrinter;
-import com.github.javaparser.utils.Pair;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -21,9 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
-import static com.github.javaparser.ParseStart.COMPILATION_UNIT;
 
 public class RuntimeWriter implements ArtifactWriter<Set<Node>, Path> {
 

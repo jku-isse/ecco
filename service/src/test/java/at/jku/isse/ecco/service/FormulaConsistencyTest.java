@@ -3,7 +3,6 @@ package at.jku.isse.ecco.service;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.logic.LogicUtils;
 import at.jku.isse.ecco.module.Condition;
@@ -15,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 

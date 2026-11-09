@@ -12,7 +12,6 @@ import at.jku.isse.ecco.adapter.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;

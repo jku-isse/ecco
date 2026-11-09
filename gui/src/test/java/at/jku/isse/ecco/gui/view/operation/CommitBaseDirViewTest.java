@@ -3,7 +3,6 @@ package at.jku.isse.ecco.gui.view.operation;
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
-import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.scene.Node;
 import javafx.scene.control.TextArea;

@@ -3,7 +3,6 @@ package at.jku.isse.ecco.maintree.building;
 import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
-import at.jku.isse.ecco.logic.LogicUtils;
 import at.jku.isse.ecco.tree.Node;
 import org.logicng.datastructures.Tristate;
 import org.logicng.formulas.Formula;

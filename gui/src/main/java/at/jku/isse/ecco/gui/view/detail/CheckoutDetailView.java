@@ -11,7 +11,6 @@ import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.module.ModuleRevisions;
-import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.ArtifactDiagnostics;
 import at.jku.isse.ecco.tree.Node;

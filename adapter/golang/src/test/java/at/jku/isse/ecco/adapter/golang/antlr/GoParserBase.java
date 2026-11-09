@@ -1,6 +1,5 @@
 
 package at.jku.isse.ecco.adapter.golang.antlr;
-import java.util.List;
 import org.antlr.v4.runtime.*;
 
 /**

@@ -6,7 +6,6 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
-import at.jku.isse.ecco.test.util.TestArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;
 

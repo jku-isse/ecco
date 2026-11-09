@@ -2,7 +2,6 @@ package at.jku.isse.ecco.adapter.runtime;
 
 
 import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.runtime.RuntimeWriter;
 import at.jku.isse.ecco.tree.Node;

@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.service;
 
-import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.adapter.ReadListener;
 import at.jku.isse.ecco.adapter.WriteListener;
 import at.jku.isse.ecco.core.Association;

@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.service.EccoListener;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;

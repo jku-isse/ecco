@@ -3,7 +3,6 @@ package at.jku.isse.ecco.storage.ser.counter;
 import org.junit.jupiter.api.Test;
 
 import java.io.ObjectStreamClass;
-import java.io.ObjectStreamField;
 import java.util.Arrays;
 import java.util.List;
 

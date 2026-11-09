@@ -10,7 +10,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.List;
 
 
 public class CEccoVisitor extends CBaseVisitor<Node.Op> {

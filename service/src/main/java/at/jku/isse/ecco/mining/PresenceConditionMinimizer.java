@@ -15,7 +15,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Drops redundant literals/terms from a presence condition, subject to a feature-model "care set"

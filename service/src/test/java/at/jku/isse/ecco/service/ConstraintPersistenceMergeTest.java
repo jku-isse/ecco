@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.service;
 
 import at.jku.isse.ecco.core.Constraint;
-import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.repository.Repository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;

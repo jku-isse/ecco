@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.adapter.typescript;
 
-import at.jku.isse.ecco.adapter.ArtifactExporter;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
