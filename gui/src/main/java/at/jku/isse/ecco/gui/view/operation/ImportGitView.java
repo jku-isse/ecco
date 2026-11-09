@@ -379,6 +379,9 @@ public class ImportGitView extends OperationView implements EccoListener {
 				alert.showAndWait();
 				useLlm = false;
 			}
+			// code, diffs and commit messages go to the server: asked first if it is another machine's
+			if (useLlm && !at.jku.isse.ecco.gui.common.LlmEndpointConfirmation.confirm(LlmPreferences.getEndpointUrl()))
+				return;
 			this.reviewUncertain = reviewUncertainCheckBox.isSelected();
 			this.startImport(oldestFirst, useLlm, reviewEachCheckBox.isSelected());
 		});

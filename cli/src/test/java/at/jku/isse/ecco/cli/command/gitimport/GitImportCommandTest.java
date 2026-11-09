@@ -160,6 +160,25 @@ public class GitImportCommandTest {
         assertEquals(List.of(), commits(home));
     }
 
+    /** Code goes to a server that is not on this machine only with --llm-allow-remote (gap #90). */
+    @Test
+    @Timeout(120)
+    public void asksBeforeSendingCodeToAnotherMachine(@TempDir Path tmp) throws Exception {
+        gitHistory(tmp.resolve("clone"), Map.of(), "first", "second");
+        Path home = repository(tmp);
+        Map<String, Object> remote = new HashMap<>(arguments(home, "stop").getAttrs());
+        remote.put(GitImportCommand.stripDashes(GitImportCommand.FLAG_LLM_ENDPOINT), "http://llm.example.invalid:11434");
+
+        CliException refused = assertThrows(CliException.class,
+                () -> command(home, new StringWriter(), commit -> suggesting(commit.getMessage().toUpperCase())).run(new Namespace(remote)));
+        assertTrue(refused.getMessage().contains("llm.example.invalid") && refused.getMessage().contains(GitImportCommand.FLAG_LLM_ALLOW_REMOTE), refused.getMessage());
+        assertEquals(List.of(), commits(home));
+
+        remote.put(GitImportCommand.stripDashes(GitImportCommand.FLAG_LLM_ALLOW_REMOTE), true);
+        command(home, new StringWriter(), commit -> suggesting(commit.getMessage().toUpperCase())).run(new Namespace(remote));
+        assertEquals(2, commits(home).size());
+    }
+
     private static GitImportCommand command(Path home, StringWriter out, Function<GitCommitInfo, GitImport.Suggested> suggester) {
         EccoService service = new EccoService();
         service.setBaseDir(home);
@@ -173,6 +192,8 @@ public class GitImportCommandTest {
         arguments.put(GitImportCommand.CLONE_KEY, "../clone");
         arguments.put(GitImportCommand.stripDashes(GitImportCommand.FLAG_LLM), true);
         arguments.put(GitImportCommand.stripDashes(GitImportCommand.FLAG_LLM_MODEL), "stub");
+        // a server on this machine, not the one of the preferences (which may be another machine's)
+        arguments.put(GitImportCommand.stripDashes(GitImportCommand.FLAG_LLM_ENDPOINT), "http://localhost:11434");
         arguments.put(GitImportCommand.stripDashes(GitImportCommand.FLAG_TAGGED_ONLY), false);
         arguments.put(GitImportCommand.stripDashes(GitImportCommand.FLAG_ON_REVIEW), onReview);
         arguments.put(ProgramConstants.START_DIR, home);

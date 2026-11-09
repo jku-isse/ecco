@@ -24,7 +24,8 @@ import java.util.function.Function;
  * Imports the history of a local Git clone into the repository, one ECCO commit per Git commit
  * (first parents, oldest first), as Import from Git does unattended: each commit with the features
  * imported so far and, with --llm, those the LLM suggests (the first into an empty repository as
- * BASE). Nobody reviews here: a commit the dialog would stop at - its suggestion failed or is
+ * BASE); an LLM server not on this machine only with --llm-allow-remote (or once confirmed in the
+ * GUI). Nobody reviews here: a commit the dialog would stop at - its suggestion failed or is
  * uncertain - ends the run (--on-review stop, the default), is left out (skip), or is imported with
  * the configuration proposed (import). The import log is printed as it goes, the summary at the end.
  */
@@ -37,6 +38,7 @@ public class GitImportCommand implements Command {
     public static final String FLAG_LLM = "--llm";
     public static final String FLAG_LLM_ENDPOINT = "--llm-endpoint";
     public static final String FLAG_LLM_MODEL = "--llm-model";
+    public static final String FLAG_LLM_ALLOW_REMOTE = "--llm-allow-remote";
     public static final String FLAG_ON_REVIEW = "--on-review";
     public static final String ON_REVIEW_STOP = "stop";
     public static final String ON_REVIEW_SKIP = "skip";
@@ -72,6 +74,12 @@ public class GitImportCommand implements Command {
             System.setProperty(LlmPreferences.MODEL_NAME_PROPERTY, model);
         if (useLlm && LlmPreferences.getModelName().isBlank())
             throw new CliException("No LLM model to ask: give one with " + FLAG_LLM_MODEL + " (or in the GUI's Preferences, LLM).");
+        // code, diffs and commit messages go to the server: another machine's only once agreed to
+        // (here, or confirmed in the GUI) - nobody is asked in an unattended run
+        if (useLlm && !LlmPreferences.mayReceiveCode(LlmPreferences.getEndpointUrl())
+                && !Boolean.TRUE.equals(namespace.getBoolean(stripDashes(FLAG_LLM_ALLOW_REMOTE))))
+            throw new CliException(LlmPreferences.remoteEndpointWarning(LlmPreferences.getEndpointUrl())
+                    + " To send them, give " + FLAG_LLM_ALLOW_REMOTE + ".");
         boolean taggedOnly = Boolean.TRUE.equals(namespace.getBoolean(stripDashes(FLAG_TAGGED_ONLY)));
         String onReview = namespace.getString(stripDashes(FLAG_ON_REVIEW));
 
