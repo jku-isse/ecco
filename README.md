@@ -222,18 +222,21 @@ Further adapters are included but not mapped by default: `golang`, `java` (line-
 
 | Project | Content |
 | --- | --- |
-| [`base`](base) | Core data structures and algorithms: artifact trees, associations, modules and conditions, partial order graphs, composition. |
-| [`service`](service) | The ECCO API (`EccoService`), the file-based storage, remote synchronization, adapter infrastructure, constraint mining and condition minimization. |
+| [`base`](base) | Core data structures and algorithms: artifact trees, associations, modules and conditions, partial order graphs, composition. `Repository` holds what a repository is; commit, checkout, copy and merge are classes of their own beside it. |
+| [`service`](service) | The ECCO API (`EccoService`, a facade over the services doing the work, each given the open repository's `RepositoryContext`), the file-based storage, remote synchronization, the dispatch of files to adapters, the Git import (`GitImport`, used by the GUI and `ecco git-import`), constraint mining and condition minimization. |
 | [`logic`](logic), [`util`](util) | Propositional logic (LogicNG) and shared utilities. |
 | [`cli`](cli), [`gui`](gui), [`rest`](rest) | The applications. |
-| [`adapter`](adapter) | The artifact adapters. |
+| [`adapter/api`](adapter/api) | What an artifact adapter is written against (`ecco-adapter-api`): the plugin, reader, writer, viewer and exporter interfaces with their listeners, the artifact data adapters create, the shared code viewer - see [Writing an adapter](adapter/README.md). |
+| [`adapter`](adapter) | The artifact adapters, each depending on `ecco-adapter-api` alone. |
 | [`extras/ly`](extras/ly) | A utility that fills a repository from numbered variant directories (used for the LilyPond experiments). |
 | [`examples`](examples) | Example variants to commit, e.g. C, LilyPond, markdown, image, and TypeScript variants. |
 | [`experiments`](experiments) | The harness scoring the Git import's LLM feature suggestions. |
 
 Earlier storage backends (`storage/neo4j`, `extras/jackson`, `extras/jpa`, `extras/xml`), adapters (`adapter/java6`, `adapter/java8`, `adapter/designspace`, `extras/cpp`, `extras/emf`, `extras/php`, `extras/runtime`, `extras/uml`, `extras/generic`), the `preprocessor` and the research harnesses that need data never checked in were not part of the build; they are kept, at the paths they had, on the branch `archive/unbuilt-modules`.
 
-The architecture is drawn in [`doc/ecco-architecture.drawio`](doc/ecco-architecture.drawio) (open it with [diagrams.net](https://app.diagrams.net)). It is generated: change [`doc/gen_architecture_drawio.py`](doc/gen_architecture_drawio.py) and run `python3 doc/gen_architecture_drawio.py`.
+The architecture is drawn in [`doc/ecco-architecture.drawio`](doc/ecco-architecture.drawio) (open it with [diagrams.net](https://app.diagrams.net)): its layers, and the Gradle modules with their dependencies. It is generated: change [`doc/gen_architecture_drawio.py`](doc/gen_architecture_drawio.py) and run `python3 doc/gen_architecture_drawio.py`.
+
+Modules depend on each other one way: `cli`, `gui` and `rest` on `service`, `service` on `adapter-api` and `base`, the adapters on `adapter-api`, everything on `logic` at the bottom. Within a module, packages depend on each other one way too, but for the circles kept on purpose: the domain model's references both ways in `base` (a node and its artifact, an artifact and its order graph, a node and its association), the serialization storage, and five adapters whose viewer names its plugin. Every module's tests check this (`ArchitectureTest`).
 
 
 ## Development
@@ -241,6 +244,7 @@ The architecture is drawn in [`doc/ecco-architecture.drawio`](doc/ecco-architect
 * Open the project in IntelliJ IDEA (`File > Open`), which imports the Gradle build.
 * `./gradlew build` runs all tests. The GUI tests run headless (Monocle), so no windows appear; `-Pgui.tests.visible` shows them. Tests that need Python with `libcst` (Python adapter) are skipped without it; the LilyPond tests that read files are skipped without `tree-sitter`, `py4j` and `lymodel`.
 * Dependency versions are kept in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
+* Every module's tests include `ArchitectureTest` ([`gradle/test-support`](gradle/test-support/java/at/jku/isse/ecco/test/ArchitectureTest.java)): it fails on packages depending on each other in a circle not listed in its `KNOWN_CYCLES`, naming each edge with a class making it, and on an import a source does not use.
 * See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 

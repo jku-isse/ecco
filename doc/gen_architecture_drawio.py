@@ -61,7 +61,7 @@ def items(p, parent, x0, y0, w, h, labels, kind, cols, gap=10):
 # ---------------- Page 1: layered architecture ----------------
 p = Page('Architecture', 'arch')
 p.text(40, 10, 1100, 30, '<b style="font-size:18px">ECCO – Architecture Overview</b>', fs=18)
-p.text(40, 40, 1300, 20, 'Layers top→bottom depend downward. Colors = layer. Arrows = main runtime calls / data flow. Source of truth: settings.gradle + */build.gradle. Last reviewed: 2026-10-15 (268aeed4).', fs=10)
+p.text(40, 40, 1300, 20, 'Layers top→bottom depend downward. Colors = layer. Arrows = main runtime calls / data flow. Source of truth: settings.gradle + */build.gradle. Last reviewed: 2026-11-09.', fs=10)
 
 # Frontends
 F = p.box(40, 70, 1260, 170, 'Frontends', 'front', container=True)
@@ -70,45 +70,46 @@ items(p, gui, 10, 30, 125, 26, ['Commits / Commit detail', 'Associations', 'Arti
       'Features / Feature model', 'Knowledge &amp; POG graphs', 'Constraint suggestions', 'Charts / Comparison',
       'Import from Git', 'Remotes: fork/pull/push', 'Settings / Preferences', 'Notifications'], 'front', 4, gap=8)
 cli = p.box(580, 30, 330, 130, 'ecco-cli  (argparse4j)', 'front', parent=F, container=True)
-p.text(10, 26, 310, 100, 'Command / CommandRegister<br>init · status · commit · checkout · features · traces · adapters · property · remotes · fetch · pull · push · fork · dependencygraph · suggestconstraints · accept/reject-constraint · minimizepreview · minimize · order', fs=10, parent=cli)
+p.text(10, 26, 310, 100, 'Command / CommandRegister<br>init · status · commit · checkout · features · traces · adapters · property · remotes · fetch · pull · push · fork · dependencygraph · suggestconstraints · accept/reject-constraint · minimizepreview · minimize · order · positions · git-import', fs=10, parent=cli)
 rest = p.box(920, 30, 330, 130, 'ecco-rest  (Micronaut HTTP API)', 'front', parent=F, container=True)
 p.text(10, 26, 310, 100, 'RepositoryController · CommitController · FeatureController · VariantController<br>RepositoryService / FileRepositoryService · RepositoryHandler<br>authorisation · models (DTOs)', fs=10, parent=rest)
 
 # Service
 S = p.box(40, 260, 1260, 250, 'ecco-service  (application layer, Guice-wired)', 'svc', container=True)
-es = p.box(10, 30, 290, 100, '<b>EccoService</b><br>facade for all operations: init/open/close, commit, checkout, compose, fork/pull/push, features, constraints<br><i>Guice injector · properties</i>', 'svc', parent=S, fs=10)
-lr = p.box(10, 140, 290, 45, '<b>ListenerRegistry</b> · EccoListener<br>Read/Write/Export/Server listeners (events → UI)', 'svc', parent=S, fs=10)
-vm = p.box(10, 195, 140, 45, 'VariantManager', 'svc', parent=S, fs=10)
-cs = p.box(160, 195, 140, 45, 'ConstraintService', 'svc', parent=S, fs=10)
+es = p.box(10, 30, 290, 80, '<b>EccoService</b><br>facade for all operations, holding the lock: 101 of its 116 methods hand off to a service<br><i>Guice injector · properties</i>', 'svc', parent=S, fs=10)
+ctx = p.box(10, 118, 290, 40, '<b>RepositoryContext</b> (DAOs, transactions of the open repository) · <b>ServiceState</b> (directories, lock)', 'svc', parent=S, fs=9)
+svcs = p.box(10, 166, 290, 74, '<b>services</b> (each given the context, the state and the services it uses)<br>CommitService · CheckoutService (CheckoutOptions) · ForkService · CommitReplay · OrderService · MinimizationService · ConstraintService · VariantManager · RepositorySettings · ListenerRegistry (EccoListener)', 'svc', parent=S, fs=9)
 mining = p.box(310, 30, 300, 210, 'mining  (presence conditions &amp; constraints)', 'svc', parent=S, container=True)
 items(p, mining, 10, 28, 135, 30, ['ConstraintMiner', 'ConstraintViolationChecker', 'PresenceConditionMinimizer', 'ParallelMinimization',
       'SurplusLatticeAbsorber', 'SurplusModuleSuppressor', 'FeatureSelectionPropagator', 'FeatureModelFormula',
       'Module/ConfigurationBridge', 'AcceptedConstraints'], 'svc', 2, gap=8)
 integ = p.box(620, 30, 250, 210, 'integrations', 'svc', parent=S, container=True)
-rss = p.box(10, 28, 230, 45, '<b>RemoteSyncService</b><br>fetch / pull / push over TCP sockets', 'svc', parent=integ, fs=10)
-git = p.box(10, 83, 230, 45, '<b>git</b>: GitHistoryReader, GitCommitInfo<br>(JGit – Import from Git)', 'svc', parent=integ, fs=10)
-llm = p.box(10, 138, 230, 45, '<b>llm</b>: LlmFeatureSuggestionClient · LlmOrderSuggestionClient<br>(HTTP; features on import, order of siblings)', 'svc', parent=integ, fs=10)
-aspi = p.box(880, 30, 370, 100, 'adapter SPI', 'svc', parent=S, container=True)
-p.text(10, 20, 350, 78, '<b>ArtifactPlugin</b> (Guice module per adapter)<br>ArtifactReader · ArtifactWriter · ArtifactViewer · ArtifactExporter<br><b>dispatch</b>: DispatchReader / DispatchWriter route files → plugin by pattern<br><b>PythonFinder</b>: the python a py4j adapter runs - Preferences, else python, python3, usual locations; probed for its modules', fs=9, parent=aspi)
+rss = p.box(10, 26, 230, 40, '<b>RemoteSyncService</b><br>fetch / pull / push over TCP sockets', 'svc', parent=integ, fs=9)
+git = p.box(10, 70, 230, 40, '<b>git</b>: GitHistoryReader, GitCommitInfo<br>(JGit)', 'svc', parent=integ, fs=9)
+gimp = p.box(10, 114, 230, 40, '<b>gitimport</b>: GitImport - a Git history imported, no UI (Import from Git dialog, ecco git-import)', 'svc', parent=integ, fs=9)
+llm = p.box(10, 158, 230, 44, '<b>llm</b>: LlmFeatureSuggestionClient · LlmOrderSuggestionClient<br>(HTTP; features on import, order of siblings)', 'svc', parent=integ, fs=9)
+disp = p.box(880, 30, 370, 100, 'dispatch  (service.dispatch)', 'svc', parent=S, container=True)
+p.text(10, 20, 350, 78, '<b>DispatchReader / DispatchWriter / DispatchExporter</b>: route each file to the adapter whose pattern it matches (.adapters), the plugins found by Guice (DispatchModule)<br>the adapters themselves are written against <b>ecco-adapter-api</b> (right)', fs=9, parent=disp)
 sspi = p.box(880, 140, 370, 100, 'storage  (StoragePlugin SPI, chosen via property)', 'store', parent=S, container=True)
 ser = p.box(10, 24, 260, 70, '<b>ser</b> – SerPlugin (default), implements base.dao<br>Java serialization, one pack per write each for artifacts, associations and content-addressed tree pieces; crash-safe id swap<br>ArtifactPackStore · AssociationStore · PieceStore · CommitJournal · LoadResolver', 'store', parent=sspi, fs=8)
 mem = p.box(280, 24, 80, 70, '<b>mem</b> – MemPlugin<br>in-memory (tests)', 'store', parent=sspi, fs=9)
 
 # Base
 B = p.box(40, 530, 1260, 250, 'ecco-base  (core domain model &amp; algorithms, storage-agnostic)', 'base', container=True)
-repo = p.box(10, 30, 290, 90, '<b>repository.Repository</b><br>commit (extract / slice associations), checkout / compose, merge, fork, feature &amp; module bookkeeping', 'base', parent=B, fs=10)
-dao = p.box(10, 130, 290, 110, '<b>dao</b> (persistence interfaces)<br>EntityFactory · RepositoryDao · CommitDao · AssociationDao · FeatureDao · RemoteDao · TransactionStrategy', 'base', parent=B, fs=10)
+repo = p.box(10, 30, 290, 90, '<b>repository.Repository</b> (what a repository is)<br>its algorithms: CommitExtraction (commit) · CheckoutComposition (checkout) · RepositoryCopy (copy, subset, replay) · RepositoryMerge', 'base', parent=B, fs=10)
+dao = p.box(10, 130, 290, 110, '<b>dao</b> (persistence interfaces)<br>EntityFactory · RepositoryDao · CommitDao · AssociationDao · FeatureDao · RemoteDao · TransactionStrategy<br>EccoUtil (copies made with the EntityFactory)', 'base', parent=B, fs=10)
 dm = p.box(310, 30, 560, 210, 'domain model', 'base', parent=B, container=True)
-items(p, dm, 10, 28, 170, 52, ['<b>core</b><br>Association · Commit · Variant · Constraint · Remote · Checkout · Diff · DependencyGraph',
+items(p, dm, 10, 28, 170, 52, ['<b>core</b><br>Association · Commit · Variant · Constraint · Remote · Checkout · RejectedTrace · DependencyGraph',
       '<b>feature</b><br>Feature · FeatureRevision · Configuration · ConfigurationText · FeatureLiterals',
       '<b>module / counter</b><br>Module · ModuleRevision · Condition (presence conditions) · ConditionText · counters',
-      '<b>tree</b> + Trees<br>Node · RootNode · treeFusion / slice / merge',
+      '<b>tree</b><br>Node · RootNode · Trees (slice / merge) · RetroactiveConditionSetterVisitor',
       '<b>artifact</b><br>Artifact · ArtifactData · references',
       '<b>pog</b><br>PartialOrderGraph (sibling ordering)',
-      '<b>maintree</b><br>building · factory · retroactive',
+      '<b>maintree</b><br>building · factory',
       '<b>featuretrace</b><br>FeatureTrace · parser · evaluation'], 'base', 3, gap=8)
 comp = p.box(880, 30, 370, 90, '<b>composition</b> (used by Repository checkout)<br>CheckoutComposer · LazyCompositionNode/RootNode · OrderSelector / DefaultOrderSelector · OrderSetterVisitor', 'base', parent=B, fs=10)
 p.box(880, 130, 370, 50, '<b>tree.ArtifactDiagnostics</b> · core.Warning<br>(order / surplus / missing warnings on checkout)', 'base', parent=B, fs=10)
+p.box(880, 190, 370, 50, 'feature and module are below the rest; artifact, core, counter, dao, featuretrace, pog, repository, tree, composition, maintree.building refer to each other (ArchitectureTest.KNOWN_CYCLES)', 'base', parent=B, fs=9)
 
 # Foundation
 Fd = p.box(40, 800, 1260, 80, 'Foundation', 'found', container=True)
@@ -118,11 +119,11 @@ p.box(680, 28, 570, 42, 'Third-party (see gradle/libs.versions.toml): Guice · G
 
 # Adapters (right column)
 A = p.box(1330, 70, 290, 710, 'Artifact adapters  (adapter/*)', 'adapt', container=True)
-p.text(10, 22, 270, 48, 'Each = ArtifactPlugin + Reader/Writer(+Viewer). Depend on ecco-service; loaded at runtime (runtimeOnly), enabled via AdapterPreferences. python and lilypond run Python scripts over py4j.', fs=9, parent=A)
+p.text(10, 22, 270, 48, 'Each = ArtifactPlugin + Reader/Writer(+Viewer). Compiled against ecco-adapter-api alone (tests: ecco-service); loaded at runtime (runtimeOnly), enabled via AdapterPreferences. python and lilypond run Python scripts over py4j.', fs=9, parent=A)
 items(p, A, 10, 84, 130, 36, ['file', 'text', 'markdown', 'image', 'java', 'java-ast', 'python', 'c', 'cpp', 'typescript',
       'golang', 'lilypond', 'challenge', 'runtime'], 'adapt', 2, gap=8)
 p.box(10, 440, 270, 50, '<b>extras-ly</b><br>LilyPond tooling (base + service + adapter-lilypond)', 'adapt', parent=A, fs=10)
-p.box(10, 500, 270, 90, 'Not wired into settings.gradle (kept, unbuilt):<br>adapter/ designspace · java6 · java8<br>extras/ cpp · emf · generic · jackson · jpa · perst · php · runtime · uml · xml<br>storage/ neo4j', 'ext', parent=A, dashed=True, fs=9)
+aapi = p.box(10, 500, 270, 200, '<b>ecco-adapter-api</b>  (what an adapter is written against; also outside this repository - adapter/README.md)<br><br>at.jku.isse.ecco.adapter: ArtifactPlugin · ArtifactReader · ArtifactWriter · ArtifactViewer · ArtifactExporter · Read/Write/ExportListener · AdapterPreferences · PythonFinder<br>adapter.dispatch: PluginArtifactData, text formats (stored under these names)<br>adapter.view: the shared code viewer', 'adapt', parent=A, fs=9)
 
 # External systems
 X = p.box(40, 900, 1580, 90, 'External systems', 'ext', container=True)
@@ -138,13 +139,13 @@ p.edge(F, S, 'call EccoService API', ex=0.12, ey=1, nx=0.12, ny=0)
 p.edge(S, B, 'Repository + base.dao', ex=0.12, ey=1, nx=0.12, ny=0)
 p.edge(B, Fd, 'conditions, formulas (api)', ex=0.12, ey=1, nx=0.12, ny=0)
 p.edge(Fd, X, '', dashed=True, ex=0.5, ey=1, nx=0.5, ny=0, color='#999999')
-p.edge(A, aspi, 'implements', dashed=True, ex=0, ey=0.38, nx=1, ny=0.5)
+p.edge(disp, aapi, 'plugins', dashed=True, ex=1, ey=0.5, nx=0, ny=0.2)
 page1 = p
 
 # ---------------- Page 2: Gradle module dependencies ----------------
 q = Page('Gradle modules', 'mods')
 q.text(40, 10, 1100, 30, '<b style="font-size:18px">ECCO – Gradle module dependencies</b>', fs=18)
-q.text(40, 40, 1200, 20, 'Solid = implementation/api. Dashed = runtimeOnly. Test-only dependencies omitted. Project names are prefixed "ecco-" (settings.gradle).', fs=10)
+q.text(40, 40, 1200, 20, 'Solid = implementation/api. Dashed = runtimeOnly. Test-only dependencies omitted (each adapter tests against service). No module depends on another in a circle; within each, ArchitectureTest checks the packages. Project names are prefixed "ecco-" (settings.gradle).', fs=10)
 m = {}
 FR = q.box(180, 80, 640, 90, 'frontends', 'front', container=True)
 m['rest'] = q.box(20, 28, 160, 50, 'rest', 'front', parent=FR, bold=True)
@@ -152,6 +153,7 @@ m['cli'] = q.box(240, 28, 160, 50, 'cli', 'front', parent=FR, bold=True)
 m['gui'] = q.box(460, 28, 160, 50, 'gui', 'front', parent=FR, bold=True)
 m['extras-ly'] = q.box(1000, 95, 160, 50, 'extras-ly', 'adapt', bold=True)
 m['service'] = q.box(420, 250, 160, 50, 'service', 'svc', bold=True)
+m['adapter-api'] = q.box(640, 360, 160, 50, 'adapter-api', 'adapt', bold=True)
 m['adapters'] = q.box(860, 340, 300, 90, '<b>adapter-*</b> (14)<br>file · text · markdown · image · java · java-ast · python · c · cpp · typescript · golang · lilypond · challenge · runtime', 'adapt', fs=10)
 m['util'] = q.box(200, 450, 160, 50, 'util', 'found', bold=True)
 m['base'] = q.box(420, 450, 160, 50, 'base', 'base', bold=True)
@@ -161,7 +163,9 @@ q.edge(m['rest'], m['service'], ex=0.5, ey=1, nx=0.2, ny=0)
 q.edge(m['cli'], m['service'], ex=0.5, ey=1, nx=0.5, ny=0)
 q.edge(m['gui'], m['service'], ex=0.5, ey=1, nx=0.8, ny=0)
 q.edge(FR, m['adapters'], 'runtimeOnly (see note)', dashed=True, ex=1, ey=0.5, nx=0.2, ny=0)
-q.edge(m['adapters'], m['service'], ex=0.05, ey=0, nx=1, ny=0.5)
+q.edge(m['adapters'], m['adapter-api'], ex=0, ey=0.5, nx=1, ny=0.5)
+q.edge(m['service'], m['adapter-api'], 'api', ex=1, ey=0.6, nx=0.5, ny=0)
+q.edge(m['adapter-api'], m['base'], 'api', ex=0.5, ey=1, nx=1, ny=0.5)
 q.edge(m['extras-ly'], m['service'], ex=0.2, ey=1, nx=1, ny=0.1)
 q.edge(m['extras-ly'], m['adapters'], 'lilypond', ex=0.7, ey=1, nx=0.85, ny=0)
 q.edge(m['service'], m['base'], 'api', ex=0.5, ey=1, nx=0.5, ny=0)
