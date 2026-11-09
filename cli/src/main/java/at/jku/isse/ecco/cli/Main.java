@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.cli;
 
+import at.jku.isse.ecco.cli.command.ProgramConstants;
 import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.command.CommandRegister;
 import at.jku.isse.ecco.cli.command.adapters.ListAdaptersCommand;

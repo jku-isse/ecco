@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.cli;
+package at.jku.isse.ecco.cli.command;
 
 /**
  * A command failed for a reason the user can fix (unknown property, invalid address, ...). Main

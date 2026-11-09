@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.cli.command.gitimport;
 
-import at.jku.isse.ecco.cli.CliException;
+import at.jku.isse.ecco.cli.command.CliException;
 import at.jku.isse.ecco.cli.MainTestAccess;
-import at.jku.isse.ecco.cli.ProgramConstants;
+import at.jku.isse.ecco.cli.command.ProgramConstants;
 import at.jku.isse.ecco.cli.writer.StringWriter;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.FeatureRevision;
