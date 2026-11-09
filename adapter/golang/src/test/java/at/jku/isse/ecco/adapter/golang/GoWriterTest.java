@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.golang;
 
 import at.jku.isse.ecco.adapter.golang.io.MemorySourceWriter;
-import at.jku.isse.ecco.adapter.listener.WriteListener;
+import at.jku.isse.ecco.adapter.WriteListener;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;

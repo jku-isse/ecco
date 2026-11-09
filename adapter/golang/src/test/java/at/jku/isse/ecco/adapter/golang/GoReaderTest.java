@@ -3,7 +3,7 @@ package at.jku.isse.ecco.adapter.golang;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.golang.data.TokenArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.adapter.listener.ReadListener;
+import at.jku.isse.ecco.adapter.ReadListener;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.antlr.v4.runtime.CharStreams;

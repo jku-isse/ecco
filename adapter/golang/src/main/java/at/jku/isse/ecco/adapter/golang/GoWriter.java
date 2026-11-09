@@ -7,7 +7,7 @@ import at.jku.isse.ecco.adapter.golang.data.*;
 import at.jku.isse.ecco.adapter.golang.io.*;
 import at.jku.isse.ecco.adapter.golang.merging.*;
 import at.jku.isse.ecco.artifact.*;
-import at.jku.isse.ecco.adapter.listener.*;
+import at.jku.isse.ecco.adapter.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.*;
 

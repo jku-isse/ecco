@@ -16,7 +16,7 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.featuretrace.parser.VevosCondition;
 import at.jku.isse.ecco.featuretrace.parser.VevosConditionHandler;
 import at.jku.isse.ecco.featuretrace.parser.VevosFileConditionContainer;
-import at.jku.isse.ecco.adapter.listener.ReadListener;
+import at.jku.isse.ecco.adapter.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Location;
 import com.google.inject.Inject;

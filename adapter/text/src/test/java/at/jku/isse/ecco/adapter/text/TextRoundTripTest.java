@@ -2,8 +2,8 @@ package at.jku.isse.ecco.adapter.text;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.listener.ReadListener;
-import at.jku.isse.ecco.adapter.listener.WriteListener;
+import at.jku.isse.ecco.adapter.ReadListener;
+import at.jku.isse.ecco.adapter.WriteListener;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;

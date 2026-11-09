@@ -1,6 +1,5 @@
-package at.jku.isse.ecco.adapter.listener;
+package at.jku.isse.ecco.adapter;
 
-import at.jku.isse.ecco.adapter.ArtifactExporter;
 
 import java.nio.file.Path;
 

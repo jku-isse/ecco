@@ -7,7 +7,7 @@ import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.adapter.listener.ReadListener;
+import at.jku.isse.ecco.adapter.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import java.io.FileNotFoundException;
