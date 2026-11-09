@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.cli.command.fork;
 
 import at.jku.isse.ecco.service.RemoteAddress;
-import at.jku.isse.ecco.cli.CliException;
+import at.jku.isse.ecco.cli.command.CliException;
 import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.writer.OutWriter;
 import at.jku.isse.ecco.cli.writer.SystemWriter;

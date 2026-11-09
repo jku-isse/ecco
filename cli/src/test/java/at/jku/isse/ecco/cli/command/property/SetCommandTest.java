@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.cli.command.property;
 
-import at.jku.isse.ecco.cli.CliException;
+import at.jku.isse.ecco.cli.command.CliException;
 import at.jku.isse.ecco.cli.writer.StringWriter;
 import at.jku.isse.ecco.service.EccoService;
 import net.sourceforge.argparse4j.inf.Namespace;

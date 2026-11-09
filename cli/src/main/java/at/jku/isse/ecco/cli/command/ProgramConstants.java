@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.cli;
+package at.jku.isse.ecco.cli.command;
 
 public final class ProgramConstants {
     public final static String ECCO = "ecco";
