@@ -4,6 +4,7 @@ import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.ConfigurationText;
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.mining.FeatureModelTree;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.LlmPreferences;
@@ -187,6 +188,24 @@ public final class GitImport {
 			for (Feature feature : this.service.getRepository().getFeatures())
 				this.knownFeatures.add(feature.getName());
 		this.repositoryEmpty = this.service.getCommits().isEmpty();
+	}
+
+	/**
+	 * After {@link #start}: the first commit of the run builds on the features of the repository's
+	 * latest commit, as each later one builds on the one before - an import going on where an earlier
+	 * one stopped ({@code ecco git-import --from}). Without, a run into a repository with commits
+	 * starts from no feature: unattended and without suggestions, each commit is committed with its
+	 * tree's {@code .config} (and refused without one), with suggestions only with those suggested.
+	 * Nothing to build on in an empty repository.
+	 */
+	public void continueFromLatestCommit() {
+		Commit latest = null;
+		for (Commit commit : this.service.getCommits())
+			if (latest == null || (commit.getDate() != null && (latest.getDate() == null || !commit.getDate().before(latest.getDate()))))
+				latest = commit;
+		if (latest != null)
+			for (FeatureRevision revision : latest.getConfiguration().getFeatureRevisions())
+				this.runningFeatures.add(revision.getFeature().getName());
 	}
 
 	/**
@@ -636,7 +655,7 @@ public final class GitImport {
 		if (!violations.isEmpty())
 			text.append("\n\nAccepted constraints violated (").append(violations.size()).append("):\n").append(String.join("\n", violations));
 		if (!suggestionFailures.isEmpty())
-			text.append("\n\nNo LLM suggestion - imported with the previous configuration (").append(suggestionFailures.size()).append("):\n")
+			text.append("\n\nLLM suggestions that failed, each stopped for review (").append(suggestionFailures.size()).append("):\n")
 					.append(String.join("\n", suggestionFailures));
 		return text.toString();
 	}

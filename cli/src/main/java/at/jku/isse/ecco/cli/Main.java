@@ -9,6 +9,7 @@ import at.jku.isse.ecco.cli.command.dependencygraph.DependencyGraphCommand;
 import at.jku.isse.ecco.cli.command.features.ListFeaturesCommand;
 import at.jku.isse.ecco.cli.command.fetch.FetchCommand;
 import at.jku.isse.ecco.cli.command.fork.ForkCommand;
+import at.jku.isse.ecco.cli.command.gitimport.GitImportCommand;
 import at.jku.isse.ecco.cli.command.init.InitCommand;
 import at.jku.isse.ecco.cli.command.minimize.MinimizeCommand;
 import at.jku.isse.ecco.cli.command.minimizepreview.MinimizePreviewCommand;
@@ -148,6 +149,31 @@ public class Main {
         registerMinimizeCommand(commandParser);
         registerOrderCommand(commandParser);
         registerPositionsCommand(commandParser);
+        registerGitImportCommand(commandParser);
+    }
+
+    private static void registerGitImportCommand(Subparsers commandParser) {
+        Subparser gitImportCommandParser = commandParser.addParser(GitImportCommand.GIT_IMPORT)
+                .help("import the history of a local Git clone, one commit per Git commit (first parents, oldest first), unattended");
+        gitImportCommandParser.setDefault(ProgramConstants.COMMAND, GitImportCommand.GIT_IMPORT);
+        gitImportCommandParser.addArgument(GitImportCommand.CLONE_KEY).help("a local Git clone");
+        gitImportCommandParser.addArgument(GitImportCommand.FLAG_FROM).metavar("COMMIT")
+                .help("the first commit to import: its id, the beginning of it, or a tag (default: the first)");
+        gitImportCommandParser.addArgument(GitImportCommand.FLAG_TO).metavar("COMMIT")
+                .help("the last commit to import (default: the last)");
+        gitImportCommandParser.addArgument(GitImportCommand.FLAG_TAGGED_ONLY).action(Arguments.storeTrue())
+                .help("import the tagged commits only; the features suggested for the commits between go into the next tagged one");
+        gitImportCommandParser.addArgument(GitImportCommand.FLAG_LLM).action(Arguments.storeTrue())
+                .help("have an LLM suggest each commit's features - without, every commit gets the features of the first (BASE)");
+        gitImportCommandParser.addArgument(GitImportCommand.FLAG_LLM_ENDPOINT).metavar("URL")
+                .help("the OpenAI-compatible server to ask (default: the GUI's Preferences, LLM, or http://localhost:11434)");
+        gitImportCommandParser.addArgument(GitImportCommand.FLAG_LLM_MODEL).metavar("MODEL")
+                .help("the model to ask (default: the GUI's Preferences, LLM)");
+        gitImportCommandParser.addArgument(GitImportCommand.FLAG_ON_REVIEW)
+                .choices(GitImportCommand.ON_REVIEW_STOP, GitImportCommand.ON_REVIEW_SKIP, GitImportCommand.ON_REVIEW_IMPORT)
+                .setDefault(GitImportCommand.ON_REVIEW_STOP)
+                .help("a commit whose suggestion failed or is uncertain - which the GUI stops at for review - ends the import (stop), is left out (skip), or is imported as proposed (import)");
+        commandRegister.register(GitImportCommand.GIT_IMPORT, new GitImportCommand(eccoService));
     }
 
     private static void registerPositionsCommand(Subparsers commandParser) {
