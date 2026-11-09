@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.adapter.lilypond;
 
-import at.jku.isse.ecco.EccoException;
 
 import at.jku.isse.ecco.adapter.AdapterUnavailableException;
 import at.jku.isse.ecco.adapter.ArtifactReader;

@@ -4,7 +4,6 @@ import at.jku.isse.ecco.mining.FeatureModelTree;
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.gui.common.MinimizationResults;
-import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.geometry.Orientation;
 import javafx.scene.control.CheckBox;

@@ -2,7 +2,6 @@ package at.jku.isse.ecco.gui.view.artifacts;
 
 import at.jku.isse.ecco.gui.common.AssociationInfoImpl;
 import at.jku.isse.ecco.gui.common.TaskFailures;
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Configuration;

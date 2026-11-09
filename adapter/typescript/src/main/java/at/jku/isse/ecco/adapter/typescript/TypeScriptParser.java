@@ -3,7 +3,6 @@ package at.jku.isse.ecco.adapter.typescript;
 import com.caoccao.javet.exceptions.JavetException;
 import com.caoccao.javet.interop.NodeRuntime;
 import com.caoccao.javet.interop.V8Host;
-import com.caoccao.javet.interop.V8Runtime;
 import com.caoccao.javet.values.V8Value;
 
 import java.io.FileNotFoundException;
@@ -17,11 +16,7 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.stream.Stream;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class TypeScriptParser {
 

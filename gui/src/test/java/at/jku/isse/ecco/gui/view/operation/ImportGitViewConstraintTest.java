@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.core.Constraint;
-import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.git.GitCommitInfo;
 import at.jku.isse.ecco.service.git.GitHistoryReader;
@@ -18,7 +17,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import static at.jku.isse.ecco.gui.FxTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;

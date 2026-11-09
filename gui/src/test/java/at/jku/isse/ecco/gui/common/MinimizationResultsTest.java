@@ -3,7 +3,6 @@ package at.jku.isse.ecco.gui.common;
 import at.jku.isse.ecco.gui.FxTestSupport;
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.scene.control.DialogPane;
 import javafx.stage.Window;

@@ -5,7 +5,6 @@ import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
-import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.EccoListener;
 import javafx.scene.Node;

@@ -19,7 +19,6 @@ import java.util.Map;
 
 import static at.jku.isse.ecco.gui.FxTestSupport.*;
 import static at.jku.isse.ecco.gui.view.operation.CommitViewTest.show;
-import static at.jku.isse.ecco.gui.view.operation.InitViewTest.errorLabel;
 import static at.jku.isse.ecco.gui.view.operation.InitViewTest.recentPrefs;
 import static org.junit.jupiter.api.Assertions.*;
 

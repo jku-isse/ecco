@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.test;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;

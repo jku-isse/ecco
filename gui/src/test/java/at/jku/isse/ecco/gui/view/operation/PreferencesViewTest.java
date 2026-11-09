@@ -9,7 +9,6 @@ import at.jku.isse.ecco.service.LlmPreferences;
 import com.sun.net.httpserver.HttpServer;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;

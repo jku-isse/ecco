@@ -2,7 +2,6 @@ package at.jku.isse.ecco.service;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.feature.FeatureRevision;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;

@@ -45,6 +45,8 @@ subprojects {
 		testImplementation libs.junit.jupiter
 		// Gradle 9 no longer puts the launcher on the test classpath by itself
 		testRuntimeOnly libs.junit.platform.launcher
+		// ArchitectureTest (gradle/test-support): the module's package dependencies
+		testImplementation libs.archunit
 	}
 
 	jar {
@@ -87,6 +89,10 @@ subprojects {
 			exclude("**/integrationTest/**")
 		}
 		finalizedBy jacocoTestReport
+		// what ArchitectureTest (gradle/test-support) checks: this module's classes and its sources
+		systemProperty 'ecco.architecture.classes', sourceSets.main.output.classesDirs.asPath
+		systemProperty 'ecco.architecture.sources', (sourceSets.main.java.srcDirs + sourceSets.test.java.srcDirs + sourceSets.integrationTest.java.srcDirs)
+				.findAll { it.exists() }.join(File.pathSeparator)
 	}
 
 	jacocoTestReport {

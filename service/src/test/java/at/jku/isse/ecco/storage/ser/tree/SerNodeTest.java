@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.storage.ser.tree;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;

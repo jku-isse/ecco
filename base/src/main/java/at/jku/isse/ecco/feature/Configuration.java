@@ -2,10 +2,8 @@ package at.jku.isse.ecco.feature;
 
 import at.jku.isse.ecco.Persistable;
 import org.logicng.datastructures.Assignment;
-import org.logicng.formulas.Literal;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * A configuration of a variant that consists of a set of feature revisions that are selected in the variant.

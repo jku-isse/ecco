@@ -7,7 +7,6 @@ import at.jku.isse.ecco.cli.writer.SystemWriter;
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.mining.AcceptedConstraints;
-import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
 import at.jku.isse.ecco.service.EccoService;
 import net.sourceforge.argparse4j.inf.Namespace;

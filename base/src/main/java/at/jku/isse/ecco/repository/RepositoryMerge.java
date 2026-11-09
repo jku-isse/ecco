@@ -7,7 +7,6 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
-import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.feature.FeatureRevision;
