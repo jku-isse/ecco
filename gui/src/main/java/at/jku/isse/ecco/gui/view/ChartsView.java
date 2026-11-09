@@ -2,8 +2,6 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.gui.common.TabVisibilityAware;
 import at.jku.isse.ecco.gui.common.TableColumns;
-import at.jku.isse.ecco.gui.common.TaskFailures;
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
@@ -18,7 +16,6 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.VPos;
@@ -36,7 +33,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Loads its charts when shown and again after every change of the repository while shown - there

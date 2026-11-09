@@ -5,8 +5,6 @@ import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
-import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.gui.common.ExceptionTextArea;
 import at.jku.isse.ecco.gui.common.RepositoryAccess;
 import at.jku.isse.ecco.gui.common.TableColumns;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;

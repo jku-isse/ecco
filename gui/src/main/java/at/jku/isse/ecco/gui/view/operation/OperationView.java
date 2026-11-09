@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
 
-import at.jku.isse.ecco.gui.common.ExceptionTextArea;
 import at.jku.isse.ecco.gui.common.Notifications;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
