@@ -24,11 +24,17 @@ public final class LlmPreferences {
 
 	private static final String DEFAULT_ENDPOINT_URL = "http://localhost:11434";
 
+	/** A system property naming the endpoint for this process instead of the one stored (ecco git-import --llm-endpoint); not stored. */
+	public static final String ENDPOINT_URL_PROPERTY = "ecco.llm.endpoint";
+	/** A system property naming the model for this process instead of the one stored (ecco git-import --llm-model); not stored. */
+	public static final String MODEL_NAME_PROPERTY = "ecco.llm.model";
+
 	private LlmPreferences() {
 	}
 
 	public static String getEndpointUrl() {
-		return prefs().get(ENDPOINT_URL_KEY, DEFAULT_ENDPOINT_URL);
+		String given = System.getProperty(ENDPOINT_URL_PROPERTY);
+		return given != null ? given : prefs().get(ENDPOINT_URL_KEY, DEFAULT_ENDPOINT_URL);
 	}
 
 	public static void setEndpointUrl(String endpointUrl) {
@@ -37,7 +43,8 @@ public final class LlmPreferences {
 
 	/** Blank by default, deliberately - forces the user to name a model they've actually pulled rather than guessing one for them. */
 	public static String getModelName() {
-		return prefs().get(MODEL_NAME_KEY, "");
+		String given = System.getProperty(MODEL_NAME_PROPERTY);
+		return given != null ? given : prefs().get(MODEL_NAME_KEY, "");
 	}
 
 	public static void setModelName(String modelName) {
