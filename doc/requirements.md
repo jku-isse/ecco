@@ -28,9 +28,11 @@ These requirements were recovered, not written up front, in October 2026, and ha
 
 Scope: the live Gradle modules (`base`, `service`, `logic`, `util`, `cli`, `gui`, `rest`, `adapter-api` and the adapters in `settings.gradle`). The retired storage backends, the `java6`/`java8`/`designspace` adapters and other unbuilt extras are out of scope; they are kept on the branch `archive/unbuilt-modules`.
 
+Each requirement has an ID, an EARS pattern, a use case, an acceptance test and its evidence. It has no priority, and its status is implied: every requirement is met unless a [known gap](#known-gaps) says otherwise (gap #91).
+
 **shall** = required; **should** = expected but not enforced everywhere. Not every shall-requirement has a test of its own - the *Acceptance test* column says which do - and three (FR-K5e, FR-K6, FR-D4b) cannot be reached with the adapters in use; the notes under them say why.
 
-All requirements - functional, adapter, interface and non-functional - are written in EARS (Easy Approach to Requirements Syntax, Mavin et al., RE'09): *ubiquitous* (the system shall ...), *event-driven* (When ..., the system shall ...), *state-driven* (While ...), *optional* (Where ...) and *unwanted behaviour* (If ..., then the system shall ...). A requirement split into several keeps its old ID with a letter (FR-D8a ...), so the old ID still names the group. *Use case* points to where the requirement is realized: `B3` is step 3 of the basic flow, `SA2` a specific and `BA1` a bounded alternative flow, `post` a postcondition. *Acceptance test* names the tests that check it; *Evidence* the code, document or commit it was recovered from. A requirement that prescribes a design rather than a behaviour is marked *design constraint*; the performance requirements give a *Baseline* instead of a test. A test marked *(unit)* checks the requirement on one class, *(GUI)* through the GUI, not through the service.
+All requirements - functional, adapter, interface and non-functional - are written in EARS (Easy Approach to Requirements Syntax, Mavin et al., RE'09): *ubiquitous* (the system shall ...), *event-driven* (When ..., the system shall ...), *state-driven* (While ...), *optional* (Where ...) and *unwanted behaviour* (If ..., then the system shall ...). A requirement split into several keeps its old ID with a letter (FR-D8a ...), so the old ID still names the group. *Use case* points to where the requirement is realized: `B3` is step 3 of the basic flow, `SA2` a specific and `BA1` a bounded alternative flow, `post` a postcondition. *Acceptance test* names the tests that check it; *Evidence* the code, document or commit it was recovered from. A requirement that prescribes a design rather than a behaviour is marked *design constraint*; the performance requirements give the *Baseline* their limit was set from. A test marked *(unit)* checks the requirement on one class, *(GUI)* through the GUI, not through the service.
 
 Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `base/.../repository/Repository.java`, `DR`/`DW` = `service/.../service/dispatch/DispatchReader.java`/`DispatchWriter.java`, `STS` = `service/.../storage/ser/dao/SerTransactionStrategy.java`, `SR` = `service/.../storage/ser/repository/SerRepository.java`.
 
@@ -40,7 +42,7 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | Stakeholder | Goal | Front end | Evidence |
 | --- | --- | --- | --- |
 | Variant developer (clone-and-own) | Keep developing individual variants while reusing features across them | CLI, GUI | README Use Cases; ICSME'14 |
-| Product-line engineer | Consolidate existing variants into a common platform; evolve features incrementally | GUI | SPLC'13, SoSyM'16, SST'15 |
+| Product-line engineer | Consolidate existing variants into a common platform; evolve features incrementally | CLI, GUI | SPLC'13, SoSyM'16, SST'15 |
 | Feature-location researcher | Compute feature-to-artifact traces from known variants; run benchmarks (SPLC challenge, VEVOS) | CLI, `experiment`, challenge adapter | SPLC'19 |
 | Distributed team | Exchange features, not whole histories, between repositories | CLI, GUI server | ICSE'16 doctoral symposium |
 | Web-client user | Browse and operate repositories from a browser | REST + external [ecco-client](https://github.com/MatthiasPreuner/ecco-client.git) | `rest/README.md` |
@@ -79,6 +81,14 @@ The names are the interfaces in `base` (package `at.jku.isse.ecco`).
 | Feature model | The accepted constraints that re-mining still yields (FR-N5) and that have no counterexample (hard, confidence 1.0) - the only constraints ECCO applies | `FeatureModelFormula`, `ConstraintService#acceptedSuggestions` |
 | Remote | Another repository, by local path or `host:port` | `core.Remote` |
 | Repository | All of the above, stored in a `.ecco` directory | `repository.Repository` |
+| Core, pack, piece | The stored repository: the core file holds features, constraints, modules, commits and the order of the packs; packs hold the artifacts and the associations; pieces hold parts of the associations' trees (FR-P1) | `storage.ser` |
+| BASE | The feature the first commit of a Git import gets: the code base as first imported, the root of the feature model | `LlmFeatureSuggestionClient.BASE` |
+| Running feature set | During a Git import, the features of the last commit imported; the next commit is proposed with them | `gitimport.GitImport` |
+| Unattended import | A Git import whose commits are imported without review, stopping only where FR-G3b, FR-G3d or FR-G4 say | `gitimport.GitImport` |
+| Uncertain suggestion | An LLM suggestion whose confidence - how far the suggested features agree with where the commit changed things - is below 0.5 | `llm.SuggestionConfidence` |
+| Maximum order | The largest number of features a module (interaction) combines; 2 by default (FR-L1a) | `ecco.properties` |
+| Evaluation strategy | How a checkout prunes the composed tree per node (RETROACTIVE, PROACTIVE, ...; FR-K1b) | `featuretrace.evaluation` |
+| Read context | What else an adapter's reading of a file depends on, beyond its content; equal contexts let a read be reused (FR-M11a) | `ArtifactReader#readContext` |
 
 ```mermaid
 flowchart LR
@@ -147,7 +157,7 @@ An alternative flow ends with `ABORT` (the use case ends) or `RESUME STEP n` (th
 | UC-13 | Serve repository for synchronization | Collaborator | GUI | 5 |
 | UC-14 | Commit through the web client | Web-client user | REST | 3 |
 | UC-15 | Download variant through the web client | Web-client user | REST | 3 |
-| UC-16 | Register a remote | Collaborator | GUI | 5 |
+| UC-16 | Register a remote | Collaborator | CLI, GUI | 5 |
 
 The stakeholder use cases are the five listed under [Stakeholders and usage contexts](#stakeholders-and-usage-contexts): 1 feature location, 2 extractive product-line engineering, 3 automated reuse for clone-and-own, 4 reactive product-line engineering, 5 feature-oriented distributed version control.
 
@@ -201,7 +211,7 @@ Postcondition: The directory holds no repository, and the variant developer can 
 | Dependency | None |
 | Generalization | None |
 | Front ends | CLI (each command opens the repository itself); GUI Repositories > Open |
-| Realizes | FR-L3, FR-L4, FR-L5, FR-P2, FR-P4, IF-C8, NFR-V1 |
+| Realizes | FR-L3, FR-L4, FR-L5, FR-P2, IF-C8, IF-C13, NFR-V1, NFR-V3 |
 
 **Basic flow**
 
@@ -521,7 +531,7 @@ Postcondition: As the basic flow, and the file is already in the new order; afte
 | Dependency | INCLUDE USE CASE Commit variant |
 | Generalization | None |
 | Front ends | CLI `traces [id]`, `dg`; GUI Explore > Artifacts (with the association details), association preview, Explore > Dependency Graph |
-| Realizes | FR-M1, FR-T1, FR-T2, IF-C6, IF-G6, IF-G7, IF-G9 |
+| Realizes | FR-M1, FR-T1, FR-T2, IF-C6, IF-C16, IF-G6, IF-G7, IF-G9 |
 
 **Basic flow**
 
@@ -568,7 +578,7 @@ Postcondition: The repository is unchanged.
 | Dependency | INCLUDE USE CASE Minimize presence conditions |
 | Generalization | None |
 | Front ends | GUI Explore > Feature Model; CLI `suggest-constraints`, `accept-constraint`, `reject-constraint` |
-| Realizes | FR-N1 to FR-N6, IF-C5, IF-G5 |
+| Realizes | FR-N1 to FR-N6, FR-N10, IF-C5, IF-G5 |
 | End-to-end test | `ConstraintsEndToEndTest` (CLI, one `ecco` process per step: suggest, accept, reject and undo; then the checkout and the commit that violate the accepted constraint, and the decisions carried by a fork and a pull) |
 
 **Basic flow**
@@ -678,7 +688,7 @@ Postcondition: The previously stored minimized conditions stay as they were.
 | Dependency | INCLUDE USE CASE Commit variant |
 | Generalization | None |
 | Front ends | GUI Versions > Import from Git; CLI `ecco git-import`, unattended (SA2, SA11, SA12) |
-| Realizes | FR-G1 to FR-G5, IF-G3, IF-G4, IF-C12 |
+| Realizes | FR-G1 to FR-G6, IF-G3, IF-G4, IF-C12 |
 | End-to-end test | `GitImportEndToEndTest` (the import window from the selected range on - the system's folder dialog cannot be driven; every commit reviewed, the LLM an OpenAI-compatible endpoint over HTTP as Preferences configures it; the repository opened again from disk against the Git trees; also a run stopped partway (SA5) and one of the tagged releases only, unattended (SA10)); on the command line `GitImportCommandTest`, which runs the command in-process (a range and a second import going on, tagged commits only, suggestions, a failed suggestion stopping, skipped and imported) |
 
 **Basic flow**
@@ -792,7 +802,7 @@ Postcondition: The commits imported so far stay in the repository.
 8. UNTIL the last tagged commit is imported.
 9. RESUME STEP 17.
 
-Postcondition: The repository holds one commit per tagged Git commit - the releases; the commits between were not imported, their changes are new revisions in the next tagged commit, and the summary says how many were left out (IF-G3f/g).
+Postcondition: The repository holds one commit per tagged Git commit - the releases; the commits between were not imported, their changes are new revisions in the next tagged commit, and the summary says how many were left out (FR-G6a/b).
 
 **Specific alternative flow SA11** (RFS 10)
 
@@ -823,7 +833,7 @@ Postcondition: Nothing of the failed commit is in the repository; the commits im
 | Dependency | None |
 | Generalization | None |
 | Front ends | CLI `fork <remote> [--exclude ...]`; GUI Repositories > Fork; REST fork with deselected features |
-| Realizes | FR-D1, FR-D2, FR-D3, FR-D4, FR-D5, FR-D7, FR-D8, FR-L2, FR-N4, IF-R2 |
+| Realizes | FR-D1, FR-D2, FR-D3, FR-D4, FR-D7, FR-D8, FR-L2, FR-N4, IF-R2, NFR-R3 |
 | End-to-end test | `ForkPullPushEndToEndTest` (CLI, local paths, one `ecco` process per step; UC-11 and UC-12 in one history, against linear histories); over the socket: `ServeEndToEndTest` |
 
 **Basic flow**
@@ -892,7 +902,7 @@ Postcondition: Nothing is created, and the collaborator can retry.
 | Dependency | None |
 | Generalization | None |
 | Front ends | CLI `fetch`, `pull`, `push [remote] [--exclude ...]`; GUI Collaborate > Remotes; REST pull between its own repositories |
-| Realizes | FR-D1, FR-D3, FR-D4, FR-D5, FR-D7, FR-D8, FR-D9, FR-M9, FR-N4, IF-C4, IF-G10, IF-R4 |
+| Realizes | FR-D1, FR-D3, FR-D4, FR-D7, FR-D8, FR-D9, FR-N4, IF-C4, IF-G10, IF-R4, NFR-R3, NFR-V1 |
 | End-to-end test | `ForkPullPushEndToEndTest` (CLI, local paths, one `ecco` process per step; UC-11 and UC-12 in one history, against linear histories); over the socket: `ServeEndToEndTest`; failure flows: `FailureFlowsEndToEndTest` |
 
 **Basic flow**
@@ -1156,8 +1166,8 @@ Postcondition: The repository is unchanged.
 | Secondary actors | None |
 | Dependency | None |
 | Generalization | None |
-| Front ends | GUI Collaborate > Remotes (the CLI's `remotes` lists them; a fork registers its origin itself, UC-11) |
-| Realizes | FR-D1, IF-G10 |
+| Front ends | GUI Collaborate > Remotes; CLI `remotes --add` / `--remove` (a fork registers its origin itself, UC-11) |
+| Realizes | FR-D1, IF-G10, IF-C17 |
 
 **Basic flow**
 
@@ -1218,10 +1228,12 @@ Postcondition: No remote is stored or changed.
 | FR-F4 | Ubiquitous | ECCO shall not persist revisions when it parses a configuration. | - | `ParseConfigurationPhantomRevisionTest` | |
 | FR-F5a | Unwanted | If a configuration selects two revisions of one feature, by name or by id, then ECCO shall reject it as "selected twice". | UC-3 SA1; UC-5 SA1 | `ConfigurationGrammarTest`, `FeatureRevisionsEndToEndTest` | Code `ConfigurationParser#parseConfigurationStringHolding` |
 | FR-F5b | Ubiquitous | ECCO shall read a revision named twice in a configuration as that revision once. | - | `ConfigurationGrammarTest` | |
-| FR-F6 | Unwanted | If a commit or pull would add a feature or revision whose logic variable (`.` and `-` read as `_`) is another's - `shopping-cart` next to `shopping_cart`, `A.B_1` next to `A_B.1`, `A_1` next to `A.1` - then ECCO shall refuse it, because conditions could not tell the two apart. A feature of a pull or push of the same name as one here is that feature (FR-D3f), except in a merge (UC-12 SA7), which refuses it too. | UC-3 SA1; UC-12 SA7 | `FeatureVariableCollisionTest` | Code `FeatureLiterals.checkDistinct` |
+| FR-F6 | Unwanted | If a commit or pull would add a feature or revision whose logic variable (`.` and `-` read as `_`) is another's - `shopping-cart` next to `shopping_cart`, `A.B_1` next to `A_B.1`, `A_1` next to `A.1` - then ECCO shall refuse it. | UC-3 SA1; UC-12 SA7 | `FeatureVariableCollisionTest` | Code `FeatureLiterals.checkDistinct` |
 | FR-F7a | Ubiquitous | ECCO shall read `[<id>]` in a configuration as the feature's name, in every form (`[<id>]`, `[<id>]'`, `[<id>].<rev>`). | UC-3 B3; UC-5 B2 | `UnknownFeatureIdTest`, `FeatureRevisionsEndToEndTest` | |
 | FR-F7b | Unwanted | If `[<id>]` names no existing feature, then ECCO shall reject the configuration. | UC-3 SA1; UC-5 SA1 | `UnknownFeatureIdTest`, `FeatureRevisionsEndToEndTest` | |
 | FR-F8 | Unwanted | If a configuration names a feature that starts with `-` and does not exist (`A, -B`), then ECCO shall reject it with a hint to leave the feature out instead. | UC-3 SA1; UC-5 SA1 | `ConfigurationGrammarTest`, `FeatureRevisionsEndToEndTest` | Code `ConfigurationParser#getFeature` |
+
+FR-F6: conditions could not tell two such features apart. A feature of a pull or push with the name of one here is that feature (FR-D3f), except in a merge (UC-12 SA7), which refuses it as FR-F6 does.
 
 FR-F3 can only meet a repository made before FR-F6 (51523c0d): a pull or push takes a feature of the same name as the one already there, and a merge refuses it, so two cannot arise.
 
@@ -1234,8 +1246,9 @@ FR-F3 can only meet a repository made before FR-F6 (51523c0d): a pull or push ta
 | FR-M3a | Event | When a commit through the GUI or the service is given no configuration, ECCO shall use the configuration in `<working dir>/.config` (the CLI requires one, IF-C2). | UC-3 B2 | `ConfigFileLineBreaksTest` | Code `CommitService.getConfigStringFromFile` |
 | FR-M3b | Unwanted | If `.config` exists but cannot be read, then ECCO shall fail the commit. | - | `SmallRefusalsTest` | Code `CommitService.getConfigStringFromFile` |
 | FR-M3c | Event | When ECCO reads a `.config`, it shall collapse the file's line breaks into one line (`a.1, b.1`) and offer that line as the default commit message. | UC-3 B2; UC-4 B4 | `ConfigFileLineBreaksTest` | |
-| FR-M4 | Event | When a commit's configuration has not been committed before, ECCO shall record the configuration as a variant. | UC-3 B10 | `CommitVariantReproTest`, `ConfigurationIdentityTest`, `WebClientEndToEndTest` | Code `CommitService#commit` |
-| FR-M4b | Unwanted | If a variant is added for a configuration that already is a variant, then ECCO shall refuse it with "This configuration is already saved as variant '<name>'." - the GUI's Add Variant ends on the error, Save as Variant after a checkout says so, the REST server answers 409 (IF-R5c). | - | `VariantManagerTest`, `VariantViewTest`, `FileRepositoryServiceTest` | History: was skipped without a word |
+| FR-M4a | Event | When a commit's configuration has not been committed before, ECCO shall record the configuration as a variant. | UC-3 B10 | `CommitVariantReproTest`, `ConfigurationIdentityTest`, `WebClientEndToEndTest` | Code `CommitService#commit` |
+| FR-M4b | Unwanted | If a variant is added for a configuration that already is a variant, then ECCO shall refuse it with "This configuration is already saved as variant '<name>'.". | - | `VariantManagerTest` | Code `VariantManager#addVariant` |
+| FR-M4c | Event | When a front end's request to add a variant is refused for FR-M4b, the front end shall say so: the GUI's Add Variant ends on the error, Save as Variant after a checkout shows it, the REST server answers 409 (IF-R5c). | - | `VariantViewTest`, `FileRepositoryServiceTest` | History: was skipped without a word |
 | FR-M5a | Ubiquitous | ECCO shall skip the files that match `.ecco/.ignores` (by default `.DS_Store` and `.gitignore`). | UC-3 B6 | `DsStoreIgnoredRegressionTest`, `GitignoreIgnoredRegressionTest` | Code `DispatchReader#init` (`IGNORES_FILE_NAME`) |
 | FR-M5b | Ubiquitous | ECCO shall always skip `.ecco`, `.config`, `.warnings` and `.hashes`. | UC-3 B6 | `SmallRefusalsTest` | Code `DispatchReader` |
 | FR-M6a | Ubiquitous | ECCO shall read each file with the adapter of the first `.ecco/.adapters` line (`pluginId;glob`) whose glob matches the file. | UC-3 B6 | `DispatchReaderPriorityTieTest` | Doc; Code `DispatchReader#init` |
@@ -1245,16 +1258,16 @@ FR-F3 can only meet a repository made before FR-F6 (51523c0d): a pull or push ta
 | FR-M7b | Unwanted | If a line of `.adapters` is malformed, then ECCO shall reject it, naming the line. | - | `UnavailableAdapterRoutingTest` | |
 | FR-M8a | Unwanted | If a file cannot be read, then ECCO shall fail the commit instead of committing the file empty. | UC-3 BA1 | `UnreadableFileCommitTest`, `FailureFlowsEndToEndTest` | |
 | FR-M8b | Unwanted | If the working directory contains a symlink loop, then ECCO shall skip the loop. | - | `SymlinkLoopCommitTest` | |
-| FR-M9 | - | Moved to [NFR-V1](#compatibility-and-evolution) (a commit or merge into a repository of a retired adapter format is refused) and NFR-V2 (it still checks out). | UC-3 B7, SA2; UC-12 B6, SA5 | `CppRoundTripTest` | |
-| FR-M10a | Ubiquitous | ECCO shall run a commit in one read-write transaction. | UC-3 B5, B11 | - | Code `CommitService` |
+| FR-M9 | - | Moved to [NFR-V1](#compatibility-and-evolution) (a commit or merge into a repository of a retired adapter format is refused) and NFR-V2 (it still checks out). | - | - |  |
+| FR-M10a | Ubiquitous (design constraint) | ECCO shall run a commit in one read-write transaction. | UC-3 B5, B11 | - | Code `CommitService` |
 | FR-M10b | Unwanted | If a commit fails, also with an `Error` such as `OutOfMemoryError`, then ECCO shall roll back its transaction. | UC-3 BA1 | `ErrorRollbackTest`, `FailureFlowsEndToEndTest` | History 2dc75b70 |
 | FR-M10c | Unwanted | If a listener fails after a transaction is committed, then ECCO shall keep the transaction committed. | - | `ListenerFailureKeepsCommitTest` | Code `ListenerRegistry#fireStatusChangedEvent` |
-| FR-M10d | Unwanted | If any other operation fails while it holds a transaction, read-only or read-write, then ECCO shall roll the transaction back and pass an `Error` on unwrapped. | - | `ErrorRollbackTest` | History 2dc75b70 |
-| FR-M11a | Optional, event | Where a file's adapter names its read context (`ArtifactReader#readContext`: C, C++, TypeScript, Python, Java AST, Markdown, LilyPond), when the file's adapter, path, content (SHA-256) and context are the same as in the session's previous read, ECCO shall copy the tree of that read instead of parsing the file again. | UC-3 B6 | `DispatchReaderReuseTest` | Code DR, `Trees#copyRead`; History 90135e96 |
+| FR-M10d | Unwanted | If an operation other than a commit fails while it holds a transaction, read-only or read-write, then ECCO shall roll the transaction back and pass an `Error` on unwrapped. | - | `ErrorRollbackTest` | History 2dc75b70 |
+| FR-M11a | Optional, event | Where a file's adapter names its read context (C, C++, TypeScript, Python, Java AST, Markdown, LilyPond), when the file's adapter, path, content (SHA-256) and context are the same as in the session's previous read, ECCO shall copy the tree of that read instead of parsing the file again. | UC-3 B6 | `DispatchReaderReuseTest` | Code DR, `ArtifactReader#readContext`, `Trees#copyRead`; History 90135e96 |
 | FR-M11b | Ubiquitous | ECCO shall store the same for a commit with copied trees as for one with fresh reads. | - | `DispatchReaderReuseTest` | |
 | FR-M11c | Optional | Where `-Decco.reuseReadTrees=false` is set, ECCO shall parse every file. | - | `DispatchReaderReuseTest` | Code DR |
 | FR-M12a | Event | When the variant developer cancels a commit, ECCO shall stop it at the next file it reads, roll back its transaction and leave the repository as it was. | UC-3 BA2 | `CommitCancellationTest`, `CommitBaseDirViewTest` (GUI) | Code `EccoService#cancelCommit` |
-| FR-M12b | Ubiquitous | ECCO shall let a cancellation requested while no commit runs leave the next commit alone. | - | `CommitCancellationTest` | Code `EccoService#cancelCommit` |
+| FR-M12b | Unwanted | If a cancellation is requested while no commit runs, then ECCO shall not cancel the next commit. | - | `CommitCancellationTest` | Code `EccoService#cancelCommit` |
 
 A file its enabled adapter fails to parse falls back to another adapter (AD-11, UC-3 SA4). Read-tree reuse does not use `.hashes` - see [Known gaps](#known-gaps) #3.
 
@@ -1267,25 +1280,25 @@ A file its enabled adapter fails to parse falls back to another adapter (AD-11, 
 | FR-K2a | Ubiquitous | ECCO shall order sibling artifacts by their partial order graph. | UC-5 B7 | `DefaultOrderSelectorTest` (unit), `OrderResolutionCharacterizationTest`, `InitCommitCheckoutEndToEndTest`, `ResolveOrderEndToEndTest` | Code `DefaultOrderSelector` |
 | FR-K2b | Unwanted | If a partial order graph has a cycle, a redundant transitive edge or a wrong node count, then ECCO shall reject the graph. | - | `PartialOrderGraphCycleCheckEquivalenceTest` (unit, cycles only) | Code `PartialOrderGraph.Op#merge`, `#hasCycle` |
 | FR-K3a | Unwanted | If the working directory of a checkout holds anything besides the repository's own `.ecco` - also only a `.config`, `.warnings` or `.hashes`, or another repository - then ECCO shall refuse the checkout before writing anything. | UC-5 B3, SA2 | `CheckoutIntoNonEmptyDirectoryTest`, `CheckoutViewTest` (GUI), `InitCommitCheckoutEndToEndTest` | Code `DispatchWriter#write` |
-| FR-K3b | - | Merged into FR-K3a: a leftover `.config`, `.warnings` or `.hashes` already makes the directory non-empty; the later checks for them (`CheckoutService`, `DispatchWriter`) cannot be reached. | UC-5 B3, SA2 | `CheckoutIntoNonEmptyDirectoryTest` | |
+| FR-K3b | - | Merged into FR-K3a: a leftover `.config`, `.warnings` or `.hashes` already makes the directory non-empty; the later checks for them (`CheckoutService`, `DispatchWriter`) cannot be reached. | - | - |  |
 | FR-K3c | Ubiquitous | ECCO shall recognize the repository directory however it is reached - through a symlink (on macOS `/var` is `/private/var`), a relative path or `./.ecco`. | - | `CheckoutIntoRepositoryHomeTest` | Code `DispatchWriter.isRepositoryDir`; History 8cc349a3 |
 | FR-K4 | Event | When ECCO checks out a configuration, it shall write `.config` (the configuration) and `.warnings` into the working directory. | UC-5 B11 | `CheckoutCommandTest`, `InitCommitCheckoutEndToEndTest`, `WebClientEndToEndTest` | Doc; Code `CheckoutService#checkout` |
-| FR-K5 | Ubiquitous | ECCO shall list the warnings of a checkout in `.warnings`, one per line, with a suggested fix where one exists: the kinds of FR-K5a-f, and TRACE (FR-T2b). | UC-5 B8, B12 | `CheckoutMissingModuleDiagnosticsTest` | Code `CheckoutService` |
+| FR-K5 | Ubiquitous | ECCO shall list the warnings of a checkout in `.warnings`, one per line, with a suggested fix where one exists: the kinds of FR-K5a-f, h and i, and TRACE (FR-T2b). | UC-5 B8, B12 | `CheckoutMissingModuleDiagnosticsTest` | Code `CheckoutService` |
 | FR-K5a | Event | When a configuration combines features in an interaction never committed, ECCO shall warn MISSING for that interaction. | UC-5 B8 | `CheckoutMissingModuleDiagnosticsTest`, `InitCommitCheckoutEndToEndTest`, `WebClientEndToEndTest` | |
 | FR-K5b | Event | When a checkout holds artifacts its configuration does not explain, ECCO shall warn SURPLUS for them. | UC-5 B8 | `SurplusLatticeAbsorberTest` | |
-| FR-K5i | Unwanted | If the artifacts of an association were committed with several revisions of a feature, then ECCO shall take any one of them in the configuration as explaining them, and not warn SURPLUS for the others. | UC-5 B8 | `SurplusAcrossRevisionsTest`, `FeatureRevisionsEndToEndTest` | History: every checkout of a feature in several revisions warned SURPLUS, once per other revision |
 | FR-K5c | Event | When the order of sibling artifacts is ambiguous, ECCO shall warn ORDER, naming the undecided lines. | UC-5 B8; UC-6 precondition | `OrderWarningTextTest`, `ResolveOrderEndToEndTest` | |
-| FR-K5d | Event | When a file stored whole has several versions in the combination, ECCO shall not write the file and shall warn CONFLICT. | UC-5 B8 | `WholeFileConflictTest` | Code `WholeFileConflicts` |
-| FR-K5h | Event | When a file stored whole has no version for the combination, ECCO shall not write the file, write the other files, and warn CONFLICT for it. | UC-5 B8 | `WholeFileConflictTest` | Code `WholeFileConflicts` |
-| FR-K5e | Event | When an association cannot be resolved, ECCO shall warn UNRESOLVED for it. | UC-5 B8 | - | Code `CheckoutService` |
+| FR-K5d | Event | When a file stored whole has several versions in the combination, ECCO shall warn CONFLICT for the file instead of writing it. | UC-5 B8 | `WholeFileConflictTest` | Code `WholeFileConflicts` |
+| FR-K5e | Event (design constraint) | When an association cannot be resolved, ECCO shall warn UNRESOLVED for it. | UC-5 B8 | - (unreachable; see the note below) | Code `CheckoutService` |
 | FR-K5f | Event | When a configuration violates an accepted constraint, ECCO shall warn CONSTRAINT. | UC-5 B8 | `ConstraintViolationWarningTest`, `ConstraintsEndToEndTest` | |
-| FR-K6 | Ubiquitous | ECCO shall not warn MISSING for an interaction when a smaller sub-combination of it is already missing. | UC-5 B8 | `ModuleRevisionsTest` (unit) | Code `ModuleRevisions#trimRedundant` |
+| FR-K5h | Event | When a file stored whole has no version for the combination, ECCO shall warn CONFLICT for the file instead of writing it, and write the other files. | UC-5 B8 | `WholeFileConflictTest` | Code `WholeFileConflicts` |
+| FR-K5i | Unwanted | If the artifacts of an association were committed with several revisions of a feature, then ECCO shall take any one of them in the configuration as explaining them, and not warn SURPLUS for the others. | UC-5 B8 | `SurplusAcrossRevisionsTest`, `FeatureRevisionsEndToEndTest` | History: every checkout of a feature in several revisions warned SURPLUS, once per other revision |
+| FR-K6 | Ubiquitous (design constraint) | ECCO shall not warn MISSING for an interaction when a smaller sub-combination of it is already missing. | UC-5 B8 | `ModuleRevisionsTest` (unit) | Code `ModuleRevisions#trimRedundant` |
 | FR-K7a | Optional | Where SURPLUS absorption is on (the default), ECCO shall absorb SURPLUS warnings (X + XY = X). | UC-5 B8 | `SurplusLatticeAbsorberTest` | Code `SurplusLatticeAbsorber` |
 | FR-K7b | Optional | Where SURPLUS suppression is on (the default), ECCO shall suppress a SURPLUS warning that the feature model entails. | UC-5 B8 | `SurplusModuleSuppressorTest` (unit), `SurplusModuleSuppressorMultiRevisionTest` | Code `SurplusModuleSuppressor`; History ce32c243 |
 | FR-K7c | Ubiquitous | ECCO shall never absorb or suppress MISSING warnings. | - | `SurplusLatticeAbsorberTest`, `SurplusModuleSuppressorTest` (unit) | |
 | FR-K7d | Unwanted | If SURPLUS absorption or suppression fails, then ECCO shall log the failure and keep the warnings unreduced. | - | - | Code `SurplusLatticeAbsorber`, `SurplusModuleSuppressor` |
 | FR-K8 | Ubiquitous | ECCO shall not block a commit or checkout because of a constraint violation. | UC-3 SA3; UC-4 SA3 | `ConstraintViolationWarningTest`, `ConstraintsEndToEndTest` | Code `ConstraintService#checkConstraintViolations` |
-| FR-K9 | Ubiquitous | ECCO shall compose a checkout in a read-only transaction. | UC-5 B4, B9 | `ReadWithoutTransactionTest` | |
+| FR-K9 | Ubiquitous (design constraint) | ECCO shall compose a checkout in a read-only transaction. | UC-5 B4, B9 | `ReadWithoutTransactionTest` |  |
 | FR-K10a | Ubiquitous | ECCO shall write each line-based file in the encoding and line separator of the variant it comes from, ending with a newline as that variant did (AD-6). | UC-5 B10 | `TextFormatVariantsTest`, `MarkdownRepositoryVariantsTest`, `FinalNewlineVariantsTest`, `InitCommitCheckoutEndToEndTest` | History 8282a32d |
 | FR-K10b | Event | When a checkout combines variants in different formats, ECCO shall write the newest commit's format. | UC-5 B10 | `TextFormatVariantsTest`, `TextFormatLastCommitWinsTest` | History 5027fcb0 |
 | FR-K10c | State | While a file has no traced format (it was stored before formats were traced), ECCO shall write it in the newest commit's format. | - | - | History 5027fcb0 |
@@ -1295,7 +1308,7 @@ A file its enabled adapter fails to parse falls back to another adapter (AD-11, 
 | FR-K12 | Ubiquitous | ECCO shall not check out a file removed in a later commit (for example by renaming its directory) in a variant that does not contain it. | UC-5 B5 | `RemovedFileCheckoutTest` | Code `SerNode.copySingleNodeCompletely`, `Trees.treeFusion`; History d73f17e0 |
 | FR-K13 | Unwanted | If a checkout's configuration names a feature or revision the repository does not have (FR-F2b reads it as a new one), then ECCO shall refuse the checkout before writing anything, naming it. | UC-5 B2, SA1 | `UnknownRevisionCheckoutTest`, `ForkPullPushEndToEndTest`, `FeatureRevisionsEndToEndTest` | Code `CheckoutService#checkCommitted` |
 
-FR-K5e and FR-K6 cannot be reached with the adapters and settings in use: a checkout counts an association as unresolved only through a cross reference between artifacts (`Artifact#getUses`, as FR-D4b), which no adapter in use records; and with the maximum order 2 a missing sub-combination would be a single feature never committed, which a checkout refuses (FR-K13) - the maximum order cannot be raised through the service. Their unit tests stay.
+FR-K5e and FR-K6 are guards - design constraints, checked by unit tests - because they cannot be reached with the adapters and settings in use: a checkout counts an association as unresolved only through a cross reference between artifacts (`Artifact#getUses`, as FR-D4b), which no adapter in use records; and with the maximum order 2 a missing sub-combination would be a single feature never committed, which a checkout refuses (FR-K13) - the maximum order cannot be raised through the service. Their unit tests stay.
 
 FR-K12 holds because a node that only leads to its association's own nodes contributes no condition of its own to the main tree.
 
@@ -1304,20 +1317,22 @@ FR-K12 holds because a node that only leads to its association's own nodes contr
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | FR-N1a | Event | When the product-line engineer asks for constraint suggestions, ECCO shall mine MANDATORY, REQUIRES and EXCLUDES constraints from the committed configurations. | UC-8 B2, SA4 | `ConstraintMinerTest` (unit), `SuggestConstraintsCommandTest`, `ConstraintsEndToEndTest` | Code `ConstraintMiner#mine` |
-| FR-N1b | Ubiquitous | ECCO shall mine with a minimum witness count (at least 1, default 4) and a confidence threshold (0 to 1, default 0.9; 1.0 = hard rules only). | UC-8 B2, SA1 | `ConstraintMinerTest` (unit), `ConstraintSuggestionsViewTest` (GUI) | Code `ConstraintMiner#mine` |
+| FR-N1b | Ubiquitous | ECCO shall mine with a minimum witness count of at least 1, by default 4. | UC-8 B2, SA1 | `ConstraintMinerTest` (unit), `ConstraintSuggestionsViewTest` (GUI) | Code `ConstraintMiner#mine` |
 | FR-N1c | Ubiquitous | ECCO shall list the suggestions hard ones first, then by number of witnesses. | UC-8 B3 | `SuggestConstraintsCommandTest` | Code `ConstraintMiner#mine` |
+| FR-N1d | Ubiquitous | ECCO shall mine with a confidence threshold from 0 to 1, by default 0.9, where 1.0 proposes hard rules only. | UC-8 B2, SA1 | `ConstraintMinerTest` (unit), `ConstraintSuggestionsViewTest` (GUI) | Code `ConstraintMiner#mine` |
 | FR-N2 | Ubiquitous | ECCO shall apply a mined constraint only once it is accepted. | UC-8 B3-B5 | `UnacceptedConstraintsTest` | Code `ConstraintMiner` |
 | FR-N3 | Ubiquitous | ECCO shall mine constraints per feature, so that revisions of one feature are never mutually exclusive. | UC-8 B2 | `ConstraintMinerTest` (unit), `SuggestConstraintsCommandTest` | Code `ConfigurationBridge` |
 | FR-N4a | Event | When the product-line engineer accepts or rejects a suggestion, ECCO shall store the decision in the repository and withdraw an opposite decision on the same suggestion. | UC-8 B5, SA2 | `RejectedConstraintsTest`, `ConstraintsEndToEndTest` | |
 | FR-N4b | Event | When a fork, pull or push joins two repositories, ECCO shall carry the accepted and rejected constraints and the feature parents over without duplicates, the receiving repository keeping its own decision. | UC-11 B5; UC-12 B7, SA1, SA7 | `ConstraintPersistenceMergeTest`, `RejectedConstraintsTest`, `ConstraintsEndToEndTest` | |
 | FR-N4c | Event | When a repository is opened on a machine that holds rejections kept by an earlier version, ECCO shall move them into the repository, except for suggestions the repository has accepted. | UC-8 SA5 | `RejectedConstraintsTest` | |
-| FR-N5 | State | While re-mining no longer yields an accepted constraint, ECCO shall not trust it. | UC-8 B7, post | `AcceptedConstraintStaleReMineTest`, `ConstraintsEndToEndTest` | |
+| FR-N5 | State | While re-mining no longer yields an accepted constraint as hard, ECCO shall keep it accepted but not apply it - in checkouts, warnings and minimization - until re-mining yields it again. | UC-8 B7, post | `AcceptedConstraintStaleReMineTest`, `ConstraintsEndToEndTest` |  |
 | FR-N6 | Event | When the product-line engineer accepts, rejects or returns several constraints at once, ECCO shall store them in one transaction and fire one event. | UC-8 B5, SA2, SA3 | `ConstraintBatchAcceptTest` | Code `ConstraintService#acceptConstraints`, `#rejectConstraints`; History 04825b26 |
 | FR-N7a | Ubiquitous | ECCO shall drop a literal or term of a presence condition only where a SAT check proves the result equivalent under the feature model. | UC-9 B3 | `PresenceConditionMinimizerTest` (unit), `MinimizedCheckoutEquivalenceTest` | Code `PresenceConditionMinimizer` |
 | FR-N7b | Event | When the product-line engineer previews a minimization (`minimize-preview`), ECCO shall leave the repository unchanged. | UC-9 SA1 | `MinimizePreviewCommandTest`, `MinimizedCheckoutEndToEndTest` | Doc |
 | FR-N8 | Ubiquitous | ECCO shall show or use a stored minimized condition only while the association's condition, the distinct committed configurations and the accepted constraints it was computed from are unchanged. | UC-9 B4, post | `MinimizedConditionValidityTest`, `MinimizedCheckoutEndToEndTest` | |
 | FR-N9a | Optional | Where a checkout asks for minimized conditions (`checkout --minimized`, GUI preference; off by default), ECCO shall select with the stored revision-exact minimized conditions that are still valid, and with the full conditions otherwise. | UC-5 SA3 | `MinimizeCommandTest`, `MinimizedCheckoutEndToEndTest` | |
 | FR-N9b | Ubiquitous | ECCO shall write the same files with minimized conditions as without them for every configuration the feature model allows. | UC-5 SA3 post | `MinimizedCheckoutEquivalenceTest`, `MinimizedCheckoutEndToEndTest` | |
+| FR-N10 | Event | When a subfeature is accepted, ECCO shall store it in the repository as the feature's parent - one each, no cycles - with the REQUIRES it means, and carry it with fork, pull and push. | UC-8 B5 | `FeatureParentsTest` | Code `Repository#getFeatureParents` |
 
 ### Proactive feature traces
 
@@ -1325,7 +1340,7 @@ FR-K12 holds because a node that only leads to its association's own nodes contr
 | --- | --- | --- | --- | --- | --- |
 | FR-T1 | Event | When the C, C++ or challenge adapter reads a variant with VEVOS presence conditions (`pcs.variant.csv`), it shall record them as proactive feature traces, with feature names that match the configuration's. | UC-7 SA1 | `CProactiveTraceTest`, `VevosConditionTest` (unit) | Code `VevosConditionHandler`; History f258f279 |
 | FR-T2a | Ubiquitous | ECCO shall use a proactive trace only if it holds in every commit containing its association and in no other. | UC-7 SA1 post | `CProactiveTraceCheckTest` | Code `ProactiveTraceCheck`; History 980daf85 |
-| FR-T2b | Unwanted | If a proactive trace contradicts the commits, then ECCO shall not use it and shall report it as a TRACE warning (too narrow / too broad) with the commit. | UC-5 B8; UC-7 SA1 post | `CProactiveTraceCheckTest` | Code `ProactiveTraceCheck` |
+| FR-T2b | Unwanted | If a proactive trace contradicts the commits, then ECCO shall report it as a TRACE warning (too narrow / too broad) with the commit instead of using it. | UC-5 B8; UC-7 SA1 post | `CProactiveTraceCheckTest` | Code `ProactiveTraceCheck` |
 
 ### Distributed operations
 
@@ -1334,36 +1349,35 @@ FR-K12 holds because a node that only leads to its association's own nodes contr
 | FR-D1a | Ubiquitous | ECCO shall accept as a remote address a local path to a repository or its `.ecco` directory, or `host:port` with a hostname, an IPv4 address or a bracketed IPv6 address and a port from 1 to 65535. | UC-11 B2, SA1; UC-16 B2, SA2 | `RemoteAddressTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | |
 | FR-D1b | Unwanted | If a remote is added or renamed under a name another remote already has, then ECCO shall refuse with "Remote with this name already exists.". | UC-16 B3, SA3 | `UpdateRemoteTest` | Code `RemoteSyncService#addRemote`, `#updateRemote` |
 | FR-D2a | Event | When the collaborator forks a remote, ECCO shall create a new repository from the remote and register the remote as `origin`. | UC-11 B5, B8, B9 | `ForkReopenTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | Code `ForkService#fork` |
-| FR-D2c | Event | When a fork excludes nothing, ECCO shall copy the remote: its commits with their ids, configurations, dates and messages, its modules and associations with their counts - locally and from a sync server. | UC-11 B7 | `ForkCopyTest`, `ForkThenCommitSearchTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | History 45f6d9f6, 6b3f2a8e |
 | FR-D2b | Unwanted | If the location of a fork already holds a repository, then ECCO shall refuse the fork with "A repository already exists at the given location" and leave both repositories as they were. | UC-11 B3, SA2 | `ExistingRepositoryRefusalTest`, `ForkPullPushEndToEndTest` | Code `ForkService#fork` |
+| FR-D2c | Event | When a fork excludes nothing, ECCO shall copy the remote: its commits with their ids, configurations, dates and messages, its modules and associations with their counts - locally and from a sync server. | UC-11 B7 | `ForkCopyTest`, `ForkThenCommitSearchTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | History 45f6d9f6, 6b3f2a8e |
 | FR-D3a | Event | When the collaborator fetches from a remote, ECCO shall read the remote's features and store them with the remote's entry. | UC-12 SA2 | `RemoteSyncCharacterizationTest` | Doc |
 | FR-D3b | Event | When the collaborator pulls from a remote, ECCO shall commit the remote's commits this repository does not have into it again, after its own and in their order, so that it checks out every configuration as committing them in that order would. | UC-12 B1-B9 | `DivergedSyncTest`, `RepeatedPullTest`, `DivergedSyncSearchTest`, `RemoteSyncCharacterizationTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | History fe0fe44c |
 | FR-D3c | Event | When the collaborator pushes to a remote, ECCO shall commit this repository's commits the remote does not have into the remote again, after the remote's own and in their order. | UC-12 SA1 | `DivergedSyncTest`, `DivergedSyncSearchTest`, `RemoteSyncCharacterizationTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | History fe0fe44c |
 | FR-D3d | Unwanted | If a fetch, pull or push names a remote that is not registered, then ECCO shall refuse with "Remote '\<name\>' does not exist.". | UC-12 B2, SA3 | `RemoteSyncCharacterizationTest`, `ForkPullPushEndToEndTest` | |
-| FR-D3e | Unwanted | If one of the repositories has merge commits, or the remote is a sync server too old to exchange commits, then ECCO shall merge the repositories as before, and warn that it does. | UC-11 SA4; UC-12 SA7 | `DivergedSyncTest`, `ForkCopyTest` (older server: fork and pull) | Code `RemoteSyncService` |
+| FR-D3e | Unwanted | If one of the repositories has merge commits, or the remote is a sync server too old to exchange commits, then ECCO shall merge the repositories' associations (`Repository#merge`, as before commit replay) instead of committing the commits again, and warn that it does. | UC-11 SA4; UC-12 SA7 | `DivergedSyncTest`, `ForkCopyTest` (older server: fork and pull) | Code `RemoteSyncService` |
+| FR-D3f | Event | When a pull or push commits a commit whose configuration names a feature by a name the receiving repository has, ECCO shall take it as that feature, adding the revision if the feature lacks it. | UC-12 B8, SA1 | `SmallRefusalsTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | Code `Repository#adoptConfiguration` |
 | FR-D3g | Unwanted | If a sync server that told the ids of its commits closes the connection without sending the commits asked for, then ECCO shall report that and pull nothing, instead of merging as with an older server. | UC-12 BA1 | `SyncProtocolHardeningTest` | Code `RemoteSyncService#receiveCommits` |
 | FR-D3h | Event | When a pull or push sends a commit the receiving repository already has - two pushes that asked for the missing commits before either was taken in - ECCO shall leave it out. | UC-12 B8, SA1 | `DivergedSyncTest` | Code `CommitReplay#replayInto` |
 | FR-D3i | Unwanted | If a fork, fetch, pull or push cannot reach the remote, then ECCO shall refuse it naming the remote's address and the reason ("Error connecting to remote localhost:3770: Connection refused"), and change neither repository. | UC-11 BA1; UC-12 BA1 | `SyncTimeoutTest`, `FailureFlowsEndToEndTest` | History: the reason alone ("Connection refused"), the messages naming the remote never reached |
-| FR-D3f | Event | When a pull or push commits a commit whose configuration names a feature by a name the receiving repository has, ECCO shall take it as that feature, adding the revision if the feature lacks it. | UC-12 B8, SA1 | `SmallRefusalsTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | Code `Repository#adoptConfiguration` |
 | FR-D4a | Event | When a fork, pull or push excludes feature revisions, ECCO shall leave out every commit whose configuration holds an excluded revision, and keep the others as committed in the source. | UC-11 B6; UC-12 B5, SA1 | `ExcludedRevisionsTest`, `NetworkSyncSharedFileTest`, `FetchPullLeaveRemoteUnchangedTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | History fe0fe44c |
-| FR-D4b | Unwanted | If, in a merge, an exclusion leaves an artifact without an artifact it references, then ECCO shall refuse the fork, pull or push with "Unresolved dependencies in selection.". | UC-11 SA4, SA3; UC-12 SA7, SA4 | - | Code REPO `subset`, `DependencyGraph` |
+| FR-D4b | Unwanted (design constraint) | If, in a merge, an exclusion leaves an artifact without an artifact it references, then ECCO shall refuse the fork, pull or push with "Unresolved dependencies in selection.". | UC-11 SA4, SA3; UC-12 SA7, SA4 | - (unreachable; see the note below) | Code REPO `subset`, `DependencyGraph` |
 | FR-D4c | Event | When a merge's exclusion leaves out the feature that brought a file, ECCO shall keep the other features' lines of the file. | UC-11 SA4; UC-12 SA7 | `ExcludedRevisionsTest` | |
 | FR-D4d | Event | When a merge (UC-11 SA4, UC-12 SA7) excludes feature revisions, ECCO shall drop the features left without revisions and the modules that contain an excluded feature, and keep the rest as it checks out in the source. | UC-11 SA4; UC-12 SA7 | - | Code REPO `subset` |
 
 FR-D4a leaves out whole commits: a line only commits with an excluded revision held - also one of another feature, committed together with it - is not in the result. Excluding the only revision of a feature every commit has gives an empty fork.
 
-FR-D4b is reachable only through a cross reference between artifacts (`Artifact#getUses`), which no adapter in use records (only the retired Java 6/8 readers did): `subset()` copies each association's tree whole, so a line never loses its file (FR-D4c).
+FR-D4b is a guard - a design constraint - as it is reachable only through a cross reference between artifacts (`Artifact#getUses`), which no adapter in use records (only the retired Java 6/8 readers did): `subset()` copies each association's tree whole, so a line never loses its file (FR-D4c).
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| FR-D5 | - | Moved to [NFR-R3](#reliability-and-data-integrity) (a fork or pull, reopened, checks out what the source does). | UC-11 post; UC-12 post | `ForkReopenTest` | |
+| FR-D5 | - | Moved to [NFR-R3](#reliability-and-data-integrity) (a fork or pull, reopened, checks out what the source does). | - | - |  |
 | FR-D6a | Unwanted | If the sync server is started while it is running, then ECCO shall refuse with "Server is already running.". | UC-13 B3, SA1 | `SmallRefusalsTest`, `ServeEndToEndTest` | Code `RemoteSyncService#startServer` |
 | FR-D6b | Event | When the sync server deserializes a request, it shall accept only allow-listed classes. | UC-13 B8 | `RemoteSyncServerHardeningTest` | Code `SyncObjectStreams` |
-| FR-D6e | Ubiquitous | The sync server shall answer the requests `SETTINGS`, `MERGE_SETTINGS`, `FETCH`, `CLONE` (the repository as stored, for a fork excluding nothing), `COMMIT_IDS` (the ids of its commits and whether it has merge commits), `PULL_COMMITS` (the commits a client lacks, as a repository of their own, or `MERGE`), `PUSH_COMMITS` (commits to commit after its own) and, for older clients, `PULL` and `PUSH`. | UC-13 B7, B8 | `ForkCopyTest`, `DivergedSyncTest`, `SyncProtocolHardeningTest`, `NetworkSyncSharedFileTest`, `ServeEndToEndTest` | Code `RemoteSyncService` |
 | FR-D6c | Unwanted | If the sync server receives a request it cannot read, also one nested too deeply, then it shall drop that request and keep serving. | - | `SyncProtocolHardeningTest` | |
-| FR-D6d | Unwanted | If the sync server's channel closes other than by stopping the server - its thread interrupted, say - then the server shall stop instead of accepting on. | - | `RemoteSyncServerHardeningTest` | Code `RemoteSyncService#startServer` |
+| FR-D6d | Unwanted | If the sync server's channel closes other than by stopping the server - for example because its thread was interrupted - then the server shall stop instead of accepting on. | - | `RemoteSyncServerHardeningTest` | Code `RemoteSyncService#startServer` |
+| FR-D6e | Ubiquitous | The sync server shall answer the requests `SETTINGS`, `MERGE_SETTINGS`, `FETCH`, `CLONE` (the repository as stored, for a fork excluding nothing), `COMMIT_IDS` (the ids of its commits and whether it has merge commits), `PULL_COMMITS` (the commits a client lacks, as a repository of their own, or `MERGE`), `PUSH_COMMITS` (commits to commit after its own) and, for older clients, `PULL` and `PUSH`. | UC-13 B7, B8 | `ForkCopyTest`, `DivergedSyncTest`, `SyncProtocolHardeningTest`, `NetworkSyncSharedFileTest`, `ServeEndToEndTest` | Code `RemoteSyncService` |
 | FR-D7 | Ubiquitous | ECCO shall leave the remote repository unchanged by a fork, fetch or pull, also when revisions are excluded or the operation fails. | UC-11 post; UC-12 post, SA2-SA5 post, BA1 post | `ForkLeavesOriginUnchangedTest`, `FetchPullLeaveRemoteUnchangedTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest`, `FailureFlowsEndToEndTest` | |
-| FR-D9 | Event | When the collaborator cancels a fetch, pull or push, ECCO shall stop it at its next checkpoint before anything is written, roll back its transaction and leave both repositories as they were. | UC-12 BA2 | `CancelRemoteSyncTest` | Code `RemoteSyncService`, `OperationCancelledException` |
 
 ECCO merges only files that both repositories read the same way, as their `.ecco/.settings` say:
 
@@ -1377,6 +1391,12 @@ ECCO merges only files that both repositories read the same way, as their `.ecco
 | FR-D8f | Event | When the sync server receives a push, it shall compare the settings in the transaction that merges the push and answer whether it merged it. | UC-13 B8; UC-12 SA1 | `SyncProtocolHardeningTest` | |
 | FR-D8g | Ubiquitous | ECCO shall write settings it takes over as a whole, before the merge is stored. | UC-12 SA6 | `SyncProtocolHardeningTest` | |
 
+Cancelling a sync:
+
+| ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| FR-D9 | Event | When the collaborator cancels a fetch, pull or push, ECCO shall stop it at its next checkpoint before anything is written, roll back its transaction and leave both repositories as they were. | UC-12 BA2 | `CancelRemoteSyncTest` | Code `RemoteSyncService`, `OperationCancelledException` |
+
 ### Git import
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
@@ -1387,13 +1407,16 @@ ECCO merges only files that both repositories read the same way, as their `.ecco
 | FR-G2b | Ubiquitous | ECCO shall skip submodules when it extracts a Git tree. | UC-10 B6 | `GitHistoryReaderTest` (unit) | |
 | FR-G2c | Unwanted | If an entry of a Git tree would be extracted outside the directory, then ECCO shall refuse it. | UC-10 B6 | `GitHistoryReaderTest` (unit) | |
 | FR-G2d | Unwanted | If the folder chosen for Git import holds no `.git`, then ECCO shall refuse it with "Not a git repository (no .git found)". | UC-10 B2, SA1 | `GitHistoryReaderTest` (unit) | Code `GitHistoryReader#openRepository`, `ImportGitView`, `GitImportCommand` |
-| FR-G3a | Optional | Where LLM suggestions are on, ECCO shall send one request per commit (temperature 0, JSON output), judged against the features imported so far. | UC-10 B8 | `LlmFeatureSuggestionClientTest` (unit), `GitImportEndToEndTest` | Code `LlmFeatureSuggestionClient#buildRequestBody` |
+| FR-G3a | Optional | Where LLM suggestions are on, ECCO shall send one request per commit, judged against the features imported so far. | UC-10 B8 | `LlmFeatureSuggestionClientTest` (unit), `GitImportEndToEndTest` | Code `LlmFeatureSuggestionClient#buildRequestBody` |
 | FR-G3b | Unwanted | If an LLM request fails, then ECCO shall stop the commit for review with the reason, proposing the running feature set, also in an unattended run, and list the failure in the summary. | UC-10 B9, SA2, SA3, SA11 | `GitImportTest`, `ImportGitViewSuggestionLogTest` (GUI), `GitImportCommandTest`, `GitImportEndToEndTest` | Code `GitImport#stopForFailedSuggestion`; History: tinycc's import, the LLM unreachable for 1,122 of 1,139 commits, gave them all the features of the commit before |
-| FR-G3c | Ubiquitous | ECCO shall commit a suggestion only on the import loop's decision. | UC-10 B10-B12, SA2 | `GitImportEndToEndTest` | |
+| FR-G3c | Ubiquitous | ECCO shall commit a Git commit only when the user chooses Import for it or the run imports it unattended. | UC-10 B10-B12, SA2 | `GitImportEndToEndTest` |  |
 | FR-G3d | Optional | Where uncertain suggestions stop for review, ECCO shall stop an unattended commit for review when its suggestion's confidence - how far the suggested features agree with where the commit changed things and where they changed things before - is below 0.5. | UC-10 B4, SA2 | `SuggestionConfidenceTest` (unit), `ImportGitViewSuggestionLogTest` (GUI) | Code `SuggestionConfidence.UNCERTAIN`; History e91fd582 (Vite replay: 4 of 42 suggestions below 0.5 right) |
+| FR-G3e | Ubiquitous (design constraint) | ECCO shall ask the LLM at temperature 0 for JSON output. | UC-10 B8 | `LlmFeatureSuggestionClientTest` (unit) | Code `LlmFeatureSuggestionClient#buildRequestBody` |
 | FR-G4a | Unwanted | If a Git commit fails to import, then ECCO shall show it again for review with the error and the configuration tried, to be corrected and imported again or skipped. | UC-10 SA7 | `ImportGitViewRetryTest` (GUI) | |
 | FR-G4b | Unwanted | If a Git commit fails to import, then ECCO shall keep nothing of it and go on with the run. | UC-10 SA7 post | `ImportGitViewRetryTest` (GUI) | |
 | FR-G5 | Event | When ECCO imports the first commit into a repository without commits, it shall take BASE - the code base as first imported, the root of the feature model - as its configuration, without asking the LLM. | UC-10 SA9 | `ImportGitViewTaggedTest` (GUI), `GitImportTest`, `GitImportEndToEndTest` | Code `GitImport#next`, `LlmFeatureSuggestionClient.BASE` |
+| FR-G6a | Optional | Where only the tagged commits are imported, ECCO shall import those only - the first of them as BASE, together with the commits before it - and leave out the commits after the last tag. | UC-10 SA10 | `ImportGitViewTaggedTest` (GUI), `GitImportEndToEndTest`, `GitImportCommandTest` | Code `GitImport#next` |
+| FR-G6b | Optional | Where only the tagged commits are imported, ECCO shall ask for a suggestion for each commit between two tagged ones without importing it, give a feature it changed a new revision in the next tagged commit, and stop at it for review only when its suggestion failed or - where uncertain suggestions stop for review (FR-G3d) - is uncertain. | UC-10 SA10 | `ImportGitViewTaggedTest` (GUI), `GitImportEndToEndTest` | Code `GitImport#releaseConfigurationText` |
 
 The import's steps are `GitImport` (service, package `gitimport`), free of any user interface; the GUI's dialog and `ecco git-import` (IF-C12) drive it.
 
@@ -1401,13 +1424,13 @@ The import's steps are `GitImport` (service, package `gitimport`), free of any u
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| FR-P1 | Ubiquitous | ECCO shall store a repository in `.ecco` as a core file (`<id>.ser.zip`, the current one named by the file `id`: features, constraints, modules, commits, the ids of the associations, the packs in the order they were written and each pack's size, the counted module revisions) and packs: the artifacts in `artifacts/`, the associations in `associations/`, the pieces of their trees in `pieces/`. | UC-3 B11 | `AssociationPacksTest`, `TreePiecesStorageTest` | Code STS, SR |
-| FR-P2a | Ubiquitous | ECCO shall keep no entry per artifact in the core. | - | - | Code SR (`packOrder`), STS; History 6dc69da5 |
+| FR-P1 | Ubiquitous (design constraint) | ECCO shall store a repository in `.ecco` as a core file (`<id>.ser.zip`, the current one named by the file `id`: features, constraints, modules, commits, the ids of the associations, the packs in the order they were written and each pack's size, the counted module revisions) and packs: the artifacts in `artifacts/`, the associations in `associations/`, the pieces of their trees in `pieces/`. | UC-3 B11 | `AssociationPacksTest`, `TreePiecesStorageTest` | Code STS, SR |
+| FR-P2a | Ubiquitous (design constraint) | ECCO shall keep no entry per artifact in the core. | - | - | Code SR (`packOrder`), STS; History 6dc69da5 |
 | FR-P2b | Event | When ECCO loads a repository, it shall read the packs in the order they were written, a later pack's copy of an artifact superseding an earlier one's, and rebuild in memory which pack holds each artifact's current copy. | UC-2 B5 | `ArtifactPackTest`, `ReopenEquivalenceTest` | Code SR, STS; History 6dc69da5 |
 | FR-P3a | Event | When a commit is stored, ECCO shall write one new pack with only the artifacts whose serialized bytes differ from their stored ones, compared by a digest kept per artifact id. | UC-3 B11 | `UnchangedArtifactRewriteTest`, `ArtifactPackTest` | Code STS `writeArtifactPack` |
-| FR-P3b | Event | When a pack keeps fewer than half of its artifacts current, ECCO shall repack them into the new pack. | UC-3 B11 | `ArtifactPackTest` | Code STS `writeArtifactPack` |
-| FR-P3c | State | While there are more than 20 packs, ECCO shall merge the smallest. | UC-3 B11 | `ArtifactPackTest` | Code STS `writeArtifactPack` |
-| FR-P4 | - | Moved to [NFR-V3](#compatibility-and-evolution) (an older storage layout is refused on open, naming the version that converts it). | UC-2 B4, SA4 | `OldStorageFormatTest` | |
+| FR-P3b | Event (design constraint) | When a pack keeps fewer than half of its artifacts current, ECCO shall repack them into the new pack. | UC-3 B11 | `ArtifactPackTest` | Code STS `writeArtifactPack` |
+| FR-P3c | State (design constraint) | While there are more than 20 packs, ECCO shall merge the smallest. | UC-3 B11 | `ArtifactPackTest` | Code STS `writeArtifactPack` |
+| FR-P4 | - | Moved to [NFR-V3](#compatibility-and-evolution) (an older storage layout is refused on open, naming the version that converts it). | - | - |  |
 
 
 ## Artifact adapter requirements
@@ -1418,10 +1441,10 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| AD-1a | Ubiquitous | An adapter shall be an `ArtifactPlugin` registered through `ServiceLoader` that binds its reader, writer and optional viewers through Guice. | - | - | Code; `adapter/README.md` |
+| AD-1a | Ubiquitous (design constraint) | An adapter shall be an `ArtifactPlugin` registered through `ServiceLoader` that binds its reader, writer and optional viewers through Guice. | - | - | Code; `adapter/README.md` |
 | AD-1b | Ubiquitous | An adapter's `getPluginId()` shall return its plugin class name. | - | `FileReaderTest`, `CReaderWriterTest`, `CppReaderWriterTest` (unit) | Code |
-| AD-1c | Ubiquitous (design constraint) | An adapter shall depend on `ecco-adapter-api` - the plugin, reader, writer, viewer and exporter interfaces, the shared code viewer, the artifact data adapters create, the read, write and export listeners and the adapters' preferences - not on `ecco-service` (its tests may), so that an adapter can be built outside this repository against an installed ECCO and a change to the service's API recompiles no adapter. | - | - (the build: every adapter's `implementation` is `ecco-adapter-api`) | Code `adapter/*/build.gradle`; Doc `adapter/README.md` (an adapter outside this repository); History 1028ad68, a8caa95a |
-| AD-1d | Ubiquitous (design constraint) | When a class of the adapter API moves between modules, it shall keep the name repositories store its data under, and the adapters' preferences the preference node they are kept at, so that repositories and users' settings stay as they were. | - | `OldStorageFormatTest`, `DispatchReaderPriorityTieTest`, `UnavailableAdapterRoutingTest` | Code `AdapterPreferences.PREFERENCES_NODE`; History 1028ad68, 015123c5 |
+| AD-1c | Ubiquitous (design constraint) | An adapter shall depend on `ecco-adapter-api`, not on `ecco-service` (its tests may), so that it can be built outside this repository and a change to the service's API recompiles no adapter. | - | - (the build: every adapter's `implementation` is `ecco-adapter-api`) | Code `adapter/*/build.gradle`; Doc `adapter/README.md`; History 1028ad68, a8caa95a. The API: the plugin, reader, writer, viewer and exporter interfaces, the shared code viewer, the artifact data adapters create, the read, write and export listeners and the adapters' preferences |
+| AD-1d | Event (design constraint) | When a class of the adapter API moves between modules, it shall keep the name repositories store its data under, and the adapters' preferences the preference node they are kept at, so that repositories and users' settings stay as they were. | - | `OldStorageFormatTest`, `DispatchReaderPriorityTieTest`, `UnavailableAdapterRoutingTest` | Code `AdapterPreferences.PREFERENCES_NODE`; History 1028ad68, 015123c5 |
 | AD-2a | Ubiquitous | A reader shall return one root node per file, carrying `PluginArtifactData`. | UC-3 B6 | - | Code DR |
 | AD-2b | Ubiquitous | ECCO shall choose the writer of a file by the plugin id of its root node. | UC-5 B10 | - | Code DW |
 | AD-3a | Ubiquitous | A reader shall declare prioritized glob patterns, from which `.adapters` is first written (FR-M6b). | - | `DispatchReaderJavaPluginPriorityTest` | Code |
@@ -1429,18 +1452,18 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | AD-4 | Ubiquitous | ECCO shall let each user enable or disable adapters (at least one: FR-L4b; in the GUI: IF-G11). | - | `PreferencesViewTest` (GUI) | Code `AdapterPreferences`, ES |
 | AD-5 | State | While ECCO runs headless (`ecco.headless`), it shall not bind adapter viewers. | - | `InitCommandTest` | Code; History bfcddc23 |
 | AD-6a | Ubiquitous | The text, Markdown, C and C++ adapters shall round-trip a file byte-exact: its encoding (UTF-8, else ISO-8859-1), line separator and final newline, each per variant (how a checkout writes them: FR-K10a-c). | UC-3 post; UC-5 B10 | `TextFileFormatTest` (5,000 random rounds), `TextFormatVariantsTest`, `FinalNewlineVariantsTest`, `InitCommitCheckoutEndToEndTest` | History 8282a32d, 5027fcb0 |
-| AD-6b | Ubiquitous | These adapters shall trace a file's final newline per variant (`FinalNewlineArtifactData`, the last child of the file's node), and its encoding and line separator per variant (`TextFormatArtifactData`, after the final newline; not for an empty file). | - | `FinalNewlineVariantsTest`, `TextFormatVariantsTest` | History 8282a32d, 5027fcb0 |
+| AD-6b | Ubiquitous | These adapters shall trace a file's final newline per variant (the last child of the file's node), and its encoding and line separator per variant (after the final newline; not for an empty file). | - | `FinalNewlineVariantsTest`, `TextFormatVariantsTest` | Code `FinalNewlineArtifactData`, `TextFormatArtifactData`; History 8282a32d, 5027fcb0 |
 | AD-6c | Ubiquitous | For a file that mixes line separators, these adapters shall keep the separators per line and per variant. | - | `MixedLineSeparatorsTest` | Code `TextFormatArtifactData` |
 | AD-7 | Event | When an adapter's tree format changes, the adapter shall mark the old data with `retiredFormat()` or a tree-format check (NFR-V1). | - | `CppRoundTripTest` | Code `ArtifactData#retiredFormat`, `JavaASTData.TREE_FORMAT`, `cpp/data/RetiredFormat` |
 | AD-8 | Ubiquitous | An adapter that needs Python shall pick a free py4j port. (A missing Python fails the commit: AD-11b.) | - | `PythonGatewayPortTest`, `LilypondGatewayPortTest` | |
-| AD-9a | Ubiquitous | An adapter that needs Python shall run the interpreter set in Preferences, else the first of `python`, `python3` and the usual install locations (MacPorts, Homebrew, python.org, `/usr/local/bin`, `/usr/bin`) that imports its modules - libcst and py4j for Python; tree-sitter, py4j and lymodel for LilyPond, lymodel from the lymodel directory in Preferences, `LYPYTHON` or installed - not rely on `python` on the PATH. | - | `PythonFinderTest`, `LilypondPythonTest` | Code `PythonFinder`, `LilypondPython`, `PY4JParser.python()`; History d8c8ac60, 6765398d |
+| AD-9a | Ubiquitous | An adapter that needs Python shall run the interpreter set in Preferences, else the first of `python`, `python3` and the install locations of MacPorts, Homebrew, python.org, `/usr/local/bin` and `/usr/bin` that imports its modules - libcst and py4j for Python; tree-sitter, py4j and lymodel for LilyPond, lymodel from the lymodel directory in Preferences, `LYPYTHON` or installed - not rely on `python` on the PATH. | - | `PythonFinderTest`, `LilypondPythonTest` | Code `PythonFinder`, `LilypondPython`, `PY4JParser.python()`; History d8c8ac60, 6765398d |
 | AD-9b | Unwanted | If no interpreter will do, then the adapter shall name each interpreter tried and what it lacks. | UC-3 BA1 | `PythonFinderTest` | Code `PythonFinder` |
 | AD-9c | Event | When a module is installed after a failed lookup, the adapter shall find it without a restart. | - | - | History 143e32cb |
 | AD-10a | Ubiquitous | The LilyPond adapter shall read with lymodel's tree-sitter parse and record it in a new repository's settings (`lilypond.parser=lybar-2`). | - | `LilypondRepositorySettingsTest`, `LilypondParseTest` | Code `LilypondPlugin.PARSER_SETTING`, `LilypondParser_2.py`; History 4b95ee97, 143e32cb |
 | AD-10b | Unwanted | If a repository's LilyPond files were read with an earlier parse (no parser setting: parce; `lybar-1`), then ECCO shall refuse a commit to it with an explanation before anything is written, and still check its files out. | - | `LilypondRepositorySettingsTest` | Code `LilypondReader#readable` |
 | AD-10c | Event | When a repository with neither LilyPond settings nor LilyPond files is next committed to, ECCO shall give it the settings of a new repository. | - | `LilypondRepositorySettingsTest` | Code `RepositorySettings#adopt` |
 | AD-11a | Unwanted | If an enabled adapter cannot read a file, then ECCO shall read it with the text adapter if it is text (no NUL byte in its first 8 KB), else with the file adapter, both byte-exact, and warn, naming the file and the error. | UC-3 SA4 | `DispatchReaderFallbackTest` | History 86ea679c |
-| AD-11b | Unwanted | If an adapter cannot run at all (no Python or Python modules, a repository made for another version of it: `AdapterUnavailableException`) or the commit is cancelled, then ECCO shall fail the commit instead of falling back, never committing an empty file. | UC-3 BA1 | `DispatchReaderFallbackTest` | Code DR |
+| AD-11b | Unwanted | If an adapter cannot run at all (no Python or Python modules, a repository made for another version of it) or the commit is cancelled, then ECCO shall fail the commit instead of falling back, never committing an empty file. | UC-3 BA1 | `DispatchReaderFallbackTest` | Code DR, `AdapterUnavailableException` |
 
 AD-10b: parce's tokens and contexts would never match those of the tree-sitter parse, and `lybar-1` tokens do not record whether they were written together with the one before them, which is part of a token's identity since `lybar-2`. AD-11a covers, for example, a `.json` with comments, a Git LFS pointer named `.png` and a construct an adapter does not know.
 
@@ -1481,7 +1504,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-C4a | Ubiquitous | `fetch`, `pull` and `push` shall use the remote `origin` when given none. | UC-12 precondition | `MainArgumentsTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | Code |
 | IF-C4b | Ubiquitous | `pull`, `push` and `fork` shall take feature revisions to exclude (`--exclude`, FR-D4). | UC-11 B1; UC-12 B1 | `MainArgumentsTest`, `PullCommandTest`, `PushCommandTest`, `ForkCommandTest`, `ForkPullPushEndToEndTest`, `ServeEndToEndTest` | Code |
 | IF-C5a | Ubiquitous | `suggest-constraints` and `minimize-preview` shall take `--min-witness` and `--confidence` (defaults in FR-N1b). | UC-8 SA1, SA4; UC-9 SA1 | `SuggestConstraintsCommandTest`, `MinimizePreviewCommandTest` | Code |
-| IF-C5b | Optional | Unless given `--all`, `suggest-constraints` shall leave out accepted and rejected suggestions. | UC-8 SA4 | `SuggestConstraintsCommandTest`, `ConstraintsEndToEndTest` | Code |
+| IF-C5b | Optional | Where `--all` is not given, `suggest-constraints` shall leave out accepted and rejected suggestions. | UC-8 SA4 | `SuggestConstraintsCommandTest`, `ConstraintsEndToEndTest` | Code |
 | IF-C6 | Event | When `dg` runs, the CLI shall print the association dependency graph as GML on stdout. | UC-7 SA3 | `DependencyGraphCommandTest` | Code |
 | IF-C7 | Ubiquitous | The CLI shall bundle the same adapters as the GUI, so that it can work on repositories made with the GUI (headless: NFR-B3). | - | - | Doc |
 | IF-C8a | Event | When a command runs, the CLI shall use the repository in the current or nearest parent directory, and that directory as the working directory. | UC-2 SA1 | `MainRepositoryDiscoveryTest` | Doc |
@@ -1492,33 +1515,47 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-C10b | Unwanted | If a file given to `order` holds content the composition does not, or lacks some of it, then the CLI shall refuse it, naming that content. | UC-6 SA3 | `RecordOrderTest`, `ResolveOrderEndToEndTest` | |
 | IF-C10c | Ubiquitous | `order` shall read paths relative to the directory it runs in. | UC-6 SA3 | `RecordOrderTest`, `ResolveOrderEndToEndTest` | |
 | IF-C11 | Event | When `features` runs, the CLI shall list each feature with its id as a configuration takes it (`search [<id>]`), and with a name that feature's revisions. | UC-3 B3; UC-5 B2 | `ListFeaturesCommandTest`, `FeatureRevisionsEndToEndTest` | History: the CLI showed no feature id, so `[<id>]` and the hint for an ambiguous name could not be used from it |
-| IF-C12a | Event | When `git-import <clone>` runs, the CLI shall import the clone's history as the GUI imports it unattended (UC-10 SA2): from `--from` to `--to` (each a commit id, its beginning or a tag; by default the first and the last commit), with `--tagged-only` the tagged commits only (IF-G3f/g), with `--llm` the LLM's suggestions, printing the import log as it goes and the summary at the end. | UC-10 front ends, SA2, SA10 | `GitImportCommandTest` | Code `GitImportCommand`; History 5fceeb95 |
+| IF-C12a | Event | When `git-import <clone>` runs, the CLI shall import the clone's history as the GUI imports it unattended (UC-10 SA2): from `--from` to `--to` (each a commit id, its beginning or a tag; by default the first and the last commit), with `--tagged-only` the tagged commits only (FR-G6a/b), with `--llm` the LLM's suggestions, printing the import log as it goes and the summary at the end. | UC-10 front ends, SA2, SA10 | `GitImportCommandTest` | Code `GitImportCommand`; History 5fceeb95 |
 | IF-C12b | Event | When `git-import` runs into a repository with commits, the CLI shall start from the features of the repository's latest commit, so that an import goes on where an earlier one stopped. | UC-10 SA11 post | `GitImportCommandTest` | Code `GitImport#continueFromLatestCommit` |
 | IF-C12c | Event | When a commit stops for review (FR-G3b, FR-G3d), the CLI shall do as `--on-review` says: end the import with the summary and say how to go on with `--from` (`stop`, the default), leave the commit out (`skip`), or import it with the configuration proposed (`import`). | UC-10 SA11 | `GitImportCommandTest` | Code `GitImportCommand` |
 | IF-C12d | Unwanted | If a commit fails to import, then the CLI shall end the import with the summary, naming the commit, the configuration tried and how to go on with `--from`. | UC-10 SA12 | - | Code `GitImportCommand#importOne` |
-| IF-C12e | Unwanted | If the folder is no Git clone, the clone has no commits, `--from` or `--to` names no commit or tag of the first-parent history or several commits, `--from` comes after `--to`, the range has no tagged commit for `--tagged-only`, or `--llm` has no model, then the CLI shall refuse the import before anything is committed. | UC-10 SA1 | `GitImportCommandTest` (all but a clone without commits and an id naming several) | Code `GitImportCommand` |
-| IF-C12f | Ubiquitous | `--llm-endpoint` and `--llm-model` shall name the LLM for the one run, without storing it; without them the CLI shall use the LLM set in the GUI's Preferences (IF-G4). | UC-10 precondition | - | Code `LlmPreferences`, `GitImportCommand` |
+| IF-C12e | Unwanted | If the folder given to `git-import` is no Git clone or the clone has no commits, then the CLI shall refuse the import before anything is committed. | UC-10 SA1 | `GitImportCommandTest` (not a clone) | Code `GitImportCommand` |
+| IF-C12f | Ubiquitous | `--llm-endpoint` and `--llm-model` shall name the LLM for the one run, without storing it. | UC-10 precondition | - | Code `LlmPreferences`, `GitImportCommand` |
+| IF-C12g | State | While `git-import` is given no `--llm-endpoint` or `--llm-model`, the CLI shall use the endpoint or model set in the GUI's Preferences (IF-G4). | UC-10 precondition | - | Code `LlmPreferences` |
+| IF-C12h | Unwanted | If `--from` or `--to` names no commit or tag of the clone's first-parent history, or a beginning of several commits' ids, or `--from` comes after `--to`, then the CLI shall refuse the import, naming the argument, before anything is committed. | UC-10 B4 | `GitImportCommandTest` (no such commit, reversed range) | Code `GitImportCommand#range` |
+| IF-C12i | Unwanted | If `--tagged-only` is given for a range without a tagged commit, or `--llm` without a model to ask, then the CLI shall refuse the import before anything is committed. | UC-10 SA10 | `GitImportCommandTest` | Code `GitImportCommand` |
+| IF-C13 | Event | When `status` runs, the CLI shall print the repository directory, the base directory and the configuration in the base directory's `.config`. | UC-2 front ends | `StatusCommandTest` | Code `StatusCommand` |
+| IF-C14 | Event | When `adapters` runs, the CLI shall list each adapter with its plugin id, name and description. | - | `ListAdaptersCommandTest` | Code `ListAdaptersCommand` |
+| IF-C15a | Event | When `get basedir` or `set basedir <path>` runs, the CLI shall print or set the base directory. | - | `GetCommandTest`, `SetCommandTest` | Code `GetCommand`, `SetCommand` |
+| IF-C15b | Unwanted | If `get` or `set` names another property, then the CLI shall refuse it with "No property named ...". | - | `GetCommandTest`, `SetCommandTest` | Code `GetCommand`, `SetCommand` |
+| IF-C16 | Event | When `traces` runs, the CLI shall print each association's id and presence condition, and, given an association's id, that association's only, with its artifact tree. | UC-7 front ends | `TracesCommandTest` | Code `TracesCommand` |
+| IF-C17a | Event | When `remotes` runs, the CLI shall list each remote, or the one named, as `name: address [type]`. | UC-16 front ends | `RemotesCommandTest` | Code `RemotesCommand` |
+| IF-C17b | Event | When `remotes --add <name> <address>` or `--remove <name>` runs, the CLI shall add the remote (of `--type`, by default REMOTE) or remove it, and print what it did. | UC-16 B1-B4 | `RemotesCommandTest` | Code `RemotesCommand` |
+| IF-C18 | Event | When `positions <clone> <commit>...` runs, the CLI shall print one JSON line per commit: each changed file with its kind of change, the lines added and removed and the positions (classes, methods, sections) the repository's adapters name for its changes. | - | `PositionsCommandTest` | Code `PositionsCommand`; History cf1f213e |
 
 ### Graphical user interface (`gui`)
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| IF-G1a | Ubiquitous | The GUI shall group its functions in a ribbon: Repositories (new, open, fork, close, status, base directory), Versions, Collaborate, Explore (the views and the graphs). | - | `RibbonBarTest`, `MainViewTest` | Code `MainView`, `RibbonBar` |
-| IF-G1b | State | While no repository is open, the GUI shall disable the repository actions; while one is open, new, open and fork. | - | `MainViewTest` | Code `MainView` |
-| IF-G1c | Ubiquitous | The GUI shall give every button a tooltip, list the buttons with their shortcuts under Help, and tell its version under About. | - | `MainViewTest` | Code `MainView` |
+| IF-G1a | Ubiquitous | The GUI shall group its functions in a ribbon of five tabs: Repositories (new, open, fork, close, status, base directory), Versions, Collaborate, Explore (the views and the graphs) and ECCO (help and about). | - | `RibbonBarTest`, `MainViewTest` | Code `MainView`, `RibbonBar` |
+| IF-G1b | State | While no repository is open, the GUI shall disable the actions that need one. | - | `MainViewTest` | Code `MainView` |
+| IF-G1c | Ubiquitous | The GUI shall give every button a tooltip. | - | `MainViewTest` | Code `MainView` |
+| IF-G1d | State | While a repository is open, the GUI shall disable new, open and fork. | - | `MainViewTest` | Code `MainView` |
+| IF-G1e | Ubiquitous | The GUI shall list its buttons with their shortcuts under Help. | - | `MainViewTest` | Code `MainView` |
+| IF-G1f | Ubiquitous | The GUI shall show its version under About. | - | `MainViewTest` | Code `MainView` |
 | IF-G2 | Ubiquitous | The GUI shall let users commit one variant folder or several at once, check out configurations, and manage named variants (add, remove, edit feature revisions, check out several into a base directory). | UC-3, UC-4, UC-5 front ends | `CommitViewTest`, `CommitBaseDirViewTest`, `CheckoutViewTest`, `VariantsViewTest`, `AddVariantViewTest` | Code `CommitBaseDirView`, `CommitView`, `VariantsView` |
 | IF-G3a | Ubiquitous | The GUI shall import one continuous range of a Git history, commit by commit (in the order of FR-G1b). | UC-10 B3, B4, SA8 | `GitImportEndToEndTest` | Code `ImportGitView` |
 | IF-G3b | Optional | Where the user reviews each commit, the GUI shall show it with the files it changed and offer Import, Skip and Stop. | UC-10 B10-B12, SA4, SA5 | `ImportGitViewRetryTest` (GUI), `GitImportEndToEndTest` | Code `ImportGitView` |
 | IF-G3c | Optional | Where the user imports unattended, the GUI shall stop for review only at a commit that failed (FR-G4a), whose suggestion failed (FR-G3b) or - where uncertain suggestions stop for review - whose suggestion is uncertain (FR-G3d). | UC-10 SA2 | `ImportGitViewRetryTest`, `ImportGitViewSuggestionLogTest` (GUI) | Code `ImportGitView`, `GitImport#afterUnattendedSuggestion` |
 | IF-G3d | Event | When the window is closed while a commit is suggested or imported, the GUI shall ask whether to stop the import. | UC-10 GA1 | - | Code `ImportGitView` |
 | IF-G3e | Event | When an import ends, the GUI shall show a summary. | UC-10 B17 | `ImportGitViewConstraintTest` (GUI), `GitImportEndToEndTest` | Code `ImportGitView`, `GitImport#summary` |
-| IF-G3f | Optional | Where the user imports the tagged commits only, the GUI shall import only those - the first of them as BASE, together with the commits before it - and leave out the commits after the last tag. | UC-10 SA10 | `ImportGitViewTaggedTest` (GUI), `GitImportEndToEndTest` | Code `ImportGitView`, `GitImport#next` |
-| IF-G3g | Optional | Where the user imports the tagged commits only, the GUI shall ask for a suggestion for each commit between two tagged ones without importing it, give a feature it changed a new revision in the next tagged commit, and stop at it for review only when its suggestion failed or - where uncertain suggestions stop for review (FR-G3d) - is uncertain. | UC-10 SA10 | `ImportGitViewTaggedTest` (GUI), `GitImportEndToEndTest` | Code `GitImport#releaseConfigurationText` |
+| IF-G3f | - | Moved to [FR-G6a](#git-import): the command line imports the tagged commits too (IF-C12a). | - | - | - |
+| IF-G3g | - | Moved to [FR-G6b](#git-import). | - | - | - |
 | IF-G3h | Event | When the user stops an import, the GUI shall import no further commit, keep the commits imported so far, log "Stopped: imported X of Y commit(s)." and say so in the summary. | UC-10 SA5, GA1 | `GitImportEndToEndTest` | Code `ImportGitView` |
-| IF-G4 | Ubiquitous | The GUI shall let users configure the LLM of Git import (FR-G3a) under Preferences, by URL and model; any OpenAI-compatible endpoint should do. | UC-10 precondition | `GitImportEndToEndTest` | Code `PreferencesView`; Doc |
+| IF-G4 | Ubiquitous | The GUI shall let users configure the LLM of Git import and of order suggestions (FR-G3a, IF-G8c) under Preferences, by URL and model, accepting any endpoint that offers the OpenAI chat-completions API. | UC-10 precondition | `GitImportEndToEndTest` | Code `PreferencesView`; Doc |
 | IF-G5a | Ubiquitous | The feature model view shall show the feature model derived from the commits. | UC-8 B1, B7 | `FeaturesViewTest` (GUI) | Code `FeaturesView` |
 | IF-G5b | Event | When the user accepts, rejects or returns mined constraints or suggested subfeatures, the GUI shall store the decision (FR-N4a, FR-N6). | UC-8 B4, B5, SA2, SA3 | `ConstraintSuggestionsViewTest` (GUI) | Code `ConstraintSuggestionsView` |
-| IF-G5c | Event | When a subfeature is accepted, ECCO shall store it in the repository as the feature's parent - one each, no cycles - with the REQUIRES it means, and carry it with fork, pull and push. | - | `FeatureParentsTest` | Code `Repository#getFeatureParents` |
+| IF-G5c | - | Moved to [FR-N10](#constraints-and-condition-minimization) (an accepted subfeature is stored as the feature's parent and carried by fork, pull and push). | - | - | - |
 | IF-G5d | Ubiquitous | The feature model tree shall place a feature under its accepted parent, else its suggested one, else BASE. | UC-8 B7 | `FeaturesViewTest` (GUI), `FeatureModelTreeTest` (unit) | Code `FeatureModelTree` |
 | IF-G5e | Event | When a review in the feature model view changes the decisions, the GUI shall minimize the presence conditions again, as the Artifacts view does on request. | UC-8 B6, SA3 | `ConstraintSuggestionsViewTest` (GUI) | Code `MinimizationResults` |
 | IF-G6a | Ubiquitous | The GUI shall let users list and compare commits. | - | `CommitsViewTest` (GUI) | Code `CommitsView`, `CommitComparisonView` |
@@ -1529,7 +1566,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-G8a | Event | When a checkout ends, the GUI shall show its warnings with a suggested fix. | UC-5 B12 | - | Code `CheckoutDetailView` |
 | IF-G8b | Event | When the user reorders the children of an ambiguous order in the dialog, the GUI shall record the order without a commit (FR-K11). | UC-6 B1-B9 | `CheckoutDetailViewRecordOrderTest`, `ReorderChildrenDialogTest` (GUI) | Code `ReorderChildrenDialog` |
 | IF-G8c | Optional | Where a local LLM is configured, the reorder dialog shall suggest an order for review, never across an order earlier commits fixed. | UC-6 SA2 | `ReorderChildrenDialogTest` (GUI), `LlmOrderSuggestionClientTest` (unit) | Code `LlmOrderSuggestionClient` |
-| IF-G9 | Ubiquitous | The GUI shall visualize a knowledge graph (features, commits, variants, associations), the artifact graph, the dependency graph and charts, each exportable. | UC-7 SA3 | `KnowledgeGraphLayoutTest`, `DependencyGraphViewTest`, `ChartsViewTest` (GUI) | Code `view/graph/*`, `ChartsView` |
+| IF-G9 | Ubiquitous | The GUI shall visualize a knowledge graph (features, commits, variants, associations), the artifact graph, the dependency graph and charts, and export the knowledge, artifact and dependency graphs as GraphML, GEXF, DOT or DGS. | UC-7 SA3 | `KnowledgeGraphLayoutTest`, `DependencyGraphViewTest`, `ChartsViewTest` (GUI) | Code `view/graph/*`, `ChartsView`, `GraphViews#exportButton` |
 | IF-G10a | Ubiquitous | The GUI shall let users add and remove remotes, change a remote's name, address and type (keeping what was fetched from it), and fetch, pull and push. | UC-12 front ends; UC-16 | `RemotesViewTest`, `RemoteDetailViewTest` (GUI), `UpdateRemoteTest` | Code `RemotesView`, `RemoteDetailView`, `EccoService#updateRemote` |
 | IF-G10b | Ubiquitous | The GUI shall let users start the sync server on a chosen port, and show the port and a log of the server's connections (who may connect: NFR-S1, NFR-S3). | UC-13 B1-B9 | `ServerViewLogTest` (GUI) | Code `ServerView` |
 | IF-G11 | Ubiquitous | The GUI shall let users enable or disable adapters (effective on the next open) and set the minimization thresholds, the LilyPond paths, and the Python of the Python and LilyPond adapters and LilyPond's lymodel directory when they are not found (AD-9). | - | `PreferencesViewTest` (GUI) | Code `PreferencesView` |
@@ -1538,15 +1575,16 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| IF-R1a | Ubiquitous | The REST server shall serve the repositories of a storage directory (`ECCO_STORAGE_DIR`) to the external ecco-client on port 8081 (`PORT`). | UC-14, UC-15 precondition | `SettingsTest`, `WebClientEndToEndTest` | Doc; Code `application.yml` |
+| IF-R1a | Ubiquitous (design constraint) | The REST server shall serve the repositories of a storage directory (`ECCO_STORAGE_DIR`) to the external ecco-client on port 8081 (`PORT`). | UC-14, UC-15 precondition | `SettingsTest`, `WebClientEndToEndTest` | Doc; Code `application.yml` |
 | IF-R1b | Ubiquitous | The REST server shall publish an OpenAPI description and Swagger UI. | - | - | Doc |
 | IF-R2 | Ubiquitous | The REST server shall let clients list, create, clone, fork (deselecting features) and delete repositories. | UC-11 front ends | `FileRepositoryServiceTest`, `RestTest` | Code `RepositoryController` |
 | IF-R3a | Event | When a client uploads a commit as a multipart request of files, message, configuration and user name, the REST server shall commit it. | UC-14 B4-B10 | `RepositoryHandlerTest`, `WebClientEndToEndTest` | Code `CommitController` |
 | IF-R3b | Unwanted | If the configuration of an upload is malformed or names no feature, then the REST server shall refuse it with 400 before writing any file. | UC-14 B6, SA3 | `FileRepositoryServiceTest`, `WebClientEndToEndTest` | Code `CommitController` |
-| IF-R4 | Ubiquitous | The REST server shall let clients describe features and feature revisions, and pull features from another repository while deselecting some. | UC-12 front ends | `RestFeatureTest` (unit) | Code `FeatureController` |
+| IF-R4 | Ubiquitous | The REST server shall let clients describe features and feature revisions, and pull features from another repository, excluding the feature revisions the client names. | UC-12 front ends | `RestFeatureTest` (unit) | Code `FeatureController` |
 | IF-R5a | Ubiquitous | The REST server shall let clients manage variants: add, rename, and add, update or remove their features. | - | `VariantControllerTest` (unit), `RepositoryHandlerTest` | Code `VariantController` |
 | IF-R5b | Event | When a client requests a variant's checkout, the REST server shall return it as a zip file. | UC-15 B1-B7 | `VariantControllerTest` (unit), `WebClientEndToEndTest` | Code `VariantController` |
-| IF-R5c | Unwanted | If a client adds a variant for a configuration that already is a variant, then the REST server shall refuse it with 409 and the existing variant's name and id (FR-M4b), and with 400 a configuration it cannot read. | - | `FileRepositoryServiceTest`, `WebClientEndToEndTest` | History: was skipped with 200 |
+| IF-R5c | Unwanted | If a client adds a variant for a configuration that already is a variant, then the REST server shall refuse it with 409 and the existing variant's name and id (FR-M4b). | - | `FileRepositoryServiceTest`, `WebClientEndToEndTest` | History: was skipped with 200 |
+| IF-R5d | Unwanted | If a client adds a variant with a configuration the REST server cannot read, then the REST server shall refuse it with 400. | - | `FileRepositoryServiceTest` | Code `VariantController` |
 | IF-R6 | Unwanted | If a request to any endpoint except Swagger carries no valid signed JWT bearer token, then the REST server shall refuse it. | UC-14 GA1; UC-15 GA1 | `RestTokenSecurityTest`, `WebClientEndToEndTest` | Code `@Secured(IS_AUTHENTICATED)` |
 | IF-R7 | Unwanted | If a login's user name and password match no user, then the REST server shall refuse it with "Invalid user name or password" and issue no token. | UC-14 B2, SA1 | `RestTokenSecurityTest`, `WebClientEndToEndTest` | Code `AuthenticationProviderUserPassword` |
 
@@ -1567,13 +1605,13 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 
 ## Non-functional requirements
 
-Most of these were recovered from refusals in the code and from fixes that treated a behaviour as a defect; NFR-B6 and NFR-B7 were written as targets when the architecture was checked in November 2026. The performance baselines are measurements recorded with those fixes, not promises.
+Most of these were recovered from refusals in the code and from fixes that treated a behaviour as a defect; NFR-B6 to NFR-B8 were written as targets when the architecture was checked in November 2026. The performance limits are set from measurements recorded with those fixes.
 
 ### Reliability and data integrity
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| NFR-R1 | Ubiquitous | ECCO shall store a commit atomically: after a crash the repository holds the previous state or the new one, never a mix. | UC-3 BA1 post | `SerTransactionStrategyInterruptedCommitTest`, `SerTransactionStrategyAtomicWriteTest` | Doc; History a6f4acac, feb839d1 |
+| NFR-R1a | Ubiquitous | ECCO shall store a commit atomically: after a crash the repository holds the previous state or the new one, never a mix. | UC-3 BA1 post | `SerTransactionStrategyInterruptedCommitTest`, `SerTransactionStrategyAtomicWriteTest` | Doc; History a6f4acac, feb839d1 |
 | NFR-R1b | Unwanted | If a write crashed or failed and left an unfinished pack, then ECCO shall delete the pack when the repository is next opened. | - | `ArtifactPackTest` | Code `SerTransactionStrategy` |
 | NFR-R1c | Unwanted | If a pack the core lists is missing, then ECCO shall refuse to open the repository, reporting it as damaged. | UC-2 B5 | `ArtifactPackTest` | Code `SerTransactionStrategy` |
 | NFR-R1d | Unwanted | If a pack's digests entry is missing or cut short, then ECCO shall still open the pack. | - | `ArtifactPackTest` | Code `SerTransactionStrategy` |
@@ -1588,22 +1626,29 @@ Most of these were recovered from refusals in the code and from fixes that treat
 
 NFR-R1 is met by staging the dirty files and rolling them forward after the id swap.
 
-### Performance (recorded baselines)
+### Performance
+
+Each limit is one and a half times the baseline recorded with the fix that set it, on the named repository and on the machine the baseline was recorded on, a development Mac; a test fails a limit, not a baseline. No benchmark runs them yet (open gap #89): the named repositories are the developer's own clones and test repositories, and the generated one is not checked in.
 
 | ID | Pattern | Requirement | Use case | Baseline | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| NFR-P1 | Ubiquitous | Commit and checkout should stay interactive for tens of features and variants. | UC-3; UC-5 | 60 variants / 40 features: commit 1.8 s, checkout 1.1 s, status 0.2 s | History cd764f4e, 81442a9e |
-| NFR-P2 | Event | When ECCO opens a repository, it should take seconds, not minutes. | UC-2 B5 | Real x8 repo: 65 s to 5.3 s | History decb2e37 |
-| NFR-P3 | Ubiquitous | The time to store a commit should grow with what the commit changes, not with the size of the repository (FR-P3a). | UC-3 B11 | 15.7 s to 2.6 s after skipping identical writes. Associations: only those whose bytes changed, in pieces and one pack per write (#48, done). Still: every touched artifact is serialized to find out whether it changed (#49) | History 4bb0961c |
-| NFR-P4 | Ubiquitous | The image adapter should be usable on pixel-granular images of around 1.7 megapixels. | - | 71k-px image: commit 67 to 2 s, checkout 157 to 3.4 s | History 7a4e0aec, 47f6f0e5 |
-| NFR-P5 | Ubiquitous | Storage should stay compact as commits accumulate. | - | Association files 147 to 13 MB (compact counters); packs 2.5-7x smaller | History 81442a9e, 7c18da73 |
-| NFR-P6 | Ubiquitous | Merging a file into its partial order graph should not be quadratic in the file's length. | UC-3 B9 | Large Git import: one commit 73 s to 19 s, another out of memory to 35 s; a 47-commit LilyPond repository replays to the same checkouts and stored content | History 3c9ce88f (`AlignPathsEquivalenceTest`) |
-| NFR-P7 | Ubiquitous | Read-tree reuse (FR-M11) should keep a typical commit of a long history at or below the baseline. | UC-3 B6 | 15 flipperzero-firmware commits: 238 s to 205 s, a typical commit 13 s to 10 s | History 90135e96 |
-| NFR-P8 | Ubiquitous | What a commit writes should not grow with the number of artifacts in the repository (FR-P2a). | UC-3 B11 | flipperzero-firmware: core written per commit 26.5 MB to ~0; a commit after the first 10.9 s to 8.9 s by comparing artifacts by id, to 8.3 s with the index left out of the core; the first commit 23.5 s to 19.5 s | History 6dc69da5 |
-| NFR-P9 | Ubiquitous | Ordering a node's children on checkout shall not be quadratic in their number. | UC-5 B7 | 3 flipperzero-firmware commits incl. the 343,764-line `u8g2_fonts.c`: a checkout 800 s to 34 s, the same 2,658 files | History 2d8b1382 (`OrderSelectorEquivalenceTest`) |
-| NFR-P10 | Ubiquitous | Merging a commit into a file's partial order graph should not cost a full alignment per ordering of its open branches (2^n for n two-way branches). | UC-3 B9 | tinycc, 12 commits: 417 s to 60 s, the same checkouts and warnings; the 13th commit (`tccgen.c` with 15 open branches, 32,768 orderings of 6,273 lines) from not finishing to 10 s | History 0be3bd63 (`IterativeLcsAlignmentEquivalenceTest`) |
+| NFR-P1a | Event | When a variant of the generated repository of 60 variants over 40 features is committed, ECCO shall finish the commit within 2.7 s. | UC-3 | 1.8 s | History cd764f4e, 81442a9e |
+| NFR-P1b | Event | When a configuration of the generated repository of 60 variants over 40 features is checked out, ECCO shall finish the checkout within 1.7 s. | UC-5 | 1.1 s | History cd764f4e, 81442a9e |
+| NFR-P1c | Event | When the status of the generated repository of 60 variants over 40 features is asked for, ECCO shall answer within 0.3 s. | - | 0.2 s | History cd764f4e, 81442a9e |
+| NFR-P2 | Event | When ECCO opens the x8 repository (C adapter, 9,426 artifacts, 63 associations), it shall have it open within 8 s. | UC-2 B5 | 5.3 s (65 s before) | History decb2e37 |
+| NFR-P3 | Event | When a commit that edits a tenth of the files of the 21,855-artifact repository of History 4bb0961c is stored, ECCO shall finish the commit within 3.9 s (storing what changed, FR-P3a). | UC-3 B11 | 2.6 s (15.7 s before); a one-line commit 2.7 s | History 4bb0961c |
+| NFR-P4a | Event | When a variant holding the 71,000-pixel test image is committed, the image adapter shall let the commit finish within 3 s. | UC-3 | 2 s (67 s before) | History 7a4e0aec, 47f6f0e5 |
+| NFR-P4b | Event | When that variant is checked out, the image adapter shall let the checkout finish within 5.1 s. | UC-5 | 3.4 s (157 s before) | History 7a4e0aec, 47f6f0e5 |
+| NFR-P5 | Ubiquitous | After the commits of the generated repository of 60 variants over 40 features, ECCO shall hold its associations in at most 20 MB. | - | 13 MB (147 MB before compact counters); packs 2.5-7x smaller | History 81442a9e, 7c18da73 |
+| NFR-P6 | Event | When the two flipperzero-firmware Git commits of History 3c9ce88f are imported, ECCO shall commit them within 29 s and 53 s (merging each file into its partial order graph in less than quadratic time in its length). | UC-3 B9 | 19 s and 35 s (73 s and out of memory before); a 47-commit LilyPond repository replays to the same checkouts and stored content | History 3c9ce88f (`AlignPathsEquivalenceTest`) |
+| NFR-P7 | Event | When the 15 flipperzero-firmware commits of History 90135e96 are committed in turn, with read-tree reuse (FR-M11), ECCO shall finish them within 308 s. | UC-3 B6 | 205 s (238 s before); a single commit 10 s | History 90135e96 |
+| NFR-P8a | Event | When the first flipperzero-firmware commit of History 6dc69da5 is stored, ECCO shall finish it within 29 s. | UC-3 B11 | 19.5 s (23.5 s before) | History 6dc69da5 |
+| NFR-P8b | Event | When a later commit of that history is stored, ECCO shall finish it within 12.5 s, writing no core entry per artifact (FR-P2a). | UC-3 B11 | 8.3 s (10.9 s before); core written per commit 26.5 MB to ~0 | History 6dc69da5 |
+| NFR-P9 | Event | When a configuration of the three flipperzero-firmware commits of History 2d8b1382 (with the 343,764-line `u8g2_fonts.c`) is checked out, ECCO shall finish within 51 s, writing the same 2,658 files. | UC-5 B7 | 34 s (800 s before) | History 2d8b1382 (`OrderSelectorEquivalenceTest`) |
+| NFR-P10a | Event | When the first 12 tinycc commits of History 0be3bd63 are committed in turn, ECCO shall finish them within 90 s. | UC-3 B9 | 60 s (417 s before), the same checkouts and warnings | History 0be3bd63 (`IterativeLcsAlignmentEquivalenceTest`) |
+| NFR-P10b | Event | When the 13th tinycc commit (`tccgen.c` with 15 open branches, 32,768 orderings of 6,273 lines) is committed, ECCO shall finish it within 15 s. | UC-3 B9 | 10 s (did not finish before) | History 0be3bd63 (`IterativeLcsAlignmentEquivalenceTest`) |
 
-No test checks a time; the tests named under *Evidence* check that a faster algorithm gives the same result as the one it replaced. Every commit merges every file into its partial order graph, changed or not (NFR-P6). Checkout looks children up by their artifact's hash (NFR-P9).
+The tests named under *Evidence* check that a faster algorithm gives the same result as the one it replaced. Every commit merges every file into its partial order graph, changed or not (NFR-P6). Checkout looks children up by their artifact's hash (NFR-P9).
 
 Partial-order-graph alignment considers every ordering of a graph's concurrent unresolved branches - factorial in their number. The orderings are not aligned one by one: their LCS lengths are computed together, reusing the work after a point where different orderings reach the same state, which is the usual case (NFR-P10); in the worst case this costs as much as aligning each. Above 100,000 orderings a fast fallback takes over (`ConcurrentBranchScalingTest`). Aligning two long paths builds an n x m matrix; equal trailing nodes are matched before it is built, which leaves the matrix small when a file changed little (NFR-P6).
 
@@ -1638,6 +1683,9 @@ Since 2026-10-15 (decided: the repositories in use are test repositories) the la
 | NFR-S3 | Event | When the user starts the sync server for connections from other machines, the GUI shall warn that synchronization has no authentication and ask for confirmation. | UC-13 SA2 | `ServerViewConfirmationTest` (GUI) | Doc; Code `ServerView` |
 | NFR-S4 | Ubiquitous | The REST server shall sign the tokens it issues (refusing unsigned ones: IF-R6). | UC-14 B3 | `RestTokenSecurityTest`, `RestShippedConfigTokenTest`, `WebClientEndToEndTest` | |
 | NFR-S5 | Unwanted | If, outside development mode, the REST server has no JWT secret of at least 32 characters other than the default, or no users file holding password hashes, then it shall refuse to start. | UC-14 precondition | `RestSecurityTest` | |
+| NFR-S6a | Ubiquitous | ECCO shall send an LLM endpoint only what a suggestion is asked for: for a Git commit its id, message, truncated diff and changed positions and the names of the features imported so far (FR-G3a); for an order the file's path and the lines to order (IF-G8c). | UC-10 B8; UC-6 SA2 | `LlmFeatureSuggestionClientTest`, `LlmOrderSuggestionClientTest` (unit) | Code `LlmFeatureSuggestionClient`, `LlmOrderSuggestionClient` |
+| NFR-S6b | Ubiquitous | ECCO shall default the LLM endpoint to one on the user's machine (`http://localhost:11434`). | UC-10 precondition | - | Code `LlmPreferences` |
+| NFR-S6c | State | While no LLM model is configured, ECCO shall send nothing to an LLM: Git import starts with suggestions off and Suggest order is disabled. | UC-10 B4; UC-6 SA2 | `ReorderChildrenDialogTest` (GUI) | Code `ImportGitView`, `ReorderChildrenDialog` |
 
 Remote sync has no authentication; that is a stated limitation (gap #8), and NFR-S3 makes the user confirm it.
 
@@ -1650,8 +1698,9 @@ Remote sync has no authentication; that is a stated limitation (gap #8), and NFR
 | NFR-B3 | Ubiquitous | The CLI and the REST server shall run headless, without JavaFX on the classpath. | - | `InitCommandTest` | History bfcddc23 |
 | NFR-B4 | Ubiquitous | The GUI shall be installable as a native application on macOS, Linux and Windows. | - | - | Doc (jpackage tasks) |
 | NFR-B5 | Ubiquitous (design constraint) | Third-party dependency versions shall be kept in one version catalog. | - | - | Doc (`gradle/libs.versions.toml`) |
-| NFR-B6 | Unwanted (design constraint) | If a module's packages depend on each other in a circle other than the ones kept on purpose (`KNOWN_CYCLES`: the domain model's ten packages, the serialization storage's two circles, and within the C, Java, Java AST, Markdown and LilyPond adapters), or a source imports a class it never names, then the module's tests shall fail, naming each edge of the circle with a class making it. | - | `ArchitectureTest` (in every module's tests, from `gradle/test-support`) | History 41a5f23c; README Development |
-| NFR-B7 | Ubiquitous (design constraint) | No package shall be in two modules, and modules shall not depend on each other in a circle. | - | - (Gradle refuses a circle of modules) | History 015123c5 |
+| NFR-B6 | Unwanted (design constraint) | If a module's packages depend on each other in a circle not kept on purpose, or a source imports a class it never names, then the module's tests shall fail, naming each edge of the circle with a class making it. | - | `ArchitectureTest` (in every module's tests, from `gradle/test-support`) | History 41a5f23c; README Development. Kept on purpose (`KNOWN_CYCLES`): the domain model's ten packages, the serialization storage's two circles, and circles within the C, Java, Java AST, Markdown and LilyPond adapters |
+| NFR-B7 | Ubiquitous (design constraint) | No package shall be in two modules. | - | - | History 015123c5 |
+| NFR-B8 | Ubiquitous (design constraint) | Modules shall not depend on each other in a circle. | - | - (Gradle refuses a circle of modules) | Gradle |
 
 ## Known gaps
 
@@ -1664,6 +1713,10 @@ Requirements the code does not meet, places where the documentation and the code
 | 8 | Remote sync is unauthenticated; the REST server has hard-coded demo users with plaintext passwords and a default JWT secret, and its roles are never checked. | README; `rest/.../DummyUserDB`, `application.yml` | Security limitation - **hardened 2026-10-03**: the JWT secret key in `application.yml` was misspelled, so tokens were unsigned and a forged unsigned token was accepted for any user - fixed; the server refuses to start without a real secret and a users file (PBKDF2 hashes) outside development mode; the GUI confirms before syncing with other machines. Still open by choice: sync authentication, role checks Next: sync authentication and role checks when the server is used beyond trusted networks. |
 | 55 | Image adapter limits found by its round-trip tests: 16-bit images are stored with 8 bits per channel; transparent pixels lose their colour (transparent white becomes transparent black); interlaced GIFs 2-4 rows high are read with shifted rows (a JDK bug); grayscale pixels committed before 2026-10-14 are stored brightened (gray taken as linear) - a checkout combining such commits with later ones can mix brightened and true gray levels in one image, and the adapter's format is not versioned, so nothing refuses it (re-commit the variants). | `ImageReader`, `ImageUtil` | Limitations - noted 2026-10-14; `ImageRoundTripTest` A truncated JPEG, committed without an error (the decoder filled in the rest), is refused since 2026-10-15 - an image the decoder reads with warnings is stored whole by the file adapter (`ImageRoundTripTest`). Next: 16-bit channels would need another pixel format (a format change). |
 | 56 | Repositories committed with the first C++ format (checkout-only): a `case` on its own line loses the block under it when another variant has a same-line `case` (`CaseBlockArtifactData.equals` ignores `sameline`) - inherited from that adapter, the old build checks out the same. | `LegacyCppWriter` | Data loss in retired data - noted 2026-10-14; `LegacyCppWriterTest` (disabled case) Next: none unless such a repository is in use - fixing it would change how old repositories check out. |
+| 89 | No benchmark checks the performance limits (NFR-P1 to NFR-P10): they are measured by hand on the developer's clones and test repositories, and the generated repository of 60 variants over 40 features is not checked in. | [Performance](#performance) | Verification - noted 2026-11-09 (ISO/IEC/IEEE 29148 review). Next: a benchmark task over fixtures that can be checked in or generated, run before a release. |
+| 90 | Git import and Suggest order send code, diffs and commit messages to whatever LLM endpoint is set (NFR-S6a); nothing warns when the endpoint is not on the user's machine. | `LlmPreferences`, `ImportGitView`, `GitImportCommand`, `ReorderChildrenDialog` | Security - noted 2026-11-09 (29148 review). Next: warn and ask before the first request to an endpoint that is not on the user's machine, in the GUI and the CLI. |
+| 91 | The requirements have no priority attribute, and their status is implied: each is met unless a known gap says otherwise. | All requirement tables | Requirement attributes - noted 2026-11-09 (29148 review). Next: priorities agreed with the stakeholders when the requirements are next validated. |
+| 92 | No requirement covers usability (beyond tooltips and shortcuts, IF-G1), accessibility, logging, or the largest repository ECCO supports; the performance limits name repositories, not sizes. | [Non-functional requirements](#non-functional-requirements) | Missing requirements - noted 2026-11-09 (29148 review). Next: decide with the stakeholders which of these to state. |
 
 ### Closed gaps
 
