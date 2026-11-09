@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+  * **ECCO asks before code goes to an LLM on another machine** (gap #90, NFR-S6d/e): Import from Git with suggestions and Suggest order send code, diffs and commit messages to the LLM server of Preferences, which may be any machine's. Before the first request to a server whose host is neither `localhost` nor an address of this machine, the GUI says so and sends nothing unless the user agrees; the server agreed to is remembered until another one is set. `ecco git-import --llm` refuses such a server, before anything is committed, unless it was agreed to in the GUI or `--llm-allow-remote` is given.
+
   * **Found by end-to-end tests of the use cases** (every command an ecco process of its own, repositories read from disk; UC-1, 3, 5, 6, 8-15):
     - **A variant for a configuration that already is one is refused, naming that variant**: "This configuration is already saved as variant '<name>'." The GUI's Add Variant dialog said "Variant '...' added." and closed, with nothing added; it now ends on the error (FR-M4b). The REST server answers 409 with the existing variant's name and id - it answered 200 - and 400 for a configuration it cannot read, which was a 500 (IF-R5c).
     - **A feature in several revisions no longer warns SURPLUS on checkout**: a module's revisions are alternatives, so one in the configuration explains the others; each of them was reported, on every checkout of such a feature, also of a committed variant.

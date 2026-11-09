@@ -91,6 +91,11 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 	@FunctionalInterface
 	public interface OrderSuggester {
 		LlmOrderSuggestionClient.Suggestion suggest(String path, List<LlmOrderSuggestionClient.Row> rows);
+
+		/** The server the rows are sent to, confirmed before the first request if it is another machine; null for none. */
+		default String endpointUrl() {
+			return null;
+		}
 	}
 
 	/** The LLM endpoint and model of the preferences, or null if no model is chosen there. */
@@ -98,8 +103,19 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		String model = LlmPreferences.getModelName();
 		if (model == null || model.isBlank())
 			return null;
-		LlmOrderSuggestionClient client = new LlmOrderSuggestionClient(LlmPreferences.getEndpointUrl(), model);
-		return client::suggestOrder;
+		String endpointUrl = LlmPreferences.getEndpointUrl();
+		LlmOrderSuggestionClient client = new LlmOrderSuggestionClient(endpointUrl, model);
+		return new OrderSuggester() {
+			@Override
+			public LlmOrderSuggestionClient.Suggestion suggest(String path, List<LlmOrderSuggestionClient.Row> rows) {
+				return client.suggestOrder(path, rows);
+			}
+
+			@Override
+			public String endpointUrl() {
+				return endpointUrl;
+			}
+		};
 	}
 
 	public ReorderChildrenDialog(EccoService service, Node.Op node) {
@@ -514,6 +530,9 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			}
 		}
 		if (first < 0)
+			return;
+		// the rows' code goes to the server: asked first if it is another machine's
+		if (suggester.endpointUrl() != null && !at.jku.isse.ecco.gui.common.LlmEndpointConfirmation.confirm(suggester.endpointUrl()))
 			return;
 		int from = Math.max(0, first - SUGGESTION_CONTEXT_ROWS), to = Math.min(rowData.size() - 1, last + SUGGESTION_CONTEXT_ROWS);
 		List<ChildEntry> window = new ArrayList<>(rowData.subList(from, to + 1));
