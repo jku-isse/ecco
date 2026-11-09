@@ -14,7 +14,7 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DOC = os.path.dirname(HERE)
-TITLE = "ECCO - Recovered Requirements"
+TITLE = "ECCO - Requirements"
 
 
 def chrome():

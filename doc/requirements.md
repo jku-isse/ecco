@@ -1,6 +1,6 @@
-# ECCO - Recovered Requirements
+# ECCO - Requirements
 
-As of 2026-11-03.
+As of 2026-11-09.
 
 ## Contents
 
@@ -19,20 +19,20 @@ As of 2026-11-03.
 
 ECCO must let people manage a family of product variants as one repository: commit variants with the features they provide, learn which artifacts implement which features, and compose new variants for feature combinations never committed as such. The name stands for *Extraction and Composition for Clone-and-Own*.
 
-These requirements were recovered, not written up front. ECCO has no requirements specification; it has about 1,400 commits since January 2016, a [README](../README.md), a [changelog](../CHANGELOG.md) that stops at 0.1.9, and the research papers listed in the README. Each requirement below names where it was recovered from:
+These requirements were recovered, not written up front, in October 2026, and have been kept up to date since. ECCO had no requirements specification then; it had about 1,400 commits since January 2016, a [README](../README.md), a [changelog](../CHANGELOG.md) that stops at 0.1.9, and the research papers listed in the README. Each requirement below names where it was recovered from:
 
 * **Doc** - stated in the README or a module README.
 * **Code** - enforced by the implementation (a check, a refusal, a guard).
 * **Test** - asserted by an automated test, the strongest evidence of intent.
 * **History** - introduced or fixed by a specific commit; the fix shows what the system was expected to do.
 
-Scope: the live Gradle modules (`base`, `service`, `logic`, `util`, `cli`, `gui`, `rest` and the adapters in `settings.gradle`). The retired storage backends, the `java6`/`java8`/`designspace` adapters and other unbuilt extras are out of scope.
+Scope: the live Gradle modules (`base`, `service`, `logic`, `util`, `cli`, `gui`, `rest`, `adapter-api` and the adapters in `settings.gradle`). The retired storage backends, the `java6`/`java8`/`designspace` adapters and other unbuilt extras are out of scope; they are kept on the branch `archive/unbuilt-modules`.
 
 **shall** = required and enforced; **should** = expected but not enforced everywhere.
 
 All requirements - functional, adapter, interface and non-functional - are written in EARS (Easy Approach to Requirements Syntax, Mavin et al., RE'09): *ubiquitous* (the system shall ...), *event-driven* (When ..., the system shall ...), *state-driven* (While ...), *optional* (Where ...) and *unwanted behaviour* (If ..., then the system shall ...). A requirement split into several keeps its old ID with a letter (FR-D8a ...), so the old ID still names the group. *Use case* points to where the requirement is realized: `B3` is step 3 of the basic flow, `SA2` a specific and `BA1` a bounded alternative flow, `post` a postcondition. *Acceptance test* names the tests that check it; *Evidence* the code, document or commit it was recovered from. A requirement that prescribes a design rather than a behaviour is marked *design constraint*; the performance requirements give a *Baseline* instead of a test. A test marked *(unit)* checks the requirement on one class, *(GUI)* through the GUI, not through the service.
 
-Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `base/.../repository/Repository.java`, `DR`/`DW` = `service/.../adapter/dispatch/DispatchReader.java`/`DispatchWriter.java`, `STS` = `service/.../storage/ser/dao/SerTransactionStrategy.java`, `SR` = `service/.../storage/ser/repository/SerRepository.java`.
+Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `base/.../repository/Repository.java`, `DR`/`DW` = `service/.../service/dispatch/DispatchReader.java`/`DispatchWriter.java`, `STS` = `service/.../storage/ser/dao/SerTransactionStrategy.java`, `SR` = `service/.../storage/ser/repository/SerRepository.java`.
 
 
 ## Stakeholders and usage contexts
@@ -141,7 +141,7 @@ An alternative flow ends with `ABORT` (the use case ends) or `RESUME STEP n` (th
 | UC-7 | Locate features | Researcher | CLI, GUI | 1 |
 | UC-8 | Review mined constraints | Product-line engineer | CLI, GUI | 2, 4 |
 | UC-9 | Minimize presence conditions | Product-line engineer | CLI, GUI | 2 |
-| UC-10 | Import Git history | Product-line engineer | GUI | 2, 4 |
+| UC-10 | Import Git history | Product-line engineer | CLI, GUI | 2, 4 |
 | UC-11 | Fork repository | Collaborator | CLI, GUI, REST | 5 |
 | UC-12 | Exchange features with a remote | Collaborator | CLI, GUI, REST (pull only) | 5 |
 | UC-13 | Serve repository for synchronization | Collaborator | GUI | 5 |
@@ -677,16 +677,16 @@ Postcondition: The previously stored minimized conditions stay as they were.
 | Secondary actors | Git clone, LLM service |
 | Dependency | INCLUDE USE CASE Commit variant |
 | Generalization | None |
-| Front ends | GUI Versions > Import from Git |
-| Realizes | FR-G1 to FR-G5, IF-G3, IF-G4 |
-| End-to-end test | `GitImportEndToEndTest` (the import window from the selected range on - the system's folder dialog cannot be driven; every commit reviewed, the LLM an OpenAI-compatible endpoint over HTTP as Preferences configures it; the repository opened again from disk against the Git trees; also a run stopped partway (SA5) and one of the tagged releases only, unattended (SA10)) |
+| Front ends | GUI Versions > Import from Git; CLI `ecco git-import`, unattended (SA2, SA11, SA12) |
+| Realizes | FR-G1 to FR-G5, IF-G3, IF-G4, IF-C12 |
+| End-to-end test | `GitImportEndToEndTest` (the import window from the selected range on - the system's folder dialog cannot be driven; every commit reviewed, the LLM an OpenAI-compatible endpoint over HTTP as Preferences configures it; the repository opened again from disk against the Git trees; also a run stopped partway (SA5) and one of the tagged releases only, unattended (SA10)); on the command line `GitImportCommandTest`, which runs the command in-process (a range and a second import going on, tagged commits only, suggestions, a failed suggestion stopping, skipped and imported) |
 
 **Basic flow**
 
 1. The product-line engineer selects a local Git clone.
 2. The system VALIDATES THAT the folder holds a `.git`.
 3. The system shows the history along HEAD's first parents, oldest first.
-4. The product-line engineer selects one continuous range of commits, whether to review each commit, and the use of LLM suggestions.
+4. The product-line engineer selects one continuous range of commits, whether to review each commit, the use of LLM suggestions, and whether an uncertain suggestion stops for review.
 5. DO
 6. The system extracts the tree of the next Git commit into an empty directory.
 7. The system VALIDATES THAT each commit is reviewed.
@@ -712,12 +712,13 @@ Postcondition: Nothing is imported.
 
 **Specific alternative flow SA2** (RFS 7)
 
-1. The system sends the commit to the LLM service.
-2. IF the LLM service returns no suggestion THEN the system logs the failure ENDIF.
-3. The system takes the running feature set and the suggestion as the configuration.
-4. RESUME STEP 14.
+1. The system sends the diff, the message and the features imported so far to the LLM service.
+2. IF the LLM service returns no suggestion THEN the system logs "*** LLM SUGGESTION FAILED for <commit> (stopped for review)" and RESUME STEP 10 ENDIF.
+3. IF the suggestion is uncertain - it disagrees with where the commit changed things - and uncertain suggestions stop for review THEN RESUME STEP 10 ENDIF.
+4. The system takes the running feature set and the suggestion as the configuration.
+5. RESUME STEP 14.
 
-Postcondition: The commit is imported without review; a commit that fails is shown for review (SA7).
+Postcondition: The commit is imported without review unless its suggestion failed or is uncertain; a commit that fails is shown for review (SA7). Without LLM suggestions, steps 1 to 3 are left out and the running feature set is the configuration.
 
 **Specific alternative flow SA3** (RFS 9)
 
@@ -792,6 +793,24 @@ Postcondition: The commits imported so far stay in the repository.
 9. RESUME STEP 17.
 
 Postcondition: The repository holds one commit per tagged Git commit - the releases; the commits between were not imported, their changes are new revisions in the next tagged commit, and the summary says how many were left out (IF-G3f/g).
+
+**Specific alternative flow SA11** (RFS 10)
+
+1. The import runs on the command line (`ecco git-import`), where nobody reviews: the commit stopped for review because its suggestion failed or is uncertain (SA2).
+2. IF the product-line engineer gave `--on-review skip` THEN the system logs "Skipped <commit> (<message>): its suggestion failed." (or "is uncertain") and RESUME STEP 16 ENDIF.
+3. IF the product-line engineer gave `--on-review import` THEN the system takes the proposed configuration and RESUME STEP 14 ENDIF.
+4. The system shows the summary and reports "Stopped at <commit> (<message>), proposed [<configuration>]: ...", naming the other choices of `--on-review` and, once a commit was imported, how to go on with `--from`.
+5. ABORT.
+
+Postcondition: The commits imported so far stay in the repository; `ecco git-import --from <commit>` goes on from there, with the features of the repository's latest commit (IF-C12b).
+
+**Specific alternative flow SA12** (RFS 14)
+
+1. The import runs on the command line and the commit fails.
+2. The system logs "*** IMPORT FAILED for <commit>: <reason>", shows the summary and reports "Could not import <commit> (<message>) with [<configuration>]: ...", with how to go on with `--from`.
+3. ABORT.
+
+Postcondition: Nothing of the failed commit is in the repository; the commits imported before it stay.
 
 ### UC-11 Fork repository
 
@@ -1366,11 +1385,14 @@ ECCO merges only files that both repositories read the same way, as their `.ecco
 | FR-G2c | Unwanted | If an entry of a Git tree would be extracted outside the directory, then ECCO shall refuse it. | UC-10 B6 | `GitHistoryReaderTest` (unit) | |
 | FR-G2d | Unwanted | If the folder chosen for Git import holds no `.git`, then ECCO shall refuse it with "Not a git repository (no .git found)". | UC-10 B2, SA1 | `GitHistoryReaderTest` (unit) | Code `GitHistoryReader:341`, `ImportGitView` |
 | FR-G3a | Optional | Where LLM suggestions are on, ECCO shall send one request per commit (temperature 0, JSON output), judged against the features imported so far. | UC-10 B8 | `LlmFeatureSuggestionClientTest` (unit), `GitImportEndToEndTest` | Code `LlmFeatureSuggestionClient:398-410` |
-| FR-G3b | Unwanted | If an LLM request fails, then ECCO shall give a blank suggestion and go on with the import. | UC-10 B9, SA2, SA3 | `ImportGitViewSuggestionLogTest` (GUI), `GitImportEndToEndTest` | Code `LlmFeatureSuggestionClient` |
+| FR-G3b | Unwanted | If an LLM request fails, then ECCO shall stop the commit for review with the reason, proposing the running feature set, also in an unattended run, and list the failure in the summary. | UC-10 B9, SA2, SA3, SA11 | `GitImportTest`, `ImportGitViewSuggestionLogTest` (GUI), `GitImportCommandTest`, `GitImportEndToEndTest` | Code `GitImport#stopForFailedSuggestion`; History: tinycc's import, the LLM unreachable for 1,122 of 1,139 commits, gave them all the features of the commit before |
 | FR-G3c | Ubiquitous | ECCO shall commit a suggestion only on the import loop's decision. | UC-10 B10-B12, SA2 | `GitImportEndToEndTest` | |
+| FR-G3d | Optional | Where uncertain suggestions stop for review, ECCO shall stop an unattended commit for review when its suggestion's confidence - how far the suggested features agree with where the commit changed things and where they changed things before - is below 0.5. | UC-10 B4, SA2 | `SuggestionConfidenceTest` (unit), `ImportGitViewSuggestionLogTest` (GUI) | Code `SuggestionConfidence.UNCERTAIN`; History e91fd582 (Vite replay: 4 of 42 suggestions below 0.5 right) |
 | FR-G4a | Unwanted | If a Git commit fails to import, then ECCO shall show it again for review with the error and the configuration tried, to be corrected and imported again or skipped. | UC-10 SA7 | `ImportGitViewRetryTest` (GUI) | |
 | FR-G4b | Unwanted | If a Git commit fails to import, then ECCO shall keep nothing of it and go on with the run. | UC-10 SA7 post | `ImportGitViewRetryTest` (GUI) | |
-| FR-G5 | Event | When ECCO imports the first commit into a repository without commits, it shall take BASE - the code base as first imported, the root of the feature model - as its configuration, without asking the LLM. | UC-10 SA9 | `ImportGitViewTaggedTest` (GUI), `GitImportEndToEndTest` | Code `ImportGitView`, `LlmFeatureSuggestionClient.BASE` |
+| FR-G5 | Event | When ECCO imports the first commit into a repository without commits, it shall take BASE - the code base as first imported, the root of the feature model - as its configuration, without asking the LLM. | UC-10 SA9 | `ImportGitViewTaggedTest` (GUI), `GitImportTest`, `GitImportEndToEndTest` | Code `GitImport#next`, `LlmFeatureSuggestionClient.BASE` |
+
+The import's steps are `GitImport` (service, package `gitimport`), free of any user interface; the GUI's dialog and `ecco git-import` (IF-C12) drive it.
 
 ### Persistence (`ser` storage)
 
@@ -1395,6 +1417,8 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | --- | --- | --- | --- | --- | --- |
 | AD-1a | Ubiquitous | An adapter shall be an `ArtifactPlugin` registered through `ServiceLoader` that binds its reader, writer and optional viewers through Guice. | - | - | Code; `adapter/README.md` |
 | AD-1b | Ubiquitous | An adapter's `getPluginId()` shall return its plugin class name. | - | `FileReaderTest`, `CReaderWriterTest`, `CppReaderWriterTest` (unit) | Code |
+| AD-1c | Ubiquitous (design constraint) | An adapter shall depend on `ecco-adapter-api` - the plugin, reader, writer, viewer and exporter interfaces, the shared code viewer, the artifact data adapters create, the read, write and export listeners and the adapters' preferences - not on `ecco-service` (its tests may), so that an adapter can be built outside this repository against an installed ECCO and a change to the service's API recompiles no adapter. | - | - (the build: every adapter's `implementation` is `ecco-adapter-api`) | Code `adapter/*/build.gradle`; Doc `adapter/README.md` (an adapter outside this repository); History 1028ad68, a8caa95a |
+| AD-1d | Ubiquitous (design constraint) | When a class of the adapter API moves between modules, it shall keep the name repositories store its data under, and the adapters' preferences the preference node they are kept at, so that repositories and users' settings stay as they were. | - | `OldStorageFormatTest`, `DispatchReaderPriorityTieTest`, `UnavailableAdapterRoutingTest` | Code `AdapterPreferences.PREFERENCES_NODE`; History 1028ad68, 015123c5 |
 | AD-2a | Ubiquitous | A reader shall return one root node per file, carrying `PluginArtifactData`. | UC-3 B6 | - | Code DR |
 | AD-2b | Ubiquitous | ECCO shall choose the writer of a file by the plugin id of its root node. | UC-5 B10 | - | Code DW |
 | AD-3a | Ubiquitous | A reader shall declare prioritized glob patterns, from which `.adapters` is first written (FR-M6b). | - | `DispatchReaderJavaPluginPriorityTest` | Code |
@@ -1445,7 +1469,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 
 | ID | Pattern | Requirement | Use case | Acceptance test | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| IF-C1 | Ubiquitous | The CLI shall offer `init`, `status`, `adapters`, `commit -c [-m]`, `checkout -c [--minimized]`, `features`, `traces`, `get`/`set`, `remotes`, `fork`, `fetch`, `pull`, `push`, `dg`, `suggest-constraints`, `accept-constraint`, `reject-constraint`, `minimize-preview`, `minimize` and `order`. | Front ends of UC-1 to UC-12 | one test per command (`cli/.../command`) | Code `Main.registerCommands()` |
+| IF-C1 | Ubiquitous | The CLI shall offer `init`, `status`, `adapters`, `commit -c [-m]`, `checkout -c [--minimized]`, `features`, `traces`, `get`/`set`, `remotes`, `fork`, `fetch`, `pull`, `push`, `dg`, `suggest-constraints`, `accept-constraint`, `reject-constraint`, `minimize-preview`, `minimize`, `order`, `git-import` and `positions`. | Front ends of UC-1 to UC-12 | one test per command (`cli/.../command`) | Code `Main.registerCommands()` |
 | IF-C2 | Unwanted | If `commit` or `checkout` is run without a configuration (`-c`), then the CLI shall refuse it as invalid arguments. | - | `MainExitCodeTest` | Code `Main.java:180,188` |
 | IF-C3a | Ubiquitous | The CLI shall exit with 0 on success, 1 on a failed command and 2 on invalid arguments. | - | `MainExitCodeTest`, `InitCommitCheckoutEndToEndTest`, `ForkPullPushEndToEndTest` | Code `Main.run` |
 | IF-C3b | Unwanted | If a command fails, then the CLI shall write the error with its cause chain to stderr, with the stack trace only under `-Decco.debug=true`. | UC-3 BA1 | `MainExitCodeTest`, `InitCommitCheckoutEndToEndTest`, `ForkPullPushEndToEndTest` | Code `Main.run` |
@@ -1465,6 +1489,12 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-C10b | Unwanted | If a file given to `order` holds content the composition does not, or lacks some of it, then the CLI shall refuse it, naming that content. | UC-6 SA3 | `RecordOrderTest`, `ResolveOrderEndToEndTest` | |
 | IF-C10c | Ubiquitous | `order` shall read paths relative to the directory it runs in. | UC-6 SA3 | `RecordOrderTest`, `ResolveOrderEndToEndTest` | |
 | IF-C11 | Event | When `features` runs, the CLI shall list each feature with its id as a configuration takes it (`search [<id>]`), and with a name that feature's revisions. | UC-3 B3; UC-5 B2 | `ListFeaturesCommandTest`, `FeatureRevisionsEndToEndTest` | History: the CLI showed no feature id, so `[<id>]` and the hint for an ambiguous name could not be used from it |
+| IF-C12a | Event | When `git-import <clone>` runs, the CLI shall import the clone's history as the GUI imports it unattended (UC-10 SA2): from `--from` to `--to` (each a commit id, its beginning or a tag; by default the first and the last commit), with `--tagged-only` the tagged commits only (IF-G3f/g), with `--llm` the LLM's suggestions, printing the import log as it goes and the summary at the end. | UC-10 front ends, SA2, SA10 | `GitImportCommandTest` | Code `GitImportCommand`; History 5fceeb95 |
+| IF-C12b | Event | When `git-import` runs into a repository with commits, the CLI shall start from the features of the repository's latest commit, so that an import goes on where an earlier one stopped. | UC-10 SA11 post | `GitImportCommandTest` | Code `GitImport#continueFromLatestCommit` |
+| IF-C12c | Event | When a commit stops for review (FR-G3b, FR-G3d), the CLI shall do as `--on-review` says: end the import with the summary and say how to go on with `--from` (`stop`, the default), leave the commit out (`skip`), or import it with the configuration proposed (`import`). | UC-10 SA11 | `GitImportCommandTest` | Code `GitImportCommand` |
+| IF-C12d | Unwanted | If a commit fails to import, then the CLI shall end the import with the summary, naming the commit, the configuration tried and how to go on with `--from`. | UC-10 SA12 | - | Code `GitImportCommand#importOne` |
+| IF-C12e | Unwanted | If the folder is no Git clone, the clone has no commits, `--from` or `--to` names no commit or tag of the first-parent history or several commits, `--from` comes after `--to`, the range has no tagged commit for `--tagged-only`, or `--llm` has no model, then the CLI shall refuse the import before anything is committed. | UC-10 SA1 | `GitImportCommandTest` (all but a clone without commits and an id naming several) | Code `GitImportCommand` |
+| IF-C12f | Ubiquitous | `--llm-endpoint` and `--llm-model` shall name the LLM for the one run, without storing it; without them the CLI shall use the LLM set in the GUI's Preferences (IF-G4). | UC-10 precondition | - | Code `LlmPreferences`, `GitImportCommand` |
 
 ### Graphical user interface (`gui`)
 
@@ -1528,7 +1558,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | Fetch / pull / push | yes | yes | pull only, between its own repositories |
 | Sync server | no | yes | no |
 | Constraint mining | suggest, accept, reject, preview, minimize | suggest, accept, reject, minimize | no |
-| Git import | no | yes | no |
+| Git import | `git-import`, unattended | yes | no |
 | Visualizations | `dg` as GML | yes | no |
 
 
@@ -1617,6 +1647,8 @@ Remote sync has no authentication; that is a stated limitation (gap #8), and NFR
 | NFR-B3 | Ubiquitous | The CLI and the REST server shall run headless, without JavaFX on the classpath. | - | `InitCommandTest` | History bfcddc23 |
 | NFR-B4 | Ubiquitous | The GUI shall be installable as a native application on macOS, Linux and Windows. | - | - | Doc (jpackage tasks) |
 | NFR-B5 | Ubiquitous (design constraint) | Third-party dependency versions shall be kept in one version catalog. | - | - | Doc (`gradle/libs.versions.toml`) |
+| NFR-B6 | Unwanted (design constraint) | If a module's packages depend on each other in a circle other than the ones kept on purpose (`KNOWN_CYCLES`: the domain model's ten packages, the serialization storage's two circles, and within the C, Java, Java AST, Markdown and LilyPond adapters), or a source imports a class it never names, then the module's tests shall fail, naming each edge of the circle with a class making it. | - | `ArchitectureTest` (in every module's tests, from `gradle/test-support`) | History 41a5f23c; README Development |
+| NFR-B7 | Ubiquitous (design constraint) | No package shall be in two modules, and modules shall not depend on each other in a circle. | - | - (Gradle refuses a circle of modules) | History 015123c5 |
 
 ## Known gaps
 
