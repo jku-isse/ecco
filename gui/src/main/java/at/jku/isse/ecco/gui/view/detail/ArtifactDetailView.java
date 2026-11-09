@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.gui.view.detail;
 
+import at.jku.isse.ecco.gui.common.NodeSnapshot;
+import at.jku.isse.ecco.gui.common.PluginIds;
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.AssociationInfo;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
@@ -234,7 +236,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		flags.append("\nUnique to its association: ").append(live.isUnique() ? "yes" : "no")
 				.append("\nAtomic (compared as a whole): ").append(live.isAtomic() ? "yes" : "no");
 		PartialOrderGraph graph = live.getArtifact() != null ? live.getArtifact().getPartialOrderGraph() : null;
-		String pluginId = getPluginId(live);
+		String pluginId = PluginIds.of(live);
 		NodeSnapshot copy = pluginId != null && viewable.contains(pluginId) ? this.viewerCopy(live, pluginId) : null;
 		Collection<AssociationInfo> infos = null;
 		if (copy != null && hoverTexts) {
@@ -526,7 +528,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 
 	private static Node firstWithViewer(Node node, Set<String> pluginIds) {
 		for (Node n : node.getChildren()) {
-			if (pluginIds.contains(getPluginId(n))) {
+			if (pluginIds.contains(PluginIds.of(n))) {
 				return n;
 			}
 			Node found = firstWithViewer(n, pluginIds);
@@ -537,24 +539,6 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		return null;
 	}
 
-
-	/**
-	 * Retrieves the ID of the plugin that created the given node. If the node was created by an artifact plugin the plugin's ID is returned. If the node was not creaetd by a plugin, as is for example the case with directories, null is returned.
-	 *
-	 * @param node The node for which the plugin ID shall be retrieved.
-	 * @return The plugin ID of the given node or null if the node was not created by a plugin.
-	 */
-	public static String getPluginId(Node node) {
-		if (node == null || node.getArtifact() == null)
-			return null;
-		else {
-			if (node.getArtifact().getData() instanceof PluginArtifactData)
-				return ((PluginArtifactData) node.getArtifact().getData()).getPluginId();
-			else {
-				return getPluginId(node.getParent());
-			}
-		}
-	}
 
 	@Override
 	public void statusChangedEvent(EccoService service) {

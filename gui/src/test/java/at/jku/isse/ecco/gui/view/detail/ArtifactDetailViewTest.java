@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.gui.view.detail;
 
+import at.jku.isse.ecco.gui.common.NodeSnapshot;
+import at.jku.isse.ecco.gui.common.PluginIds;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.common.AssociationInfoImpl;
 import at.jku.isse.ecco.service.EccoService;
@@ -41,11 +43,11 @@ public class ArtifactDetailViewTest {
             Node file = directory.getChildren().get(0);
             Node line = file.getChildren().get(0);
 
-            assertNull(ArtifactDetailView.getPluginId(null));
-            assertNull(ArtifactDetailView.getPluginId(root));
-            assertNull(ArtifactDetailView.getPluginId(directory));
-            assertEquals("at.jku.isse.ecco.adapter.text.TextPlugin", ArtifactDetailView.getPluginId(file));
-            assertEquals(ArtifactDetailView.getPluginId(file), ArtifactDetailView.getPluginId(line));
+            assertNull(PluginIds.of(null));
+            assertNull(PluginIds.of(root));
+            assertNull(PluginIds.of(directory));
+            assertEquals("at.jku.isse.ecco.adapter.text.TextPlugin", PluginIds.of(file));
+            assertEquals(PluginIds.of(file), PluginIds.of(line));
         }
     }
 

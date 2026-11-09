@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.gui.view.detail;
 
+import at.jku.isse.ecco.gui.common.NodeSnapshot;
+import at.jku.isse.ecco.gui.common.PluginIds;
 import java.util.IdentityHashMap;
 import javafx.scene.control.CheckBox;
 import javafx.collections.transformation.FilteredList;
@@ -651,7 +653,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		service.getInjector().injectMembers(this);
 		if (this.associationInfoArtifactViewers == null) return null;
 
-		String pluginId = ArtifactDetailView.getPluginId(node);
+		String pluginId = PluginIds.of(node);
 		if (pluginId == null) return null;
 
 		for (AssociationInfoArtifactViewer viewer : this.associationInfoArtifactViewers) {
