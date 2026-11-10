@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+  * **A benchmark checks the performance limits** (gap #89): `./gradlew :ecco-cli:benchmark` generates a repository of 60 variants over 40 features, one of 200 files and a test image of 71,289 pixels, and times commits, checkouts and status on them as `ecco` commands, each in a JVM of its own, against the limits of NFR-P1a-c, NFR-P3, NFR-P4a/b and NFR-P5 - the median of three runs, results in `cli/build/benchmark/results.txt`. Not part of `test` or `integrationTest`. The repositories behind the old baselines were not kept, so these limits are one and a half times what the benchmark measured; the limits on Git clones (NFR-P2, NFR-P6 to NFR-P10b) are still measured by hand (gap #93).
+
   * **ECCO asks before code goes to an LLM on another machine** (gap #90, NFR-S6d/e): Import from Git with suggestions and Suggest order send code, diffs and commit messages to the LLM server of Preferences, which may be any machine's. Before the first request to a server whose host is neither `localhost` nor an address of this machine, the GUI says so and sends nothing unless the user agrees; the server agreed to is remembered until another one is set. `ecco git-import --llm` refuses such a server, before anything is committed, unless it was agreed to in the GUI or `--llm-allow-remote` is given.
 
   * **Found by end-to-end tests of the use cases** (every command an ecco process of its own, repositories read from disk; UC-1, 3, 5, 6, 8-15):
