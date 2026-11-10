@@ -245,6 +245,7 @@ Modules depend on each other one way: `cli`, `gui` and `rest` on `service`, `ser
 * `./gradlew build` runs all tests. The GUI tests run headless (Monocle), so no windows appear; `-Pgui.tests.visible` shows them. Tests that need Python with `libcst` (Python adapter) are skipped without it; the LilyPond tests that read files are skipped without `tree-sitter`, `py4j` and `lymodel`.
 * Dependency versions are kept in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
 * Every module's tests include `ArchitectureTest` ([`gradle/test-support`](gradle/test-support/java/at/jku/isse/ecco/test/ArchitectureTest.java)): it fails on packages depending on each other in a circle not listed in its `KNOWN_CYCLES`, naming each edge with a class making it, and on an import a source does not use.
+* `./gradlew :ecco-cli:benchmark` checks the performance limits of the [requirements](doc/requirements.md#performance) on repositories it generates, each step an `ecco` command of its own (about two minutes; results in `cli/build/benchmark/results.txt`). Run it before a release; the limits hold on the machine they were recorded on.
 * See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 

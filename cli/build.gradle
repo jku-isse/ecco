@@ -128,3 +128,27 @@ tasks.withType(Test).configureEach {
 	// whether the adapters tried to load their JavaFX viewers, which are not on this classpath
 	systemProperty 'ecco.headless', 'true'
 }
+
+// the performance limits on generated repositories (doc/requirements.md, NFR-P1a to NFR-P5):
+// ./gradlew :ecco-cli:benchmark, before a release - each step is an ecco command in a JVM of its own,
+// so it takes minutes, and the limits hold on the development Mac they were recorded on
+tasks.named('integrationTest') {
+	useJUnitPlatform {
+		excludeTags 'benchmark'
+	}
+}
+
+tasks.register('benchmark', Test) {
+	group = 'verification'
+	description = 'Checks the performance limits of the requirements on generated repositories.'
+	useJUnitPlatform {
+		includeTags 'benchmark'
+	}
+	classpath = sourceSets.integrationTest.runtimeClasspath
+	testClassesDirs = sourceSets.integrationTest.output.classesDirs
+	workingDir = projectDir
+	outputs.upToDateWhen { false }
+	testLogging {
+		showStandardStreams = true
+	}
+}
