@@ -64,6 +64,58 @@ public class MarkdownRoundTripPropertyTest {
         }
     }
 
+    /**
+     * Variants of one document - each top-level block of a shared pool in it or not, each variant
+     * with its own line ends, final newline and charset (FR-K10a) - committed under a feature each,
+     * then each checked out: every one must come back byte for byte. The variants' trees are merged
+     * in the repository (the blocks they share are one artifact), which a single document's round
+     * trip never exercises; adapters lost content exactly there (gaps #29, #60).
+     */
+    @Test
+    @Timeout(900)
+    public void variantsOfADocumentEachComeBackExactly(@TempDir Path tmp) throws Exception {
+        Random random = new Random(11);
+        List<String> wrong = new ArrayList<>();
+        for (int round = 0; round < 600 && wrong.size() < 3; round++) {
+            Generator generator = new Generator(random);
+            List<List<String>> pool = generator.chunks(2 + random.nextInt(6));
+            List<byte[]> variants = new ArrayList<>();
+            for (int v = 2 + random.nextInt(3); v > 0; v--) {
+                List<String> lines = new ArrayList<>();
+                for (List<String> chunk : pool)
+                    if (random.nextInt(10) < 7)
+                        lines.addAll(chunk);
+                if (lines.isEmpty())
+                    lines.addAll(pool.get(0));
+                variants.add(generator.encode(lines));
+            }
+            Path dir = Files.createDirectories(tmp.resolve("round" + round));
+            Path work = Files.createDirectories(dir.resolve("work"));
+            try (EccoService service = new EccoService()) {
+                service.setRepositoryDir(dir.resolve(".ecco"));
+                service.init();
+                service.setBaseDir(work);
+                for (int v = 0; v < variants.size(); v++) {
+                    Files.write(work.resolve("doc.md"), variants.get(v));
+                    service.commit("variant " + v, "V" + v);
+                }
+                // the MarkdownPlugin read the file - with the file adapter every variant came back trivially
+                if (round == 0)
+                    assertEquals(java.util.Set.of(MarkdownPlugin.class.getName()), pluginIds(service));
+                for (int v = 0; v < variants.size(); v++) {
+                    Path out = Files.createDirectories(dir.resolve("out" + v));
+                    service.setBaseDir(out);
+                    service.checkout("V" + v);
+                    byte[] written = Files.exists(out.resolve("doc.md")) ? Files.readAllBytes(out.resolve("doc.md")) : new byte[0];
+                    if (!Arrays.equals(variants.get(v), written))
+                        wrong.add("round " + round + ", variant " + v + " of " + variants.size() + ":\n--- committed ---\n" + show(variants.get(v))
+                                + "\n--- checked out ---\n" + show(written));
+                }
+            }
+        }
+        assertEquals(List.of(), wrong);
+    }
+
     private static byte[] roundTrip(Path dir, byte[] source) throws IOException {
         Files.createDirectories(dir);
         Files.write(dir.resolve("gen.md"), source);
@@ -89,14 +141,34 @@ public class MarkdownRoundTripPropertyTest {
         }
 
         byte[] document() {
-            for (int i = this.random.nextInt(10); i >= 0; i--) {
-                this.block("", 0);
-                // blocks mostly separated by one blank line, sometimes none or several
-                for (int b = new int[]{1, 1, 1, 0, 2, 3}[this.random.nextInt(6)]; b > 0; b--)
-                    this.lines.add(this.random.nextInt(6) == 0 ? "   " : "");
+            for (int i = this.random.nextInt(10); i >= 0; i--)
+                this.chunk();
+            return this.encode(this.lines);
+        }
+
+        /** [count] top-level blocks, each with the blank lines after it - what variants of one document share or leave out */
+        List<List<String>> chunks(int count) {
+            List<List<String>> chunks = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                this.lines.clear();
+                this.chunk();
+                chunks.add(new ArrayList<>(this.lines));
             }
+            this.lines.clear();
+            return chunks;
+        }
+
+        private void chunk() {
+            this.block("", 0);
+            // blocks mostly separated by one blank line, sometimes none or several
+            for (int b = new int[]{1, 1, 1, 0, 2, 3}[this.random.nextInt(6)]; b > 0; b--)
+                this.lines.add(this.random.nextInt(6) == 0 ? "   " : "");
+        }
+
+        /** [lines] with LF, CRLF or CR, with or without a final newline, in UTF-8 or Latin-1 */
+        byte[] encode(List<String> lines) {
             String separator = new String[]{"\n", "\n", "\r\n", "\r"}[this.random.nextInt(4)];
-            StringBuilder text = new StringBuilder(String.join(separator, this.lines));
+            StringBuilder text = new StringBuilder(String.join(separator, lines));
             if (this.random.nextInt(4) != 0)
                 text.append(separator);
             return this.random.nextInt(5) == 0
@@ -209,5 +281,16 @@ public class MarkdownRoundTripPropertyTest {
                 }
             }
         }
+    }
+
+    /** the plugins whose artifacts the repository holds */
+    static java.util.Set<String> pluginIds(EccoService service) {
+        java.util.Set<String> ids = new java.util.TreeSet<>();
+        for (at.jku.isse.ecco.core.Association association : service.getRepository().getAssociations())
+            ((at.jku.isse.ecco.core.Association.Op) association).getRootNode().traverse((at.jku.isse.ecco.tree.Node.Op node) -> {
+                if (node.getArtifact() != null && node.getArtifact().getData() instanceof at.jku.isse.ecco.adapter.dispatch.PluginArtifactData data)
+                    ids.add(data.getPluginId());
+            });
+        return ids;
     }
 }
