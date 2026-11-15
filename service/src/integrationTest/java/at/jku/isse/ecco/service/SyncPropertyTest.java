@@ -218,11 +218,23 @@ class SyncPropertyTest {
 	// ---------------------------------------------------------------------------------------------
 	// The implementation, every step a service of its own on the repository on disk
 
+	/** No merge commit; one both sides have (made before the fork); one only the origin has (after it). */
+	enum MergeCommit {NONE, BEFORE_FORK, AFTER_FORK}
+
+	/** a commit without a configuration, as a merge of an older version recorded one per association */
+	static void addMergeCommit(Path repository) {
+		try (EccoService service = SyncHistory.open(repository)) {
+			Repository.Op repo = (Repository.Op) service.getRepository();
+			repo.addCommit(repo.getEntityFactory().createCommit(Repository.MERGE));
+			service.store();
+		}
+	}
+
 	private static final class Run implements AutoCloseable {
 		final Path tmp;
 		final Map<Side, Path> repositories = new EnumMap<>(Side.class);
-		/** whether the origin holds a merge commit from the start, so that pull and push merge (FR-D3e) */
-		boolean mergeCommit;
+		/** where the origin has a merge commit, as a fork, pull or push of an older version recorded */
+		MergeCommit mergeCommit = MergeCommit.NONE;
 
 		Run() throws IOException {
 			this.tmp = Files.createTempDirectory("sync-property");
@@ -231,13 +243,8 @@ class SyncPropertyTest {
 		/** the history on the repositories, [maxOrder] set on the origin before its first commit (null: the default) */
 		void play(History history, Integer maxOrder) throws Exception {
 			Path origin = init(tmp.resolve("origin"), maxOrder);
-			if (mergeCommit) {
-				try (EccoService service = SyncHistory.open(origin)) {
-					Repository.Op repository = (Repository.Op) service.getRepository();
-					repository.addCommit(repository.getEntityFactory().createCommit(Repository.MERGE));
-					service.store();
-				}
-			}
+			if (mergeCommit == MergeCommit.BEFORE_FORK)
+				addMergeCommit(origin);
 			repositories.put(Side.ORIGIN, origin);
 			int c = 0;
 			for (Variant variant : history.base()) {
@@ -245,6 +252,8 @@ class SyncPropertyTest {
 				c++;
 			}
 			repositories.put(Side.FORK, SyncHistory.fork(origin, tmp.resolve("fork")));
+			if (mergeCommit == MergeCommit.AFTER_FORK)
+				addMergeCommit(origin);
 			for (Action action : history.actions()) {
 				Path side = repositories.get(action.side());
 				Path other = repositories.get(action.side().other());
@@ -409,20 +418,35 @@ class SyncPropertyTest {
 	}
 
 	/**
-	 * The origin holds a merge commit from the start, so every pull and push merges associations
-	 * (FR-D3e) instead of committing the commits again: each repository should still check every
-	 * commit the model says it has - its own, or the other side's merged in - out as committed.
-	 * Fails (gap #96): a merge counts the history both sides share twice, as gap #86 found before replay -
-	 * after [A, B, C]=l1, a fork, [A, D]=l1 in the origin, [A, C]=l2 in the fork and the fork's pull
-	 * and push, the origin checks its own first commit out without l1.
+	 * Both sides have a merge commit, made before the fork: every commit one side lacks has a
+	 * configuration, so pull and push commit them again (FR-D3e) and each repository checks every
+	 * commit it holds out as committed. Until gap #96 was fixed, any merge commit made sync merge,
+	 * and the merge counted the history both sides share twice: after [A, B, C]=l1, a fork, [A, D]=l1
+	 * in the origin, [A, C]=l2 in the fork and the fork's pull and push, the origin checked its own
+	 * first commit out without l1.
+	 */
+	@Property(tries = 300)
+	void sharedMergeCommitsLeaveSyncToReplay(@ForAll("onceEach") History history) throws Exception {
+		checkEveryVariantAsCommitted(history, MergeCommit.BEFORE_FORK);
+	}
+
+	/**
+	 * A merge commit only the origin has: a pull of the origin's commits, or a push to the fork,
+	 * cannot replay it and merges (FR-D3e) - which still counts the history both sides share twice
+	 * and loses lines (the rest of gap #96).
 	 */
 	@Property(tries = 300)
 	@Disabled("gap #96: a merge (FR-D3e) still counts the history both sides share twice")
 	void mergedRepositoriesCheckOutEveryVariantAsCommitted(@ForAll("onceEachNoFeatureNewOnBothSides") History history) throws Exception {
+		checkEveryVariantAsCommitted(history, MergeCommit.AFTER_FORK);
+	}
+
+	/** each repository checks every commit the model says it has - its own, or the other side's taken in - out as committed */
+	private void checkEveryVariantAsCommitted(History history, MergeCommit mergeCommit) throws Exception {
 		Map<Side, List<ModelCommit>> model = model(history);
 		collectSynced(history, model);
 		try (Run run = new Run()) {
-			run.mergeCommit = true;
+			run.mergeCommit = mergeCommit;
 			run.play(history, FEATURES.size());
 			Map<String, String> configurations = new TreeMap<>();
 			for (Side side : Side.values())

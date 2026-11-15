@@ -239,7 +239,7 @@ final class ForkService {
                 this.state.currentContext().repositoryDao.store(repository);
                 this.state.currentContext().transactionStrategy.end();
                 subsetOriginRepository = null;
-            } else if (!originRepository.hasMergeCommits()) {
+            } else if (!originRepository.hasMergeCommitsMissingIn(List.of())) {
                 // a fork leaving revisions out: the origin's commits without them, replayed (Repository.Op#replay)
                 Repository.Op commits = this.commitReplay.copyOfCommits(originRepository, originRepository.commitsMissingIn(List.of(), deselected));
                 this.state.currentContext().transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
@@ -312,7 +312,7 @@ final class ForkService {
                 this.state.currentContext().repositoryDao.store(repository);
                 this.state.currentContext().transactionStrategy.end();
                 subsetOriginRepository = null;
-            } else if (!originRepository.hasMergeCommits() && !repository.hasMergeCommits()) {
+            } else if (!originRepository.hasMergeCommitsMissingIn(RemoteSyncService.commitIds(repository))) {
                 // the origin's commits this repository does not have, without the revisions left out, replayed (Repository.Op#replay)
                 Repository.Op commits = this.commitReplay.copyOfCommits(originRepository, originRepository.commitsMissingIn(RemoteSyncService.commitIds(repository), deselected));
                 this.state.currentContext().transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);

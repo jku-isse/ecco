@@ -498,12 +498,14 @@ public interface Repository extends Persistable {
 		}
 
 		/**
-		 * Whether a commit has no configuration: one a merge recorded for each association it merged -
-		 * a fork or pull of an older version - which replaying cannot repeat. Pull and push then merge,
-		 * as before.
+		 * Whether a commit whose id is not in [ids] has no configuration: one a merge recorded for each
+		 * association it merged - a fork or pull of an older version - which replaying cannot repeat.
+		 * A pull or push merges, as before, only if a commit the receiving side ([ids]) lacks is one:
+		 * merge commits both sides have - made before a fork - leave nothing to replay but commits.
 		 */
-		default boolean hasMergeCommits() {
-			return this.getCommits().stream().anyMatch(commit -> commit.getConfiguration() == null);
+		default boolean hasMergeCommitsMissingIn(Collection<String> ids) {
+			Set<String> have = new HashSet<>(ids);
+			return this.getCommits().stream().anyMatch(commit -> commit.getConfiguration() == null && !have.contains(commit.getId()));
 		}
 
 		/**

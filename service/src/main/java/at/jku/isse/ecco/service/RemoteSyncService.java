@@ -409,19 +409,18 @@ public class RemoteSyncService {
                         }
                         case "COMMIT_IDS": { // before a push of commits: which this repository has
                             ArrayList<String> ids;
-                            boolean mergeCommits;
                             synchronized (this.state.lock()) {
                                 context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 try {
-                                    Repository.Op repository = context.repositoryDao.load();
-                                    ids = commitIds(repository);
-                                    mergeCommits = repository.hasMergeCommits();
+                                    ids = commitIds(context.repositoryDao.load());
                                 } finally {
                                     context.transactionStrategy.end();
                                 }
                             }
                             oos.writeObject(ids);
-                            oos.writeObject(mergeCommits);
+                            // "merge instead" for an older client: never - this repository's merge
+                            // commits do not keep it from replaying pushed commits (gap #96)
+                            oos.writeObject(Boolean.FALSE);
                             oos.flush();
                             sChannel.shutdownOutput();
                             break;
@@ -436,8 +435,8 @@ public class RemoteSyncService {
                                 context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                                 try {
                                     Repository.Op repository = context.repositoryDao.load();
-                                    // a repository with merge commits cannot be replayed: the client merges instead
-                                    reply = repository.hasMergeCommits() ? MERGE
+                                    // a merge commit the client lacks cannot be replayed: the client merges instead
+                                    reply = repository.hasMergeCommitsMissingIn(have) ? MERGE
                                             : SyncObjectStreams.writeCopy(this.commitReplay.copyOfCommits(repository, repository.commitsMissingIn(have, deselected)));
                                 } finally {
                                     context.transactionStrategy.end();
@@ -726,7 +725,7 @@ public class RemoteSyncService {
     /** A server's answer to PULL_COMMITS when it has merge commits: the client merges instead. */
     static final String MERGE = "MERGE";
 
-    private static final String MERGING = " has merge commits (a fork, pull or push of an older version): merged, not replayed"
+    private static final String MERGING = " has merge commits the other side lacks (a fork, pull or push of an older version): merged, not replayed"
             + " - a line can be lost where a configuration was committed again with other content";
 
     static ArrayList<String> commitIds(Repository.Op repository) {
@@ -781,7 +780,7 @@ public class RemoteSyncService {
         }
     }
 
-    /** The ids of the remote's commits (COMMIT_IDS); null if it has merge commits or is too old to know the request. */
+    /** The ids of the remote's commits (COMMIT_IDS); null if it is too old to know the request. */
     private ArrayList<String> remoteCommitIds(Remote remote) throws IOException, ClassNotFoundException {
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
@@ -794,10 +793,9 @@ public class RemoteSyncService {
                 ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream());
                 @SuppressWarnings("unchecked")
                 ArrayList<String> ids = (ArrayList<String>) ois.readObject();
-                if ((Boolean) ois.readObject()) {
-                    LOGGER.warning("Remote '" + remote.getName() + "'" + MERGING);
-                    return null;
-                }
+                // whether the remote has merge commits: an older server says so, but they do not keep it
+                // from replaying this repository's commits - only a merge commit it lacks would (gap #96)
+                ois.readObject();
                 return ids;
             } catch (EOFException e) {
                 LOGGER.warning("Remote '" + remote.getName() + "' is too old to exchange commits: merged, not replayed.");
@@ -1012,16 +1010,12 @@ public class RemoteSyncService {
 
                 Map<String, String> remoteSettings = this.remoteSettings(remote);
                 // the remote's commits this repository does not have, replayed (Repository.Op#replay) -
-                // merged as before where either repository has merge commits or the remote is too old
+                // merged as before where one of them is a merge commit (the remote answers MERGE) or the
+                // remote is too old
                 Repository.Op repository = context.repositoryDao.load();
                 Repository.Op commits;
                 try {
-                    if (repository.hasMergeCommits()) {
-                        LOGGER.warning("This repository" + MERGING);
-                        commits = null;
-                    } else {
-                        commits = this.receiveCommits(remote, commitIds(repository), deselectedFeatureRevisionsString);
-                    }
+                    commits = this.receiveCommits(remote, commitIds(repository), deselectedFeatureRevisionsString);
                 } catch (Exception e) {
                     throw new EccoException("Error during remote pull.", e);
                 }
@@ -1090,8 +1084,8 @@ public class RemoteSyncService {
 
                         Repository.Op parentRepository = parentService.context.repositoryDao.load();
                         Collection<FeatureRevision> deselected = parentService.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
-                        if (parentRepository.hasMergeCommits() || repository.hasMergeCommits()) {
-                            LOGGER.warning((repository.hasMergeCommits() ? "This repository" : "Remote '" + remote.getName() + "'") + MERGING);
+                        if (parentRepository.hasMergeCommitsMissingIn(commitIds(repository))) {
+                            LOGGER.warning("Remote '" + remote.getName() + "'" + MERGING);
                             subsetParentRepository = parentRepository.subset(deselected, parentRepository.getMaxOrder(), context.entityFactory);
                         } else {
                             commits = this.commitReplay.copyOfCommits(parentRepository, parentRepository.commitsMissingIn(commitIds(repository), deselected));
@@ -1167,17 +1161,16 @@ public class RemoteSyncService {
             } else if (remote.getType() == Remote.Type.REMOTE) {
 
                 // this repository's commits the remote does not have, for it to replay (Repository.Op#replay) -
-                // the subset to merge as before where either repository has merge commits or the remote is too old
+                // the subset to merge as before where one of them is a merge commit or the remote is too old
                 context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
                 Repository.Op repository = context.repositoryDao.load();
                 Collection<FeatureRevision> deselected = this.configurationParser.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
                 ArrayList<String> remoteIds;
                 try {
-                    if (repository.hasMergeCommits()) {
+                    remoteIds = this.remoteCommitIds(remote);
+                    if (remoteIds != null && repository.hasMergeCommitsMissingIn(remoteIds)) {
                         LOGGER.warning("This repository" + MERGING);
                         remoteIds = null;
-                    } else {
-                        remoteIds = this.remoteCommitIds(remote);
                     }
                 } catch (Exception e) {
                     context.transactionStrategy.end();
@@ -1226,16 +1219,16 @@ public class RemoteSyncService {
                     OperationCancelledException.check(cancelled);
 
                     // into parent repository - if both read the files the same way: this repository's
-                    // commits it does not have, replayed (Repository.Op#replay), or, where either has merge
-                    // commits, the subset merged as before
+                    // commits it does not have, replayed (Repository.Op#replay), or, where one of them is a
+                    // merge commit, the subset merged as before
                     try {
                         parentService.context.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
                         Repository.Op parentRepository = parentService.context.repositoryDao.load();
                         Repository.Op commits = null;
                         Repository.Op subsetRepository = null;
-                        if (repository.hasMergeCommits() || parentRepository.hasMergeCommits()) {
-                            LOGGER.warning((repository.hasMergeCommits() ? "This repository" : "Remote '" + remote.getName() + "'") + MERGING);
+                        if (repository.hasMergeCommitsMissingIn(commitIds(parentRepository))) {
+                            LOGGER.warning("This repository" + MERGING);
                             subsetRepository = repository.subset(deselected, repository.getMaxOrder(), parentService.context.entityFactory);
                         } else {
                             commits = parentService.commitReplay.copyOfCommits(repository, repository.commitsMissingIn(commitIds(parentRepository), deselected));
