@@ -26,3 +26,6 @@ __pycache__/
 
 # log files the LilyPond integration tests write into their working directory
 /adapter/lilypond/test.log*
+
+# jqwik's database of failing samples, should a module lack junit-platform.properties
+.jqwik-database
