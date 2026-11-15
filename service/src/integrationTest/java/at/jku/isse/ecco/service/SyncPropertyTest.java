@@ -292,6 +292,8 @@ class SyncPropertyTest {
 		final Map<Side, Path> repositories = new EnumMap<>(Side.class);
 		/** where the origin has a merge commit, as a fork, pull or push of an older version recorded */
 		MergeCommit mergeCommit = MergeCommit.NONE;
+		/** whether the fork, pulls and pushes go to a sync server serving the other side, over a loopback socket */
+		boolean network;
 
 		Run() throws IOException {
 			this.tmp = Files.createTempDirectory("sync-property");
@@ -308,7 +310,8 @@ class SyncPropertyTest {
 				commit(origin, new ModelCommit("c" + c, history.configurations().get(c), variant));
 				c++;
 			}
-			repositories.put(Side.FORK, fork(origin, tmp.resolve("fork"), history.forkExcluded()));
+			repositories.put(Side.FORK, network ? forkOverTheNetwork(origin, tmp.resolve("fork"), history.forkExcluded())
+					: fork(origin, tmp.resolve("fork"), history.forkExcluded()));
 			if (mergeCommit == MergeCommit.AFTER_FORK)
 				addMergeCommit(origin);
 			for (Action action : history.actions()) {
@@ -319,8 +322,18 @@ class SyncPropertyTest {
 						commit(side, new ModelCommit("c" + c, history.configurations().get(c), action.variant()));
 						c++;
 					}
-					case PULL -> pull(side, other, action.excluded());
-					case PUSH -> push(side, other, action.excluded());
+					case PULL -> {
+						if (network)
+							pullOverTheNetwork(side, other, action.excluded());
+						else
+							pull(side, other, action.excluded());
+					}
+					case PUSH -> {
+						if (network)
+							pushOverTheNetwork(side, other, action.excluded());
+						else
+							push(side, other, action.excluded());
+					}
 				}
 			}
 		}
@@ -376,6 +389,43 @@ class SyncPropertyTest {
 				service.addRemote("to", to.toString(), at.jku.isse.ecco.core.Remote.Type.LOCAL);
 			service.push("to", revisions);
 		}
+	}
+
+	/** a new name for each server: a server's port changes from one sync to the next */
+	private static final java.util.concurrent.atomic.AtomicInteger SERVERS = new java.util.concurrent.atomic.AtomicInteger();
+
+	static Path forkOverTheNetwork(Path origin, Path dir, String excluded) throws Exception {
+		Files.createDirectories(dir);
+		String revisions = revisionsOf(origin, excluded);
+		SyncHistory.withServer(origin, port -> {
+			try (EccoService service = new EccoService()) {
+				service.setRepositoryDir(dir.resolve(".ecco"));
+				service.fork("localhost", port, revisions);
+			}
+		});
+		return dir;
+	}
+
+	static void pullOverTheNetwork(Path repository, Path from, String excluded) throws Exception {
+		String revisions = revisionsOf(from, excluded);
+		SyncHistory.withServer(from, port -> {
+			try (EccoService service = SyncHistory.open(repository)) {
+				String name = "server" + SERVERS.incrementAndGet();
+				service.addRemote(name, "localhost:" + port, at.jku.isse.ecco.core.Remote.Type.REMOTE);
+				service.pull(name, revisions);
+			}
+		});
+	}
+
+	static void pushOverTheNetwork(Path repository, Path to, String excluded) throws Exception {
+		String revisions = revisionsOf(repository, excluded);
+		SyncHistory.withServer(to, port -> {
+			try (EccoService service = SyncHistory.open(repository)) {
+				String name = "server" + SERVERS.incrementAndGet();
+				service.addRemote(name, "localhost:" + port, at.jku.isse.ecco.core.Remote.Type.REMOTE);
+				service.push(name, revisions);
+			}
+		});
 	}
 
 	static Path init(Path dir, Integer maxOrder) {
@@ -469,9 +519,20 @@ class SyncPropertyTest {
 	 */
 	@Property(tries = 300)
 	void everyHeldCommitChecksOutAsCommitted(@ForAll("onceEach") History history) throws Exception {
+		checkEveryHeldCommit(history, false);
+	}
+
+	/** As {@link #everyHeldCommitChecksOutAsCommitted}, every fork, pull and push from a sync server over a loopback socket. */
+	@Property(tries = 300)
+	void everyHeldCommitChecksOutAsCommittedOverTheNetwork(@ForAll("onceEach") History history) throws Exception {
+		checkEveryHeldCommit(history, true);
+	}
+
+	private void checkEveryHeldCommit(History history, boolean network) throws Exception {
 		Map<Side, List<ModelCommit>> model = model(history);
 		collectSynced(history, model);
 		try (Run run = new Run()) {
+			run.network = network;
 			run.play(history, FEATURES.size());
 			for (Side side : Side.values()) {
 				Path repository = run.repositories.get(side);
@@ -499,9 +560,20 @@ class SyncPropertyTest {
 	 */
 	@Property(tries = 300)
 	void syncedRepositoriesCheckOutAsTheirCommitsInOrder(@ForAll("withRepeats") History history) throws Exception {
+		checkInOrder(history, false);
+	}
+
+	/** As {@link #syncedRepositoriesCheckOutAsTheirCommitsInOrder}, every fork, pull and push from a sync server over a loopback socket. */
+	@Property(tries = 300)
+	void syncedRepositoriesCheckOutAsTheirCommitsInOrderOverTheNetwork(@ForAll("withRepeats") History history) throws Exception {
+		checkInOrder(history, true);
+	}
+
+	private void checkInOrder(History history, boolean network) throws Exception {
 		Map<Side, List<ModelCommit>> model = model(history);
 		collectSynced(history, model);
 		try (Run run = new Run()) {
+			run.network = network;
 			run.play(history, null);
 			for (Side side : Side.values()) {
 				Path repository = run.repositories.get(side);

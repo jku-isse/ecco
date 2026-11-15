@@ -135,25 +135,21 @@ final class SyncHistory {
 
     /** serves the repository while running the body, then stops and closes it */
     static void withServer(Path repository, WithPort body) throws Exception {
-        int port;
-        try (java.net.ServerSocket socket = new java.net.ServerSocket(0)) {
-            port = socket.getLocalPort();
-        }
         EccoService server = open(repository);
-        Thread thread = new Thread(() -> server.startServer(port), "test-ecco-server");
+        // on a port the system chooses, read back once bound: choosing a free port first and probing it
+        // with connections until one succeeded raced - a probe could connect to itself on the port (a
+        // TCP self-connect), which then kept the server from binding it and left the next pull reading
+        // from nothing until it timed out (SyncPropertyTest, over the network)
+        Thread thread = new Thread(() -> server.startServer(0), "test-ecco-server");
         thread.start();
         try {
-            // serverRunning() is set before the port is bound: wait until it takes a connection
             long deadline = System.currentTimeMillis() + 10_000;
-            while (true) {
-                try (java.net.Socket probe = new java.net.Socket("localhost", port)) {
-                    break;
-                } catch (java.io.IOException e) {
-                    if (System.currentTimeMillis() > deadline)
-                        throw e;
-                    Thread.sleep(20);
-                }
+            while (server.serverPort() <= 0) {
+                if (!thread.isAlive() || System.currentTimeMillis() > deadline)
+                    throw new IllegalStateException("The sync server did not start.");
+                Thread.sleep(5);
             }
+            int port = server.serverPort();
             body.run(port);
         } finally {
             if (server.serverRunning())
