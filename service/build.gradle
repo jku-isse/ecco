@@ -45,6 +45,8 @@ dependencies {
 
 	testImplementation libs.junit.jupiter
 	testImplementation libs.commons.io
+	// property-based tests of persistence and sync against a model (integrationTest: SyncPropertyTest)
+	testImplementation libs.jqwik
 
 	testImplementation project(':ecco-util')
 	testImplementation project(':ecco-adapter-file')

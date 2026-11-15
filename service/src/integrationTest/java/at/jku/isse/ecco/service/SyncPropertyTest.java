@@ -1,0 +1,453 @@
+package at.jku.isse.ecco.service;
+
+import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.repository.Repository;
+import net.jqwik.api.*;
+import net.jqwik.api.statistics.Statistics;
+import org.apache.commons.io.FileUtils;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Persistence and sync against a model (NFR-R3, FR-D2c, FR-D3b/c): an origin with one to three
+ * commits, a fork of it, then random commits, pulls and pushes on either side. The model is which
+ * commits each repository holds, in order: a fork holds the origin's, a pull or push appends the
+ * commits the receiving side lacks in the sending side's order. Every step opens the repository from
+ * disk and closes it, so each one is also a reopen. A failing history is shrunk to a smallest one.
+ * <p>
+ * Two properties: with every configuration committed once and the maximum order at the number of
+ * features (4), each repository holds exactly the model's commits and checks every one of them out
+ * as committed - the model alone says what a checkout is. With configurations committed again with
+ * other lines in any order, at the default maximum order (2), each repository checks out as a new one with the
+ * model's commits committed in its order - FR-D3b's own statement. A checkout names each commit's
+ * configuration with its revisions' ids, as the repository holds it: a feature made after the fork on
+ * both sides is one feature with two revisions (FR-D3f), which a configuration by name cannot tell apart.
+ */
+class SyncPropertyTest {
+
+	private static final List<String> FEATURES = List.of("A", "B", "C", "D");
+	private static final List<String> FILES = List.of("a.txt", "b.txt");
+	/** the lines' global order: every file's lines are a subsequence of it, unless they are permuted */
+	private static final List<String> LINES = List.of("l1", "l2", "l3", "l4", "l5", "l6");
+
+	// ---------------------------------------------------------------------------------------------
+	// The model
+
+	enum Side {
+		ORIGIN, FORK;
+
+		Side other() {
+			return this == ORIGIN ? FORK : ORIGIN;
+		}
+	}
+
+	enum Kind {COMMIT, PULL, PUSH}
+
+	/** files to their lines */
+	record Variant(SortedMap<String, List<String>> files) {
+		@Override
+		public String toString() {
+			return files.toString();
+		}
+	}
+
+	/** a commit of [side], or [side] pulling from or pushing to the other side */
+	record Action(Kind kind, Side side, Variant variant) {
+		@Override
+		public String toString() {
+			return kind == Kind.COMMIT ? side + " commits " + variant : side + " " + kind.name().toLowerCase();
+		}
+	}
+
+	/** the commits before the fork, the actions after it, and the configurations the commits take in turn */
+	record History(List<Variant> base, List<Action> actions, List<String> configurations) {
+		@Override
+		public String toString() {
+			StringBuilder text = new StringBuilder();
+			int c = 0;
+			for (Variant variant : base)
+				text.append("\n  ORIGIN commits [").append(configurations.get(c++)).append("] ").append(variant);
+			text.append("\n  FORK forks");
+			for (Action action : actions) {
+				if (action.kind() == Kind.COMMIT)
+					text.append("\n  ").append(action.side()).append(" commits [").append(configurations.get(c++)).append("] ").append(action.variant());
+				else
+					text.append("\n  ").append(action);
+			}
+			return text.toString();
+		}
+	}
+
+	record ModelCommit(String message, String configuration, Variant variant) {
+	}
+
+	/** what each side holds after the history, in order */
+	static Map<Side, List<ModelCommit>> model(History history) {
+		Map<Side, List<ModelCommit>> held = new EnumMap<>(Side.class);
+		held.put(Side.ORIGIN, new ArrayList<>());
+		int c = 0;
+		for (Variant variant : history.base()) {
+			held.get(Side.ORIGIN).add(new ModelCommit("c" + c, history.configurations().get(c), variant));
+			c++;
+		}
+		held.put(Side.FORK, new ArrayList<>(held.get(Side.ORIGIN)));
+		for (Action action : history.actions()) {
+			switch (action.kind()) {
+				case COMMIT -> {
+					held.get(action.side()).add(new ModelCommit("c" + c, history.configurations().get(c), action.variant()));
+					c++;
+				}
+				case PULL -> append(held.get(action.side()), held.get(action.side().other()));
+				case PUSH -> append(held.get(action.side().other()), held.get(action.side()));
+			}
+		}
+		return held;
+	}
+
+	/** How many commits a history's pulls and pushes move - so that a run shows it synced something. */
+	static void collectSynced(History history, Map<Side, List<ModelCommit>> model) {
+		int made = history.base().size() + (int) history.actions().stream().filter(a -> a.kind() == Kind.COMMIT).count();
+		int held = model.get(Side.ORIGIN).size() + model.get(Side.FORK).size();
+		int moved = held - made - history.base().size(); // the base is held twice by the fork alone
+		Statistics.label("commits moved by pull and push").collect(moved == 0 ? "0" : moved <= 2 ? "1-2" : "3+");
+	}
+
+	/** FR-D3b/c: the commits of [from] that [into] lacks, after its own, in their order */
+	private static void append(List<ModelCommit> into, List<ModelCommit> from) {
+		Set<String> had = into.stream().map(ModelCommit::message).collect(Collectors.toSet());
+		for (ModelCommit commit : List.copyOf(from))
+			if (!had.contains(commit.message()))
+				into.add(commit);
+	}
+
+	// ---------------------------------------------------------------------------------------------
+	// Generators
+
+	/** variants whose lines are in the global order or, [permuted], in any order */
+	private Arbitrary<Variant> variants(boolean permuted) {
+		Arbitrary<List<String>> lines = Arbitraries.of(LINES).set().ofMinSize(1)
+				.flatMap(set -> permuted ? Arbitraries.shuffle(new ArrayList<>(set)) : Arbitraries.just(LINES.stream().filter(set::contains).toList()));
+		return Arbitraries.maps(Arbitraries.of(FILES), lines).ofMinSize(1).ofMaxSize(FILES.size())
+				.map(files -> new Variant(new TreeMap<>(files)));
+	}
+
+	private Arbitrary<Action> actions(boolean permuted) {
+		Arbitrary<Side> sides = Arbitraries.of(Side.class);
+		return Arbitraries.frequencyOf(
+				Tuple.of(3, Combinators.combine(sides, variants(permuted)).as((side, variant) -> new Action(Kind.COMMIT, side, variant))),
+				Tuple.of(1, sides.map(side -> new Action(Kind.PULL, side, null))),
+				Tuple.of(1, sides.map(side -> new Action(Kind.PUSH, side, null))));
+	}
+
+	/** every non-empty set of features, as a configuration */
+	private static List<String> allConfigurations(List<String> features) {
+		List<String> all = new ArrayList<>();
+		for (int mask = 1; mask < 1 << features.size(); mask++) {
+			List<String> configuration = new ArrayList<>();
+			for (int f = 0; f < features.size(); f++)
+				if ((mask & 1 << f) != 0)
+					configuration.add(features.get(f));
+			all.add(String.join(", ", configuration));
+		}
+		return all;
+	}
+
+	/**
+	 * The actions after the fork - in half the histories ending with the fork pulling and pushing,
+	 * as collaborators do, so that most histories move commits both ways.
+	 */
+	private Arbitrary<List<Action>> afterFork(boolean permuted) {
+		return Combinators.combine(actions(permuted).list().ofMinSize(1).ofMaxSize(8), Arbitraries.of(true, false)).as((actions, sync) -> {
+			if (!sync)
+				return actions;
+			List<Action> synced = new ArrayList<>(actions);
+			synced.add(new Action(Kind.PULL, Side.FORK, null));
+			synced.add(new Action(Kind.PUSH, Side.FORK, null));
+			return synced;
+		});
+	}
+
+	/** each configuration committed once: at most 3 + 8 commits of the 15 configurations of A-D */
+	@Provide
+	Arbitrary<History> onceEach() {
+		return Combinators.combine(variants(false).list().ofMinSize(1).ofMaxSize(3), afterFork(false),
+				Arbitraries.shuffle(allConfigurations(FEATURES))).as(History::new);
+	}
+
+	/**
+	 * As {@link #onceEach}, without a feature both sides make after the fork: a merge refuses two
+	 * features of one name (gap #87, FR-F6), a replay takes them as one (FR-D3f).
+	 */
+	@Provide
+	Arbitrary<History> onceEachNoFeatureNewOnBothSides() {
+		return onceEach().filter(SyncPropertyTest::noFeatureNewOnBothSides);
+	}
+
+	static boolean noFeatureNewOnBothSides(History history) {
+		int c = 0;
+		Set<String> base = new HashSet<>();
+		for (int i = 0; i < history.base().size(); i++)
+			base.addAll(List.of(history.configurations().get(c++).split(", ")));
+		Map<Side, Set<String>> made = new EnumMap<>(Map.of(Side.ORIGIN, new HashSet<>(), Side.FORK, new HashSet<>()));
+		for (Action action : history.actions())
+			if (action.kind() == Kind.COMMIT)
+				for (String feature : history.configurations().get(c++).split(", "))
+					if (!base.contains(feature))
+						made.get(action.side()).add(feature);
+		return Collections.disjoint(made.get(Side.ORIGIN), made.get(Side.FORK));
+	}
+
+	/**
+	 * Configurations of A-C, committed again with other lines, in any order: where variants disagree
+	 * on the order, a checkout's order depends on the order of the commits, so a replay in another
+	 * order than FR-D3b's shows.
+	 */
+	@Provide
+	Arbitrary<History> withRepeats() {
+		return Combinators.combine(variants(true).list().ofMinSize(1).ofMaxSize(3), afterFork(true),
+				Arbitraries.of(allConfigurations(FEATURES.subList(0, 3))).list().ofSize(11)).as(History::new);
+	}
+
+	// ---------------------------------------------------------------------------------------------
+	// The implementation, every step a service of its own on the repository on disk
+
+	private static final class Run implements AutoCloseable {
+		final Path tmp;
+		final Map<Side, Path> repositories = new EnumMap<>(Side.class);
+		/** whether the origin holds a merge commit from the start, so that pull and push merge (FR-D3e) */
+		boolean mergeCommit;
+
+		Run() throws IOException {
+			this.tmp = Files.createTempDirectory("sync-property");
+		}
+
+		/** the history on the repositories, [maxOrder] set on the origin before its first commit (null: the default) */
+		void play(History history, Integer maxOrder) throws Exception {
+			Path origin = init(tmp.resolve("origin"), maxOrder);
+			if (mergeCommit) {
+				try (EccoService service = SyncHistory.open(origin)) {
+					Repository.Op repository = (Repository.Op) service.getRepository();
+					repository.addCommit(repository.getEntityFactory().createCommit(Repository.MERGE));
+					service.store();
+				}
+			}
+			repositories.put(Side.ORIGIN, origin);
+			int c = 0;
+			for (Variant variant : history.base()) {
+				commit(origin, new ModelCommit("c" + c, history.configurations().get(c), variant));
+				c++;
+			}
+			repositories.put(Side.FORK, SyncHistory.fork(origin, tmp.resolve("fork")));
+			for (Action action : history.actions()) {
+				Path side = repositories.get(action.side());
+				Path other = repositories.get(action.side().other());
+				switch (action.kind()) {
+					case COMMIT -> {
+						commit(side, new ModelCommit("c" + c, history.configurations().get(c), action.variant()));
+						c++;
+					}
+					case PULL -> SyncHistory.pull(side, other);
+					case PUSH -> SyncHistory.push(side, other);
+				}
+			}
+		}
+
+		@Override
+		public void close() throws IOException {
+			FileUtils.deleteDirectory(tmp.toFile());
+		}
+	}
+
+	static Path init(Path dir, Integer maxOrder) {
+		try {
+			Files.createDirectories(dir);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		try (EccoService service = new EccoService()) {
+			service.setRepositoryDir(dir.resolve(".ecco"));
+			service.init();
+		}
+		if (maxOrder != null) {
+			try (EccoService service = SyncHistory.open(dir)) {
+				((Repository.Op) service.getRepository()).setMaxOrder(maxOrder);
+				service.store();
+			}
+		}
+		return dir;
+	}
+
+	/** writes the variant's files, and only them, into the repository's working directory and commits them */
+	static void commit(Path repository, ModelCommit commit) throws IOException {
+		Path work = repository.resolveSibling(repository.getFileName() + "-work");
+		FileUtils.deleteDirectory(work.toFile());
+		Files.createDirectories(work);
+		for (Map.Entry<String, List<String>> file : commit.variant().files().entrySet())
+			Files.writeString(work.resolve(file.getKey()), String.join("\n", file.getValue()) + "\n");
+		try (EccoService service = SyncHistory.open(repository)) {
+			service.setBaseDir(work);
+			service.commit(commit.message(), commit.configuration());
+		}
+	}
+
+	/** each configuration -> the text files its checkout writes */
+	static Map<String, SortedMap<String, List<String>>> checkouts(Path repository, Collection<String> configurations, Path dir) throws IOException {
+		Map<String, SortedMap<String, List<String>>> result = new TreeMap<>();
+		int i = 0;
+		try (EccoService service = SyncHistory.open(repository)) {
+			for (String configuration : new TreeSet<>(configurations)) {
+				Path checkout = Files.createDirectories(dir.resolve("" + i++));
+				service.setBaseDir(checkout);
+				service.checkout(configuration);
+				SortedMap<String, List<String>> files = new TreeMap<>();
+				try (Stream<Path> written = Files.list(checkout)) {
+					for (Path file : written.filter(f -> f.getFileName().toString().endsWith(".txt")).toList())
+						files.put(file.getFileName().toString(), Files.readAllLines(file));
+				}
+				result.put(configuration, files);
+			}
+		}
+		return result;
+	}
+
+	/** the commits' messages, in the order the repository lists them */
+	static List<String> messages(Path repository) {
+		try (EccoService service = SyncHistory.open(repository)) {
+			return service.getCommits().stream().map(Commit::getCommitMessage).toList();
+		}
+	}
+
+	/**
+	 * Each commit's message -> its configuration with the revisions' full ids. A feature made after the
+	 * fork on both sides is one feature with a revision from each (FR-D3f), so a name alone does not
+	 * say which revision a commit had.
+	 */
+	static Map<String, String> configurations(Path repository) {
+		Map<String, String> result = new TreeMap<>();
+		try (EccoService service = SyncHistory.open(repository)) {
+			for (Commit commit : service.getCommits())
+				if (commit.getConfiguration() != null) // a merge commit has none
+					result.put(commit.getCommitMessage(), Arrays.stream(commit.getConfiguration().getFeatureRevisions())
+						.map(revision -> revision.getFeature().getName() + "." + revision.getId())
+							.sorted().collect(Collectors.joining(", ")));
+		}
+		return result;
+	}
+
+	static int maxOrder(Path repository) {
+		try (EccoService service = SyncHistory.open(repository)) {
+			return ((Repository.Op) service.getRepository()).getMaxOrder();
+		}
+	}
+
+	// ---------------------------------------------------------------------------------------------
+	// Properties
+
+	/**
+	 * Every configuration committed once, the maximum order at the number of features: each repository
+	 * holds the model's commits, once each, and checks every one of them out as it was committed.
+	 */
+	@Property(tries = 300)
+	void everyHeldCommitChecksOutAsCommitted(@ForAll("onceEach") History history) throws Exception {
+		Map<Side, List<ModelCommit>> model = model(history);
+		collectSynced(history, model);
+		try (Run run = new Run()) {
+			run.play(history, FEATURES.size());
+			for (Side side : Side.values()) {
+				Path repository = run.repositories.get(side);
+				assertEquals(FEATURES.size(), maxOrder(repository), side + "'s maximum order");
+
+				List<String> messages = messages(repository);
+				assertEquals(messages.size(), new HashSet<>(messages).size(), side + " holds a commit twice: " + messages);
+				assertEquals(model.get(side).stream().map(ModelCommit::message).collect(Collectors.toSet()), new HashSet<>(messages),
+						side + "'s commits");
+
+				// every commit checked out by its own configuration, revisions and all
+				Map<String, String> configurations = configurations(repository);
+				Map<String, SortedMap<String, List<String>>> actual = checkouts(repository, configurations.values(), run.tmp.resolve("co-" + side));
+				for (ModelCommit commit : model.get(side))
+					assertEquals(commit.variant().files(), actual.get(configurations.get(commit.message())),
+							side + "'s checkout of " + commit.message() + " [" + configurations.get(commit.message()) + "]");
+			}
+		}
+	}
+
+	/**
+	 * FR-D3b/c with configurations committed again with other lines, at the default maximum order:
+	 * each repository checks out every configuration it holds as a new repository does that has the
+	 * model's commits committed in its order.
+	 */
+	@Property(tries = 300)
+	void syncedRepositoriesCheckOutAsTheirCommitsInOrder(@ForAll("withRepeats") History history) throws Exception {
+		Map<Side, List<ModelCommit>> model = model(history);
+		collectSynced(history, model);
+		try (Run run = new Run()) {
+			run.play(history, null);
+			for (Side side : Side.values()) {
+				Path repository = run.repositories.get(side);
+				assertEquals(model.get(side).stream().map(ModelCommit::message).collect(Collectors.toSet()), new HashSet<>(messages(repository)),
+						side + "'s commits");
+
+				// the same commits, with the same revisions, committed in the model's order into a new repository
+				Map<String, String> configurations = configurations(repository);
+				Path inOrder = init(run.tmp.resolve("in-order-" + side), null);
+				for (ModelCommit commit : model.get(side))
+					commit(inOrder, new ModelCommit(commit.message(), configurations.get(commit.message()), commit.variant()));
+				Set<String> held = new TreeSet<>(configurations.values());
+				assertEquals(checkouts(inOrder, held, run.tmp.resolve("co-in-order-" + side)),
+						checkouts(repository, held, run.tmp.resolve("co-" + side)),
+						side + " checks out other than its commits committed in order");
+			}
+		}
+	}
+
+	/**
+	 * The origin holds a merge commit from the start, so every pull and push merges associations
+	 * (FR-D3e) instead of committing the commits again: each repository should still check every
+	 * commit the model says it has - its own, or the other side's merged in - out as committed.
+	 * Fails (gap #96): a merge counts the history both sides share twice, as gap #86 found before replay -
+	 * after [A, B, C]=l1, a fork, [A, D]=l1 in the origin, [A, C]=l2 in the fork and the fork's pull
+	 * and push, the origin checks its own first commit out without l1.
+	 */
+	@Property(tries = 300)
+	@Disabled("gap #96: a merge (FR-D3e) still counts the history both sides share twice")
+	void mergedRepositoriesCheckOutEveryVariantAsCommitted(@ForAll("onceEachNoFeatureNewOnBothSides") History history) throws Exception {
+		Map<Side, List<ModelCommit>> model = model(history);
+		collectSynced(history, model);
+		try (Run run = new Run()) {
+			run.mergeCommit = true;
+			run.play(history, FEATURES.size());
+			Map<String, String> configurations = new TreeMap<>();
+			for (Side side : Side.values())
+				configurations.putAll(configurations(run.repositories.get(side)));
+			for (Side side : Side.values()) {
+				Path repository = run.repositories.get(side);
+				List<ModelCommit> held = model.get(side);
+				Map<String, SortedMap<String, List<String>>> actual = checkouts(repository,
+						held.stream().map(c -> configurations.get(c.message())).toList(), run.tmp.resolve("co-" + side));
+				for (ModelCommit commit : held)
+					assertEquals(commit.variant().files(), actual.get(configurations.get(commit.message())),
+							side + "'s checkout of " + commit.message() + " [" + configurations.get(commit.message()) + "]");
+			}
+		}
+	}
+
+	@Example
+	void theModelAppendsWhatTheReceiverLacksInTheSendersOrder() {
+		Variant v = new Variant(new TreeMap<>(Map.of("a.txt", List.of("l1"))));
+		History history = new History(List.of(v), List.of(
+				new Action(Kind.COMMIT, Side.ORIGIN, v), new Action(Kind.COMMIT, Side.FORK, v),
+				new Action(Kind.PULL, Side.FORK, null), new Action(Kind.PUSH, Side.FORK, null)),
+				List.of("A", "B", "C"));
+		Map<Side, List<ModelCommit>> model = model(history);
+		assertEquals(List.of("c0", "c2", "c1"), model.get(Side.FORK).stream().map(ModelCommit::message).toList());
+		assertEquals(List.of("c0", "c1", "c2"), model.get(Side.ORIGIN).stream().map(ModelCommit::message).toList());
+	}
+}
