@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * What the snippet tree shows: one legend toggle per artifact kind, every artifact as its own text,
  * and - with a kind toggled off - only the snippets left, keeping the ancestors of visible ones.
  */
+@at.jku.isse.ecco.gui.ReadsItsOwnTreeOnTheFxThread("trees of its own; in the GUI the view shows a NodeSnapshot, read in the background (AssociationDetailView)")
 public class ArtifactSnippetTreeViewTest {
 
     @BeforeAll

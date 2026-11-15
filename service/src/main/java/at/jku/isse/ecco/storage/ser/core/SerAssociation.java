@@ -62,6 +62,8 @@ public class SerAssociation implements Association, Association.Op {
 
 	@Override
 	public RootNode.Op getRootNode() {
+		if (at.jku.isse.ecco.storage.RepositoryReads.CHECKED)
+			at.jku.isse.ecco.storage.RepositoryReads.read();
 		return artifactTreeRoot;
 	}
 

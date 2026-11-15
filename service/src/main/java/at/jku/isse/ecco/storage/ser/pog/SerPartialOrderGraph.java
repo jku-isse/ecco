@@ -134,6 +134,8 @@ public class SerPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 
 	@Override
 	public Node.Op getHead() {
+		if (at.jku.isse.ecco.storage.RepositoryReads.CHECKED)
+			at.jku.isse.ecco.storage.RepositoryReads.read();
 		return this.head;
 	}
 

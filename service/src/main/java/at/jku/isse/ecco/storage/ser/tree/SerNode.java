@@ -274,6 +274,8 @@ public class SerNode implements Node, Node.Op {
 
 	@Override
 	public List<Op> getChildren() {
+		if (at.jku.isse.ecco.storage.RepositoryReads.CHECKED)
+			at.jku.isse.ecco.storage.RepositoryReads.read();
 		return this.children;
 	}
 

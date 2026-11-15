@@ -249,6 +249,7 @@ public class ArtifactDetailViewTest {
     /** Looking for a default node, the first node below the root that some viewer can show is found. */
     @Test
     @Timeout(60)
+    @at.jku.isse.ecco.gui.ReadsItsOwnTreeOnTheFxThread("calls the static walk directly; the view calls it in the background, holding the lock (show)")
     public void findsTheFirstNodeAViewerCanShow(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFiles(tmp)) {
             Node root = association(service, "a.txt").getRootNode();

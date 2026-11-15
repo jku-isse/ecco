@@ -101,6 +101,8 @@ dependencies {
 
 // the GUI tests render to Monocle's invisible screen; -Pgui.tests.visible shows their windows again
 tasks.withType(Test).configureEach {
+	// the storage reports reads of repository structures, and no view may read them on the FX thread (RepositoryReadsOffTheFxThread)
+	systemProperty 'ecco.checkRepositoryReads', 'true'
 	if (!project.hasProperty('gui.tests.visible')) {
 		systemProperty 'glass.platform', 'Monocle'
 		systemProperty 'monocle.platform', 'Headless'

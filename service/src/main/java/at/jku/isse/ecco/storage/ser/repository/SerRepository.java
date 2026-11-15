@@ -335,11 +335,15 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	@Override
 	public Collection<Feature> getFeatures() {
+		if (at.jku.isse.ecco.storage.RepositoryReads.CHECKED)
+			at.jku.isse.ecco.storage.RepositoryReads.read();
 		return Collections.unmodifiableCollection(this.features.values());
 	}
 
 	@Override
 	public Collection<Association.Op> getAssociations() {
+		if (at.jku.isse.ecco.storage.RepositoryReads.CHECKED)
+			at.jku.isse.ecco.storage.RepositoryReads.read();
 		return Collections.unmodifiableCollection(this.associationsById.values());
 	}
 
@@ -391,6 +395,8 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	@Override
 	public Collection<Commit> getCommits() {
+		if (at.jku.isse.ecco.storage.RepositoryReads.CHECKED)
+			at.jku.isse.ecco.storage.RepositoryReads.read();
 		return commits;
 	}
 
