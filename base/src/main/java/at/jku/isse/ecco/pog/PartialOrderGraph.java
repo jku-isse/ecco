@@ -126,6 +126,12 @@ public interface PartialOrderGraph extends Persistable {
 			return nodes;
 		}
 
+		/**
+		 * Orderings of this graph's nodes: at every branch point each order in which its children are
+		 * visited, depth first. Not every topological ordering - two branches are never interleaved
+		 * (for head -> {b, a -> c} -> tail: b,a,c and a,c,b, not a,b,c), so an alignment over these
+		 * can miss the best one (gap #95; DownsetAlignment aligns a sequence exactly).
+		 */
 		default Node.Op[][] collectNodeSequencings() {
 			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
 			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
@@ -276,6 +282,16 @@ public interface PartialOrderGraph extends Persistable {
 
 		//private
 		default void alignMemoizedBacktracking(PartialOrderGraph.Op other) {
+			// a sequence - what every commit merges (merge(List)) - is aligned exactly over every
+			// ordering this graph allows, interleaved branches too (DownsetAlignment); the
+			// sequencings below never interleave two branches and so could miss the best alignment
+			// (PartialOrderGraphPropertyTest). Two graphs, or a table too large, are aligned as before.
+			Node.Op[] otherChain = DownsetAlignment.chain(other);
+			IntObjectMap<Node.Op> exact = otherChain == null ? null : DownsetAlignment.align(this, otherChain);
+			if (exact != null) {
+				this.applyAlignment(other, exact);
+				return;
+			}
 			long thisEstimate = this.estimateLinearizationCount(LINEARIZATION_CAP);
 			long otherEstimate = thisEstimate >= LINEARIZATION_CAP ? LINEARIZATION_CAP : other.estimateLinearizationCount(LINEARIZATION_CAP);
 			boolean tooComplex = thisEstimate >= LINEARIZATION_CAP || otherEstimate >= LINEARIZATION_CAP || thisEstimate * otherEstimate >= LINEARIZATION_CAP;
@@ -286,6 +302,11 @@ public interface PartialOrderGraph extends Persistable {
 			// extra unmerged branch rather than corrupting anything), but it is a real quality tradeoff,
 			// so it's only used once the exact algorithm is estimated to be intractable, not by default.
 			IntObjectMap<Node.Op> result = tooComplex ? this.directPoaAlignment(other) : this.iterativeLcsAlignment(other);
+			this.applyAlignment(other, result);
+		}
+
+		/** Gives [other]'s nodes the sequence numbers of this graph's nodes [result] matches them to, the others NOT_MATCHED. */
+		private void applyAlignment(PartialOrderGraph.Op other, IntObjectMap<Node.Op> result) {
 			// set sequence number of matched nodes - on the NODE, not the artifact (see
 			// Node.getSequenceNumber()'s javadoc): other's nodes can share an artifact object with
 			// nodes in this or in a completely unrelated graph, and writing through the artifact would
@@ -936,11 +957,11 @@ public interface PartialOrderGraph extends Persistable {
 
 
 		/**
-		 * The alignment algorithm {@link #align(Op)} actually uses, via {@link #alignMemoizedBacktracking(Op)}.
-		 * Factorial in the number of concurrent unresolved branches (see {@link #collectNodeSequencings()}),
-		 * but - unlike {@link #directPoaAlignment(Op)} - correct: it tries every relative ordering of a
-		 * branch's children explicitly, so it always finds the true best alignment regardless of which
-		 * order {@code other} needs them in.
+		 * The alignment {@link #alignMemoizedBacktracking(Op)} uses for two graphs, and for a sequence
+		 * too large for {@link DownsetAlignment}. Factorial in the number of concurrent unresolved
+		 * branches (see {@link #collectNodeSequencings()}); unlike {@link #directPoaAlignment(Op)} it
+		 * tries every order of a branch point's children, but it never interleaves two branches, so
+		 * it can miss the best alignment where {@code other} needs them interleaved (gap #95).
 		 */
 		default MutableIntObjectMap<Node.Op> iterativeLcsAlignment(PartialOrderGraph.Op other) {
 			Node.Op[][] thisPaths = this.collectNodeSequencings();

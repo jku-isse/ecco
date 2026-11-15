@@ -42,7 +42,12 @@ public class LilypondMovedVoicesTest {
 		assertEquals(Set.of("AltoVoice", "BassVoice", "SopranoVoice", "TenorVoice", "global"), names);
 	}
 
-	/** The moved soprano at its new place (36 tokens) and at its old one (37); parce's contexts traced 129. */
+	/**
+	 * The moved soprano at its new place (36 tokens) and at its old one (36); parce's contexts traced
+	 * 129. Until the alignment of a sequence was exact over interleaved branches (DownsetAlignment),
+	 * 37 at the old place: the voice's tokens are the same, the best alignment keeps one more of the
+	 * line breaks and context nodes around it shared with the variants before the move.
+	 */
 	@Test
 	@Timeout(300)
 	public void aMovedVoiceIsTracedAsThatVoiceOnly() throws IOException {
@@ -51,7 +56,7 @@ public class LilypondMovedVoicesTest {
 		EccoService service = commitMove();
 		List<String> traced = LilypondTraceMeasure.tokensTracedTo(service, "order");
 		service.close();
-		assertEquals(73, traced.size(), String.join("\n", traced));
+		assertEquals(72, traced.size(), String.join("\n", traced));
 	}
 
 	@Test

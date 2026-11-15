@@ -58,4 +58,6 @@ dependencies {
 	testImplementation project(':ecco-service')
 
 	testImplementation libs.mockito.core
+	// property-based tests against a reference model of commit and checkout
+	testImplementation libs.jqwik
 }
