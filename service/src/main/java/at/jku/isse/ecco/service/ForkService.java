@@ -59,15 +59,19 @@ final class ForkService {
     }
 
     /**
-     * A fork into a repository without commits yet takes its origin's maximum order, as a fork of
-     * everything does (Repository.Op#copyInto): one leaving revisions out committed the origin's
-     * commits again under the new repository's default instead - a fork of a repository with
-     * maximum order 4 had 2, and checked out other than committing the same commits would there
-     * (SyncPropertyTest). [origin] is the origin, or a copy of its commits, which keeps its maximum order.
+     * A fork into a repository without commits yet takes its origin's maximum order and how it
+     * checks out - its evaluation and main tree building strategies - as a fork of everything does
+     * (Repository.Op#copyInto): one leaving revisions out committed the origin's commits again under
+     * the new repository's defaults instead - a fork of a repository with maximum order 4 had 2, and
+     * checked out other than committing the same commits would there (SyncPropertyTest, gaps #98, #99).
+     * [origin] is the origin, or a copy of its commits or a subset of it, which keep them.
      */
-    private static void takeOverMaxOrder(Repository.Op repository, Repository.Op origin) {
-        if (repository.getCommits().isEmpty() && repository.getAssociations().isEmpty())
+    private static void takeOverRepositorySettings(Repository.Op repository, Repository.Op origin) {
+        if (repository.getCommits().isEmpty() && repository.getAssociations().isEmpty()) {
             repository.setMaxOrder(origin.getMaxOrder());
+            repository.setEvaluationStrategy(origin.getEvaluationStrategy());
+            repository.setMaintreeBuildingStrategy(origin.getMainTreeBuildingStrategy());
+        }
     }
 
     void fork(String hostname, int port, String deselectedFeatureRevisionsString) {
@@ -115,7 +119,7 @@ final class ForkService {
                 if (originCopy != null) {
                     originCopy.copyInto(repository);
                 } else {
-                    takeOverMaxOrder(repository, originCommits);
+                    takeOverRepositorySettings(repository, originCommits);
                     this.commitReplay.replayInto(repository, originCommits, new ArrayList<>(originCommits.getCommits()));
                 }
                 this.state.currentContext().repositoryDao.store(repository);
@@ -169,7 +173,7 @@ final class ForkService {
 
             // merge into this repository
             Repository.Op repository = this.state.currentContext().repositoryDao.load();
-            takeOverMaxOrder(repository, copiedRepository);
+            takeOverRepositorySettings(repository, copiedRepository);
             repository.merge(copiedRepository);
             this.state.currentContext().repositoryDao.store(repository);
 
@@ -259,7 +263,7 @@ final class ForkService {
                 Repository.Op commits = this.commitReplay.copyOfCommits(originRepository, originRepository.commitsMissingIn(List.of(), deselected));
                 this.state.currentContext().transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                 Repository.Op repository = this.state.currentContext().repositoryDao.load();
-                takeOverMaxOrder(repository, commits);
+                takeOverRepositorySettings(repository, commits);
                 this.commitReplay.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                 this.state.currentContext().repositoryDao.store(repository);
                 this.state.currentContext().transactionStrategy.end();
@@ -293,7 +297,7 @@ final class ForkService {
             // merge into this repository, unless it is a copy already
             if (subsetOriginRepository != null) {
                 Repository.Op repository = this.state.currentContext().repositoryDao.load();
-                takeOverMaxOrder(repository, subsetOriginRepository);
+                takeOverRepositorySettings(repository, subsetOriginRepository);
                 repository.merge(subsetOriginRepository);
                 this.state.currentContext().repositoryDao.store(repository);
             }
@@ -333,7 +337,7 @@ final class ForkService {
                 // the origin's commits this repository does not have, without the revisions left out, replayed (Repository.Op#replay)
                 Repository.Op commits = this.commitReplay.copyOfCommits(originRepository, originRepository.commitsMissingIn(RemoteSyncService.commitIds(repository), deselected));
                 this.state.currentContext().transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                takeOverMaxOrder(repository, commits);
+                takeOverRepositorySettings(repository, commits);
                 this.commitReplay.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                 this.state.currentContext().repositoryDao.store(repository);
                 this.state.currentContext().transactionStrategy.end();
@@ -357,7 +361,7 @@ final class ForkService {
 
         try {
             Repository.Op repository = (Repository.Op) this.state.context().repository();
-            takeOverMaxOrder(repository, subsetOriginRepository);
+            takeOverRepositorySettings(repository, subsetOriginRepository);
             repository.merge(subsetOriginRepository);
 
             this.state.currentContext().transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);

@@ -54,6 +54,9 @@ final class RepositoryCopy {
 		repository.checkArtifactFormats();
 		EntityFactory entityFactory = target.getEntityFactory();
 		target.setMaxOrder(repository.getMaxOrder());
+		// how it checks out (FR-K1b) - a fork took the new repository's defaults (gap #99); both are stateless
+		target.setEvaluationStrategy(repository.getEvaluationStrategy());
+		target.setMaintreeBuildingStrategy(repository.getMainTreeBuildingStrategy());
 
 		for (Feature feature : repository.getFeatures()) {
 			Feature newFeature = target.addFeature(feature.getId(), feature.getName());
@@ -302,6 +305,8 @@ final class RepositoryCopy {
 		// create empty repository using the given entity factory
 		Repository.Op newRepository = entityFactory.createRepository();
 		newRepository.setMaxOrder(maxOrder);
+		newRepository.setEvaluationStrategy(repository.getEvaluationStrategy());
+		newRepository.setMaintreeBuildingStrategy(repository.getMainTreeBuildingStrategy());
 
 		// add features (that have at least one revision) and feature revisions to subset repository, excluding deselected
 		for (Feature feature : repository.getFeatures()) {
