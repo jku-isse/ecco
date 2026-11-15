@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+  * **No view reads the repository on the FX thread any more** (gap #100, NFR-C3): Checkout Selected composes the selected associations' trees in its background task, an import from Git reads what it starts from in the background, and the checkout details read their ORDER rows and record an order there - each holding the service's lock, so a running commit neither freezes the window nor changes what they read. Every GUI test checks it, with no exceptions left.
+
   * **A fork checks out as its origin does** (gap #99): it took the new repository's evaluation and main tree building strategies (FR-K1b) - the `ecco.properties` defaults - not its origin's, also a fork of everything; now every fork, local or remote, copying all or leaving revisions out, takes them with the maximum order, and every copy of a repository carries them.
 
   * **Generated variants round-trip through the text, Markdown and C adapters**: sets of 2-4 variants of one file, each a selection from a shared pool - lines with repeats, tabs, trailing spaces and non-ASCII characters; Markdown's top-level blocks; C's includes, defines, `#if` blocks, comments and functions (bodies thinned per variant, one sometimes starting on the line another ends on) - each with its own line ends (mixed line by line too, for text), final newline and charset, committed under a feature each and checked out: every variant comes back byte for byte, 600, 600 and 400 sets (`TextVariantsRoundTripTest`, `MarkdownRoundTripPropertyTest`, `CVariantsRoundTripTest`). A single file's round trip never merges variants in the repository, where adapters lost content before (gaps #29, #60); each test also checks its adapter, not the file adapter, read the file.

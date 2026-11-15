@@ -9,19 +9,40 @@ import javafx.concurrent.Task;
 
 public class CheckoutTask extends Task<Void> {
     private final EccoService service;
-    private final LazyCompositionRootNode rootNode;
+    private final java.util.function.Supplier<LazyCompositionRootNode> composition;
     private final java.nio.file.Path directory;
 
     /** Writes [rootNode]'s artifacts into [directory]; the service's base directory is left as it is. */
     protected CheckoutTask(EccoService service, LazyCompositionRootNode rootNode, java.nio.file.Path directory) {
+        this(service, () -> rootNode, directory);
+    }
+
+    private CheckoutTask(EccoService service, java.util.function.Supplier<LazyCompositionRootNode> composition, java.nio.file.Path directory) {
         this.service = service;
-        this.rootNode = rootNode;
+        this.composition = composition;
         this.directory = directory;
+    }
+
+    /**
+     * Writes the artifacts of [associations], composed, into [directory]. Their trees are read when the
+     * task runs, holding the service's lock - not on the FX thread, where Checkout Selected composed
+     * them while a commit could change them (NFR-C3, gap #100).
+     */
+    static CheckoutTask ofAssociations(EccoService service, java.util.Collection<? extends at.jku.isse.ecco.core.Association> associations, java.nio.file.Path directory) {
+        return new CheckoutTask(service, () -> {
+            LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
+            for (at.jku.isse.ecco.core.Association association : associations)
+                rootNode.addOrigNode(association.getRootNode());
+            return rootNode;
+        }, directory);
     }
 
     @Override
     public Void call() throws EccoException {
-        service.checkout(rootNode, directory);
+        // composed and written holding the lock, so that no commit changes the trees in between
+        synchronized (this.service) {
+            this.service.checkout(this.composition.get(), this.directory);
+        }
         return null;
     }
 

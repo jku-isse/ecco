@@ -21,27 +21,12 @@ import static org.junit.jupiter.api.Assertions.fail;
  * values or copies. The storage reports every read of them ({@link RepositoryReads}, on with
  * -Decco.checkRepositoryReads=true, which the GUI's tests set); a read on the FX thread is a view's
  * where the innermost GUI frame calling it is the GUI's own code - a test reading the repository for
- * its own assertions is not, nor is a test {@link ReadsItsOwnTreeOnTheFxThread} - and the views
- * known to read on the FX thread ({@link #KNOWN}, gap #100). Registered for every GUI test
- * (META-INF/services, autodetection).
+ * its own assertions is not, nor is a test {@link TestReadsOnTheFxThread}. Registered for every
+ * GUI test (META-INF/services, autodetection).
  */
 public class RepositoryReadsOffTheFxThread implements BeforeAllCallback, AfterEachCallback {
 
 	private static final Set<String> VIOLATIONS = ConcurrentHashMap.newKeySet();
-
-	/**
-	 * Views known to read repository structures on the FX thread, not yet moved off it (gap #100), by
-	 * their innermost frame - each one more fails a test.
-	 */
-	private static final List<String> KNOWN = List.of(
-			// a Git import's GitImport reads the repository when it is made
-			"view.operation.ImportGitView.startImport",
-			// Checkout Selected composes the selected associations' trees
-			"view.artifacts.ArtifactsView$6.handle",
-			// a checkout's tree: its ORDER warnings, and recording an order
-			"view.detail.CheckoutDetailView",
-			// the artifact tree's rows, asked by JavaFX for their children
-			"view.artifacts.ArtifactTreeTableView$NodeWrapper.getChildren");
 
 	@Override
 	public void beforeAll(ExtensionContext context) {
@@ -54,12 +39,10 @@ public class RepositoryReadsOffTheFxThread implements BeforeAllCallback, AfterEa
 			return;
 		List<String> found = new ArrayList<>(VIOLATIONS);
 		VIOLATIONS.clear();
-		if (context.getRequiredTestMethod().isAnnotationPresent(ReadsItsOwnTreeOnTheFxThread.class)
-				|| context.getRequiredTestClass().isAnnotationPresent(ReadsItsOwnTreeOnTheFxThread.class))
+		if (context.getRequiredTestMethod().isAnnotationPresent(TestReadsOnTheFxThread.class)
+				|| context.getRequiredTestClass().isAnnotationPresent(TestReadsOnTheFxThread.class))
 			return;
-		found.removeIf(violation -> KNOWN.stream().anyMatch(violation::startsWith));
-		if (!found.isEmpty())
-			fail("Repository structures read on the FX thread (NFR-C3) by " + found);
+		fail("Repository structures read on the FX thread (NFR-C3) by " + found);
 	}
 
 	private static void check() {

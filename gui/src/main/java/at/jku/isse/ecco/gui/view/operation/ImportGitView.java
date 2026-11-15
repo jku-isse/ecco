@@ -484,15 +484,25 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 *                   Nth commit first - after importing the ones before it unreviewed.
 	 */
 	private void startImport(List<GitCommitInfo> commitsOldestFirst, boolean useLlm, boolean reviewEach) {
-		this.run = new GitImport(this.service, this.gitHistoryReader, this.repoDir, this.tags, this.taggedOnly,
+		GitImport starting = new GitImport(this.service, this.gitHistoryReader, this.repoDir, this.tags, this.taggedOnly,
 				commitsOldestFirst, useLlm, reviewEach, this.reviewUncertain, this::log);
-		this.run.start();
-		this.runEnded = false;
+		this.run = starting;
+		// what the run starts from - the repository's features and commits - read in the background,
+		// holding the lock: it was read on the FX thread, where a running commit changed it (NFR-C3, gap #100)
+		at.jku.isse.ecco.gui.common.RepositoryAccess.read(this.service, "Git import", svc -> {
+			starting.start();
+			return starting;
+		}, started -> {
+			// a run started again meanwhile ("Back", then start) supersedes this one
+			if (this.run != started)
+				return;
+			this.runEnded = false;
 
-		this.logArea.clear();
-		this.service.addListener(this);
+			this.logArea.clear();
+			this.service.addListener(this);
 
-		this.processNextCommit(0);
+			this.processNextCommit(0);
+		}, failure -> new at.jku.isse.ecco.gui.common.ExceptionAlert(failure).show());
 	}
 
 	/** Appends [text] to the log - on the FX thread, from any thread. */

@@ -375,13 +375,8 @@ public class ArtifactsView extends BorderPane implements EccoListener, at.jku.is
                         selectedAssociations.add(associationInfo.getAssociation());
                 }
 
-                // use composition here to merge selected associations
+                // the selected associations' trees composed - in the background, holding the lock (CheckoutTask)
                 if (!selectedAssociations.isEmpty()) {
-                    final LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
-                    for (Association association : selectedAssociations) {
-                        rootNode.addOrigNode(association.getRootNode());
-                    }
-
                     // into a folder the user chooses: it always went into the repository's own
                     // folder, whose files the "delete the contents?" question then offered to delete
                     Path target = chooseCheckoutDirectory();
@@ -410,7 +405,7 @@ public class ArtifactsView extends BorderPane implements EccoListener, at.jku.is
                         return;
                     }
 
-                    Task<Void> checkoutTask = new CheckoutTask(service, rootNode, target);
+                    Task<Void> checkoutTask = CheckoutTask.ofAssociations(service, selectedAssociations, target);
                     new Thread(checkoutTask).start();
                 }
 

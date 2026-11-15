@@ -38,6 +38,7 @@ public class ArtifactTreeTableViewTest {
     /** Every node of the tree gets an item, all expanded; null empties the table. */
     @Test
     @Timeout(60)
+    @at.jku.isse.ecco.gui.TestReadsOnTheFxThread("reads the rows' children for its assertions; the view reads a level in the background when it is opened")
     public void listsEveryNodeOfTheTreeExpanded(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFeatures(tmp)) {
             Association a = association(service, "a.txt");

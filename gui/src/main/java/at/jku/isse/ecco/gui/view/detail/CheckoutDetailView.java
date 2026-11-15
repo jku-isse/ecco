@@ -205,21 +205,10 @@ public class CheckoutDetailView extends BorderPane {
 			// present in one composition - PartialOrderGraph#hasUnresolvedOrder narrows that down to
 			// whether THIS node's actually-present children still have a real decision left, so a
 			// warning that stems entirely from unrelated history doesn't show up here as if it did.
-			for (ArtifactDiagnostics.OrderWarning warning : ArtifactDiagnostics.describeOrderWarnings(checkout.getOrderWarnings())) {
-				Node orderWarningNode = warning.node();
-				String suggestedConfigurationString = checkout.getConfiguration() != null
-						? ModuleRevisions.suggestedConfigurationString(null, checkout.getConfiguration())
-						: null;
-				// where the order is undecided, a range per line - it listed every child, for a large
-				// file thousands of lines in one cell
-				String undecided = String.join(System.lineSeparator(), warning.undecided());
-				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("ORDER",
-						orderWarningNode.getArtifact() + " (undecided):" + System.lineSeparator() + undecided,
-						ArtifactDiagnostics.describePath(orderWarningNode),
-						warning.suggestedFix(),
-						suggestedConfigurationString,
-						orderWarningNode));
-			}
+			//
+			// They walk the checkout's tree and its order graphs - the repository's - so they are read in
+			// the background, holding the lock, and added where they belong when read (NFR-C3, gap #100).
+			this.readOrderWarnings(checkout, this.warningsData.size());
 
 			// files stored whole with several versions in this combination, not written (see WholeFileConflicts)
 			for (String conflict : checkout.getConflicts()) {
@@ -247,6 +236,54 @@ public class CheckoutDetailView extends BorderPane {
 
 			this.checkoutConfiguration.setText("");
 		}
+	}
+
+	/** a request for ORDER rows; a newer one supersedes it */
+	private long orderRequests;
+	/** whether ORDER rows are being read - for tests */
+	private volatile boolean readingOrder;
+
+	/** Whether the ORDER rows of the checkout shown are still being read - for tests. */
+	public boolean isReadingOrder() {
+		return this.readingOrder;
+	}
+
+	/** The ORDER rows of [checkout], read in the background holding the lock, inserted at [index] of the table. */
+	private void readOrderWarnings(Checkout checkout, int index) {
+		long request = ++this.orderRequests;
+		this.readingOrder = true;
+		Runnable done = () -> {
+			if (request == this.orderRequests)
+				this.readingOrder = false;
+		};
+		at.jku.isse.ecco.gui.common.RepositoryAccess.read(this.service, "Checkout order warnings", svc -> {
+			List<DiagnosticInfo> rows = new ArrayList<>();
+			String suggestedConfigurationString = checkout.getConfiguration() != null
+					? ModuleRevisions.suggestedConfigurationString(null, checkout.getConfiguration())
+					: null;
+			for (ArtifactDiagnostics.OrderWarning warning : ArtifactDiagnostics.describeOrderWarnings(checkout.getOrderWarnings())) {
+				Node orderWarningNode = warning.node();
+				// where the order is undecided, a range per line - it listed every child, for a large
+				// file thousands of lines in one cell
+				String undecided = String.join(System.lineSeparator(), warning.undecided());
+				rows.add(new DiagnosticInfo("ORDER",
+						orderWarningNode.getArtifact() + " (undecided):" + System.lineSeparator() + undecided,
+						ArtifactDiagnostics.describePath(orderWarningNode),
+						warning.suggestedFix(),
+						suggestedConfigurationString,
+						orderWarningNode));
+			}
+			return rows;
+		}, rows -> {
+			if (request != this.orderRequests)
+				return;
+			this.warningsData.addAll(Math.min(index, this.warningsData.size()), rows);
+			done.run();
+		}, failure -> {
+			done.run();
+			if (request == this.orderRequests)
+				new ExceptionAlert(failure).show();
+		}, done);
 	}
 
 	/**
@@ -455,27 +492,35 @@ public class CheckoutDetailView extends BorderPane {
 	 * determined (see the hasUnresolvedOrder filter in showCheckout). Package-visible for testing.
 	 */
 	void recordOrder(Node.Op node, List<Node.Op> givenOrder) {
-		// a text file's final newline and format stay last, also when the order leaves them out (TextFileFormat)
-		List<Node.Op> order = new ArrayList<>(givenOrder);
-		for (Node.Op child : node.getChildren())
-			if (TextFileFormat.isMarker(child) && !order.contains(child))
-				order.add(child);
-		Task<Void> recordTask = new Task<>() {
+		// everything that reads or changes the tree - its children, the order recorded, the checked-out
+		// node's children, the file written from them - in the background, holding the lock: it ran
+		// on the FX thread, where a running commit changed it (NFR-C3, gap #100)
+		Task<RuntimeException> recordTask = new Task<>() {
 			@Override
-			public Void call() {
-				CheckoutDetailView.this.service.recordOrder(node, order);
-				return null;
+			public RuntimeException call() {
+				synchronized (CheckoutDetailView.this.service) {
+					// a text file's final newline and format stay last, also when the order leaves them out (TextFileFormat)
+					List<Node.Op> order = new ArrayList<>(givenOrder);
+					for (Node.Op child : node.getChildren())
+						if (TextFileFormat.isMarker(child) && !order.contains(child))
+							order.add(child);
+					CheckoutDetailView.this.service.recordOrder(node, order);
+					node.setChildren(order);
+					// the order is recorded; a file that cannot be written is reported, not the order undone
+					try {
+						CheckoutDetailView.this.service.writeCheckoutFile(node);
+						return null;
+					} catch (RuntimeException e) {
+						return e;
+					}
+				}
 			}
 
 			@Override
 			public void succeeded() {
 				super.succeeded();
-				node.setChildren(order);
-				try {
-					CheckoutDetailView.this.service.writeCheckoutFile(node);
-				} catch (RuntimeException e) {
-					new ExceptionAlert(e).showAndWait();
-				}
+				if (getValue() != null)
+					new ExceptionAlert(getValue()).showAndWait();
 				CheckoutDetailView.this.showCheckout(CheckoutDetailView.this.currentCheckout, CheckoutDetailView.this.currentBaseDir);
 			}
 

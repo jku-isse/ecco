@@ -56,6 +56,10 @@ public class CheckoutDetailViewRecordOrderTest {
                 v.showCheckout(checkout, out);
                 return v;
             });
+            // the ORDER rows are read in the background
+            long reading = System.currentTimeMillis() + 30_000;
+            while (onFx(view::isReadingOrder) && System.currentTimeMillis() < reading)
+                Thread.sleep(20);
             Node.Op file = onFx(() -> (Node.Op) view.warningsData.stream().filter(i -> "ORDER".equals(i.getType())).findFirst().orElseThrow().getAmbiguousNode());
             List<Node.Op> order = List.of(child(file, "a"), child(file, "b"), child(file, "c"));
 
@@ -64,7 +68,8 @@ public class CheckoutDetailViewRecordOrderTest {
                 return null;
             });
             long deadline = System.currentTimeMillis() + 30_000;
-            while (onFx(() -> view.warningsData.stream().anyMatch(i -> "ORDER".equals(i.getType()))) && System.currentTimeMillis() < deadline)
+            // until the order is recorded and the rows read again: no ORDER row while they are being read says nothing
+            while (onFx(() -> view.isReadingOrder() || view.warningsData.stream().anyMatch(i -> "ORDER".equals(i.getType()))) && System.currentTimeMillis() < deadline)
                 Thread.sleep(50);
 
             assertFalse(onFx(() -> view.warningsData.stream().anyMatch(i -> "ORDER".equals(i.getType()))), "the resolved row is gone");
