@@ -38,11 +38,12 @@ class ReferenceModelPropertyTest {
 	// ---------------------------------------------------------------------------------------------
 	// The model
 
-	/** One commit: the features of its configuration (by index) and its files' lines. */
-	record ModelCommit(SortedSet<Integer> features, SortedMap<String, List<String>> files) {
+	/** One commit: the features of its configuration (by index) with their revisions, and its files' lines. */
+	record ModelCommit(SortedMap<Integer, Integer> features, SortedMap<String, List<String>> files) {
 		@Override
 		public String toString() {
-			return features.stream().map(i -> "f" + i).collect(Collectors.joining(",", "{", "}")) + " -> " + files;
+			return features.entrySet().stream().map(e -> "f" + e.getKey() + (e.getValue() == 1 ? "" : "." + e.getValue()))
+					.collect(Collectors.joining(",", "{", "}")) + " -> " + files;
 		}
 	}
 
@@ -65,19 +66,33 @@ class ReferenceModelPropertyTest {
 
 	@Provide
 	Arbitrary<History> orderedHistories() {
-		return histories(false);
+		return histories(false, 1);
 	}
 
 	@Provide
 	Arbitrary<History> permutedHistories() {
-		return histories(true);
+		return histories(true, 1);
 	}
 
-	private Arbitrary<History> histories(boolean permuteLines) {
+	/** as orderedHistories, each feature committed in revision 1 or 2 */
+	@Provide
+	Arbitrary<History> revisedHistories() {
+		return histories(false, 2);
+	}
+
+	/** as permutedHistories, each feature committed in revision 1 or 2 */
+	@Provide
+	Arbitrary<History> permutedRevisedHistories() {
+		return histories(true, 2);
+	}
+
+	/** histories of 1-4 features, each feature in a commit in one of [revisions] revisions */
+	private Arbitrary<History> histories(boolean permuteLines, int revisions) {
 		return Arbitraries.integers().between(1, 4).flatMap(numFeatures -> {
-			Arbitrary<SortedSet<Integer>> configurations = Arbitraries.integers().between(0, numFeatures - 1)
-					.set().ofMinSize(1).ofMaxSize(numFeatures)
-					.map(TreeSet::new);
+			Arbitrary<SortedMap<Integer, Integer>> configurations = Arbitraries.maps(
+							Arbitraries.integers().between(0, numFeatures - 1), Arbitraries.integers().between(1, revisions))
+					.ofMinSize(1).ofMaxSize(numFeatures)
+					.map(TreeMap::new);
 			Arbitrary<ModelCommit> commits = Combinators.combine(configurations, variants(permuteLines)).as(ModelCommit::new);
 			return commits.list().ofMinSize(1).ofMaxSize(6)
 					.uniqueElements(ModelCommit::features)
@@ -104,11 +119,11 @@ class ReferenceModelPropertyTest {
 			repository.setMaxOrder(maxOrder);
 		}
 
-		/** The configuration of [features]: feature fi with revision 1, as the configuration parser makes it. */
-		Configuration configuration(Set<Integer> features) {
-			FeatureRevision[] revisions = features.stream().map(i -> {
-				Feature feature = ef.createFeature("f" + i, "f" + i);
-				return feature.addRevision("1");
+		/** The configuration of [features]: feature fi with its revision, as the configuration parser makes it. */
+		Configuration configuration(Map<Integer, Integer> features) {
+			FeatureRevision[] revisions = features.entrySet().stream().map(e -> {
+				Feature feature = ef.createFeature("f" + e.getKey(), "f" + e.getKey());
+				return feature.addRevision(String.valueOf(e.getValue()));
 			}).toArray(FeatureRevision[]::new);
 			return ef.createConfiguration(revisions);
 		}
@@ -127,7 +142,7 @@ class ReferenceModelPropertyTest {
 		}
 
 		/** The checkout of [features] as the files a writer would write: each file node with its children in order. */
-		Checkout checkout(Set<Integer> features) {
+		Checkout checkout(Map<Integer, Integer> features) {
 			return repository.compose(configuration(features));
 		}
 	}
@@ -252,6 +267,27 @@ class ReferenceModelPropertyTest {
 			assertEquals(committed, lines, "the associations hold other lines than were committed");
 			assertNoEmptyAssociation(driver.repository);
 		}
+	}
+
+	/**
+	 * As {@link #checkoutReproducesEveryCommittedVariant}, each feature committed in one of two
+	 * revisions: configurations that differ in a revision only are told apart, and a committed one
+	 * warns no SURPLUS also where its artifacts were committed with the feature's other revision too
+	 * (FR-K5i).
+	 */
+	@Property(tries = 500)
+	void checkoutReproducesEveryCommittedVariantAcrossRevisions(@ForAll("revisedHistories") History history) {
+		long featureSets = history.commits().stream().map(c -> c.features().keySet()).distinct().count();
+		net.jqwik.api.statistics.Statistics.label("commits differing from another in a revision only")
+				.collect(featureSets < history.commits().size() ? "some" : "none");
+		checkoutReproducesEveryCommittedVariant(history);
+	}
+
+	/** As {@link #associationsPartitionTheCommittedArtifacts}, each feature committed in one of two revisions. */
+	@Property(tries = 500)
+	void associationsPartitionTheArtifactsAcrossRevisions(@ForAll("permutedRevisedHistories") History history,
+	                                                      @ForAll @IntRange(min = 1, max = 4) int maxOrder) {
+		associationsPartitionTheCommittedArtifacts(history, maxOrder);
 	}
 
 	private static void assertNoEmptyAssociation(Repository.Op repository) {
