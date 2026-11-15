@@ -19,8 +19,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Persistence and sync against a model (NFR-R3, FR-D2c, FR-D3b/c): an origin with one to three
  * commits, a fork of it, then random commits, pulls and pushes on either side. The model is which
  * commits each repository holds, in order: a fork holds the origin's, a pull or push appends the
- * commits the receiving side lacks in the sending side's order. Every step opens the repository from
- * disk and closes it, so each one is also a reopen. A failing history is shrunk to a smallest one.
+ * commits the receiving side lacks in the sending side's order. A fork, pull or push may leave a
+ * feature out - every revision of it the sending side has - and then leaves out every commit with it
+ * (FR-D4a, FR-D4c), which a later one without the exclusion still brings. Every step opens the
+ * repository from disk and closes it, so each one is also a reopen. A failing history is shrunk to a
+ * smallest one.
  * <p>
  * Two properties: with every configuration committed once and the maximum order at the number of
  * features (4), each repository holds exactly the model's commits and checks every one of them out
@@ -58,23 +61,38 @@ class SyncPropertyTest {
 		}
 	}
 
-	/** a commit of [side], or [side] pulling from or pushing to the other side */
-	record Action(Kind kind, Side side, Variant variant) {
+	/**
+	 * A commit of [side], or [side] pulling from or pushing to the other side - leaving out, where
+	 * [excluded] names a feature, every revision of it the sending side has (FR-D4a).
+	 */
+	record Action(Kind kind, Side side, Variant variant, String excluded) {
+		Action(Kind kind, Side side, Variant variant) {
+			this(kind, side, variant, null);
+		}
+
 		@Override
 		public String toString() {
-			return kind == Kind.COMMIT ? side + " commits " + variant : side + " " + kind.name().toLowerCase();
+			return kind == Kind.COMMIT ? side + " commits " + variant
+					: side + " " + kind.name().toLowerCase() + (excluded == null ? "" : " without " + excluded);
 		}
 	}
 
-	/** the commits before the fork, the actions after it, and the configurations the commits take in turn */
-	record History(List<Variant> base, List<Action> actions, List<String> configurations) {
+	/**
+	 * The commits before the fork, the actions after it, the configurations the commits take in turn,
+	 * and the feature the fork leaves out, if any.
+	 */
+	record History(List<Variant> base, List<Action> actions, List<String> configurations, String forkExcluded) {
+		History(List<Variant> base, List<Action> actions, List<String> configurations) {
+			this(base, actions, configurations, null);
+		}
+
 		@Override
 		public String toString() {
 			StringBuilder text = new StringBuilder();
 			int c = 0;
 			for (Variant variant : base)
 				text.append("\n  ORIGIN commits [").append(configurations.get(c++)).append("] ").append(variant);
-			text.append("\n  FORK forks");
+			text.append("\n  FORK forks").append(forkExcluded == null ? "" : " without " + forkExcluded);
 			for (Action action : actions) {
 				if (action.kind() == Kind.COMMIT)
 					text.append("\n  ").append(action.side()).append(" commits [").append(configurations.get(c++)).append("] ").append(action.variant());
@@ -86,10 +104,17 @@ class SyncPropertyTest {
 	}
 
 	record ModelCommit(String message, String configuration, Variant variant) {
+		boolean has(String feature) {
+			return List.of(configuration.split(", ")).contains(feature);
+		}
 	}
+
+	/** commits a sync left out for an exclusion, counted by {@link #append} - for {@link #collectSynced} */
+	private static final ThreadLocal<int[]> LEFT_OUT = ThreadLocal.withInitial(() -> new int[1]);
 
 	/** what each side holds after the history, in order */
 	static Map<Side, List<ModelCommit>> model(History history) {
+		LEFT_OUT.get()[0] = 0;
 		Map<Side, List<ModelCommit>> held = new EnumMap<>(Side.class);
 		held.put(Side.ORIGIN, new ArrayList<>());
 		int c = 0;
@@ -97,18 +122,24 @@ class SyncPropertyTest {
 			held.get(Side.ORIGIN).add(new ModelCommit("c" + c, history.configurations().get(c), variant));
 			c++;
 		}
-		held.put(Side.FORK, new ArrayList<>(held.get(Side.ORIGIN)));
+		held.put(Side.FORK, new ArrayList<>());
+		append(held.get(Side.FORK), held.get(Side.ORIGIN), history.forkExcluded());
 		for (Action action : history.actions()) {
 			switch (action.kind()) {
 				case COMMIT -> {
 					held.get(action.side()).add(new ModelCommit("c" + c, history.configurations().get(c), action.variant()));
 					c++;
 				}
-				case PULL -> append(held.get(action.side()), held.get(action.side().other()));
-				case PUSH -> append(held.get(action.side().other()), held.get(action.side()));
+				case PULL -> append(held.get(action.side()), held.get(action.side().other()), action.excluded());
+				case PUSH -> append(held.get(action.side().other()), held.get(action.side()), action.excluded());
 			}
 		}
 		return held;
+	}
+
+	/** Whether a sync from [sender] leaves [feature] out: only a feature the sender has can be named (else it is refused). */
+	static boolean excludes(List<ModelCommit> sender, String feature) {
+		return feature != null && sender.stream().anyMatch(commit -> commit.has(feature));
 	}
 
 	/** How many commits a history's pulls and pushes move - so that a run shows it synced something. */
@@ -117,14 +148,24 @@ class SyncPropertyTest {
 		int held = model.get(Side.ORIGIN).size() + model.get(Side.FORK).size();
 		int moved = held - made - history.base().size(); // the base is held twice by the fork alone
 		Statistics.label("commits moved by pull and push").collect(moved == 0 ? "0" : moved <= 2 ? "1-2" : "3+");
+		int leftOut = LEFT_OUT.get()[0];
+		Statistics.label("commits left out by an exclusion").collect(leftOut == 0 ? "0" : leftOut <= 2 ? "1-2" : "3+");
 	}
 
-	/** FR-D3b/c: the commits of [from] that [into] lacks, after its own, in their order */
-	private static void append(List<ModelCommit> into, List<ModelCommit> from) {
+	/**
+	 * FR-D3b/c: the commits of [from] that [into] lacks, after its own, in their order - FR-D4a: but
+	 * those with a revision of [excluded]
+	 */
+	private static void append(List<ModelCommit> into, List<ModelCommit> from, String excluded) {
+		boolean excluding = excludes(from, excluded);
 		Set<String> had = into.stream().map(ModelCommit::message).collect(Collectors.toSet());
 		for (ModelCommit commit : List.copyOf(from))
-			if (!had.contains(commit.message()))
-				into.add(commit);
+			if (!had.contains(commit.message())) {
+				if (excluding && commit.has(excluded))
+					LEFT_OUT.get()[0]++;
+				else
+					into.add(commit);
+			}
 	}
 
 	// ---------------------------------------------------------------------------------------------
@@ -142,8 +183,14 @@ class SyncPropertyTest {
 		Arbitrary<Side> sides = Arbitraries.of(Side.class);
 		return Arbitraries.frequencyOf(
 				Tuple.of(3, Combinators.combine(sides, variants(permuted)).as((side, variant) -> new Action(Kind.COMMIT, side, variant))),
-				Tuple.of(1, sides.map(side -> new Action(Kind.PULL, side, null))),
-				Tuple.of(1, sides.map(side -> new Action(Kind.PUSH, side, null))));
+				Tuple.of(1, Combinators.combine(sides, exclusions()).as((side, excluded) -> new Action(Kind.PULL, side, null, excluded))),
+				Tuple.of(1, Combinators.combine(sides, exclusions()).as((side, excluded) -> new Action(Kind.PUSH, side, null, excluded))));
+	}
+
+	/** no feature left out in half the syncs, else one of A-D */
+	private Arbitrary<String> exclusions() {
+		return Arbitraries.frequencyOf(Tuple.of(1, Arbitraries.just("")), Tuple.of(1, Arbitraries.of(FEATURES)))
+				.map(feature -> feature.isEmpty() ? null : feature);
 	}
 
 	/** every non-empty set of features, as a configuration */
@@ -174,11 +221,21 @@ class SyncPropertyTest {
 		});
 	}
 
-	/** each configuration committed once: at most 3 + 8 commits of the 15 configurations of A-D */
+	/** each configuration committed once: at most 3 + 8 commits of the 15 configurations of A-D; the fork may leave a feature out */
 	@Provide
 	Arbitrary<History> onceEach() {
 		return Combinators.combine(variants(false).list().ofMinSize(1).ofMaxSize(3), afterFork(false),
-				Arbitraries.shuffle(allConfigurations(FEATURES))).as(History::new);
+				Arbitraries.shuffle(allConfigurations(FEATURES)), exclusions()).as(History::new);
+	}
+
+	/**
+	 * As {@link #onceEach}, the fork leaving nothing out: a fork leaving revisions out of an origin
+	 * with a merge commit merges (FR-D3e), and the merge commits that leaves in the fork the origin
+	 * lacks make later pushes merge - gap #96's rest
+	 */
+	@Provide
+	Arbitrary<History> onceEachForkingAll() {
+		return onceEach().map(h -> new History(h.base(), h.actions(), h.configurations(), null));
 	}
 
 	/**
@@ -212,7 +269,7 @@ class SyncPropertyTest {
 	@Provide
 	Arbitrary<History> withRepeats() {
 		return Combinators.combine(variants(true).list().ofMinSize(1).ofMaxSize(3), afterFork(true),
-				Arbitraries.of(allConfigurations(FEATURES.subList(0, 3))).list().ofSize(11)).as(History::new);
+				Arbitraries.of(allConfigurations(FEATURES.subList(0, 3))).list().ofSize(11), exclusions()).as(History::new);
 	}
 
 	// ---------------------------------------------------------------------------------------------
@@ -251,7 +308,7 @@ class SyncPropertyTest {
 				commit(origin, new ModelCommit("c" + c, history.configurations().get(c), variant));
 				c++;
 			}
-			repositories.put(Side.FORK, SyncHistory.fork(origin, tmp.resolve("fork")));
+			repositories.put(Side.FORK, fork(origin, tmp.resolve("fork"), history.forkExcluded()));
 			if (mergeCommit == MergeCommit.AFTER_FORK)
 				addMergeCommit(origin);
 			for (Action action : history.actions()) {
@@ -262,8 +319,8 @@ class SyncPropertyTest {
 						commit(side, new ModelCommit("c" + c, history.configurations().get(c), action.variant()));
 						c++;
 					}
-					case PULL -> SyncHistory.pull(side, other);
-					case PUSH -> SyncHistory.push(side, other);
+					case PULL -> pull(side, other, action.excluded());
+					case PUSH -> push(side, other, action.excluded());
 				}
 			}
 		}
@@ -271,6 +328,53 @@ class SyncPropertyTest {
 		@Override
 		public void close() throws IOException {
 			FileUtils.deleteDirectory(tmp.toFile());
+		}
+	}
+
+	/**
+	 * Every revision the [sender] has of [feature], as a fork, pull or push names the revisions it
+	 * leaves out - none if it has no such feature, or none is named
+	 */
+	static String revisionsOf(Path sender, String feature) {
+		if (feature == null)
+			return "";
+		try (EccoService service = SyncHistory.open(sender)) {
+			return service.getRepository().getFeatures().stream()
+					.filter(f -> f.getName().equals(feature))
+					.flatMap(f -> f.getRevisions().stream())
+					.map(revision -> feature + "." + revision.getId())
+					.collect(Collectors.joining(", "));
+		}
+	}
+
+	static Path fork(Path origin, Path dir, String excluded) throws IOException {
+		Files.createDirectories(dir);
+		String revisions = revisionsOf(origin, excluded);
+		try (EccoService service = new EccoService()) {
+			service.setRepositoryDir(dir.resolve(".ecco"));
+			if (revisions.isEmpty())
+				service.fork(origin.resolve(".ecco"));
+			else
+				service.fork(origin.resolve(".ecco"), revisions);
+		}
+		return dir;
+	}
+
+	static void pull(Path repository, Path from, String excluded) {
+		String revisions = revisionsOf(from, excluded);
+		try (EccoService service = SyncHistory.open(repository)) {
+			if (service.getRemotes().stream().noneMatch(remote -> remote.getName().equals("from")))
+				service.addRemote("from", from.toString(), at.jku.isse.ecco.core.Remote.Type.LOCAL);
+			service.pull("from", revisions);
+		}
+	}
+
+	static void push(Path repository, Path to, String excluded) {
+		String revisions = revisionsOf(repository, excluded);
+		try (EccoService service = SyncHistory.open(repository)) {
+			if (service.getRemotes().stream().noneMatch(remote -> remote.getName().equals("to")))
+				service.addRemote("to", to.toString(), at.jku.isse.ecco.core.Remote.Type.LOCAL);
+			service.push("to", revisions);
 		}
 	}
 
@@ -426,7 +530,7 @@ class SyncPropertyTest {
 	 * first commit out without l1.
 	 */
 	@Property(tries = 300)
-	void sharedMergeCommitsLeaveSyncToReplay(@ForAll("onceEach") History history) throws Exception {
+	void sharedMergeCommitsLeaveSyncToReplay(@ForAll("onceEachForkingAll") History history) throws Exception {
 		checkEveryVariantAsCommitted(history, MergeCommit.BEFORE_FORK);
 	}
 

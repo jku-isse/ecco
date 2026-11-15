@@ -58,6 +58,18 @@ final class ForkService {
     this.remoteSyncService = remoteSyncService;
     }
 
+    /**
+     * A fork into a repository without commits yet takes its origin's maximum order, as a fork of
+     * everything does (Repository.Op#copyInto): one leaving revisions out committed the origin's
+     * commits again under the new repository's default instead - a fork of a repository with
+     * maximum order 4 had 2, and checked out other than committing the same commits would there
+     * (SyncPropertyTest). [origin] is the origin, or a copy of its commits, which keeps its maximum order.
+     */
+    private static void takeOverMaxOrder(Repository.Op repository, Repository.Op origin) {
+        if (repository.getCommits().isEmpty() && repository.getAssociations().isEmpty())
+            repository.setMaxOrder(origin.getMaxOrder());
+    }
+
     void fork(String hostname, int port, String deselectedFeatureRevisionsString) {
         if (this.state.isInitialized())
             throw new EccoException("Service must not be initialized for fork operation.");
@@ -100,10 +112,12 @@ final class ForkService {
             try {
                 this.state.currentContext().transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                 Repository.Op repository = this.state.currentContext().repositoryDao.load();
-                if (originCopy != null)
+                if (originCopy != null) {
                     originCopy.copyInto(repository);
-                else
+                } else {
+                    takeOverMaxOrder(repository, originCommits);
                     this.commitReplay.replayInto(repository, originCommits, new ArrayList<>(originCommits.getCommits()));
+                }
                 this.state.currentContext().repositoryDao.store(repository);
                 this.state.currentContext().remoteDao.storeRemote(this.state.currentContext().entityFactory.createRemote(EccoService.ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE));
                 this.state.currentContext().transactionStrategy.end();
@@ -155,6 +169,7 @@ final class ForkService {
 
             // merge into this repository
             Repository.Op repository = this.state.currentContext().repositoryDao.load();
+            takeOverMaxOrder(repository, copiedRepository);
             repository.merge(copiedRepository);
             this.state.currentContext().repositoryDao.store(repository);
 
@@ -244,6 +259,7 @@ final class ForkService {
                 Repository.Op commits = this.commitReplay.copyOfCommits(originRepository, originRepository.commitsMissingIn(List.of(), deselected));
                 this.state.currentContext().transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
                 Repository.Op repository = this.state.currentContext().repositoryDao.load();
+                takeOverMaxOrder(repository, commits);
                 this.commitReplay.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                 this.state.currentContext().repositoryDao.store(repository);
                 this.state.currentContext().transactionStrategy.end();
@@ -277,6 +293,7 @@ final class ForkService {
             // merge into this repository, unless it is a copy already
             if (subsetOriginRepository != null) {
                 Repository.Op repository = this.state.currentContext().repositoryDao.load();
+                takeOverMaxOrder(repository, subsetOriginRepository);
                 repository.merge(subsetOriginRepository);
                 this.state.currentContext().repositoryDao.store(repository);
             }
@@ -316,6 +333,7 @@ final class ForkService {
                 // the origin's commits this repository does not have, without the revisions left out, replayed (Repository.Op#replay)
                 Repository.Op commits = this.commitReplay.copyOfCommits(originRepository, originRepository.commitsMissingIn(RemoteSyncService.commitIds(repository), deselected));
                 this.state.currentContext().transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                takeOverMaxOrder(repository, commits);
                 this.commitReplay.replayInto(repository, commits, new ArrayList<>(commits.getCommits()));
                 this.state.currentContext().repositoryDao.store(repository);
                 this.state.currentContext().transactionStrategy.end();
@@ -339,6 +357,7 @@ final class ForkService {
 
         try {
             Repository.Op repository = (Repository.Op) this.state.context().repository();
+            takeOverMaxOrder(repository, subsetOriginRepository);
             repository.merge(subsetOriginRepository);
 
             this.state.currentContext().transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
