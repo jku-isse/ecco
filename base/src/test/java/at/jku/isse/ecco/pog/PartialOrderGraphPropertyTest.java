@@ -128,6 +128,60 @@ class PartialOrderGraphPropertyTest {
 		}));
 	}
 
+	/** small graphs, their sequences in any order - few enough orderings for a brute force over pairs of them */
+	@Provide
+	Arbitrary<List<List<String>>> smallSequences() {
+		return Arbitraries.of(ORDER).list().ofMinSize(1).ofMaxSize(4).list().ofMinSize(1).ofMaxSize(2);
+	}
+
+	/**
+	 * Gap #95: the alignment of two graphs matches as many artifacts as the best pair of orderings of
+	 * them allows - the longest common subsequence of any ordering of one and any of the other, by
+	 * brute force - and only equal artifacts, each node of either at most once.
+	 */
+	@Property(tries = 1000)
+	void alignGraphsIsOptimal(@ForAll("smallSequences") List<List<String>> first, @ForAll("smallSequences") List<List<String>> second) {
+		SerPartialOrderGraph graph = graphOf(first);
+		SerPartialOrderGraph other = graphOf(second);
+		var alignment = DownsetAlignment.alignGraphs(graph, other);
+		assertNotNull(alignment, "within the budget");
+
+		List<List<String>> orderingsOfGraph = linearExtensions(inner(graph)).stream().map(o -> o.stream().map(n -> n.getArtifact().getData().toString()).toList()).toList();
+		List<List<String>> orderingsOfOther = linearExtensions(inner(other)).stream().map(o -> o.stream().map(n -> n.getArtifact().getData().toString()).toList()).toList();
+		int best = 0;
+		for (List<String> a : orderingsOfGraph)
+			for (List<String> b : orderingsOfOther)
+				best = Math.max(best, lcs(a, b));
+		assertEquals(best, alignment.size(), "matches between the graphs of " + first + " and " + second);
+
+		Map<Integer, PartialOrderGraph.Node.Op> bySequenceNumber = new HashMap<>();
+		inner(graph).forEach(n -> bySequenceNumber.put(n.getSequenceNumber(), n));
+		Set<PartialOrderGraph.Node.Op> matched = Collections.newSetFromMap(new IdentityHashMap<>());
+		alignment.forEachKeyValue((sequenceNumber, otherNode) -> {
+			assertEquals(bySequenceNumber.get(sequenceNumber).getArtifact().getData(), otherNode.getArtifact().getData());
+			assertTrue(matched.add(otherNode), "a node of the other graph matched twice");
+		});
+	}
+
+	/**
+	 * Gap #95's symptom: two graphs whose sequences all keep one global order merge into a graph that
+	 * holds each artifact once - the merge of repositories kept one twice where the other graph needed
+	 * its branches interleaved.
+	 */
+	@Property(tries = 500)
+	void mergingGraphsOfOneOrderAddsOnlyWhatIsNew(@ForAll("consistentSequences") List<List<String>> first,
+	                                              @ForAll("consistentSequences") List<List<String>> second) {
+		SerPartialOrderGraph graph = graphOf(first);
+		SerPartialOrderGraph other = graphOf(second);
+		Set<String> items = new HashSet<>();
+		first.forEach(items::addAll);
+		second.forEach(items::addAll);
+
+		graph.merge(other);
+
+		assertEquals(items.size(), inner(graph).size(), "merging the graph of " + second + " into the graph of " + first);
+	}
+
 	@Provide
 	Arbitrary<List<String>> sequence() {
 		return Arbitraries.of(ORDER).list().ofMaxSize(6);
@@ -158,7 +212,7 @@ class PartialOrderGraphPropertyTest {
 
 	/** collectNodeSequencings() is what its javadoc and ConcurrentBranchSequencingTest say: every topological ordering. */
 	@Property(tries = 300)
-	@Disabled("gap #95: collectNodeSequencings() does not interleave branches; aligning two graphs still relies on it")
+	@Disabled("collectNodeSequencings() does not interleave branches - only the fallbacks for tables over the budget use it now (gaps #94, #95)")
 	void sequencingsAreAllLinearExtensions(@ForAll("consistentSequences") List<List<String>> sequences) {
 		SerPartialOrderGraph graph = graphOf(sequences);
 

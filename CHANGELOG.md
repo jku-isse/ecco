@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+  * **Two order graphs are aligned exactly too** (gap #95): merging one order graph into another - in a merge of repositories, and where a commit or a checkout's main tree joins two - could keep a line twice where the other graph needed its branches interleaved, as a commit's lines could before gap #94. Where the old alignment matches fewer lines than possible, the two graphs are now aligned over all their orderings; the benchmark is unchanged.
+
   * **No view reads the repository on the FX thread any more** (gap #100, NFR-C3): Checkout Selected composes the selected associations' trees in its background task, an import from Git reads what it starts from in the background, and the checkout details read their ORDER rows and record an order there - each holding the service's lock, so a running commit neither freezes the window nor changes what they read. Every GUI test checks it, with no exceptions left.
 
   * **A fork checks out as its origin does** (gap #99): it took the new repository's evaluation and main tree building strategies (FR-K1b) - the `ecco.properties` defaults - not its origin's, also a fork of everything; now every fork, local or remote, copying all or leaving revisions out, takes them with the maximum order, and every copy of a repository carries them.

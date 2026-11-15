@@ -211,6 +211,8 @@ final class DownsetAlignment {
 		byte[] choice;
 		/** Which incoming step each choice took - only where there are several. */
 		int[] edge;
+		/** For {@link #alignGraphs}: which step into the other graph's down-set each choice took. */
+		short[] otherStep;
 
 		State(BitSet set, int[] enabled) {
 			this.set = set;
@@ -246,6 +248,268 @@ final class DownsetAlignment {
 				if (this.edge != null)
 					this.edge[j] = e;
 			}
+		}
+	}
+
+	/** The most nodes an alignment of [graph] and [other] can match: per datum, the fewer of the two graphs' nodes holding it. */
+	static int matchBound(PartialOrderGraph.Op graph, PartialOrderGraph.Op other) {
+		Map<Object, Integer> counts = new HashMap<>();
+		for (PartialOrderGraph.Node.Op node : graph.collectNodes())
+			if (data(node) != null)
+				counts.merge(data(node), 1, Integer::sum);
+		Map<Object, Integer> otherCounts = new HashMap<>();
+		for (PartialOrderGraph.Node.Op node : other.collectNodes())
+			if (data(node) != null)
+				otherCounts.merge(data(node), 1, Integer::sum);
+		int bound = 0;
+		for (Map.Entry<Object, Integer> entry : otherCounts.entrySet())
+			bound += Math.min(entry.getValue(), counts.getOrDefault(entry.getKey(), 0));
+		return bound;
+	}
+
+	/** A graph's nodes, numbered (head and tail left out), with their predecessors, successors and data ids. */
+	private static final class Side {
+		final List<PartialOrderGraph.Node.Op> nodes = new ArrayList<>();
+		final int[][] previous;
+		final int[][] next;
+		final int[] data;
+		final int n;
+
+		Side(PartialOrderGraph.Op graph, Map<Object, Integer> ids) {
+			for (PartialOrderGraph.Node.Op node : graph.collectNodes())
+				if (node != graph.getHead() && node != graph.getTail())
+					this.nodes.add(node);
+			this.n = this.nodes.size();
+			Map<PartialOrderGraph.Node.Op, Integer> index = new IdentityHashMap<>();
+			for (int i = 0; i < this.n; i++)
+				index.put(this.nodes.get(i), i);
+			this.previous = new int[this.n][];
+			this.next = new int[this.n][];
+			this.data = new int[this.n];
+			for (int i = 0; i < this.n; i++) {
+				this.previous[i] = inner(this.nodes.get(i).getPrevious(), index);
+				this.next[i] = inner(this.nodes.get(i).getNext(), index);
+				this.data[i] = id(data(this.nodes.get(i)), ids, true);
+			}
+		}
+	}
+
+	/** A down-set of the other graph: the steps it is reached by - a smaller down-set and the node added - and its enabled nodes. */
+	private static final class OtherState {
+		final BitSet set;
+		int[] enabled;
+		final List<Integer> from = new ArrayList<>(1);
+		final List<Integer> via = new ArrayList<>(1);
+
+		OtherState(BitSet set, int[] enabled) {
+			this.set = set;
+			this.enabled = enabled;
+		}
+	}
+
+	/**
+	 * Which node of [other] each node of [graph] is matched to, keyed by the graph node's sequence
+	 * number, as {@link #align} does for a sequence: the most matches over every ordering both graphs
+	 * allow - gap #95, where aligning two graphs used the orderings collectNodeSequencings lists, which
+	 * never interleave two branches. The same table, its rows indexed by the other graph's down-sets
+	 * instead of a sequence's prefixes: best(D, E) is the largest of best(D - x, E), best(D, E - y) and,
+	 * where x's data equals y's, best(D - x, E - y) + 1, over the maximal x of D and y of E. A match
+	 * so found is an ordering of both graphs at once, so the merged graph has no cycle. Null if the
+	 * table would exceed the budget or the graph's sequence numbers repeat.
+	 */
+	static MutableIntObjectMap<PartialOrderGraph.Node.Op> alignGraphs(PartialOrderGraph.Op graph, PartialOrderGraph.Op other) {
+		Map<Object, Integer> ids = new HashMap<>();
+		Side a = new Side(graph, ids);
+		Side b = new Side(other, ids);
+		MutableIntSet sequenceNumbers = new IntHashSet();
+		for (PartialOrderGraph.Node.Op node : a.nodes)
+			if (data(node) != null && !sequenceNumbers.add(node.getSequenceNumber()))
+				return null;
+		MutableIntObjectMap<PartialOrderGraph.Node.Op> result = IntObjectMaps.mutable.empty();
+
+		// leading: while both have one first node and their data are the same
+		BitSet startA = new BitSet(a.n), startB = new BitSet(b.n);
+		int[] firstA = enabled(startA, a.n, a.previous), firstB = enabled(startB, b.n, b.previous);
+		while (firstA.length == 1 && firstB.length == 1 && a.data[firstA[0]] >= 0 && a.data[firstA[0]] == b.data[firstB[0]]) {
+			int x = firstA[0], y = firstB[0];
+			result.put(a.nodes.get(x).getSequenceNumber(), b.nodes.get(y));
+			startA.set(x);
+			startB.set(y);
+			firstA = successorEnabled(firstA, x, startA, a.next, a.previous);
+			firstB = successorEnabled(firstB, y, startB, b.next, b.previous);
+		}
+		// trailing: while what is left of both has one last node and their data are the same
+		BitSet endA = new BitSet(a.n), endB = new BitSet(b.n);
+		endA.set(0, a.n);
+		endB.set(0, b.n);
+		int remainingA = a.n - startA.cardinality(), remainingB = b.n - startB.cardinality();
+		int[] lastA = maximal(a.n, startA, a.next), lastB = maximal(b.n, startB, b.next);
+		while (remainingA > 0 && remainingB > 0 && lastA.length == 1 && lastB.length == 1
+				&& a.data[lastA[0]] >= 0 && a.data[lastA[0]] == b.data[lastB[0]]) {
+			int x = lastA[0], y = lastB[0];
+			result.put(a.nodes.get(x).getSequenceNumber(), b.nodes.get(y));
+			endA.clear(x);
+			endB.clear(y);
+			lastA = predecessorMaximal(lastA, x, endA, startA, a.next, a.previous);
+			lastB = predecessorMaximal(lastB, y, endB, startB, b.next, b.previous);
+			remainingA--;
+			remainingB--;
+		}
+		if (remainingA == 0 || remainingB == 0)
+			return result;
+
+		// the other graph's down-sets between its start and its end, in layers: an index is a column
+		List<OtherState> columns = new ArrayList<>();
+		long bytes = 0;
+		{
+			OtherState initial = new OtherState(startB, firstB);
+			columns.add(initial);
+			Map<BitSet, Integer> layer = new HashMap<>(Map.of(startB, 0));
+			for (int k = 0; k < remainingB; k++) {
+				Map<BitSet, Integer> nextLayer = new HashMap<>();
+				for (int s : layer.values()) {
+					OtherState state = columns.get(s);
+					for (int y : state.enabled) {
+						if (!endB.get(y))
+							continue;
+						BitSet set = (BitSet) state.set.clone();
+						set.set(y);
+						Integer t = nextLayer.get(set);
+						if (t == null) {
+							t = columns.size();
+							columns.add(new OtherState(set, successorEnabled(state.enabled, y, set, b.next, b.previous)));
+							nextLayer.put(set, t);
+							bytes += STATE_BYTES + b.n / 8 + 16;
+							if (bytes > BUDGET_BYTES)
+								return null;
+						}
+						columns.get(t).from.add(s);
+						columns.get(t).via.add(y);
+						if (columns.get(t).from.size() > Short.MAX_VALUE)
+							return null; // the step is kept as a short
+					}
+				}
+				for (int s : layer.values())
+					columns.get(s).enabled = null;
+				layer = nextLayer;
+			}
+		}
+		int m = columns.size();
+		int endColumn = columns.size() - 1; // the last layer has the one down-set holding all of [startB, endB]
+
+		// this graph's down-sets, layer by layer, each with a row over the columns
+		State initial = new State(startA, firstA);
+		initial.row = new int[m];
+		initial.choice = new byte[m];
+		long rowBytes = 4L * m;
+		long liveBytes = rowBytes + a.n / 8 + 16;
+		bytes += 2L * m + STATE_BYTES + liveBytes;
+		Map<BitSet, State> layer = new HashMap<>(Map.of(startA, initial));
+		for (int k = 0; k < remainingA; k++) {
+			Map<BitSet, State> nextLayer = new HashMap<>();
+			for (State state : layer.values()) {
+				for (int x : state.enabled) {
+					if (!endA.get(x))
+						continue;
+					BitSet set = (BitSet) state.set.clone();
+					set.set(x);
+					State successor = nextLayer.get(set);
+					if (successor == null) {
+						successor = new State(set, successorEnabled(state.enabled, x, set, a.next, a.previous));
+						nextLayer.put(set, successor);
+						// choices and the step taken in the other graph (a short per column), the row while live
+						bytes += 3L * m + STATE_BYTES + liveBytes;
+						if (bytes > BUDGET_BYTES)
+							return null;
+					}
+					successor.from.add(state);
+					successor.via.add(x);
+				}
+			}
+			for (State state : nextLayer.values())
+				if (state.from.size() > 1)
+					bytes += rowBytes;
+			if (bytes > BUDGET_BYTES)
+				return null;
+			for (State state : nextLayer.values())
+				fillGraphRow(state, columns, a.data, b.data);
+			bytes -= liveBytes * layer.size();
+			for (State state : layer.values()) {
+				state.row = null;
+				state.set = null;
+				state.enabled = null;
+			}
+			layer = nextLayer;
+		}
+
+		// traceback from both whole graphs (minus what was matched up front)
+		State state = layer.get(endA);
+		int column = endColumn;
+		while (column > 0 && state.choice != null && state.choice[column] != 0) {
+			byte c = state.choice[column];
+			if (c == LEFT) {
+				int step = state.otherStep[column];
+				column = columns.get(column).from.get(step);
+				continue;
+			}
+			int edge = state.edge == null ? 0 : state.edge[column];
+			if (c == MATCH) {
+				int step = state.otherStep[column];
+				OtherState o = columns.get(column);
+				result.put(a.nodes.get(state.via.get(edge)).getSequenceNumber(), b.nodes.get(o.via.get(step)));
+				column = o.from.get(step);
+			}
+			state = state.from.get(edge);
+		}
+		return result;
+	}
+
+	/** A row of {@link #alignGraphs}: a match first, then skipping this graph's node, then skipping the other's. */
+	private static void fillGraphRow(State state, List<OtherState> columns, int[] dataA, int[] dataB) {
+		int m = columns.size();
+		state.row = new int[m];
+		state.choice = new byte[m];
+		state.otherStep = new short[m];
+		if (state.from.size() > 1)
+			state.edge = new int[m];
+		for (int e = 1; e < m; e++) {
+			OtherState o = columns.get(e);
+			int best = -1;
+			byte c = 0;
+			int edge = 0, step = 0;
+			for (int s = 0; s < state.from.size(); s++) {
+				int[] prev = state.from.get(s).row;
+				int x = state.via.get(s);
+				for (int p = 0; p < o.from.size(); p++) {
+					int y = o.via.get(p);
+					if (dataA[x] >= 0 && dataA[x] == dataB[y] && prev[o.from.get(p)] + 1 > best) {
+						best = prev[o.from.get(p)] + 1;
+						c = MATCH;
+						edge = s;
+						step = p;
+					}
+				}
+			}
+			for (int s = 0; s < state.from.size(); s++) {
+				int[] prev = state.from.get(s).row;
+				if (prev[e] > best) {
+					best = prev[e];
+					c = UP;
+					edge = s;
+				}
+			}
+			for (int p = 0; p < o.from.size(); p++) {
+				if (state.row[o.from.get(p)] > best) {
+					best = state.row[o.from.get(p)];
+					c = LEFT;
+					step = p;
+				}
+			}
+			state.row[e] = best;
+			state.choice[e] = c;
+			state.otherStep[e] = (short) step;
+			if (state.edge != null)
+				state.edge[e] = edge;
 		}
 	}
 
