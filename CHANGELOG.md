@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+  * **Generated variants round-trip through the Java (AST), TypeScript, Python, Go and LilyPond adapters**: 2-4 variants of one file, each a selection from a shared pool of the language's constructs, committed under a feature each and checked out - against what was committed and against the same variant alone in a repository. Each variant alone comes back as the adapter promises. Together with others, the code (Java, TypeScript, Python, Go) and music (LilyPond) do; the text between statements or tokens - line breaks, indentation, comments, a note's spelled duration - is, for TypeScript and LilyPond, as one of the variants had it (gap #101), and a Java comment several variants share is the newest commit's, as the adapter keeps comments as metadata - now in the adapter table.
+
   * **A commit survives a power failure** (gap #97, NFR-R1a): it forces its new core and packs to the disk before the id file names them, and the id file after - not every file, which cost ten times; a commit takes up to 15 % longer, a checkout no longer. `-Decco.fsync=false` turns it off (the tests do); on macOS the drive may still cache.
 
   * **A pull or push that would bring a merge commit is refused** (gap #96, FR-D3j): a merge commit, recorded by a fork, pull or push of an ECCO before commit replay, cannot be committed again, and merging the repositories lost lines; such a pull or push now changes nothing and says to fork into a new repository, which merges without losing any.
