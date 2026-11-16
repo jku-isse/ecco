@@ -342,6 +342,9 @@ final class ForkService {
                 this.state.currentContext().repositoryDao.store(repository);
                 this.state.currentContext().transactionStrategy.end();
                 subsetOriginRepository = null;
+            } else if (!repository.getCommits().isEmpty()) {
+                // a merge into a repository with commits counts what they share twice (gap #96)
+                throw RemoteSyncService.mergeCommitsRefused("The origin");
             } else {
                 subsetOriginRepository = originRepository.subset(deselected, originRepository.getMaxOrder(), this.state.currentContext().entityFactory);
             }

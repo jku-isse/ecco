@@ -134,6 +134,10 @@ subprojects {
 		reports.html.outputLocation = reporting.baseDirectory.dir(name)
 		// preferences in memory, not the user's: recent repositories, disabled adapters (MemoryPreferencesFactory)
 		systemProperty 'java.util.prefs.PreferencesFactory', 'at.jku.isse.ecco.test.MemoryPreferencesFactory'
+		// tests need no durability against power loss: a commit leaves writing its files back to the
+		// system (StorageFiles#FSYNC, on by default), which cost the sync properties four times their
+		// time; the benchmark and ForcedWritesEndToEndTest run ecco forcing them, as shipped
+		systemProperty 'ecco.fsync', 'false'
 		// a commit skips serializing the artifacts that cannot have changed (gap #49); in tests it
 		// serializes them anyway and fails if one changed without being marked - see
 		// SerTransactionStrategy#VERIFY_UNCHANGED_ARTIFACTS

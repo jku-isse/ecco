@@ -139,6 +139,9 @@ tasks.named('integrationTest') {
 }
 
 tasks.register('benchmark', Test) {
+	// as shipped, forcing a commit's files to the disk (StorageFiles#FSYNC) - the tests turn it off;
+	// -Pecco.fsync=false measures without
+	systemProperty 'ecco.fsync', project.findProperty('ecco.fsync') ?: 'true'
 	group = 'verification'
 	description = 'Checks the performance limits of the requirements on generated repositories.'
 	useJUnitPlatform {

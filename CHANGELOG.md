@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+  * **A commit survives a power failure** (gap #97, NFR-R1a): it forces its new core and packs to the disk before the id file names them, and the id file after - not every file, which cost ten times; a commit takes up to 15 % longer, a checkout no longer. `-Decco.fsync=false` turns it off (the tests do); on macOS the drive may still cache.
+
+  * **A pull or push that would bring a merge commit is refused** (gap #96, FR-D3j): a merge commit, recorded by a fork, pull or push of an ECCO before commit replay, cannot be committed again, and merging the repositories lost lines; such a pull or push now changes nothing and says to fork into a new repository, which merges without losing any.
+
   * **Two order graphs are aligned exactly too** (gap #95): merging one order graph into another - in a merge of repositories, and where a commit or a checkout's main tree joins two - could keep a line twice where the other graph needed its branches interleaved, as a commit's lines could before gap #94. Where the old alignment matches fewer lines than possible, the two graphs are now aligned over all their orderings; the benchmark is unchanged.
 
   * **No view reads the repository on the FX thread any more** (gap #100, NFR-C3): Checkout Selected composes the selected associations' trees in its background task, an import from Git reads what it starts from in the background, and the checkout details read their ORDER rows and record an order there - each holding the service's lock, so a running commit neither freezes the window nor changes what they read. Every GUI test checks it, with no exceptions left.

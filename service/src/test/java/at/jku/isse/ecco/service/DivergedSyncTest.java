@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.repository.Repository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -84,12 +85,15 @@ public class DivergedSyncTest {
     }
 
     /**
-     * A repository with a merge commit - a fork, pull or push of an older version recorded one per
-     * association, without a configuration - cannot be replayed: pull and push merge as before.
+     * A merge commit - a fork, pull or push of an older version recorded one per association, without
+     * a configuration - cannot be committed again, and merging two repositories counts the history they
+     * share twice and loses lines (gap #96): a pull or push that would bring one the receiver lacks is
+     * refused and changes nothing. One the receiver has is no hindrance (sharedMergeCommitsLeaveSyncToReplay,
+     * SyncPropertyTest), nor is one the sender lacks; a fork into a new repository shares nothing and merges.
      */
     @Test
     @Timeout(120)
-    public void aRemoteWithMergeCommitsIsMergedAsBefore(@TempDir Path tmp) throws Exception {
+    public void aPullOrPushBringingAMergeCommitIsRefused(@TempDir Path tmp) throws Exception {
         Path a = commit(tmp.resolve("a"), BASE);
         Path b = fork(a, tmp.resolve("b"));
         try (EccoService service = open(a)) {
@@ -99,13 +103,30 @@ public class DivergedSyncTest {
         }
         commitInto(a, A);
         commitInto(b, B);
-        pull(b, a);
-        push(b, a);
+        List<String> before = commits(b);
 
-        for (Path repository : List.of(a, b)) {
-            assertTrue(commits(repository).stream().anyMatch(commit -> commit.contains(" [null] ")), "the merge commit is kept");
-            assertTrue(checkout(repository, "B, E", tmp.resolve("co-" + repository.getFileName())).contains("e0"), "a's content arrived");
-            assertTrue(checkout(repository, "F", tmp.resolve("co-f-" + repository.getFileName())).contains("f0"), "b's content arrived");
-        }
+        // b pulling a's merge commit: refused, b as it was
+        EccoException refused = org.junit.jupiter.api.Assertions.assertThrows(EccoException.class, () -> pull(b, a));
+        assertTrue(messages(refused).contains("merge commits"), messages(refused));
+        assertEquals(before, commits(b), "the refused pull changed nothing");
+
+        // b pushing its own commits to a: none is a merge commit, so they are committed again
+        push(b, a);
+        assertTrue(checkout(a, "F", tmp.resolve("co-f-a")).contains("f0"), "b's content arrived");
+
+        // a pushing to b would bring the merge commit: refused
+        EccoException pushed = org.junit.jupiter.api.Assertions.assertThrows(EccoException.class, () -> push(a, b));
+        assertTrue(messages(pushed).contains("merge commits"), messages(pushed));
+
+        // a fork into a new repository merges, sharing nothing
+        Path c = fork(a, tmp.resolve("c"));
+        assertTrue(checkout(c, "B, E", tmp.resolve("co-c")).contains("e0"), "a's content arrived in the fork");
+    }
+
+    private static String messages(Throwable t) {
+        StringBuilder text = new StringBuilder();
+        for (; t != null; t = t.getCause())
+            text.append(t.getMessage()).append(" / ");
+        return text.toString();
     }
 }

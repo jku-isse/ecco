@@ -46,8 +46,10 @@ public class PerformanceBenchmark {
 	static final int RUNS = 3;
 
 	/** As the shipped CLI runs (cli/build.gradle), without the checks the tests turn on. */
-	private static final List<String> JVM_OPTIONS = List.of("-Xmx8g", "-Xss1024m",
-			"-Decco.verifyUnchangedArtifacts=false", "-Decco.verifyUnchangedAssociations=false");
+	private static final List<String> JVM_OPTIONS = Stream.concat(Stream.of("-Xmx8g", "-Xss1024m",
+			"-Decco.verifyUnchangedArtifacts=false", "-Decco.verifyUnchangedAssociations=false"),
+			// ./gradlew :ecco-cli:benchmark -Pecco.fsync=false: without forcing a write's files to the disk (StorageFiles#FSYNC)
+			System.getProperty("ecco.fsync") == null ? Stream.empty() : Stream.of("-Decco.fsync=" + System.getProperty("ecco.fsync"))).toList();
 
 	private static final List<String> results = new ArrayList<>();
 	private static final List<String> exceeded = new ArrayList<>();

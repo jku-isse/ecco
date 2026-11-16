@@ -60,9 +60,41 @@ final class StorageFiles {
 				zos.setLevel(Deflater.BEST_SPEED);
 				content.writeTo(zos);
 			}
+			if (FSYNC)
+				force(tmpFile);
 			Files.move(tmpFile, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+			if (FSYNC)
+				forceDirectory(file.getParent());
 		} finally {
 			Files.deleteIfExists(tmpFile);
+		}
+	}
+
+	/**
+	 * Whether a write's files reach the disk before the id names them (NFR-R1a, NFR-R2; off with
+	 * -Decco.fsync=false): without, the system may write the id file back before the core and packs it
+	 * names, and a power failure right after a commit leaves a repository that does not open
+	 * (doc/formal/SerStorage.tla, SerStoragePowerLoss.cfg; gap #97). On, each pack and core is forced
+	 * before it is renamed into place, its directory after, and the id file after it is written
+	 * (SerTransactionStrategy) - what SerStorageFsync.cfg checks; it costs a commit up to 15 %
+	 * (PerformanceBenchmark), forcing every file cost 10 times. On macOS, force is fsync, which the
+	 * drive may still cache.
+	 */
+	static final boolean FSYNC = !"false".equals(System.getProperty("ecco.fsync"));
+
+	/** [file]'s content on the disk. */
+	static void force(Path file) throws IOException {
+		try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(file, StandardOpenOption.WRITE)) {
+			channel.force(true);
+		}
+	}
+
+	/** [directory]'s entries - a file renamed into it - on the disk, where the system allows it (not on Windows). */
+	static void forceDirectory(Path directory) {
+		try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(directory, StandardOpenOption.READ)) {
+			channel.force(true);
+		} catch (IOException e) {
+			// a directory cannot be opened on this system: a rename is as durable as it makes it
 		}
 	}
 

@@ -287,8 +287,10 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			if (!idFileLock.isValid())
 				throw new EccoException("Could not obtain exclusive lock on ID file.");
 
-			// write new id to id file
+			// write new id to id file - on the disk at once, after the files it names (StorageFiles#FSYNC)
 			idFileChannel.write(ByteBuffer.wrap(newId.getBytes(Charset.defaultCharset())));
+			if (StorageFiles.FSYNC)
+				idFileChannel.force(true);
 
 			// the cores no reader holds anymore go; only if none is held may what they refer to go too
 			oldCoreReleased = this.deleteUnusedCores(newDbFile);

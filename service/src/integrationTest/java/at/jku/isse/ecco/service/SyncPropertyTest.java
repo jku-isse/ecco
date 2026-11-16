@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.repository.Repository;
 import net.jqwik.api.*;
@@ -114,6 +115,20 @@ class SyncPropertyTest {
 
 	/** what each side holds after the history, in order */
 	static Map<Side, List<ModelCommit>> model(History history) {
+		return model(history, MergeCommit.NONE);
+	}
+
+	/**
+	 * A sync that would bring a merge commit the receiver lacks is refused and changes nothing
+	 * (gap #96): with one the origin made after the fork, the fork pulling and the origin pushing.
+	 */
+	static boolean refused(Action action, MergeCommit mergeCommit) {
+		return mergeCommit == MergeCommit.AFTER_FORK
+				&& (action.kind() == Kind.PULL && action.side() == Side.FORK || action.kind() == Kind.PUSH && action.side() == Side.ORIGIN);
+	}
+
+	/** what each side holds after the history, in order, with a merge commit where [mergeCommit] says */
+	static Map<Side, List<ModelCommit>> model(History history, MergeCommit mergeCommit) {
 		LEFT_OUT.get()[0] = 0;
 		Map<Side, List<ModelCommit>> held = new EnumMap<>(Side.class);
 		held.put(Side.ORIGIN, new ArrayList<>());
@@ -125,6 +140,8 @@ class SyncPropertyTest {
 		held.put(Side.FORK, new ArrayList<>());
 		append(held.get(Side.FORK), held.get(Side.ORIGIN), history.forkExcluded());
 		for (Action action : history.actions()) {
+			if (refused(action, mergeCommit))
+				continue;
 			switch (action.kind()) {
 				case COMMIT -> {
 					held.get(action.side()).add(new ModelCommit("c" + c, history.configurations().get(c), action.variant()));
@@ -239,29 +256,6 @@ class SyncPropertyTest {
 	}
 
 	/**
-	 * As {@link #onceEach}, without a feature both sides make after the fork: a merge refuses two
-	 * features of one name (gap #87, FR-F6), a replay takes them as one (FR-D3f).
-	 */
-	@Provide
-	Arbitrary<History> onceEachNoFeatureNewOnBothSides() {
-		return onceEach().filter(SyncPropertyTest::noFeatureNewOnBothSides);
-	}
-
-	static boolean noFeatureNewOnBothSides(History history) {
-		int c = 0;
-		Set<String> base = new HashSet<>();
-		for (int i = 0; i < history.base().size(); i++)
-			base.addAll(List.of(history.configurations().get(c++).split(", ")));
-		Map<Side, Set<String>> made = new EnumMap<>(Map.of(Side.ORIGIN, new HashSet<>(), Side.FORK, new HashSet<>()));
-		for (Action action : history.actions())
-			if (action.kind() == Kind.COMMIT)
-				for (String feature : history.configurations().get(c++).split(", "))
-					if (!base.contains(feature))
-						made.get(action.side()).add(feature);
-		return Collections.disjoint(made.get(Side.ORIGIN), made.get(Side.FORK));
-	}
-
-	/**
 	 * Configurations of A-C, committed again with other lines, in any order: where variants disagree
 	 * on the order, a checkout's order depends on the order of the commits, so a replay in another
 	 * order than FR-D3b's shows.
@@ -317,6 +311,19 @@ class SyncPropertyTest {
 			for (Action action : history.actions()) {
 				Path side = repositories.get(action.side());
 				Path other = repositories.get(action.side().other());
+				if (refused(action, mergeCommit)) {
+					EccoException refusal = null;
+					try {
+						if (action.kind() == Kind.PULL)
+							pull(side, other, action.excluded());
+						else
+							push(side, other, action.excluded());
+					} catch (EccoException e) {
+						refusal = e;
+					}
+					assertNotNull(refusal, action + " brings a merge commit, and is refused (gap #96)");
+					continue;
+				}
 				switch (action.kind()) {
 					case COMMIT -> {
 						commit(side, new ModelCommit("c" + c, history.configurations().get(c), action.variant()));
@@ -607,19 +614,20 @@ class SyncPropertyTest {
 	}
 
 	/**
-	 * A merge commit only the origin has: a pull of the origin's commits, or a push to the fork,
-	 * cannot replay it and merges (FR-D3e) - which still counts the history both sides share twice
-	 * and loses lines (the rest of gap #96).
+	 * A merge commit only the origin has, made after the fork: the fork pulling or the origin pushing
+	 * would bring it - which cannot be committed again, and merged, counted the history both sides
+	 * share twice and lost lines - so they are refused and change nothing (gap #96); syncs the other
+	 * way commit their commits again, and each repository checks every commit it holds out as
+	 * committed.
 	 */
 	@Property(tries = 300)
-	@Disabled("gap #96: a merge (FR-D3e) still counts the history both sides share twice")
-	void mergedRepositoriesCheckOutEveryVariantAsCommitted(@ForAll("onceEachNoFeatureNewOnBothSides") History history) throws Exception {
+	void aSyncBringingAMergeCommitIsRefused(@ForAll("onceEach") History history) throws Exception {
 		checkEveryVariantAsCommitted(history, MergeCommit.AFTER_FORK);
 	}
 
 	/** each repository checks every commit the model says it has - its own, or the other side's taken in - out as committed */
 	private void checkEveryVariantAsCommitted(History history, MergeCommit mergeCommit) throws Exception {
-		Map<Side, List<ModelCommit>> model = model(history);
+		Map<Side, List<ModelCommit>> model = model(history, mergeCommit);
 		collectSynced(history, model);
 		try (Run run = new Run()) {
 			run.mergeCommit = mergeCommit;

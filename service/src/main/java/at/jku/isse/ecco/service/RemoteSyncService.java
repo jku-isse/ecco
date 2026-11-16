@@ -725,8 +725,18 @@ public class RemoteSyncService {
     /** A server's answer to PULL_COMMITS when it has merge commits: the client merges instead. */
     static final String MERGE = "MERGE";
 
-    private static final String MERGING = " has merge commits the other side lacks (a fork, pull or push of an older version): merged, not replayed"
-            + " - a line can be lost where a configuration was committed again with other content";
+    /**
+     * A pull or push that would bring a merge commit the receiving repository lacks - recorded by a
+     * fork, pull or push of an ECCO before commit replay - is refused (gap #96): it cannot be committed
+     * again, and merging the repositories counts the history both share twice and loses lines. A fork
+     * into a new repository shares nothing, and merges.
+     */
+    static EccoException mergeCommitsRefused(String sender) {
+        return new EccoException(sender + " has merge commits the other repository does not have - recorded by a fork, pull or push of an older"
+                + " ECCO - which cannot be committed again, and merging the two repositories would count the history they share twice and lose"
+                + " lines. Fork it into a new, empty repository instead.");
+    }
+
 
     static ArrayList<String> commitIds(Repository.Op repository) {
         ArrayList<String> ids = new ArrayList<>();
@@ -765,10 +775,8 @@ public class RemoteSyncService {
                 // it answered COMMIT_IDS, so it knows the request: it failed
                 throw new EccoException("Remote '" + remote.getName() + "' closed the connection without sending its commits - its log tells why.", e);
             }
-            if (MERGE.equals(reply)) {
-                LOGGER.warning("Remote '" + remote.getName() + "'" + MERGING);
-                return null;
-            }
+            if (MERGE.equals(reply))
+                throw mergeCommitsRefused("Remote '" + remote.getName() + "'");
             progressInputStream.setMaxBytes((Integer) reply);
             progressInputStream.resetProgress();
             progressInputStream.addListener(this.listeners);
@@ -1085,8 +1093,7 @@ public class RemoteSyncService {
                         Repository.Op parentRepository = parentService.context.repositoryDao.load();
                         Collection<FeatureRevision> deselected = parentService.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
                         if (parentRepository.hasMergeCommitsMissingIn(commitIds(repository))) {
-                            LOGGER.warning("Remote '" + remote.getName() + "'" + MERGING);
-                            subsetParentRepository = parentRepository.subset(deselected, parentRepository.getMaxOrder(), context.entityFactory);
+                            throw mergeCommitsRefused("Remote '" + remote.getName() + "'");
                         } else {
                             commits = this.commitReplay.copyOfCommits(parentRepository, parentRepository.commitsMissingIn(commitIds(repository), deselected));
                         }
@@ -1168,10 +1175,8 @@ public class RemoteSyncService {
                 ArrayList<String> remoteIds;
                 try {
                     remoteIds = this.remoteCommitIds(remote);
-                    if (remoteIds != null && repository.hasMergeCommitsMissingIn(remoteIds)) {
-                        LOGGER.warning("This repository" + MERGING);
-                        remoteIds = null;
-                    }
+                    if (remoteIds != null && repository.hasMergeCommitsMissingIn(remoteIds))
+                        throw mergeCommitsRefused("This repository");
                 } catch (Exception e) {
                     context.transactionStrategy.end();
                     throw new EccoException("Error during remote push.", e);
@@ -1228,8 +1233,7 @@ public class RemoteSyncService {
                         Repository.Op commits = null;
                         Repository.Op subsetRepository = null;
                         if (repository.hasMergeCommitsMissingIn(commitIds(parentRepository))) {
-                            LOGGER.warning("This repository" + MERGING);
-                            subsetRepository = repository.subset(deselected, repository.getMaxOrder(), parentService.context.entityFactory);
+                            throw mergeCommitsRefused("This repository");
                         } else {
                             commits = parentService.commitReplay.copyOfCommits(repository, repository.commitsMissingIn(commitIds(parentRepository), deselected));
                         }
