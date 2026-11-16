@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+  * **Every requirement has a status** (gap #91): a Status column in each requirement table - *met* (300), *partly* where an open gap says so (NFR-V2, gap #56), *measured by hand* (NFR-P2, NFR-P6 to NFR-P10b, gap #93), *-* for the 7 moved or merged; priorities are still to be agreed (gap #91 stays open for them). Three closed gaps (#49, #53, #64) had a stale cell left from an update, which put their text in a column of its own.
+
   * **Generated variants round-trip through the Java (AST), TypeScript, Python, Go and LilyPond adapters**: 2-4 variants of one file, each a selection from a shared pool of the language's constructs, committed under a feature each and checked out - against what was committed and against the same variant alone in a repository. Each variant alone comes back as the adapter promises. Together with others, the code (Java, TypeScript, Python, Go) and music (LilyPond) do; the text between statements or tokens - line breaks, indentation, comments, a note's spelled duration - is, for TypeScript and LilyPond, as one of the variants had it (gap #101), and a Java comment several variants share is the newest commit's, as the adapter keeps comments as metadata - now in the adapter table.
 
   * **A commit survives a power failure** (gap #97, NFR-R1a): it forces its new core and packs to the disk before the id file names them, and the id file after - not every file, which cost ten times; a commit takes up to 15 % longer, a checkout no longer. `-Decco.fsync=false` turns it off (the tests do); on macOS the drive may still cache.
