@@ -158,6 +158,7 @@ A *remote* is either a local path - the repository's directory or its `.ecco` di
 * **Hover** - the condition of the line, e.g. `A | BASE & !B`, and the configuration checked out.
 * **Code lens** - one above each place where the condition changes, going down the file.
 * **Diagnostics** - the checkout's ORDER warnings at the lines whose order is undecided, and code not committed yet (new or changed since the checkout) as hints, also before it is saved.
+* **Colours** (VS Code client) - each condition its own background, from the palette the GUI colours associations with; code with the file's own condition stays uncoloured, code not committed is grey. *ECCO: Toggle Feature Colours* turns them off and on (`ecco.featureColours`). Other clients get them from the notification `ecco/featureRanges`.
 
 For a file, the server composes the working directory's checkout (its `.config`) again in memory, reads the editor's text with the file's adapter and matches its nodes to the composed ones by content; each matched node has the condition of its association. Lines are known where the adapter records them (text, Java, LilyPond); for the other adapters only the file's condition is shown. A file is part of a working directory when a folder above it holds `.ecco`.
 

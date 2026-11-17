@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.lsp;
 
-import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
-import org.eclipse.lsp4j.services.LanguageClient;
+import org.eclipse.lsp4j.launch.LSPLauncher;
 
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
@@ -18,8 +18,15 @@ public class Main {
         OutputStream protocol = System.out;
         System.setOut(new PrintStream(System.err, true));
         EccoLanguageServer server = new EccoLanguageServer();
-        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, protocol);
+        launcher(server, System.in, protocol).startListening().get();
+    }
+
+    /** The server's end of the protocol on [in] and [out], connected to its client - which may colour code by feature. */
+    static Launcher<EccoLanguageClient> launcher(EccoLanguageServer server, InputStream in, OutputStream out) {
+        Launcher<EccoLanguageClient> launcher = new LSPLauncher.Builder<EccoLanguageClient>()
+                .setLocalService(server).setRemoteInterface(EccoLanguageClient.class)
+                .setInput(in).setOutput(out).create();
         server.connect(launcher.getRemoteProxy());
-        launcher.startListening().get();
+        return launcher;
     }
 }

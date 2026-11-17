@@ -3,7 +3,6 @@ package at.jku.isse.ecco.lsp;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
-import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -29,8 +28,14 @@ import static org.junit.jupiter.api.Assertions.*;
 public class EccoLanguageServerTest {
 
     /** Records what the server publishes. */
-    static class Client implements LanguageClient {
+    static class Client implements EccoLanguageClient {
         final BlockingQueue<PublishDiagnosticsParams> diagnostics = new LinkedBlockingQueue<>();
+        final BlockingQueue<FeatureRangesParams> featureRanges = new LinkedBlockingQueue<>();
+
+        @Override
+        public void featureRanges(FeatureRangesParams params) {
+            this.featureRanges.add(params);
+        }
         final BlockingQueue<MessageParams> messages = new LinkedBlockingQueue<>();
 
         @Override
@@ -69,6 +74,27 @@ public class EccoLanguageServerTest {
                 .map(l -> l.getRange().getStart().getLine() + " " + l.getCommand().getTitle()).toList());
     }
 
+    /**
+     * Runs by condition, but the file's own; blank lines inside a run are part of it, those between
+     * two runs part of neither; code not committed is its own run, without a palette slot.
+     */
+    @Test
+    public void featureRangesAreRunsOfOneConditionButTheFilesOwn() {
+        String text = "class C {\n    int a;\n\n    int a2;\n\n    int n;\n    int b() {\n    }\n}\n";
+        FeatureLens.FileTrace trace = new FeatureLens.FileTrace("X", "X", List.of(
+                new FeatureLens.Span(1, 9, "X", 1),
+                new FeatureLens.Span(2, 2, "A", 2),
+                new FeatureLens.Span(4, 4, "A", 2),
+                new FeatureLens.Span(6, 6, null, 2),
+                new FeatureLens.Span(7, 8, "B", 2)), List.of(), null);
+        java.util.Map<String, Integer> slots = new java.util.HashMap<>();
+        assertEquals(List.of(
+                        new EccoLanguageClient.FeatureRange(1, 3, "A", 0),
+                        new EccoLanguageClient.FeatureRange(5, 5, null, -1),
+                        new EccoLanguageClient.FeatureRange(6, 7, "B", 1)),
+                EccoLanguageServer.featureRanges(trace, text, c -> slots.computeIfAbsent(c, k -> slots.size())));
+    }
+
     @Test
     public void hoverCodeLensAndDiagnosticsOverTheProtocol(@TempDir Path tmp) throws Exception {
         Path work = FeatureLensTest.checkout(tmp, "BASE, A, B");
@@ -78,9 +104,7 @@ public class EccoLanguageServerTest {
         PipedOutputStream serverOut = new PipedOutputStream(clientIn);
 
         EccoLanguageServer server = new EccoLanguageServer();
-        Launcher<LanguageClient> serverLauncher = LSPLauncher.createServerLauncher(server, serverIn, serverOut);
-        server.connect(serverLauncher.getRemoteProxy());
-        serverLauncher.startListening();
+        Main.launcher(server, serverIn, serverOut).startListening();
         Client client = new Client();
         Launcher<LanguageServer> clientLauncher = LSPLauncher.createClientLauncher(client, clientIn, clientOut);
         clientLauncher.startListening();
@@ -107,6 +131,11 @@ public class EccoLanguageServerTest {
         PublishDiagnosticsParams opened = client.diagnostics.poll(60, TimeUnit.SECONDS);
         assertNotNull(opened);
         assertTrue(opened.getDiagnostics().isEmpty(), opened.getDiagnostics().toString());
+        // a1 (A) and b1 (B) coloured, each its own slot; the base lines have the file's condition
+        EccoLanguageClient.FeatureRangesParams colours = client.featureRanges.poll(60, TimeUnit.SECONDS);
+        assertNotNull(colours);
+        assertEquals("BASE", colours.fileCondition());
+        assertEquals(List.of(new EccoLanguageClient.FeatureRange(1, 1, "A", 0), new EccoLanguageClient.FeatureRange(3, 3, "B", 1)), colours.ranges());
 
         // an edit, not saved: line 2 is new
         VersionedTextDocumentIdentifier version = new VersionedTextDocumentIdentifier(uri, 2);

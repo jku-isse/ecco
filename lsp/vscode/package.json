@@ -5,10 +5,16 @@
   "version": "0.1.0",
   "publisher": "ecco",
   "private": true,
-  "engines": { "vscode": "^1.82.0" },
-  "categories": ["Other"],
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Other"
+  ],
   "main": "./extension.js",
-  "activationEvents": ["workspaceContains:**/.ecco/*"],
+  "activationEvents": [
+    "workspaceContains:**/.ecco/*"
+  ],
   "contributes": {
     "configuration": {
       "title": "ECCO",
@@ -22,11 +28,23 @@
           "type": "string",
           "default": "",
           "description": "A Java 21 (or later) installation for the server. Empty: JAVA_HOME, or java on the PATH - which an editor started from the Dock or Finder may not have."
+        },
+        "ecco.featureColours": {
+          "type": "boolean",
+          "default": true,
+          "description": "Colour code by feature: each condition its own background, as in the GUI; code with the file's own condition stays uncoloured, code not committed is grey."
         }
       }
     },
     "commands": [
-      { "command": "ecco.restartServer", "title": "ECCO: Restart Language Server" }
+      {
+        "command": "ecco.restartServer",
+        "title": "ECCO: Restart Language Server"
+      },
+      {
+        "command": "ecco.toggleFeatureColours",
+        "title": "ECCO: Toggle Feature Colours"
+      }
     ]
   },
   "dependencies": {

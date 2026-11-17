@@ -7,6 +7,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.ToIntFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,6 +40,8 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
     private final Map<Path, String> failedLenses = new HashMap<>();
 
     private LanguageClient client;
+    /** The palette slot of each condition, in the order they were first seen (ecco thread only). */
+    private final Map<String, Integer> colours = new HashMap<>();
     private boolean codeLensRefresh;
 
     @Override
@@ -155,6 +158,9 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
         this.traces.put(uri, trace);
         if (this.client != null) {
             this.client.publishDiagnostics(new PublishDiagnosticsParams(uri, diagnostics(trace)));
+            if (this.client instanceof EccoLanguageClient ecco)
+                ecco.featureRanges(new EccoLanguageClient.FeatureRangesParams(uri, trace.fileCondition(),
+                        featureRanges(trace, content, c -> this.colours.computeIfAbsent(c, k -> this.colours.size()))));
             if (this.codeLensRefresh)
                 this.client.refreshCodeLenses();
         }
@@ -260,6 +266,40 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
     private static String firstSentence(String text) {
         int end = text.indexOf(": ");
         return end > 0 && end < 80 ? text.substring(0, end) : text;
+    }
+
+    /**
+     * The runs of lines with one condition, going down the file [text] - by the innermost node of each
+     * line, as the code lenses - but those with the file's own condition. A blank line, or one no node
+     * is on, joins a run when the next line with code continues it.
+     */
+    static List<EccoLanguageClient.FeatureRange> featureRanges(FeatureLens.FileTrace trace, String text, ToIntFunction<String> colourOf) {
+        List<EccoLanguageClient.FeatureRange> ranges = new ArrayList<>();
+        List<String> lines = text.lines().toList();
+        int last = trace.spans().stream().mapToInt(FeatureLens.Span::endLine).max().orElse(0);
+        String current = null; // the run's label: its condition, or "" for code not committed
+        int start = -1, end = -1;
+        for (int line = 1; line <= last + 1; line++) {
+            FeatureLens.Span span = line <= last ? trace.at(line) : null;
+            boolean code = span != null && !(line <= lines.size() && lines.get(line - 1).isBlank());
+            if (line <= last && !code)
+                continue;
+            String label = span == null ? null : span.committed() ? span.condition() : "";
+            if (current != null && !current.equals(label)) {
+                if (!current.equals(trace.fileCondition()))
+                    ranges.add(new EccoLanguageClient.FeatureRange(start - 1, end - 1, current.isEmpty() ? null : current,
+                            current.isEmpty() ? -1 : colourOf.applyAsInt(current)));
+                current = null;
+            }
+            if (label == null)
+                continue;
+            if (current == null) {
+                current = label;
+                start = line;
+            }
+            end = line;
+        }
+        return ranges;
     }
 
     static List<Diagnostic> diagnostics(FeatureLens.FileTrace trace) {
