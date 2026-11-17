@@ -62,6 +62,7 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
         server.setTextDocumentSync(sync);
         server.setHoverProvider(true);
         server.setCodeLensProvider(new CodeLensOptions(false));
+        server.setFoldingRangeProvider(true);
         return CompletableFuture.completedFuture(new InitializeResult(server, new ServerInfo("ecco-lsp")));
     }
 
@@ -159,7 +160,7 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
         if (this.client != null) {
             this.client.publishDiagnostics(new PublishDiagnosticsParams(uri, diagnostics(trace)));
             if (this.client instanceof EccoLanguageClient ecco)
-                ecco.featureRanges(new EccoLanguageClient.FeatureRangesParams(uri, trace.fileCondition(),
+                ecco.featureRanges(new EccoLanguageClient.FeatureRangesParams(uri, trace.configuration(), trace.fileCondition(),
                         featureRanges(trace, content, c -> this.colours.computeIfAbsent(c, k -> this.colours.size()))));
             if (this.codeLensRefresh)
                 this.client.refreshCodeLenses();
@@ -205,8 +206,11 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
             return null;
         StringBuilder text = new StringBuilder("**ECCO** · ");
         FeatureLens.Span span = trace.at(line);
-        if (span != null && span.committed())
+        if (span != null && span.committed()) {
             text.append("`").append(span.condition()).append("`");
+            if (span.details() != null)
+                text.append("\n\n").append(span.details());
+        }
         else if (span != null)
             text.append("not committed - new or changed since the checkout");
         else if (trace.fileCondition() != null)
@@ -220,6 +224,31 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
         if (trace.configuration() != null)
             text.append("\n\nchecked out: `").append(trace.configuration()).append("`");
         return text.toString();
+    }
+
+    @Override
+    public CompletableFuture<List<FoldingRange>> foldingRange(FoldingRangeRequestParams params) {
+        String uri = params.getTextDocument().getUri();
+        return CompletableFuture.supplyAsync(() -> foldingRanges(this.traces.get(uri), this.documents.getOrDefault(uri, "")), this.ecco);
+    }
+
+    /**
+     * Each run of lines of one condition but the file's own (as coloured) that spans lines, to fold
+     * by feature; folded, it shows its condition. The editor merges them with the language's own.
+     */
+    static List<FoldingRange> foldingRanges(FeatureLens.FileTrace trace, String text) {
+        List<FoldingRange> ranges = new ArrayList<>();
+        if (trace == null)
+            return ranges;
+        for (EccoLanguageClient.FeatureRange run : featureRanges(trace, text, condition -> 0)) {
+            if (run.endLine() <= run.startLine())
+                continue;
+            FoldingRange range = new FoldingRange(run.startLine(), run.endLine());
+            range.setKind(FoldingRangeKind.Region);
+            range.setCollapsedText("ECCO: " + (run.condition() == null ? "not committed" : run.condition()));
+            ranges.add(range);
+        }
+        return ranges;
     }
 
     @Override

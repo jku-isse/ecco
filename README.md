@@ -155,10 +155,12 @@ A *remote* is either a local path - the repository's directory or its `.ecco` di
 
 [`lsp`](lsp) is a language server (LSP) that shows in an editor which features each line of a checked-out variant is traced to. It is read-only: it never writes the repository or the working directory, and holds no lock between requests, so the CLI and the GUI keep working beside it.
 
-* **Hover** - the condition of the line, e.g. `A | BASE & !B`, and the configuration checked out.
+* **Hover** - the condition of the line, e.g. `A | BASE & !B`, the descriptions of its features, the commits it came with ("3 commits, the last 2026-10-15 'Add search'") and the configuration checked out.
 * **Code lens** - one above each place where the condition changes, going down the file.
 * **Diagnostics** - the checkout's ORDER warnings at the lines whose order is undecided, and code not committed yet (new or changed since the checkout) as hints, also before it is saved.
 * **Colours** (VS Code client) - each condition its own background, from the palette the GUI colours associations with; code with the file's own condition stays uncoloured, code not committed is grey. *ECCO: Toggle Feature Colours* turns them off and on (`ecco.featureColours`). Other clients get them from the notification `ecco/featureRanges`.
+* **Folding by feature** - each block of one condition over several lines folds, showing its condition; *ECCO: Fold Feature…*, *ECCO: Fold All but Feature…* and *ECCO: Unfold Feature Blocks* (VS Code) fold one feature's code or everything else.
+* **ECCO Features view and status bar** (VS Code client) - the Explorer's *ECCO Features* view lists the conditions of the open file with their colours, lines and blocks (a click shows a block); the status bar shows the configuration checked out and opens the view.
 
 For a file, the server composes the working directory's checkout (its `.config`) again in memory, reads the editor's text with the file's adapter and matches its nodes to the composed ones by content; each matched node has the condition of its association. Lines are known for text, Java, LilyPond, C, C++, TypeScript, Python and Go files - from the lines the adapter records on its nodes, or else from the adapter's rendering of the file it read (`SourceRenderer`), where that is the file's text; for the other adapters (Markdown, images) only the file's condition is shown. A file is part of a working directory when a folder above it holds `.ecco`.
 

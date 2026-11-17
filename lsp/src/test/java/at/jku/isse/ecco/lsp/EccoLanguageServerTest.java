@@ -95,6 +95,19 @@ public class EccoLanguageServerTest {
                 EccoLanguageServer.featureRanges(trace, text, c -> slots.computeIfAbsent(c, k -> slots.size())));
     }
 
+    /** A run of one condition over several lines folds, showing its condition; one line, or the file's own condition, not. */
+    @Test
+    public void foldingRangesAreTheRunsOfSeveralLines() {
+        String text = "x\na1\na2\n\nb1\nnew1\nnew2\n";
+        FeatureLens.FileTrace trace = new FeatureLens.FileTrace("X", "X", List.of(
+                new FeatureLens.Span(1, 1, "X", 1),
+                new FeatureLens.Span(2, 3, "A", 1),
+                new FeatureLens.Span(5, 5, "B", 1),
+                new FeatureLens.Span(6, 7, null, 1)), List.of(), null);
+        assertEquals(List.of("1-2 ECCO: A", "5-6 ECCO: not committed"), EccoLanguageServer.foldingRanges(trace, text).stream()
+                .map(r -> r.getStartLine() + "-" + r.getEndLine() + " " + r.getCollapsedText()).toList());
+    }
+
     @Test
     public void hoverCodeLensAndDiagnosticsOverTheProtocol(@TempDir Path tmp) throws Exception {
         Path work = FeatureLensTest.checkout(tmp, "BASE, A, B");
@@ -135,7 +148,12 @@ public class EccoLanguageServerTest {
         EccoLanguageClient.FeatureRangesParams colours = client.featureRanges.poll(60, TimeUnit.SECONDS);
         assertNotNull(colours);
         assertEquals("BASE", colours.fileCondition());
+        assertTrue(colours.configuration().matches("A\\.\\w+, B\\.\\w+, BASE\\.\\w+"), colours.configuration());
         assertEquals(List.of(new EccoLanguageClient.FeatureRange(1, 1, "A", 0), new EccoLanguageClient.FeatureRange(3, 3, "B", 1)), colours.ranges());
+
+        // the lines of A and B are one line each: nothing to fold; the hover tells the commits too (b1: v2 and v3)
+        assertEquals(List.of(), remote.getTextDocumentService().foldingRange(new FoldingRangeRequestParams(new TextDocumentIdentifier(uri))).get(60, TimeUnit.SECONDS));
+        assertTrue(hover.getContents().getRight().getValue().contains("2 commits, the last"), hover.getContents().getRight().getValue());
 
         // an edit, not saved: line 2 is new
         VersionedTextDocumentIdentifier version = new VersionedTextDocumentIdentifier(uri, 2);

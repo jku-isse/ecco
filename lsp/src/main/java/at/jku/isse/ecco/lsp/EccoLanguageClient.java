@@ -23,7 +23,8 @@ public interface EccoLanguageClient extends LanguageClient {
     record FeatureRange(int startLine, int endLine, String condition, int colour) {
     }
 
-    record FeatureRangesParams(String uri, String fileCondition, List<FeatureRange> ranges) {
+    /** [configuration]: the working directory's checkout (its .config), for the client to show; null without one. */
+    record FeatureRangesParams(String uri, String configuration, String fileCondition, List<FeatureRange> ranges) {
     }
 
     @JsonNotification(FEATURE_RANGES)

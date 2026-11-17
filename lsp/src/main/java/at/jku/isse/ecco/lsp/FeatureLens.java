@@ -6,6 +6,9 @@ import at.jku.isse.ecco.adapter.view.RenderedSource;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
+import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.pog.OrderRegions;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.service.EccoService;
@@ -34,8 +37,15 @@ import java.util.stream.Stream;
 public final class FeatureLens implements AutoCloseable {
 
 
-    /** One node of the file: lines 1-based, inclusive; condition null where it is not committed. */
-    public record Span(int startLine, int endLine, String condition, int depth) {
+    /**
+     * One node of the file: lines 1-based, inclusive; condition null where it is not committed;
+     * details (Markdown, or null) - the descriptions of its features and the commits it came with.
+     */
+    public record Span(int startLine, int endLine, String condition, int depth, String details) {
+        public Span(int startLine, int endLine, String condition, int depth) {
+            this(startLine, endLine, condition, depth, null);
+        }
+
         boolean contains(int line) {
             return this.startLine <= line && line <= this.endLine;
         }
@@ -78,6 +88,9 @@ public final class FeatureLens implements AutoCloseable {
     private String composedFor;
     private Checkout checkout;
     private final Map<Association, String> conditions = new IdentityHashMap<>();
+    private final Map<Association, String> details = new IdentityHashMap<>();
+    /** The commits each association came with, by its id - read in a transaction of their own - found once per composed checkout (null until asked). */
+    private Map<String, List<Commit>> commitsOf;
 
     /** Opens the repository of [workingDir] (its .ecco directory). */
     public FeatureLens(Path workingDir) throws IOException {
@@ -187,6 +200,8 @@ public final class FeatureLens implements AutoCloseable {
             this.checkout = this.service.compose(this.service.parseConfigurationString(configuration));
             this.composedFor = key;
             this.conditions.clear();
+            this.details.clear();
+            this.commitsOf = null;
         }
         return this.checkout;
     }
@@ -243,30 +258,95 @@ public final class FeatureLens implements AutoCloseable {
                 continue;
             }
             used.add(match);
-            span(readChild, this.condition(match), depth + 1, lines).ifPresent(spans::add);
+            Association association = association(match);
+            span(readChild, this.condition(association), this.details(association), depth + 1, lines).ifPresent(spans::add);
             this.match(match, readChild, depth + 1, spans, readOf, lines);
         }
     }
 
     private static void uncommitted(Node read, int depth, List<Span> spans, NodeLines lines) {
-        span(read, null, depth, lines).ifPresent(spans::add);
+        span(read, null, null, depth, lines).ifPresent(spans::add);
         for (Node child : read.getChildren())
             uncommitted(child, depth + 1, spans, lines);
     }
 
-    private static Optional<Span> span(Node read, String condition, int depth, NodeLines lines) {
+    private static Optional<Span> span(Node read, String condition, String details, int depth, NodeLines lines) {
         int[] at = lines.of(read);
-        return at == null ? Optional.empty() : Optional.of(new Span(at[0], at[1], condition, depth));
+        return at == null ? Optional.empty() : Optional.of(new Span(at[0], at[1], condition, depth, details));
+    }
+
+    /** The association [node] of the composed tree comes from, or null. */
+    private static Association association(Node node) {
+        Artifact<?> artifact = node.getArtifact();
+        Node containing = artifact == null ? null : artifact.getContainingNode();
+        return containing == null ? null : containing.getContainingAssociation();
     }
 
     /** The condition of the association [node] of the composed tree comes from, by features. */
     private String condition(Node node) {
-        Artifact<?> artifact = node.getArtifact();
-        Node containing = artifact == null ? null : artifact.getContainingNode();
-        Association association = containing == null ? null : containing.getContainingAssociation();
+        return this.condition(association(node));
+    }
+
+    private String condition(Association association) {
         if (association == null)
             return at.jku.isse.ecco.module.Condition.NOT_TRACED;
         return this.conditions.computeIfAbsent(association, FeatureLens::describe);
+    }
+
+    /** Characters of a commit message quoted, as the GUI's ArtifactOrigins. */
+    static final int MESSAGE_TEXT = 40;
+
+    /**
+     * The descriptions of the features [association]'s condition names, where they have one, and the
+     * commits it came with: "3 commits, the last 2026-11-02 'Add search'" - for untraced code all
+     * there is to say where it comes from. Markdown; null for none.
+     */
+    private String details(Association association) {
+        if (association == null)
+            return null;
+        return this.details.computeIfAbsent(association, a -> {
+            List<String> parts = new ArrayList<>();
+            Map<String, String> descriptions = new TreeMap<>();
+            for (ModuleRevision moduleRevision : a.computeCondition().getAbsorbedModuleRevisions())
+                for (FeatureRevision revision : moduleRevision.getPos()) {
+                    String description = revision.getFeature().getDescription();
+                    if (description == null || description.isBlank())
+                        description = revision.getDescription();
+                    if (description != null && !description.isBlank())
+                        descriptions.putIfAbsent(revision.getFeature().getName(), description.trim());
+                }
+            descriptions.forEach((feature, description) -> parts.add("**" + feature + "**: " + description));
+            List<Commit> commits = this.commitsOf().getOrDefault(a.getId(), List.of());
+            if (!commits.isEmpty()) {
+                Commit last = commits.get(0);
+                for (Commit commit : commits)
+                    if (commit.getDate() != null && (last.getDate() == null || commit.getDate().after(last.getDate())))
+                        last = commit;
+                String message = last.getCommitMessage() == null ? "" : last.getCommitMessage().lines().findFirst().orElse("").trim();
+                if (message.length() > MESSAGE_TEXT)
+                    message = message.substring(0, MESSAGE_TEXT - 1) + "\u2026";
+                parts.add((commits.size() == 1 ? "1 commit" : commits.size() + " commits, the last")
+                        + (last.getDate() == null ? "" : " " + java.time.LocalDate.ofInstant(last.getDate().toInstant(), java.time.ZoneId.systemDefault()))
+                        + (message.isEmpty() ? "" : " '" + message + "'"));
+            }
+            return parts.isEmpty() ? null : String.join("\n\n", parts);
+        });
+    }
+
+    private Map<String, List<Commit>> commitsOf() {
+        if (this.commitsOf == null) {
+            Map<String, List<Commit>> commitsOf = new HashMap<>();
+            try {
+                for (Commit commit : this.service.getCommits())
+                    for (Association association : commit.getAssociations())
+                        commitsOf.computeIfAbsent(association.getId(), k -> new ArrayList<>()).add(commit);
+            } catch (RuntimeException e) {
+                // details only: the hover says what it can without them
+                java.util.logging.Logger.getLogger(FeatureLens.class.getName()).log(java.util.logging.Level.FINE, "Could not read the commits", e);
+            }
+            this.commitsOf = commitsOf;
+        }
+        return this.commitsOf;
     }
 
     /** As the GUI's artifact views say it (ArtifactOrigins#condition): the minimized condition where stored. */

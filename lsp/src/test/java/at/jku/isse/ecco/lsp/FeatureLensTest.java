@@ -191,6 +191,28 @@ public class FeatureLensTest {
         }
     }
 
+    /** The hover's details: the description of the line's feature and the commits it came with; none for code not committed. */
+    @Test
+    public void aLineTellsItsFeaturesDescriptionAndCommits(@TempDir Path tmp) throws Exception {
+        Path work = checkout(tmp, "BASE, A, B");
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(work.resolve(".ecco"));
+            service.open();
+            String a = service.getRepository().getFeatures().stream().filter(f -> f.getName().equals("A")).findFirst().orElseThrow().getId();
+            service.setFeatureDescription(a, "Adds the a lines.");
+        }
+        try (FeatureLens lens = new FeatureLens(work)) {
+            FeatureLens.FileTrace trace = lens.trace(Path.of("notes.txt"), "base1\na1\nbase2\nb1\nnew\n");
+            String details = trace.at(2).details();
+            assertNotNull(details);
+            assertTrue(details.contains("**A**: Adds the a lines."), details);
+            // a1 came with v1 (BASE, A) and v3 (BASE, A, B), messages "v1" and "v3"
+            assertTrue(details.contains("2 commits, the last") && details.contains("'v3'"), details);
+            assertTrue(trace.at(1).details().contains("3 commits"), trace.at(1).details());
+            assertNull(trace.at(5).details());
+        }
+    }
+
     static int lineOf(List<String> lines, String text) {
         for (int i = 0; i < lines.size(); i++)
             if (lines.get(i).contains(text))

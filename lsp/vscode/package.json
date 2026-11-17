@@ -43,9 +43,75 @@
       },
       {
         "command": "ecco.toggleFeatureColours",
-        "title": "ECCO: Toggle Feature Colours"
+        "title": "ECCO: Toggle Feature Colours",
+        "icon": "$(symbol-color)"
+      },
+      {
+        "command": "ecco.foldFeature",
+        "title": "ECCO: Fold Feature…",
+        "icon": "$(fold)"
+      },
+      {
+        "command": "ecco.foldOtherFeatures",
+        "title": "ECCO: Fold All but Feature…",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "ecco.unfoldFeatures",
+        "title": "ECCO: Unfold Feature Blocks",
+        "icon": "$(unfold)"
+      },
+      {
+        "command": "ecco.revealLines",
+        "title": "ECCO: Show Lines"
       }
-    ]
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "ecco.features",
+          "name": "ECCO Features"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "ecco.features",
+        "contents": "Open a file of an ECCO checkout to see which features its lines are traced to."
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "ecco.revealLines",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "ecco.unfoldFeatures",
+          "when": "view == ecco.features",
+          "group": "navigation@1"
+        },
+        {
+          "command": "ecco.toggleFeatureColours",
+          "when": "view == ecco.features",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "ecco.foldFeature",
+          "when": "view == ecco.features && viewItem == eccoCondition",
+          "group": "inline@1"
+        },
+        {
+          "command": "ecco.foldOtherFeatures",
+          "when": "view == ecco.features && viewItem == eccoCondition",
+          "group": "inline@2"
+        }
+      ]
+    }
   },
   "dependencies": {
     "vscode-languageclient": "9.0.1"
