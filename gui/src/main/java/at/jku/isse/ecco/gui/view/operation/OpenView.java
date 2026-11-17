@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.gui.common.InitialDirectory;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.RecentRepositories;
 import javafx.application.Platform;
@@ -18,7 +19,6 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -110,8 +110,7 @@ public class OpenView extends OperationView {
 				Path directory = Paths.get(repositoryDirTextField.getText());
 				if (directory.getFileName().equals(EccoService.REPOSITORY_DIR_NAME))
 					directory = directory.getParent();
-				if (Files.exists(directory) && Files.isDirectory(directory))
-					directoryChooser.setInitialDirectory(directory.toFile());
+				directoryChooser.setInitialDirectory(InitialDirectory.of(directory));
 			} catch (Exception ignored) {
 			}
 			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());

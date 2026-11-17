@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.gui.common.InitialDirectory;
 import at.jku.isse.ecco.gui.common.ConstraintWarnings;
 import at.jku.isse.ecco.gui.common.ExceptionAlert;
 import at.jku.isse.ecco.gui.common.LatestRefresh;
@@ -32,7 +33,6 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
 
 import java.io.File;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -184,12 +184,7 @@ public class VariantsView extends BorderPane implements EccoListener {
 
         selectBaseDirectoryButton.setOnAction(event -> {
             final DirectoryChooser directoryChooser = new DirectoryChooser();
-            try {
-                Path directory = Paths.get(baseDirTextField.getText());
-                if (Files.exists(directory) && Files.isDirectory(directory))
-                    directoryChooser.setInitialDirectory(directory.toFile());
-            } catch (Exception ignored) {
-            }
+            directoryChooser.setInitialDirectory(InitialDirectory.of(baseDirTextField.getText()));
             final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
             if (selectedDirectory != null) {
                 baseDirTextField.setText(selectedDirectory.toPath().toString());

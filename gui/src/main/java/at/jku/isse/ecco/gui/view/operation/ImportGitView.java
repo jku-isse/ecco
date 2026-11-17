@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.gui.common.InitialDirectory;
 import at.jku.isse.ecco.gui.common.PluginNames;
 import at.jku.isse.ecco.gui.common.ConstraintWarnings;
 import at.jku.isse.ecco.adapter.ArtifactReader;
@@ -282,9 +283,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 			// this dialog's own last-picked repo if there was one, else the user's home directory
 			// (always exists, unlike e.g. a stale/removed previous pick).
 			Path initialDirectory = this.repoDir != null ? this.repoDir : Path.of(System.getProperty("user.home"));
-			if (Files.exists(initialDirectory) && Files.isDirectory(initialDirectory)) {
-				directoryChooser.setInitialDirectory(initialDirectory.toFile());
-			}
+			directoryChooser.setInitialDirectory(InitialDirectory.of(initialDirectory));
 			File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
 			if (selectedDirectory == null) {
 				return;

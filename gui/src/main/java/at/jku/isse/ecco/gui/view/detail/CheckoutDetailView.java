@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.detail;
 
+import at.jku.isse.ecco.gui.common.InitialDirectory;
 import at.jku.isse.ecco.core.RejectedTrace;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
@@ -632,12 +633,7 @@ public class CheckoutDetailView extends BorderPane {
 
 			browseButton.setOnAction(event -> {
 				DirectoryChooser directoryChooser = new DirectoryChooser();
-				try {
-					Path directory = Paths.get(directoryField.getText());
-					if (Files.exists(directory) && Files.isDirectory(directory))
-						directoryChooser.setInitialDirectory(directory.toFile());
-				} catch (Exception ignored) {
-				}
+				directoryChooser.setInitialDirectory(InitialDirectory.of(directoryField.getText()));
 				File selectedDirectory = directoryChooser.showDialog(this.getDialogPane().getScene().getWindow());
 				if (selectedDirectory != null) {
 					directoryField.setText(selectedDirectory.toPath().toString());

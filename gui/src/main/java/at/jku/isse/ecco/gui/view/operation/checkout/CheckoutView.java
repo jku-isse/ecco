@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation.checkout;
 
+import at.jku.isse.ecco.gui.common.InitialDirectory;
 import at.jku.isse.ecco.gui.common.ConstraintWarnings;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
@@ -266,12 +267,7 @@ public class CheckoutView extends OperationView implements EccoListener {
 
         selectBaseDirectoryButton.setOnAction(event -> {
             final DirectoryChooser directoryChooser = new DirectoryChooser();
-            try {
-                Path directory = Paths.get(baseDirTextField.getText());
-                if (Files.exists(directory) && Files.isDirectory(directory))
-                    directoryChooser.setInitialDirectory(directory.toFile());
-            } catch (Exception ignored) {
-            }
+            directoryChooser.setInitialDirectory(InitialDirectory.of(baseDirTextField.getText()));
             final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
             if (selectedDirectory != null) {
                 baseDirTextField.setText(selectedDirectory.toPath().toString());

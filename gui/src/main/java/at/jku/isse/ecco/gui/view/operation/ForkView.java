@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.gui.common.InitialDirectory;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.RecentRepositories;
 import at.jku.isse.ecco.service.RemoteAddress;
@@ -222,8 +223,7 @@ public class ForkView extends OperationView {
 			Path directory = Paths.get(current);
 			if (EccoService.REPOSITORY_DIR_NAME.equals(directory.getFileName()))
 				directory = directory.getParent();
-			if (directory != null && Files.isDirectory(directory))
-				directoryChooser.setInitialDirectory(directory.toFile());
+			directoryChooser.setInitialDirectory(InitialDirectory.of(directory));
 		} catch (Exception ignored) {
 		}
 		return directoryChooser.showDialog(this.getScene().getWindow());

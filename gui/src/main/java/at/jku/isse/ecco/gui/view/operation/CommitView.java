@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.gui.common.InitialDirectory;
 import at.jku.isse.ecco.gui.common.PluginNames;
 import at.jku.isse.ecco.gui.common.ConstraintWarnings;
 import at.jku.isse.ecco.adapter.CommitCancelledException;
@@ -271,8 +272,7 @@ public class CommitView extends OperationView implements EccoListener {
 			directoryChooser.setTitle("Select the Parent Folder Containing the Variant Folders to Commit");
 			Path initialDir = folderData.isEmpty() ? service.getBaseDir() : Paths.get(folderData.get(folderData.size() - 1).getFolder()).getParent();
 			try {
-				if (initialDir != null && Files.exists(initialDir) && Files.isDirectory(initialDir))
-					directoryChooser.setInitialDirectory(initialDir.toFile());
+				directoryChooser.setInitialDirectory(InitialDirectory.of(initialDir));
 			} catch (Exception ignored) {
 			}
 			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
