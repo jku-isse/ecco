@@ -63,6 +63,7 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
         server.setHoverProvider(true);
         server.setCodeLensProvider(new CodeLensOptions(false));
         server.setFoldingRangeProvider(true);
+        server.setExecuteCommandProvider(new ExecuteCommandOptions(EditorCommands.ALL));
         return CompletableFuture.completedFuture(new InitializeResult(server, new ServerInfo("ecco-lsp")));
     }
 
@@ -127,6 +128,30 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
 
     @Override
     public void didChangeConfiguration(DidChangeConfigurationParams params) {
+    }
+
+    /** The commands of the editor's client - commit and checkout, and what they ask first (EditorCommands). */
+    @Override
+    public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
+        return CompletableFuture.supplyAsync(() -> {
+            com.google.gson.JsonObject arguments = params.getArguments() == null || params.getArguments().isEmpty()
+                    || !(params.getArguments().getFirst() instanceof com.google.gson.JsonObject object) ? new com.google.gson.JsonObject() : object;
+            String uri = arguments.has("uri") ? arguments.get("uri").getAsString() : null;
+            Path file = uri == null ? null : path(uri);
+            FeatureLens lens = file == null ? null : this.lens(file);
+            if (lens == null)
+                throw failed("Not a file of an ECCO working directory: " + uri);
+            Object result = EditorCommands.run(params.getCommand(), lens, arguments);
+            if (EditorCommands.CHANGING.contains(params.getCommand()))
+                // the checkout or commit changed what the open files are traced to: again, all of them
+                this.documents.keySet().forEach(open -> this.schedule(open, 0));
+            return result;
+        }, this.ecco);
+    }
+
+    static org.eclipse.lsp4j.jsonrpc.ResponseErrorException failed(String message) {
+        return new org.eclipse.lsp4j.jsonrpc.ResponseErrorException(
+                new org.eclipse.lsp4j.jsonrpc.messages.ResponseError(org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode.RequestFailed, message, null));
     }
 
     @Override

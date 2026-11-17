@@ -38,6 +38,16 @@
     },
     "commands": [
       {
+        "command": "ecco.commit",
+        "title": "ECCO: Commit…",
+        "icon": "$(check)"
+      },
+      {
+        "command": "ecco.checkout",
+        "title": "ECCO: Check Out…",
+        "icon": "$(versions)"
+      },
+      {
         "command": "ecco.restartServer",
         "title": "ECCO: Restart Language Server"
       },
@@ -88,6 +98,16 @@
         }
       ],
       "view/title": [
+        {
+          "command": "ecco.commit",
+          "when": "view == ecco.features",
+          "group": "navigation@0"
+        },
+        {
+          "command": "ecco.checkout",
+          "when": "view == ecco.features",
+          "group": "navigation@0"
+        },
         {
           "command": "ecco.unfoldFeatures",
           "when": "view == ecco.features",

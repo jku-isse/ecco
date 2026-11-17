@@ -173,6 +173,13 @@ public class EccoLanguageServerTest {
         assertNull(remote.getTextDocumentService().hover(new HoverParams(new TextDocumentIdentifier(other), new Position(0, 0))).get(60, TimeUnit.SECONDS));
         assertTrue(client.messages.isEmpty(), client.messages.toString());
 
+        // the editor's commands: the working directory found from a file of it, the features to suggest
+        com.google.gson.JsonObject arguments = new com.google.gson.JsonObject();
+        arguments.addProperty("uri", uri);
+        Object info = remote.getWorkspaceService().executeCommand(new ExecuteCommandParams(EditorCommands.INFO, List.of(arguments))).get(60, TimeUnit.SECONDS);
+        assertTrue(info.toString().contains("features=[A, B, BASE]"), info.toString());
+        assertTrue(result.getCapabilities().getExecuteCommandProvider().getCommands().containsAll(EditorCommands.ALL));
+
         remote.shutdown().get(60, TimeUnit.SECONDS);
     }
 }

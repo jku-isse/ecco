@@ -232,6 +232,138 @@ async function unfoldFeatures() {
     await vscode.commands.executeCommand('editor.unfold', { selectionLines: lines, levels: 1 });
 }
 
+// ---------------------------------------------------------------- commit and checkout
+
+// the server's commands (EditorCommands): one object argument, uri a file or the folder of a working directory
+async function server(command, args) {
+  if (!client) throw new Error('The ECCO language server is not running.');
+  return client.sendRequest('workspace/executeCommand', { command: `ecco.server.${command}`, arguments: [args] });
+}
+
+// the active editor's file, else the first workspace folder: the server finds the working directory above it
+function targetUri() {
+  const editor = vscode.window.activeTextEditor;
+  if (editor && editor.document.uri.scheme === 'file') return editor.document.uri.toString();
+  const folder = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+  return folder ? folder.uri.toString() : null;
+}
+
+function errorText(e) {
+  return e && e.message ? e.message : String(e);
+}
+
+function unsavedIn(workingDir) {
+  return vscode.workspace.textDocuments.filter(d =>
+    d.isDirty && d.uri.scheme === 'file' && (d.uri.fsPath + path.sep).startsWith(workingDir + path.sep));
+}
+
+function listed(items, max = 10) {
+  const shown = items.slice(0, max).map(i => `  ${i}`).join('\n');
+  return items.length > max ? `${shown}\n  … and ${items.length - max} more` : shown;
+}
+
+// the working directory of the target and what to suggest, or null (said why)
+async function repositoryInfo() {
+  const uri = targetUri();
+  if (!uri) {
+    vscode.window.showWarningMessage('ECCO: open a file of an ECCO working directory first.');
+    return null;
+  }
+  try {
+    return { uri, ...(await server('info', { uri })) };
+  } catch (e) {
+    vscode.window.showWarningMessage(`ECCO: ${errorText(e)}`);
+    return null;
+  }
+}
+
+// asks to go on despite constraint violations (advisory, as in the GUI); true to go on
+async function acceptViolations(info, configuration, verb) {
+  const violations = await server('constraintViolations', { uri: info.uri, configuration });
+  if (!violations || violations.length === 0) return true;
+  const answer = await vscode.window.showWarningMessage(
+    `${configuration} violates ${violations.length === 1 ? 'a constraint' : `${violations.length} constraints`}.`,
+    { modal: true, detail: listed(violations) }, `${verb} Anyway`);
+  return answer === `${verb} Anyway`;
+}
+
+async function commit() {
+  const info = await repositoryInfo();
+  if (!info) return;
+  const unsaved = unsavedIn(info.workingDir);
+  if (unsaved.length > 0) {
+    const answer = await vscode.window.showWarningMessage(
+      `${unsaved.length === 1 ? '1 file has' : `${unsaved.length} files have`} unsaved changes: the commit takes the files as saved.`,
+      { modal: true, detail: listed(unsaved.map(d => vscode.workspace.asRelativePath(d.uri))) }, 'Save and Commit');
+    if (answer !== 'Save and Commit') return;
+    for (const document of unsaved) await document.save();
+  }
+  const configuration = await vscode.window.showInputBox({
+    title: 'ECCO: Commit (1/2)',
+    prompt: `The configuration of this variant - features: ${info.features.join(', ')}`,
+    value: info.configuration,
+    ignoreFocusOut: true,
+    validateInput: text => text.trim() ? null : 'A commit needs a configuration.'
+  });
+  if (configuration === undefined) return;
+  const message = await vscode.window.showInputBox({ title: 'ECCO: Commit (2/2)', prompt: 'Commit message', ignoreFocusOut: true });
+  if (message === undefined) return;
+  try {
+    if (!await acceptViolations(info, configuration.trim(), 'Commit')) return;
+    const result = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'ECCO: committing…' },
+      () => server('commit', { uri: info.uri, configuration: configuration.trim(), message }));
+    vscode.window.showInformationMessage(`ECCO: committed ${result.commit.slice(0, 7)} as ${shortConfiguration(result.configuration)}.`);
+  } catch (e) {
+    vscode.window.showErrorMessage(`ECCO: the commit failed: ${errorText(e)}`);
+  }
+}
+
+async function checkout() {
+  const info = await repositoryInfo();
+  if (!info) return;
+  const unsaved = unsavedIn(info.workingDir);
+  if (unsaved.length > 0) {
+    vscode.window.showWarningMessage('ECCO: save or revert the unsaved files of the working directory first - a checkout replaces them.',
+      { modal: true, detail: listed(unsaved.map(d => vscode.workspace.asRelativePath(d.uri))) });
+    return;
+  }
+  const enter = { label: '$(edit) Enter a configuration…', alwaysShow: true };
+  const picked = await vscode.window.showQuickPick(
+    [...info.configurations.map(c => ({ label: shortConfiguration(c), description: c, configuration: c })), enter],
+    { title: 'ECCO: Check Out', placeHolder: 'A committed configuration, or enter one', matchOnDescription: true });
+  if (!picked) return;
+  let configuration = picked.configuration;
+  if (picked === enter) {
+    configuration = await vscode.window.showInputBox({
+      title: 'ECCO: Check Out', prompt: `Features: ${info.features.join(', ')}`, value: info.configuration, ignoreFocusOut: true });
+    if (!configuration || !configuration.trim()) return;
+    configuration = configuration.trim();
+  }
+  try {
+    if (!await acceptViolations(info, configuration, 'Check Out')) return;
+    const run = force => vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'ECCO: checking out…' },
+      () => server('checkout', { uri: info.uri, configuration, force }));
+    let result = await run(false);
+    if (result.refused === 'foreign') {
+      vscode.window.showErrorMessage('ECCO: the working directory holds files that are not from the checkout. Commit or move them first - a checkout never deletes them.',
+        { modal: true, detail: listed(result.foreign) });
+      return;
+    }
+    if (result.refused === 'changed') {
+      const lines = [...result.changed.map(f => `changed: ${f}`), ...result.removed.map(f => `removed: ${f}`)];
+      const answer = await vscode.window.showWarningMessage(
+        `${lines.length === 1 ? '1 file has' : `${lines.length} files have`} changed since the checkout. Replace them? This cannot be undone.`,
+        { modal: true, detail: listed(lines) }, 'Replace Changed Files');
+      if (answer !== 'Replace Changed Files') return;
+      result = await run(true);
+    }
+    vscode.window.showInformationMessage(`ECCO: checked out ${shortConfiguration(result.configuration)}`
+      + (result.warnings ? ` - warnings: ${result.warnings} (details in .warnings).` : '.'));
+  } catch (e) {
+    vscode.window.showErrorMessage(`ECCO: the checkout failed: ${errorText(e)}`);
+  }
+}
+
 // ---------------------------------------------------------------- the server
 
 // run from the repository (lsp/vscode): the launcher ./gradlew :ecco-lsp:installDist builds beside it
@@ -312,6 +444,8 @@ async function activate(context) {
     vscode.commands.registerCommand('ecco.foldFeature', element => foldFeature(element && conditionsOf(vscode.window.activeTextEditor.document).find(g => g.label === element.label))),
     vscode.commands.registerCommand('ecco.foldOtherFeatures', element => foldOtherFeatures(element && conditionsOf(vscode.window.activeTextEditor.document).find(g => g.label === element.label))),
     vscode.commands.registerCommand('ecco.unfoldFeatures', unfoldFeatures),
+    vscode.commands.registerCommand('ecco.commit', commit),
+    vscode.commands.registerCommand('ecco.checkout', checkout),
     vscode.workspace.onDidChangeConfiguration(event => {
       if (event.affectsConfiguration('ecco.featureColours')) paintAll();
     }),

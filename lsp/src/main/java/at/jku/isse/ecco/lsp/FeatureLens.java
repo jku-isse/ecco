@@ -102,6 +102,11 @@ public final class FeatureLens implements AutoCloseable {
         this.scratch = Files.createTempDirectory("ecco-lsp");
     }
 
+    /** The service of the working directory's repository - for the commands that change it (EccoLanguageServer). */
+    EccoService service() {
+        return this.service;
+    }
+
     public Path workingDir() {
         return this.workingDir;
     }

@@ -244,7 +244,8 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		this.ignorePatterns.remove(ignorePattern);
 	}
 
-	private boolean isIgnored(Path path) {
+	/** Whether [path], relative to the base directory, is ignored (.ignores and the default patterns): a commit does not read it, nor what is below it. */
+	public boolean isIgnored(Path path) {
 		for (String ignorePattern : this.ignorePatterns) {
 			PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:" + ignorePattern);
 			if (pm.matches(path))
