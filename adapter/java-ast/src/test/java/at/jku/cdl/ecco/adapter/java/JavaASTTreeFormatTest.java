@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Repositories committed before synchronized statements, blocks and arrow switch cases were kept,
- * or before an enum's constants were an ordered group, hold differently shaped trees - a new commit would add the same statements a second time under
+ * or before an enum's constants or a type's initializer blocks were in ordered groups, hold differently shaped trees - a new commit would add the same statements a second time under
  * their new parents. Committing into them is refused; checking out of them still works.
  */
 public class JavaASTTreeFormatTest {
@@ -31,12 +31,13 @@ public class JavaASTTreeFormatTest {
             makeOld(child, format);
     }
 
-    /** Format 0: before synchronized statements, blocks and arrow cases; format 1: before the enum constants' ordered group. */
+    /** Format 0: before synchronized statements, blocks and arrow cases; format 1: before the enum constants' ordered group; format 2: before initializer blocks joined the fields' group. */
     @Test
     @Timeout(120)
     public void commitsIntoRepositoriesOfAnOlderFormatAreRefused() throws Exception {
         assertRefused(0, "synchronized");
         assertRefused(1, "enum's constants");
+        assertRefused(2, "initializer blocks");
     }
 
     private static void assertRefused(int format, String reason) throws Exception {

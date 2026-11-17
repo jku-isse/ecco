@@ -291,13 +291,27 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			addEnumConstants(ed, clazzNode);
 			clazzData.setType(ASTNodeType.ENUM_DECLARATION);
 		});
-		if (!clazz.getFields().isEmpty()) {
+		// fields and initializer blocks run in the order they are written: one ordered group, in the
+		// order of the source (initializer blocks were unordered children of the type, like its
+		// methods, and were written after all fields - tree format 3)
+		List<BodyDeclaration<?>> initialized = clazz.getMembers().stream()
+				.filter(m -> m.isFieldDeclaration() || m.isInitializerDeclaration()).collect(Collectors.toList());
+		if (!initialized.isEmpty()) {
 			JavaASTSimpleStringData fieldGroup = new JavaASTSimpleStringData("FIELDS");
 			fieldGroup.setType(ASTNodeType.FIELD_GROUP);
 			Artifact.Op<JavaASTSimpleStringData> fieldsGroupArtifact = this.entityFactory.createArtifact(fieldGroup);
 			Node.Op fieldsGroupNode = this.entityFactory.createOrderedNode(fieldsGroupArtifact);
 			clazzNode.addChild(fieldsGroupNode);
-			for (FieldDeclaration fd : clazz.getFields()) {
+			// how often each initializer's text occurred before in this class: a repeated one is told apart
+			Map<String, Integer> seen = new HashMap<>();
+			for (BodyDeclaration<?> member : initialized) {
+				if (member.isInitializerDeclaration()) {
+					InitializerDeclaration init = member.asInitializerDeclaration();
+					String text = init.toString(PPC_WITH_COMMENTS);
+					addInitializer(text, seen.merge(text, 1, Integer::sum) - 1, init, fieldsGroupNode);
+					continue;
+				}
+				FieldDeclaration fd = member.asFieldDeclaration();
 				JavaASTSimpleStringData fdData = new JavaASTSimpleStringData(fd.toString(PPC));
 				Artifact.Op<JavaASTSimpleStringData> fdArtifact = this.entityFactory.createArtifact(fdData);
 				fdData.setType(ASTNodeType.FIELD_DECLARATION);
@@ -312,29 +326,20 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		}
 		extractConstructors(clazz).forEach(c -> clazzNode.addChild(c));
 		extractMethods(clazz).forEach(c -> clazzNode.addChild(c));
-		clazz.getMembers().stream().filter(BodyDeclaration::isInitializerDeclaration)
-				.map(InitializerDeclaration.class::cast).forEach(new java.util.function.Consumer<>() {
-					// how often each text occurred before in this class: a repeated one is told apart
-					private final Map<String, Integer> seen = new HashMap<>();
-
-					@Override
-					public void accept(InitializerDeclaration init) {
-						String text = init.toString(PPC_WITH_COMMENTS);
-						addInitializer(text, this.seen.merge(text, 1, Integer::sum) - 1, clazzNode);
-					}
-				});
 		clazz.getMembers().stream().filter(BodyDeclaration::isTypeDeclaration).map(TypeDeclaration.class::cast)
 				.forEach(type -> addTypeDeclaration(type, clazzNode));
 		parent.addChild(clazzNode);
 	}
 
 	/** An initializer block; [occurrence] how many blocks with the same text came before it in the class. */
-	private void addInitializer(String text, int occurrence, Op clazzNode) {
+	private void addInitializer(String text, int occurrence, InitializerDeclaration init, Op groupNode) {
 		JavaASTSimpleStringData initData = occurrence == 0 ? new JavaASTSimpleStringData(text) : new JavaASTRepeatedData(text, occurrence);
 		initData.setType(ASTNodeType.INITIALIZER_DECLARATION);
 		Artifact.Op<JavaASTSimpleStringData> initArtifact = this.entityFactory.createArtifact(initData);
 		Node.Op initNode = this.entityFactory.createOrderedNode(initArtifact);
-		clazzNode.addChild(initNode);
+		initNode.putProperty(PROPERTY_LINE_START, getStartLine(init));
+		initNode.putProperty(PROPERTY_LINE_END, getEndLine(init));
+		groupNode.addChild(initNode);
 	}
 
 	/**

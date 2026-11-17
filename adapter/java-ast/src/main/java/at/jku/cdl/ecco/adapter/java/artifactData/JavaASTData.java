@@ -57,10 +57,12 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 	 * statements) and arrow switch entries are told apart from "case A:" ones; 2 since an enum's
 	 * constants are an ordered group of their own (they were unordered children of the enum, and
 	 * the two shapes mixed in one repository put constants of other variants into a checkout and
-	 * out of order). Kept on the file's package declaration; 0 (absent) in repositories committed
+	 * out of order); 3 since a type's initializer blocks are in the ordered group with its fields
+	 * (they were unordered children of the type, like its methods, and were written after all fields
+	 * and in the order of their associations, changing the order they run in). Kept on the file's package declaration; 0 (absent) in repositories committed
 	 * before format 1, whose trees cannot be combined with the new ones - see retiredFormat().
 	 */
-	public static final int TREE_FORMAT = 2;
+	public static final int TREE_FORMAT = 3;
 	private int treeFormat;
 
 	public JavaASTComment getComment() {
@@ -114,9 +116,12 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 		if (this.treeFormat < 1)
 			return "its Java files are stored in a format that lost their synchronized statements, the blocks among"
 					+ " their statements (e.g. case 0: { ... }) and the arrows of switch cases (case A -> ...).";
-		if (this.treeFormat < TREE_FORMAT)
+		if (this.treeFormat < 2)
 			return "its Java files are stored in a format that kept an enum's constants unordered, like its members:"
 					+ " committed into, a variant combining commits could get the constants of other variants, or out of order.";
+		if (this.treeFormat < TREE_FORMAT)
+			return "its Java files are stored in a format that kept a type's initializer blocks unordered, like its methods:"
+					+ " committed into, a variant combining commits could run its fields' and blocks' initializations in another order.";
 		return null;
 	}
 

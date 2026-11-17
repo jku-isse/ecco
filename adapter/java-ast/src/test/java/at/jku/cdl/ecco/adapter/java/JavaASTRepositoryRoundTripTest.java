@@ -1,7 +1,6 @@
 package at.jku.cdl.ecco.adapter.java;
 
 import at.jku.isse.ecco.service.EccoService;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -56,8 +55,10 @@ public class JavaASTRepositoryRoundTripTest {
     }
 
     /**
-     * The members of a type are unordered children of its node: B's constructor, a different
-     * artifact than A's, comes after run(), which both variants share. Its code is as committed.
+     * The methods, constructors and nested types of a type are unordered children of its node - their
+     * order does not change what the code does, and keeping it would make an ORDER warning of every
+     * place two variants add members (decided 2026-11-17): B's constructor, a different artifact than
+     * A's, comes after run(), which both variants share. Its code is as committed.
      */
     @Test
     @Timeout(120)
@@ -65,13 +66,6 @@ public class JavaASTRepositoryRoundTripTest {
         String constructor = B.substring(B.indexOf("    /**"), B.indexOf("    void run()"));
         String run = B.substring(B.indexOf("    void run()"), B.lastIndexOf("}"));
         assertEquals("package p;\n\npublic class C {\n" + run + "\n" + constructor.substring(0, constructor.length() - 1) + "}\n", checkout("B"));
-    }
-
-    @Test
-    @Disabled("bug: the members of a type are written in the order their associations come in, not as committed")
-    @Timeout(120)
-    public void theSecondVariantIsCheckedOutAsCommitted() throws Exception {
-        assertEquals(B, checkout("B"));
     }
 
     private static final String GUARDED = "package p;\n\npublic enum C {\n\n    @Deprecated\n    ONLY;\n"
