@@ -1,0 +1,35 @@
+{
+  "name": "ecco",
+  "displayName": "ECCO",
+  "description": "Shows which features each line of an ECCO checkout is traced to.",
+  "version": "0.1.0",
+  "publisher": "ecco",
+  "private": true,
+  "engines": { "vscode": "^1.82.0" },
+  "categories": ["Other"],
+  "main": "./extension.js",
+  "activationEvents": ["workspaceContains:**/.ecco/*"],
+  "contributes": {
+    "configuration": {
+      "title": "ECCO",
+      "properties": {
+        "ecco.serverPath": {
+          "type": "string",
+          "default": "",
+          "description": "The ecco-lsp launcher (lsp/build/install/ecco-lsp/bin/ecco-lsp after ./gradlew :ecco-lsp:installDist). Empty: the one built beside this extension in the repository, else ecco-lsp on the PATH."
+        },
+        "ecco.javaHome": {
+          "type": "string",
+          "default": "",
+          "description": "A Java 21 (or later) installation for the server. Empty: JAVA_HOME, or java on the PATH - which an editor started from the Dock or Finder may not have."
+        }
+      }
+    },
+    "commands": [
+      { "command": "ecco.restartServer", "title": "ECCO: Restart Language Server" }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "9.0.1"
+  }
+}

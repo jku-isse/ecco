@@ -148,7 +148,7 @@ An alternative flow ends with `ABORT` (the use case ends) or `RESUME STEP n` (th
 | UC-4 | Commit several variants | Variant developer | GUI | 1, 2 |
 | UC-5 | Check out variant | Variant developer | CLI, GUI | 3, 4 |
 | UC-6 | Resolve ambiguous order | Variant developer | CLI, GUI | 3, 4 |
-| UC-7 | Locate features | Researcher | CLI, GUI | 1 |
+| UC-7 | Locate features | Researcher | CLI, GUI, editor (LSP) | 1 |
 | UC-8 | Review mined constraints | Product-line engineer | CLI, GUI | 2, 4 |
 | UC-9 | Minimize presence conditions | Product-line engineer | CLI, GUI | 2 |
 | UC-10 | Import Git history | Product-line engineer | CLI, GUI | 2, 4 |
@@ -530,8 +530,8 @@ Postcondition: As the basic flow, and the file is already in the new order; afte
 | Secondary actors | None |
 | Dependency | INCLUDE USE CASE Commit variant |
 | Generalization | None |
-| Front ends | CLI `traces [id]`, `dg`; GUI Explore > Artifacts (with the association details), association preview, Explore > Dependency Graph |
-| Realizes | FR-M1, FR-T1, FR-T2, IF-C6, IF-C16, IF-G6, IF-G7, IF-G9 |
+| Front ends | CLI `traces [id]`, `dg`; GUI Explore > Artifacts (with the association details), association preview, Explore > Dependency Graph; editor through the language server (hover, code lens on a checked-out file) |
+| Realizes | FR-M1, FR-T1, FR-T2, IF-C6, IF-C16, IF-G6, IF-G7, IF-G9, IF-L2, IF-L3 |
 
 **Basic flow**
 
@@ -1490,7 +1490,7 @@ AD-10b: parce's tokens and contexts would never match those of the tree-sitter p
 
 ## Interface requirements
 
-Three front ends sit on one service API (`EccoService`): a CLI for scripting and experiments, a JavaFX GUI for exploration, and a REST server for the external web client. They do not offer the same operations; the matrix at the end shows where they differ.
+Four front ends sit on one service API (`EccoService`): a CLI for scripting and experiments, a JavaFX GUI for exploration, a REST server for the external web client, and a language server showing an editor the features of the lines of a checked-out file (read-only). They do not offer the same operations; the matrix at the end shows where they differ.
 
 ### Command line (`cli`)
 
@@ -1588,6 +1588,19 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-R5d | Unwanted | If a client adds a variant with a configuration the REST server cannot read, then the REST server shall refuse it with 400. | - | `FileRepositoryServiceTest` | Code `VariantController` | met |
 | IF-R6 | Unwanted | If a request to any endpoint except Swagger carries no valid signed JWT bearer token, then the REST server shall refuse it. | UC-14 GA1; UC-15 GA1 | `RestTokenSecurityTest`, `WebClientEndToEndTest` | Code `@Secured(IS_AUTHENTICATED)` | met |
 | IF-R7 | Unwanted | If a login's user name and password match no user, then the REST server shall refuse it with "Invalid user name or password" and issue no token. | UC-14 B2, SA1 | `RestTokenSecurityTest`, `WebClientEndToEndTest` | Code `AuthenticationProviderUserPassword` | met |
+
+### Language server (`lsp`)
+
+| ID | Pattern | Requirement | Use case | Acceptance test | Evidence | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| IF-L1 | Ubiquitous (design constraint) | The language server shall speak the Language Server Protocol over standard input and output, and shall write nothing but the protocol to standard output. | UC-7 front ends | `EccoLanguageServerTest` | Code `Main` (standard output to standard error) | met |
+| IF-L2 | Event | When an editor asks about a line of a file in a working directory holding a checkout, the language server shall name the condition of the association the line comes from, by features, at the line the editor shows - also for text not saved yet. | UC-7 | `FeatureLensTest`, `EccoLanguageServerTest` | Code `FeatureLens` (the read text matched to the composed checkout by content; the composed tree's lines are the committing variant's) | met |
+| IF-L3 | Ubiquitous | The language server shall mark with a code lens each line where the condition changes, going down the file. | UC-7 | `EccoLanguageServerTest` | Code `EccoLanguageServer#codeLenses` | met |
+| IF-L4 | Event | When a file holds code the checkout does not - new or changed since it - the language server shall report it as a hint at those lines. | - | `FeatureLensTest`, `EccoLanguageServerTest` | Code `EccoLanguageServer#diagnostics` | met |
+| IF-L5 | Event | When the checkout has an ORDER warning in a file, the language server shall report it at the lines whose order is undecided. | UC-6 | `FeatureLensTest#anOrderWarningIsAtTheUndecidedLines` | Code `FeatureLens` | met |
+| IF-L6 | State | While a file's adapter records no line positions, the language server shall give the condition of the file and say why there is no more. | - | `FeatureLensTest#aFileWithoutLinePositionsHasItsFilesCondition` | Code `FeatureLens` | met |
+| IF-L7 | Unwanted | If a file is not in a working directory, not part of the checkout, or does not parse with the adapter it was committed with, then the language server shall say so and trace nothing. | - | `FeatureLensTest`, `EccoLanguageServerTest` | Code `FeatureLens#trace` | met |
+| IF-L8 | Ubiquitous (design constraint) | The language server shall write neither the repository nor the working directory, and shall hold no repository lock between requests. | - | `FeatureLensTest#aCommitFromAnotherServiceIsSeen` | Code `FeatureLens` (`EccoService#compose` writes nothing; each read a transaction of its own) | met |
 
 ### Where the front ends differ
 

@@ -1,0 +1,309 @@
+package at.jku.isse.ecco.lsp;
+
+import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.Checkout;
+import at.jku.isse.ecco.pog.OrderRegions;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
+import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.tree.ArtifactDiagnostics;
+import at.jku.isse.ecco.tree.Node;
+
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.stream.Stream;
+
+/**
+ * Which features each line of a file in a working directory is traced to: the directory's checkout
+ * (its {@code .config}) is composed again in memory, the file's content - as an editor holds it,
+ * saved or not - is read with its adapter, and its nodes are matched to the composed ones by
+ * content, as {@code OrderService#recordOrderOfFiles} does. A matched node has the condition of the
+ * association it comes from; one without a match is new or changed since the checkout.
+ * <p>
+ * The line numbers come from reading the content, not from the composed tree: there, a node keeps
+ * the lines it had in the variant that committed it.
+ * <p>
+ * Not thread-safe: the language server calls it from one thread.
+ */
+public final class FeatureLens implements AutoCloseable {
+
+    /** The property the adapters that know where their nodes are (text, Java, LilyPond) set. */
+    static final String LINE_START = "LINE_START";
+    static final String LINE_END = "LINE_END";
+
+    /** One node of the file: lines 1-based, inclusive; condition null where it is not committed. */
+    public record Span(int startLine, int endLine, String condition, int depth) {
+        boolean contains(int line) {
+            return this.startLine <= line && line <= this.endLine;
+        }
+
+        boolean committed() {
+            return this.condition != null;
+        }
+    }
+
+    /** An ORDER warning of the checkout at lines of this file (1-based, inclusive): the children whose order is undecided. */
+    public record OrderWarning(int startLine, int endLine, String message) {
+    }
+
+    /**
+     * The trace of one file. {@code problem} says why there is none, or why it is incomplete;
+     * {@code fileCondition} is the condition of the file itself, for adapters without line positions.
+     */
+    public record FileTrace(String configuration, String fileCondition, List<Span> spans,
+                            List<OrderWarning> orderWarnings, String problem) {
+
+        static FileTrace problem(String configuration, String problem) {
+            return new FileTrace(configuration, null, List.of(), List.of(), problem);
+        }
+
+        /** The innermost span at [line] (1-based), or null. */
+        public Span at(int line) {
+            Span best = null;
+            for (Span span : this.spans)
+                if (span.contains(line) && (best == null || span.endLine - span.startLine < best.endLine - best.startLine
+                        || span.endLine - span.startLine == best.endLine - best.startLine && span.depth > best.depth))
+                    best = span;
+            return best;
+        }
+    }
+
+    private final Path workingDir;
+    private final EccoService service;
+    private final Path scratch;
+
+    private String composedFor;
+    private Checkout checkout;
+    private final Map<Association, String> conditions = new IdentityHashMap<>();
+
+    /** Opens the repository of [workingDir] (its .ecco directory). */
+    public FeatureLens(Path workingDir) throws IOException {
+        this.workingDir = workingDir.toAbsolutePath().normalize();
+        this.service = new EccoService();
+        this.service.setBaseDir(this.workingDir);
+        this.service.setRepositoryDir(this.workingDir.resolve(EccoService.REPOSITORY_DIR_NAME));
+        this.service.open();
+        this.scratch = Files.createTempDirectory("ecco-lsp");
+    }
+
+    public Path workingDir() {
+        return this.workingDir;
+    }
+
+    /** The working directory holding [file], walking up from it, or null. */
+    public static Path findWorkingDir(Path file) {
+        for (Path dir = file.toAbsolutePath().normalize(); dir != null; dir = dir.getParent())
+            if (Files.isDirectory(dir.resolve(EccoService.REPOSITORY_DIR_NAME)))
+                return dir;
+        return null;
+    }
+
+    /** Traces [content], the content of [file] (absolute, or relative to the working directory). */
+    public FileTrace trace(Path file, String content) {
+        Path relative = this.workingDir.relativize(this.workingDir.resolve(file).normalize());
+        if (relative.startsWith("..") || relative.startsWith(EccoService.REPOSITORY_DIR_NAME))
+            return FileTrace.problem(null, file + " is not in the working directory " + this.workingDir + ".");
+        String configuration = this.service.getConfigStringFromFile(this.workingDir).trim();
+        if (configuration.isEmpty())
+            return FileTrace.problem(null, "The working directory holds no checkout: " + EccoService.CONFIG_FILE_NAME + " is missing or empty.");
+        Checkout checkout;
+        try {
+            checkout = this.checkout(configuration);
+        } catch (EccoException e) {
+            return FileTrace.problem(configuration, "Could not compose " + configuration + ": " + e.getMessage());
+        }
+        Node composed = findFile(checkout.getNode(), relative);
+        if (composed == null)
+            return FileTrace.problem(configuration, relative + " is not part of the checkout of " + configuration + ".");
+        Node read;
+        try {
+            read = this.read(relative, content);
+        } catch (IOException | RuntimeException e) {
+            return FileTrace.problem(configuration, "Could not read " + relative + ": " + e.getMessage());
+        }
+        if (read == null)
+            return FileTrace.problem(configuration, "Could not read " + relative + ".");
+        String composedPlugin = ((PluginArtifactData) composed.getArtifact().getData()).getPluginId();
+        String readPlugin = ((PluginArtifactData) read.getArtifact().getData()).getPluginId();
+        if (!composedPlugin.equals(readPlugin))
+            // e.g. Java that does not parse while it is edited, read by the text adapter instead
+            return FileTrace.problem(configuration, relative + " was read by " + readPlugin + ", not by " + composedPlugin
+                    + " it was committed with - it may not parse as it is now.");
+
+        List<Span> spans = new ArrayList<>();
+        Map<Node, Node> readOf = new IdentityHashMap<>();
+        this.match(composed, read, 0, spans, readOf);
+        List<OrderWarning> warnings = new ArrayList<>();
+        for (ArtifactDiagnostics.OrderWarning warning : ArtifactDiagnostics.describeOrderWarnings(checkout.getOrderWarnings())) {
+            if (!readOf.containsKey(warning.node()))
+                continue; // another file's
+            String message = "Order undecided between variants: " + String.join("; ", warning.undecided())
+                    + (warning.suggestedFix() == null ? "" : " - " + warning.suggestedFix());
+            // at the children whose order is undecided, where they are in this file
+            List<? extends Node> children = warning.node().getChildren();
+            PartialOrderGraph graph = warning.node().getArtifact() == null ? null : warning.node().getArtifact().getPartialOrderGraph();
+            List<OrderRegions.Range> ranges = graph != null ? OrderRegions.undecided(graph, warning.node())
+                    : List.of(new OrderRegions.Range(0, children.size() - 1));
+            for (OrderRegions.Range range : ranges) {
+                int first = Integer.MAX_VALUE, last = -1;
+                for (Node child : children.subList(range.from(), range.to() + 1)) {
+                    Node readChild = readOf.get(child);
+                    if (readChild == null)
+                        continue;
+                    first = Math.min(first, firstLine(readChild));
+                    last = Math.max(last, lastLine(readChild));
+                }
+                if (last > 0)
+                    warnings.add(new OrderWarning(first, last, message));
+            }
+        }
+        String fileCondition = this.condition(composed);
+        boolean positions = spans.stream().anyMatch(s -> s.startLine > 0);
+        return new FileTrace(configuration, fileCondition, List.copyOf(spans), List.copyOf(warnings),
+                positions ? null : "The " + composedPlugin + " adapter records no line positions: only the file's condition is known.");
+    }
+
+    /** The checkout of [configuration], composed again where the repository or the configuration changed. */
+    private Checkout checkout(String configuration) {
+        String key = configuration + "\n" + this.repositoryStamp();
+        if (this.checkout == null || !key.equals(this.composedFor)) {
+            this.checkout = this.service.compose(this.service.parseConfigurationString(configuration));
+            this.composedFor = key;
+            this.conditions.clear();
+        }
+        return this.checkout;
+    }
+
+    /** Changes when a commit - in this process or another - changes the repository's top-level files. */
+    private String repositoryStamp() {
+        StringBuilder stamp = new StringBuilder();
+        try (DirectoryStream<Path> files = Files.newDirectoryStream(this.workingDir.resolve(EccoService.REPOSITORY_DIR_NAME))) {
+            List<String> entries = new ArrayList<>();
+            for (Path file : files)
+                entries.add(file.getFileName() + "@" + Files.getLastModifiedTime(file).toMillis() + ":" + (Files.isRegularFile(file) ? Files.size(file) : 0));
+            Collections.sort(entries);
+            entries.forEach(e -> stamp.append(e).append(';'));
+        } catch (IOException e) {
+            stamp.append(System.nanoTime()); // compose again
+        }
+        return stamp.toString();
+    }
+
+    /** [content] read with the adapter the repository maps [relative] to: the file's node. */
+    private Node read(Path relative, String content) throws IOException {
+        Path copy = this.scratch.resolve(relative);
+        Files.createDirectories(copy.getParent() == null ? this.scratch : copy.getParent());
+        Files.writeString(copy, content);
+        try {
+            for (Node root : this.service.getReader().readSpecificFiles(this.scratch, new Path[]{relative})) {
+                Node found = findFile(root, relative);
+                if (found != null)
+                    return found;
+            }
+            return null;
+        } finally {
+            Files.deleteIfExists(copy);
+        }
+    }
+
+    /**
+     * Matches the children of [read] to those of [composed] by content, in order; a match has the
+     * condition of its association, the rest of the read tree none.
+     */
+    private void match(Node composed, Node read, int depth, List<Span> spans, Map<Node, Node> readOf) {
+        readOf.put(composed, read);
+        List<? extends Node> composedChildren = composed.getChildren();
+        Set<Node> used = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Node readChild : read.getChildren()) {
+            Node match = null;
+            for (Node composedChild : composedChildren)
+                if (!used.contains(composedChild) && composedChild.getArtifact() != null && composedChild.getArtifact().equals(readChild.getArtifact())) {
+                    match = composedChild;
+                    break;
+                }
+            if (match == null) {
+                this.uncommitted(readChild, depth + 1, spans);
+                continue;
+            }
+            used.add(match);
+            span(readChild, this.condition(match), depth + 1).ifPresent(spans::add);
+            this.match(match, readChild, depth + 1, spans, readOf);
+        }
+    }
+
+    private void uncommitted(Node read, int depth, List<Span> spans) {
+        span(read, null, depth).ifPresent(spans::add);
+        for (Node child : read.getChildren())
+            this.uncommitted(child, depth + 1, spans);
+    }
+
+    private static Optional<Span> span(Node read, String condition, int depth) {
+        Optional<Object> start = read.getProperty(LINE_START);
+        if (start.isEmpty() || !(start.get() instanceof Number s))
+            return Optional.empty();
+        int end = read.getProperty(LINE_END).filter(Number.class::isInstance).map(e -> ((Number) e).intValue()).orElse(s.intValue());
+        return Optional.of(new Span(s.intValue(), Math.max(s.intValue(), end), condition, depth));
+    }
+
+    private static int firstLine(Node node) {
+        Optional<Object> start = node.getProperty(LINE_START);
+        if (start.isPresent() && start.get() instanceof Number n)
+            return n.intValue();
+        return node.getChildren().stream().map(FeatureLens::firstLine).filter(l -> l > 0).findFirst().orElse(-1);
+    }
+
+    private static int lastLine(Node node) {
+        int last = node.getProperty(LINE_END).or(() -> node.getProperty(LINE_START))
+                .filter(Number.class::isInstance).map(n -> ((Number) n).intValue()).orElse(-1);
+        for (Node child : node.getChildren())
+            last = Math.max(last, lastLine(child));
+        return last;
+    }
+
+    /** The condition of the association [node] of the composed tree comes from, by features. */
+    private String condition(Node node) {
+        Artifact<?> artifact = node.getArtifact();
+        Node containing = artifact == null ? null : artifact.getContainingNode();
+        Association association = containing == null ? null : containing.getContainingAssociation();
+        if (association == null)
+            return at.jku.isse.ecco.module.Condition.NOT_TRACED;
+        return this.conditions.computeIfAbsent(association, FeatureLens::describe);
+    }
+
+    /** As the GUI's artifact views say it (ArtifactOrigins#condition): the minimized condition where stored. */
+    static String describe(Association association) {
+        if (association instanceof Association.Op op && op.getMinimizedCondition() != null) {
+            String minimized = op.getMinimizedCondition().trim();
+            if (!minimized.isEmpty() && !minimized.equals("false"))
+                return minimized;
+        }
+        return association.computeCondition().toDisplayString(false);
+    }
+
+    /** The node of [file] (relative to the working directory) below [node]. */
+    static Node findFile(Node node, Path file) {
+        if (node.getArtifact() != null && node.getArtifact().getData() instanceof PluginArtifactData data && file.normalize().equals(data.getPath().normalize()))
+            return node;
+        for (Node child : node.getChildren()) {
+            Node found = findFile(child, file);
+            if (found != null)
+                return found;
+        }
+        return null;
+    }
+
+    @Override
+    public void close() {
+        this.service.close();
+        try (Stream<Path> walk = Files.walk(this.scratch)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
+        } catch (IOException ignored) {
+            // a temporary directory
+        }
+    }
+}

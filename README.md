@@ -15,6 +15,7 @@ Originally, the name *ECCO* was an acronym for *Extraction and Composition for C
 * [Graphical User Interface](#graphical-user-interface)
 * [Distributed Operations](#distributed-operations)
 * [REST API](#rest-api)
+* [Language Server](#language-server)
 * [Repository and Working Directory](#repository-and-working-directory)
 * [Artifact Adapters](#artifact-adapters)
 * [Project Structure](#project-structure)
@@ -150,6 +151,29 @@ A *remote* is either a local path - the repository's directory or its `.ecco` di
 [`rest`](rest) is a REST server (Micronaut) for web clients, e.g. [ecco-client](https://github.com/MatthiasPreuner/ecco-client.git). It serves the repositories in a storage directory (`ECCO_STORAGE_DIR` environment variable) on port 8081 (`PORT` environment variable) with an OpenAPI description and Swagger UI - see its [README](rest/README.md). It refuses to start without a JWT signing secret (`JWT_GENERATOR_SIGNATURE_SECRET`) and a users file (`ECCO_REST_USERS_FILE`); `./gradlew :ecco-rest:run` starts it in development mode with demonstration users instead - see its [README](rest/README.md).
 
 
+## Language Server
+
+[`lsp`](lsp) is a language server (LSP) that shows in an editor which features each line of a checked-out variant is traced to. It is read-only: it never writes the repository or the working directory, and holds no lock between requests, so the CLI and the GUI keep working beside it.
+
+* **Hover** - the condition of the line, e.g. `A | BASE & !B`, and the configuration checked out.
+* **Code lens** - one above each place where the condition changes, going down the file.
+* **Diagnostics** - the checkout's ORDER warnings at the lines whose order is undecided, and code not committed yet (new or changed since the checkout) as hints, also before it is saved.
+
+For a file, the server composes the working directory's checkout (its `.config`) again in memory, reads the editor's text with the file's adapter and matches its nodes to the composed ones by content; each matched node has the condition of its association. Lines are known where the adapter records them (text, Java, LilyPond); for the other adapters only the file's condition is shown. A file is part of a working directory when a folder above it holds `.ecco`.
+
+```bash
+./gradlew :ecco-lsp:installDist   # lsp/build/install/ecco-lsp/bin/ecco-lsp, which needs Java 21
+```
+
+Any editor that starts a language server over standard input and output can use it. [`lsp/vscode`](lsp/vscode) is a minimal VS Code extension, used from the repository: it starts the launcher built above. Run `npm install` in `lsp/vscode` once, then open a working directory in a VS Code window with the extension loaded:
+
+```bash
+"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" --extensionDevelopmentPath="$PWD/lsp/vscode" path/to/working-directory
+```
+
+To have it in every window, link it into VS Code's extensions folder from the repository's root (the link is the folder VS Code loads) and restart VS Code: `ln -s "$PWD/lsp/vscode" ~/.vscode/extensions/ecco.ecco-0.1.0`. `ecco.serverPath` names another launcher, `ecco.javaHome` a Java 21 when VS Code, started from the Dock, does not find one.
+
+
 ## Repository and Working Directory
 
 ### Repository directory (`.ecco`)
@@ -225,7 +249,7 @@ Further adapters are included but not mapped by default: `golang`, `java` (line-
 | [`base`](base) | Core data structures and algorithms: artifact trees, associations, modules and conditions, partial order graphs, composition. `Repository` holds what a repository is; commit, checkout, copy and merge are classes of their own beside it. |
 | [`service`](service) | The ECCO API (`EccoService`, a facade over the services doing the work, each given the open repository's `RepositoryContext`), the file-based storage, remote synchronization, the dispatch of files to adapters, the Git import (`GitImport`, used by the GUI and `ecco git-import`), constraint mining and condition minimization. |
 | [`logic`](logic), [`util`](util) | Propositional logic (LogicNG) and shared utilities. |
-| [`cli`](cli), [`gui`](gui), [`rest`](rest) | The applications. |
+| [`cli`](cli), [`gui`](gui), [`rest`](rest), [`lsp`](lsp) | The applications; `lsp` with a minimal VS Code client in [`lsp/vscode`](lsp/vscode). |
 | [`adapter/api`](adapter/api) | What an artifact adapter is written against (`ecco-adapter-api`): the plugin, reader, writer, viewer and exporter interfaces with their listeners, the artifact data adapters create, the shared code viewer - see [Writing an adapter](adapter/README.md). |
 | [`adapter`](adapter) | The artifact adapters, each depending on `ecco-adapter-api` alone. |
 | [`extras/ly`](extras/ly) | A utility that fills a repository from numbered variant directories (used for the LilyPond experiments). |
@@ -236,7 +260,7 @@ Earlier storage backends (`storage/neo4j`, `extras/jackson`, `extras/jpa`, `extr
 
 The architecture is drawn in [`doc/ecco-architecture.drawio`](doc/ecco-architecture.drawio) (open it with [diagrams.net](https://app.diagrams.net)): its layers, and the Gradle modules with their dependencies. It is generated: change [`doc/gen_architecture_drawio.py`](doc/gen_architecture_drawio.py) and run `python3 doc/gen_architecture_drawio.py`.
 
-Modules depend on each other one way: `cli`, `gui` and `rest` on `service`, `service` on `adapter-api` and `base`, the adapters on `adapter-api`, everything on `logic` at the bottom. Within a module, packages depend on each other one way too, but for the circles kept on purpose: the domain model's references both ways in `base` (a node and its artifact, an artifact and its order graph, a node and its association), the serialization storage, and five adapters whose viewer names its plugin. Every module's tests check this (`ArchitectureTest`).
+Modules depend on each other one way: `cli`, `gui`, `rest` and `lsp` on `service`, `service` on `adapter-api` and `base`, the adapters on `adapter-api`, everything on `logic` at the bottom. Within a module, packages depend on each other one way too, but for the circles kept on purpose: the domain model's references both ways in `base` (a node and its artifact, an artifact and its order graph, a node and its association), the serialization storage, and five adapters whose viewer names its plugin. Every module's tests check this (`ArchitectureTest`).
 
 
 ## Development

@@ -1322,9 +1322,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
-     * Composes checkout with given configuration - see {@link CheckoutService#compose}.
+     * Composes checkout with given configuration - see {@link CheckoutService#compose}. Writes
+     * nothing: the checkout's tree, its warnings and the associations its nodes come from, in
+     * memory (the language server reads which features a line of a working directory is traced to).
      */
-    synchronized Checkout compose(Configuration configuration) {
+    public synchronized Checkout compose(Configuration configuration) {
         return this.checkoutService.compose(configuration);
     }
 

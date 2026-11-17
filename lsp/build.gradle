@@ -1,0 +1,55 @@
+apply plugin: 'application'
+application {
+	mainClass = "at.jku.isse.ecco.lsp.Main"
+	applicationName = "ecco-lsp"
+	applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
+}
+
+configurations.runtimeClasspath {
+	// headless like the command line: the adapters' JavaFX viewers are not loaded
+	exclude group: 'org.openjfx'
+}
+
+dependencies {
+	implementation libs.lsp4j
+
+	implementation project(':ecco-service')
+
+	// the same adapters as the command line and the GUI: a repository's .adapters maps files to
+	// adapters by id, and a file is read with the adapter it was committed with
+	runtimeOnly project(':ecco-adapter-file')
+	runtimeOnly project(':ecco-adapter-text')
+	runtimeOnly project(':ecco-adapter-markdown')
+	runtimeOnly project(':ecco-adapter-lilypond')
+	runtimeOnly project(':ecco-adapter-image')
+	runtimeOnly project(':ecco-adapter-typescript')
+	runtimeOnly project(':ecco-adapter-python')
+	runtimeOnly project(':ecco-adapter-challenge')
+	runtimeOnly project(':ecco-adapter-java')
+	runtimeOnly project(':ecco-adapter-java-ast')
+	runtimeOnly project(':ecco-adapter-c')
+	runtimeOnly project(':ecco-adapter-cpp')
+	runtimeOnly project(':ecco-adapter-runtime')
+	runtimeOnly project(':ecco-adapter-golang')
+
+	testImplementation project(':ecco-adapter-file')
+	testImplementation project(':ecco-adapter-text')
+	testImplementation project(':ecco-adapter-java-ast')
+	testImplementation project(':ecco-adapter-markdown')
+
+	testImplementation platform(libs.junit.bom)
+	testImplementation libs.junit.jupiter
+}
+
+ospackage {
+	summary = 'Language server (LSP) for ECCO.'
+	packageDescription = 'Shows in an editor which features each line of a checked-out variant is traced to.'
+
+	requires('ecco-base', version, EQUAL)
+	requires('ecco-service', version, EQUAL)
+}
+
+tasks.withType(Test).configureEach {
+	// headless like the server itself (Main sets it)
+	systemProperty 'ecco.headless', 'true'
+}
