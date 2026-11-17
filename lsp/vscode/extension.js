@@ -310,6 +310,14 @@ async function commit() {
   if (message === undefined) return;
   try {
     if (!await acceptViolations(info, configuration.trim(), 'Commit')) return;
+    // committed before with other content, its changed lines would check out no more (FR-M4d)
+    const recommit = await server('recommitDifferences', { uri: info.uri, configuration: configuration.trim() });
+    if (recommit.warning) {
+      const answer = await vscode.window.showWarningMessage(
+        `${shortConfiguration(configuration.trim())} was committed before with other content.`,
+        { modal: true, detail: `${recommit.warning}\n\n${listed(recommit.differences)}` }, 'Commit Anyway');
+      if (answer !== 'Commit Anyway') return;
+    }
     const result = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'ECCO: committing…' },
       () => server('commit', { uri: info.uri, configuration: configuration.trim(), message }));
     vscode.window.showInformationMessage(`ECCO: committed ${result.commit.slice(0, 7)} as ${shortConfiguration(result.configuration)}.`);

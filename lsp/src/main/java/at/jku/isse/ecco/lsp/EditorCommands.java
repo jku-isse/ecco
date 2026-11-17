@@ -33,7 +33,9 @@ final class EditorCommands {
     static final String COMMIT = "ecco.server.commit";
     static final String CHANGES = "ecco.server.changes";
     static final String CHECKOUT = "ecco.server.checkout";
-    static final List<String> ALL = List.of(INFO, CONSTRAINT_VIOLATIONS, COMMIT, CHANGES, CHECKOUT);
+    /** The files differing from the configuration's earlier commit, and the warning for them (FR-M4d). */
+    static final String RECOMMIT = "ecco.server.recommitDifferences";
+    static final List<String> ALL = List.of(INFO, CONSTRAINT_VIOLATIONS, RECOMMIT, COMMIT, CHANGES, CHECKOUT);
     /** After these, what the open files are traced to changed. */
     static final Set<String> CHANGING = Set.of(COMMIT, CHECKOUT);
 
@@ -47,6 +49,7 @@ final class EditorCommands {
             return switch (command) {
                 case INFO -> info(service, dir);
                 case CONSTRAINT_VIOLATIONS -> service.checkConstraintViolations(service.parseConfigurationString(string(arguments, "configuration")));
+                case RECOMMIT -> recommit(service, string(arguments, "configuration"));
                 case COMMIT -> commit(service, dir, string(arguments, "configuration"), string(arguments, "message"));
                 case CHANGES -> changes(WorkingDirectory.since(dir));
                 case CHECKOUT -> checkout(service, dir, string(arguments, "configuration"),
@@ -81,6 +84,14 @@ final class EditorCommands {
             configurations.add(commit.getConfiguration().getConfigurationString());
         info.put("configurations", List.copyOf(configurations));
         return info;
+    }
+
+    private static Map<String, Object> recommit(EccoService service, String configuration) {
+        List<String> differences = service.recommitDifferences(configuration);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("differences", differences);
+        result.put("warning", EccoService.describeRecommit(configuration, differences));
+        return result;
     }
 
     private static Map<String, Object> commit(EccoService service, Path dir, String configuration, String message) throws IOException {

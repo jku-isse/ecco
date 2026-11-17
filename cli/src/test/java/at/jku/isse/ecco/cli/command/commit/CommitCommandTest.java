@@ -111,6 +111,31 @@ public class CommitCommandTest {
         assertTrue(writer.getLines().get(1).startsWith("CONSTRAINT: MANDATORY A violated"), writer.getLines().get(1));
     }
 
+    /** A configuration committed again with other content: its changed lines check out no more - warned (FR-M4d). */
+    @Test
+    public void warnsWhenAConfigurationIsCommittedAgainWithOtherContent(@TempDir Path tmp) throws Exception {
+        System.setProperty("ecco.headless", "true");
+        Path repo = tmp.resolve(".ecco");
+        try (EccoService real = new EccoService()) {
+            real.setRepositoryDir(repo);
+            real.init();
+            commitFile(real, tmp.resolve("first"), "first", "A");
+        }
+        EccoService real = new EccoService();
+        real.setRepositoryDir(repo);
+        Path work = Files.createDirectories(tmp.resolve("work"));
+        Files.writeString(work.resolve("f.txt"), "second\n");
+        real.setBaseDir(work);
+
+        new CommitCommand(real, writer).run(new Namespace(Map.of("c", "A", "m", "again")));
+
+        assertEquals(2, writer.getLines().size(), String.valueOf(writer.getLines()));
+        assertTrue(writer.getLines().get(1).startsWith("WARNING: A was committed before with other content: 1 file differs (f.txt)"), writer.getLines().get(1));
+
+        new CommitCommand(real, writer).run(new Namespace(Map.of("c", "B", "m", "new")));
+        assertEquals(3, writer.getLines().size(), "a new configuration: no warning " + writer.getLines());
+    }
+
     private static void commitFile(EccoService service, Path dir, String content, String configuration) throws Exception {
         Files.createDirectories(dir);
         Files.writeString(dir.resolve("f.txt"), content + "\n");

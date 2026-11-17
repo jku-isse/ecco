@@ -250,6 +250,43 @@ public class CommitBaseDirViewTest {
         }
     }
 
+    /** A configuration committed again with other content would lose its changed lines: asked about first (FR-M4d). */
+    @Test
+    @Timeout(120)
+    public void aConfigurationCommittedAgainWithOtherContentIsAskedAbout(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "BASE, A", Map.of("file.txt", "first\n"));
+            Path work = CommitViewTest.variant(tmp, "work", "BASE, A", "second\n");
+            service.setBaseDir(work);
+            List<String> askedAbout = new CopyOnWriteArrayList<>();
+            AtomicBoolean commitAnyway = new AtomicBoolean(false);
+            CommitViewTest.Shown<CommitBaseDirView> shown = show(() -> new CommitBaseDirView(service) {
+                @Override
+                boolean confirmRecommit(String warning) {
+                    askedAbout.add(warning);
+                    return commitAnyway.get();
+                }
+            });
+            try {
+                CommitBaseDirView view = shown.view();
+                onFx(() -> {
+                    fields(view).get(2).setText("BASE, A");
+                    button(view, "Commit").fire();
+                });
+                waitUntil("asked", () -> askedAbout.size() == 1 && !button(view, "Commit").isDisabled());
+                assertTrue(askedAbout.get(0).startsWith("BASE, A was committed before with other content: 1 file differs"), askedAbout.get(0));
+                assertEquals(1, service.getCommits().size(), "declined: nothing is committed");
+
+                commitAnyway.set(true);
+                onFx(() -> button(view, "Commit").fire());
+                waitUntil("the commit", () -> hasButton(view, "Done"));
+                assertEquals(2, service.getCommits().size(), "confirmed: committed");
+            } finally {
+                shown.close();
+            }
+        }
+    }
+
     // -----------------------------------------------------------------------------------------------------------------
 
     /** folder, commit message and configuration, in that order */

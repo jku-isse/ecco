@@ -46,6 +46,11 @@ public class EditorCommandsTest {
         try (FeatureLens lens = new FeatureLens(work)) {
             Files.writeString(work.resolve("notes.txt"), "base1\nbase2\nb1\nc1\n");
             assertFalse(lens.trace(Path.of("notes.txt"), "base1\nbase2\nb1\nc1\n").at(4).committed());
+            // a new feature: nothing to warn about; the configuration checked out again would lose line 4 (FR-M4d)
+            assertEquals("", run(lens, EditorCommands.RECOMMIT, arguments("configuration", "BASE, B, C")).get("warning"));
+            Map<String, Object> again = run(lens, EditorCommands.RECOMMIT, arguments("configuration", Files.readString(work.resolve(".config"))));
+            assertEquals(List.of("notes.txt"), again.get("differences"));
+            assertTrue(((String) again.get("warning")).contains("committed before with other content"), (String) again.get("warning"));
             Map<String, Object> committed = run(lens, EditorCommands.COMMIT, arguments("configuration", "BASE, B, C", "message", "c"));
             assertTrue(((String) committed.get("configuration")).contains("C."), committed.toString());
             assertTrue(Files.readString(work.resolve(".config")).contains("C."));

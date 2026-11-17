@@ -364,6 +364,11 @@ public class CommitView extends OperationView implements EccoListener {
 							String configurationString = entry.getConfiguration();
 							String commitMessage = entry.getCommitMessage();
 							long startMillis = System.currentTimeMillis();
+							// warned in the log, as the command line does: the folders are committed in one go (FR-M4d)
+							String recommit = recommitWarning(configurationString != null && !configurationString.isEmpty()
+									? configurationString : CommitView.this.service.getConfigStringFromFile(Paths.get(entry.getFolder())));
+							if (!recommit.isEmpty())
+								Platform.runLater(() -> CommitView.this.logArea.appendText("WARNING: " + recommit + System.lineSeparator()));
 							if (configurationString != null && !configurationString.isEmpty())
 								lastCommit = CommitView.this.service.commit(commitMessage, configurationString);
 							else
@@ -413,6 +418,17 @@ public class CommitView extends OperationView implements EccoListener {
 			this.track(commitTask, "The commits");
 			new Thread(commitTask).start();
 		});
+	}
+
+	/** The warning for committing [configuration] again with other content, or "" (FR-M4d). */
+	private String recommitWarning(String configuration) {
+		if (configuration == null || configuration.isBlank())
+			return "";
+		try {
+			return EccoService.describeRecommit(configuration, this.service.recommitDifferences(configuration));
+		} catch (RuntimeException e) {
+			return ""; // the commit reports a configuration it cannot take
+		}
 	}
 
 	/** By name, the numbers in it by value: "v2" before "v10". Package-visible for testing. */

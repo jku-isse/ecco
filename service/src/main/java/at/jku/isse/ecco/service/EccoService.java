@@ -293,6 +293,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     private final OrderService orderService = new OrderService(this.state, this.configurationParser, this.checkoutService, this.commitService);
 
+    private final RecommitCheck recommitCheck = new RecommitCheck(this.state, this.checkoutService, this.commitService);
+
     private final VariantManager variantManager = new VariantManager(this.state, this.configurationParser);
 
     private final MinimizationService minimizationService = new MinimizationService(this.state, this.constraintService);
@@ -1400,6 +1402,28 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public synchronized List<String> checkConstraintViolations(Configuration configuration) {
         return this.constraintService.checkConstraintViolations(configuration);
     }
+
+    /**
+     * Whether committing the base directory as the configuration would commit it again with other
+     * content (FR-M4d): the files whose content differs from what checking it out gives, when it was
+     * committed before - committed again, their lines that differ check out for it no more. Empty when
+     * it was not committed before, or nothing differs. Advisory, like the constraint check: the front
+     * ends warn before they commit. Composes the configuration only when it was committed before.
+     */
+    public synchronized List<String> recommitDifferences(String configurationString) {
+        return this.recommitDifferences(this.parseConfigurationString(configurationString), this.state.baseDir());
+    }
+
+    /** As above, for the files in [directory]. */
+    public synchronized List<String> recommitDifferences(Configuration configuration, Path directory) {
+        return this.recommitCheck.differences(configuration, directory);
+    }
+
+    /** The warning for {@link #recommitDifferences}, or "" for none. */
+    public static String describeRecommit(String configurationString, List<String> files) {
+        return RecommitCheck.describe(configurationString, files);
+    }
+
 
     /**
      * Checks out the implementation of the configuration (given as configuration string) into the base directory.

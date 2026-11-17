@@ -35,12 +35,26 @@ public class CommitCommand implements Command {
             // checked before committing: only exception-free rules count, and the committed
             // configuration is the exception to every rule it violates - afterwards it violates none
             List<String> violations = this.constraintViolations(configurationString);
+            // checked before too: afterwards the configuration's checkout is the commit's (FR-M4d)
+            List<String> recommitted = this.recommitDifferences(configurationString);
             Commit commit = eccoService.commit(namespace.getString(COMMIT_MESSAGE_KEY), configurationString);
             writer.println("Committed " + commit.getId() + " as " + commit.getConfiguration().getConfigurationString());
             // advisory, as in the GUI: the commit is stored either way
             for (String violation : violations)
                 writer.println("CONSTRAINT: " + violation);
+            if (!recommitted.isEmpty())
+                writer.println("WARNING: " + EccoService.describeRecommit(configurationString, recommitted));
         });
+    }
+
+    /** The files differing from the configuration's earlier commit (FR-M4d); none if it cannot be parsed: the commit reports that. */
+    private List<String> recommitDifferences(String configurationString) {
+        try {
+            List<String> differences = eccoService.recommitDifferences(configurationString);
+            return differences == null ? List.of() : differences;
+        } catch (RuntimeException e) {
+            return List.of();
+        }
     }
 
     /** None if the configuration cannot be parsed: the commit reports that. */

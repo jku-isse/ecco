@@ -177,17 +177,26 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 			// (an import's), which holds the service's lock - the window froze
 			commitButton.setDisable(true);
 			Thread check = new Thread(() -> {
-				String warning;
+				String warning, recommit;
+				String configuration = configurationString != null && !configurationString.isBlank()
+						? configurationString : this.service.getConfigStringFromFile(this.service.getBaseDir());
 				try {
-					warning = ConstraintWarnings.describe(this.service, configurationString != null && !configurationString.isBlank()
-							? configurationString : this.service.getConfigStringFromFile(this.service.getBaseDir()));
+					warning = ConstraintWarnings.describe(this.service, configuration);
 				} catch (RuntimeException e) {
 					warning = "";
 				}
-				String found = warning;
+				// the configuration committed before with other content: its changed lines would check out no more (FR-M4d)
+				try {
+					recommit = configuration.isBlank() ? "" : EccoService.describeRecommit(configuration, this.service.recommitDifferences(configuration));
+				} catch (RuntimeException e) {
+					recommit = "";
+				}
+				String found = warning, again = recommit;
 				Platform.runLater(() -> {
 					commitButton.setDisable(false);
 					if (!found.isEmpty() && !this.confirmCommitAnyway(found))
+						return;
+					if (!again.isEmpty() && !this.confirmRecommit(again))
 						return;
 					this.startCommit(commitMessage, configurationString);
 				});
@@ -239,6 +248,17 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 			this.track(commitTask, "The commit");
 			new Thread(commitTask).start();
 		}
+	}
+
+	/**
+	 * Asks whether to commit a configuration again with other content (FR-M4d). Package-visible for
+	 * testing (a test stands in for the user's answer).
+	 */
+	boolean confirmRecommit(String warning) {
+		Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.CONFIRMATION, warning + "\n\nDo you want to commit anyway?");
+		alert.setHeaderText("Configuration committed before");
+		Optional<ButtonType> result = alert.showAndWait();
+		return result.isPresent() && result.get() == ButtonType.OK;
 	}
 
 	/**
