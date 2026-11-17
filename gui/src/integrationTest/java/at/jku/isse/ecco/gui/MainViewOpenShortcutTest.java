@@ -76,12 +76,13 @@ public class MainViewOpenShortcutTest {
 
 	@Test
 	public void cmdODoesNothing_whenOpenButtonDisabled() throws Exception {
+		// a real, already-initialized repository - matches how MainView's own
+		// statusChangedEvent listener disables the Open button once isInitialized() is true;
+		// made off the FX thread, where nothing may read the repository (NFR-C3)
+		EccoService service = new EccoService();
+		service.setRepositoryDir(Files.createTempDirectory("open-shortcut-repo").resolve(".ecco"));
+		service.init();
 		runOnFxThread(() -> {
-			EccoService service = new EccoService();
-			// a real, already-initialized repository - matches how MainView's own
-			// statusChangedEvent listener disables the Open button once isInitialized() is true
-			service.setRepositoryDir(Files.createTempDirectory("open-shortcut-repo").resolve(".ecco"));
-			service.init();
 
 			MainView mainView = new MainView(service);
 			Scene scene = new Scene(mainView);
