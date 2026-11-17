@@ -36,6 +36,11 @@ dependencies {
 	testImplementation project(':ecco-adapter-text')
 	testImplementation project(':ecco-adapter-java-ast')
 	testImplementation project(':ecco-adapter-markdown')
+	testImplementation project(':ecco-adapter-c')
+	testImplementation project(':ecco-adapter-cpp')
+	testImplementation project(':ecco-adapter-typescript')
+	testImplementation project(':ecco-adapter-golang')
+	testImplementation project(':ecco-adapter-python')
 
 	testImplementation platform(libs.junit.bom)
 	testImplementation libs.junit.jupiter

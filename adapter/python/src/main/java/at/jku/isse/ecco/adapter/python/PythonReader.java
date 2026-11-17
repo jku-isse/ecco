@@ -5,6 +5,8 @@ import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.adapter.ReadListener;
+import at.jku.isse.ecco.adapter.view.RenderedSource;
+import at.jku.isse.ecco.adapter.view.SourceRenderer;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
@@ -17,7 +19,14 @@ import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class PythonReader implements ArtifactReader<Path, Set<Node.Op>> {
+public class PythonReader implements ArtifactReader<Path, Set<Node.Op>>, SourceRenderer {
+
+    /** As the association preview shows it (PythonRenderer): the writer script's code, with Python. */
+    @Override
+    public RenderedSource render(Node fileNode) throws IOException {
+        return PythonRenderer.render(fileNode);
+    }
+
 
     private static final Map<Integer, String[]> prioritizedPatterns;
 

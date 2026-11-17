@@ -8,6 +8,8 @@ import at.jku.isse.ecco.adapter.golang.data.TokenArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.adapter.ReadListener;
+import at.jku.isse.ecco.adapter.view.RenderedSource;
+import at.jku.isse.ecco.adapter.view.SourceRenderer;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import org.antlr.v4.runtime.CharStreams;
@@ -23,7 +25,37 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
+public class GoReader implements ArtifactReader<Path, Set<Node.Op>>, SourceRenderer {
+
+    /**
+     * The tokens in the order of their rows and columns, as the writer joins them (the whitespace
+     * tokens come last among the file's children), each token node with its text.
+     */
+    @Override
+    public RenderedSource render(Node fileNode) {
+        List<Node> tokens = new ArrayList<>();
+        collectTokens(fileNode, tokens);
+        tokens.sort(Comparator.comparingInt((Node n) -> ((TokenArtifactData) n.getArtifact().getData()).getRow())
+                .thenComparingInt(n -> ((TokenArtifactData) n.getArtifact().getData()).getColumn()));
+        StringBuilder text = new StringBuilder();
+        List<RenderedSource.Span> spans = new ArrayList<>();
+        for (Node token : tokens) {
+            int start = text.length();
+            text.append(((TokenArtifactData) token.getArtifact().getData()).getToken());
+            spans.add(new RenderedSource.Span(token, start, text.length()));
+        }
+        return new RenderedSource(text.toString(), spans);
+    }
+
+    private static void collectTokens(Node node, List<Node> tokens) {
+        for (Node child : node.getChildren()) {
+            if (child.getArtifact() != null && child.getArtifact().getData() instanceof TokenArtifactData)
+                tokens.add(child);
+            else
+                collectTokens(child, tokens);
+        }
+    }
+
     private static final Map<Integer, String[]> prioritizedPatterns =
             Collections.singletonMap(1, new String[]{"**.go"});
 

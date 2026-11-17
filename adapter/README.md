@@ -142,6 +142,10 @@ If it does not, review this documentation.
 If, after reviewing the documentation, your plugin still does not show up, then this documentation is missing something.
 In that case, please create a new GitHub-Issue with a link to your branch or fork, so that it can be investigated.
 
+### Lines for the language server
+
+The language server ([`lsp`](../lsp)) shows which features each line is traced to. It finds a line's node in the tree your reader read from the node's `LINE_START`/`LINE_END` properties (1-based, inclusive), or a `Location` property; a reader whose nodes record no lines can implement `SourceRenderer` instead, rendering a file's tree to its text with each node's span (`RenderedSource`), which the server uses where the text is the file's. Without either, the server shows only the file's condition.
+
 ## How to write an adapter outside this repository
 
 An adapter does not have to live in this repository. It is written against `ecco-adapter-api` alone - `ArtifactPlugin`, `ArtifactReader`, `ArtifactWriter`, `ArtifactViewer`, `PluginArtifactData`, the listeners and the shared code viewer - and ECCO finds it on its class path.

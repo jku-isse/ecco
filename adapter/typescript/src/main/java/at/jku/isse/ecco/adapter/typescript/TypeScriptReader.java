@@ -3,6 +3,7 @@ package at.jku.isse.ecco.adapter.typescript;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.SourcePosition;
 import at.jku.isse.ecco.adapter.view.RenderedSource;
+import at.jku.isse.ecco.adapter.view.SourceRenderer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.typescript.data.*;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -20,7 +21,7 @@ import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
+public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>>, SourceRenderer {
 
     private final EntityFactory entityFactory;
     private static final Logger LOGGER = Logger.getLogger(TypeScriptReader.class.getName());
@@ -353,6 +354,12 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
 			positions.add(new SourcePosition(f.kind(), qualified.toString(), f.start(), f.end()));
 		}
 		return positions;
+	}
+
+	/** As the writer writes it - for a tree just read, the file byte for byte. */
+	@Override
+	public RenderedSource render(Node fileNode) {
+		return TypeScriptWriter.render(fileNode);
 	}
 
 	private static String firstGroup(java.util.regex.Pattern pattern, String text) {

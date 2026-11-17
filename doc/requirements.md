@@ -531,7 +531,7 @@ Postcondition: As the basic flow, and the file is already in the new order; afte
 | Dependency | INCLUDE USE CASE Commit variant |
 | Generalization | None |
 | Front ends | CLI `traces [id]`, `dg`; GUI Explore > Artifacts (with the association details), association preview, Explore > Dependency Graph; editor through the language server (hover, code lens on a checked-out file) |
-| Realizes | FR-M1, FR-T1, FR-T2, IF-C6, IF-C16, IF-G6, IF-G7, IF-G9, IF-L2, IF-L3, IF-L9 |
+| Realizes | FR-M1, FR-T1, FR-T2, IF-C6, IF-C16, IF-G6, IF-G7, IF-G9, IF-L2, IF-L3, IF-L9, IF-L10 |
 
 **Basic flow**
 
@@ -1598,9 +1598,10 @@ Four front ends sit on one service API (`EccoService`): a CLI for scripting and 
 | IF-L3 | Ubiquitous | The language server shall mark with a code lens each line where the condition changes, going down the file. | UC-7 | `EccoLanguageServerTest` | Code `EccoLanguageServer#codeLenses` | met |
 | IF-L4 | Event | When a file holds code the checkout does not - new or changed since it - the language server shall report it as a hint at those lines. | - | `FeatureLensTest`, `EccoLanguageServerTest` | Code `EccoLanguageServer#diagnostics` | met |
 | IF-L5 | Event | When the checkout has an ORDER warning in a file, the language server shall report it at the lines whose order is undecided. | UC-6 | `FeatureLensTest#anOrderWarningIsAtTheUndecidedLines` | Code `FeatureLens` | met |
-| IF-L6 | State | While a file's adapter records no line positions, the language server shall give the condition of the file and say why there is no more. | - | `FeatureLensTest#aFileWithoutLinePositionsHasItsFilesCondition` | Code `FeatureLens` | met |
+| IF-L6 | State | While a file's adapter neither records lines on its nodes (`LINE_START`/`LINE_END`, `Location`) nor renders the file it read as it is (`SourceRenderer`) - Markdown, images -, the language server shall give the condition of the file and say why there is no more. | - | `FeatureLensTest#aFileWithoutLinePositionsHasItsFilesCondition`, `NodeLinesTest` | Code `NodeLines`, `FeatureLens` | met |
 | IF-L7 | Unwanted | If a file is not in a working directory, not part of the checkout, or does not parse with the adapter it was committed with, then the language server shall say so and trace nothing. | - | `FeatureLensTest`, `EccoLanguageServerTest` | Code `FeatureLens#trace` | met |
 | IF-L8 | Ubiquitous (design constraint) | The language server shall write neither the repository nor the working directory, and shall hold no repository lock between requests. | - | `FeatureLensTest#aCommitFromAnotherServiceIsSeen` | Code `FeatureLens` (`EccoService#compose` writes nothing; each read a transaction of its own) | met |
+| IF-L10 | Ubiquitous | The language server shall locate lines in text, Java, LilyPond, C, C++, TypeScript, Python and Go files: from the lines the adapter records, else from the adapter's rendering of the file read where it is the file's text. | UC-7 | `AdapterLinesTest` (C, C++, TypeScript, Go, Python), `FeatureLensTest` (text, Java) | Code `NodeLines`, `SourceRenderer` (TypeScript, Python, Go readers), `DispatchReader#render` | met |
 | IF-L9 | Optional | Where the client colours code (the VS Code client), the language server shall send it the runs of lines of each condition but the file's own, each with a palette slot the condition keeps in every file while the server runs, and code not committed without one. | UC-7 | `EccoLanguageServerTest#featureRangesAreRunsOfOneConditionButTheFilesOwn`, `EccoLanguageServerTest` | Code `EccoLanguageClient` (`ecco/featureRanges`), `lsp/vscode/extension.js` (the GUI's CategoricalColorPalette) | met |
 
 ### Where the front ends differ

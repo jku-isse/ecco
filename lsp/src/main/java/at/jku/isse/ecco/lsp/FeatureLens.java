@@ -2,6 +2,7 @@ package at.jku.isse.ecco.lsp;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.adapter.view.RenderedSource;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
@@ -32,9 +33,6 @@ import java.util.stream.Stream;
  */
 public final class FeatureLens implements AutoCloseable {
 
-    /** The property the adapters that know where their nodes are (text, Java, LilyPond) set. */
-    static final String LINE_START = "LINE_START";
-    static final String LINE_END = "LINE_END";
 
     /** One node of the file: lines 1-based, inclusive; condition null where it is not committed. */
     public record Span(int startLine, int endLine, String condition, int depth) {
@@ -135,9 +133,23 @@ public final class FeatureLens implements AutoCloseable {
             return FileTrace.problem(configuration, relative + " was read by " + readPlugin + ", not by " + composedPlugin
                     + " it was committed with - it may not parse as it is now.");
 
+        // where the nodes are: their own properties, else the adapter's rendering of what was read
+        NodeLines lines = NodeLines.ofProperties();
+        String noLines = null;
+        if (!NodeLines.anyProperties(read)) {
+            RenderedSource rendered = this.service.getReader().render(read);
+            NodeLines fromRendering = rendered == null ? null : NodeLines.ofRendering(rendered, content);
+            if (fromRendering != null)
+                lines = fromRendering;
+            else
+                noLines = rendered == null
+                        ? "The " + composedPlugin + " adapter records no line positions: only the file's condition is known."
+                        : "The " + composedPlugin + " adapter writes this file differently than it is now, so its lines are not known: only the file's condition is.";
+        }
+
         List<Span> spans = new ArrayList<>();
         Map<Node, Node> readOf = new IdentityHashMap<>();
-        this.match(composed, read, 0, spans, readOf);
+        this.match(composed, read, 0, spans, readOf, lines);
         List<OrderWarning> warnings = new ArrayList<>();
         for (ArtifactDiagnostics.OrderWarning warning : ArtifactDiagnostics.describeOrderWarnings(checkout.getOrderWarnings())) {
             if (!readOf.containsKey(warning.node()))
@@ -155,17 +167,17 @@ public final class FeatureLens implements AutoCloseable {
                     Node readChild = readOf.get(child);
                     if (readChild == null)
                         continue;
-                    first = Math.min(first, firstLine(readChild));
-                    last = Math.max(last, lastLine(readChild));
+                    first = Math.min(first, lines.first(readChild));
+                    last = Math.max(last, lines.last(readChild));
                 }
                 if (last > 0)
                     warnings.add(new OrderWarning(first, last, message));
             }
         }
         String fileCondition = this.condition(composed);
-        boolean positions = spans.stream().anyMatch(s -> s.startLine > 0);
-        return new FileTrace(configuration, fileCondition, List.copyOf(spans), List.copyOf(warnings),
-                positions ? null : "The " + composedPlugin + " adapter records no line positions: only the file's condition is known.");
+        if (noLines == null && spans.isEmpty() && !read.getChildren().isEmpty())
+            noLines = "The " + composedPlugin + " adapter records no line positions: only the file's condition is known.";
+        return new FileTrace(configuration, fileCondition, List.copyOf(spans), List.copyOf(warnings), noLines);
     }
 
     /** The checkout of [configuration], composed again where the repository or the configuration changed. */
@@ -215,7 +227,7 @@ public final class FeatureLens implements AutoCloseable {
      * Matches the children of [read] to those of [composed] by content, in order; a match has the
      * condition of its association, the rest of the read tree none.
      */
-    private void match(Node composed, Node read, int depth, List<Span> spans, Map<Node, Node> readOf) {
+    private void match(Node composed, Node read, int depth, List<Span> spans, Map<Node, Node> readOf, NodeLines lines) {
         readOf.put(composed, read);
         List<? extends Node> composedChildren = composed.getChildren();
         Set<Node> used = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -227,42 +239,24 @@ public final class FeatureLens implements AutoCloseable {
                     break;
                 }
             if (match == null) {
-                this.uncommitted(readChild, depth + 1, spans);
+                uncommitted(readChild, depth + 1, spans, lines);
                 continue;
             }
             used.add(match);
-            span(readChild, this.condition(match), depth + 1).ifPresent(spans::add);
-            this.match(match, readChild, depth + 1, spans, readOf);
+            span(readChild, this.condition(match), depth + 1, lines).ifPresent(spans::add);
+            this.match(match, readChild, depth + 1, spans, readOf, lines);
         }
     }
 
-    private void uncommitted(Node read, int depth, List<Span> spans) {
-        span(read, null, depth).ifPresent(spans::add);
+    private static void uncommitted(Node read, int depth, List<Span> spans, NodeLines lines) {
+        span(read, null, depth, lines).ifPresent(spans::add);
         for (Node child : read.getChildren())
-            this.uncommitted(child, depth + 1, spans);
+            uncommitted(child, depth + 1, spans, lines);
     }
 
-    private static Optional<Span> span(Node read, String condition, int depth) {
-        Optional<Object> start = read.getProperty(LINE_START);
-        if (start.isEmpty() || !(start.get() instanceof Number s))
-            return Optional.empty();
-        int end = read.getProperty(LINE_END).filter(Number.class::isInstance).map(e -> ((Number) e).intValue()).orElse(s.intValue());
-        return Optional.of(new Span(s.intValue(), Math.max(s.intValue(), end), condition, depth));
-    }
-
-    private static int firstLine(Node node) {
-        Optional<Object> start = node.getProperty(LINE_START);
-        if (start.isPresent() && start.get() instanceof Number n)
-            return n.intValue();
-        return node.getChildren().stream().map(FeatureLens::firstLine).filter(l -> l > 0).findFirst().orElse(-1);
-    }
-
-    private static int lastLine(Node node) {
-        int last = node.getProperty(LINE_END).or(() -> node.getProperty(LINE_START))
-                .filter(Number.class::isInstance).map(n -> ((Number) n).intValue()).orElse(-1);
-        for (Node child : node.getChildren())
-            last = Math.max(last, lastLine(child));
-        return last;
+    private static Optional<Span> span(Node read, String condition, int depth, NodeLines lines) {
+        int[] at = lines.of(read);
+        return at == null ? Optional.empty() : Optional.of(new Span(at[0], at[1], condition, depth));
     }
 
     /** The condition of the association [node] of the composed tree comes from, by features. */

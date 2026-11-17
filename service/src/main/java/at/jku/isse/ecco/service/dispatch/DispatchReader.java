@@ -6,6 +6,8 @@ import at.jku.isse.ecco.adapter.AdapterUnavailableException;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.SourcePosition;
+import at.jku.isse.ecco.adapter.view.RenderedSource;
+import at.jku.isse.ecco.adapter.view.SourceRenderer;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.adapter.CommitCancelledException;
@@ -296,6 +298,23 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 			LOGGER.log(Level.FINE, "No positions for " + file + ": " + reader.getPluginId() + " could not read it", e);
 		}
 		return List.of();
+	}
+
+	/**
+	 * The file of {@code fileNode} - a tree just read - rendered by the adapter that read it, with each
+	 * node's part of the text ({@link SourceRenderer}): null if that adapter cannot render, or failed to.
+	 */
+	public RenderedSource render(Node fileNode) {
+		if (fileNode.getArtifact() == null || !(fileNode.getArtifact().getData() instanceof PluginArtifactData data))
+			return null;
+		if (!(this.readerFor(data.getPluginId()) instanceof SourceRenderer renderer))
+			return null;
+		try {
+			return renderer.render(fileNode);
+		} catch (IOException | RuntimeException e) {
+			LOGGER.log(Level.FINE, "Could not render " + data.getPath() + " with " + data.getPluginId(), e);
+			return null;
+		}
 	}
 
 	public Set<Node.Op> readSpecificFiles(Path[] input) {
