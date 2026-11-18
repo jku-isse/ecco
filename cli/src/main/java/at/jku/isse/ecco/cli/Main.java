@@ -165,7 +165,7 @@ public class Main {
         gitImportCommandParser.addArgument(GitImportCommand.FLAG_TAGGED_ONLY).action(Arguments.storeTrue())
                 .help("import the tagged commits only; the features suggested for the commits between go into the next tagged one");
         gitImportCommandParser.addArgument(GitImportCommand.FLAG_LLM).action(Arguments.storeTrue())
-                .help("have an LLM suggest each commit's features - without, every commit gets the features of the first (BASE)");
+                .help("have an LLM suggest each commit's features - without, a commit gets the features of the one before, which stops a commit that changes files (see --configurations)");
         gitImportCommandParser.addArgument(GitImportCommand.FLAG_LLM_ENDPOINT).metavar("URL")
                 .help("the OpenAI-compatible server to ask (default: the GUI's Preferences, LLM, or http://localhost:11434)");
         gitImportCommandParser.addArgument(GitImportCommand.FLAG_LLM_MODEL).metavar("MODEL")
@@ -175,7 +175,9 @@ public class Main {
         gitImportCommandParser.addArgument(GitImportCommand.FLAG_ON_REVIEW)
                 .choices(GitImportCommand.ON_REVIEW_STOP, GitImportCommand.ON_REVIEW_SKIP, GitImportCommand.ON_REVIEW_IMPORT)
                 .setDefault(GitImportCommand.ON_REVIEW_STOP)
-                .help("a commit whose suggestion failed or is uncertain - which the GUI stops at for review - ends the import (stop), is left out (skip), or is imported as proposed (import)");
+                .help("a commit whose suggestion failed or is uncertain, or whose configuration was imported before - which the GUI stops at for review - ends the import (stop), is left out (skip), or is imported as proposed (import) - not one whose configuration was imported before");
+        gitImportCommandParser.addArgument(GitImportCommand.FLAG_CONFIGURATIONS).metavar("FILE")
+                .help("the configurations of commits, as on the GUI's review screen: a line \"COMMIT: CONFIGURATION\" each (COMMIT as for --from; # starts a comment); such a commit is imported with it, not asked about");
         commandRegister.register(GitImportCommand.GIT_IMPORT, new GitImportCommand(eccoService));
     }
 

@@ -80,6 +80,47 @@ public class GitImportCommandTest {
         assertEquals(List.of("first [BASE]"), commits(home));
     }
 
+    /**
+     * Without an LLM a person names the features of the commits in a file, as on the GUI's review
+     * screen: each commit is imported with its line's configuration - a commit by id, its beginning
+     * or a tag - and a commit not named stops as before.
+     */
+    @Test
+    @Timeout(120)
+    public void theFeaturesOfCommitsAreNamedInAFile(@TempDir Path tmp) throws Exception {
+        Map<String, String> ids = gitHistory(tmp.resolve("clone"), Map.of("third", "v3"), "first", "second", "third", "fourth");
+        Path home = Files.createDirectories(tmp.resolve("home"));
+        assertEquals(0, MainTestAccess.run(new String[]{"init"}, home));
+        Files.writeString(home.resolve("features.txt"), "# the features of each commit\n"
+                + ids.get("second").substring(0, 8) + ": BASE, SECOND\n\nv3 : BASE, SECOND, THIRD\n");
+
+        assertEquals(1, MainTestAccess.run(new String[]{"git-import", "../clone", "--configurations", "features.txt"}, home), "fourth is not named");
+        assertEquals(List.of("first [BASE]", "second [BASE, SECOND]", "third [BASE, SECOND, THIRD]"), commits(home));
+
+        // named again as imported before: the line of the file loses the lines fourth changes
+        Files.writeString(home.resolve("again.txt"), ids.get("fourth") + ": BASE, SECOND, THIRD\n");
+        assertEquals(1, MainTestAccess.run(new String[]{"git-import", "../clone", "--from", ids.get("fourth"), "--configurations", "again.txt"}, home));
+        Files.writeString(home.resolve("again.txt"), ids.get("fourth") + ": BASE, SECOND, THIRD'\n");
+        assertEquals(0, MainTestAccess.run(new String[]{"git-import", "../clone", "--from", ids.get("fourth"), "--configurations", "again.txt"}, home));
+        assertEquals(4, commits(home).size());
+    }
+
+    /** A file that names a commit the clone does not have, one twice, or a line without a configuration imports nothing. */
+    @Test
+    @Timeout(120)
+    public void aFileItCannotReadImportsNothing(@TempDir Path tmp) throws Exception {
+        Map<String, String> ids = gitHistory(tmp.resolve("clone"), Map.of(), "first", "second");
+        Path home = Files.createDirectories(tmp.resolve("home"));
+        assertEquals(0, MainTestAccess.run(new String[]{"init"}, home));
+        String second = ids.get("second");
+        for (String content : List.of("nosuch: A\n", second + "\n", second + ":\n", second + ": A\n" + second.substring(0, 7) + ": B\n")) {
+            Files.writeString(home.resolve("features.txt"), content);
+            assertEquals(1, MainTestAccess.run(new String[]{"git-import", "../clone", "--configurations", "features.txt"}, home), content);
+        }
+        assertEquals(1, MainTestAccess.run(new String[]{"git-import", "../clone", "--configurations", "missing.txt"}, home));
+        assertEquals(List.of(), commits(home));
+    }
+
     /** Only the tagged commits are committed; those before the first are part of BASE, those between go into the next tagged one. */
     @Test
     @Timeout(120)

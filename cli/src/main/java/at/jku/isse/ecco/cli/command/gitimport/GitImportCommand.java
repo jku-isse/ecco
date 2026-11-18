@@ -12,10 +12,12 @@ import at.jku.isse.ecco.service.git.GitHistoryReader;
 import at.jku.isse.ecco.service.gitimport.GitImport;
 import net.sourceforge.argparse4j.inf.Namespace;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -27,7 +29,10 @@ import java.util.function.Function;
  * BASE); an LLM server not on this machine only with --llm-allow-remote (or once confirmed in the
  * GUI). Nobody reviews here: a commit the dialog would stop at - its suggestion failed or is
  * uncertain - ends the run (--on-review stop, the default), is left out (skip), or is imported with
- * the configuration proposed (import). The import log is printed as it goes, the summary at the end.
+ * the configuration proposed (import) - but not one whose configuration was imported before (FR-G3f).
+ * A person names the features of such commits in a file (--configurations), as on the GUI's review
+ * screen: a line "COMMIT: CONFIGURATION" per commit, which is imported with that configuration and
+ * not asked about. The import log is printed as it goes, the summary at the end.
  */
 public class GitImportCommand implements Command {
     public static final String GIT_IMPORT = "git-import";
@@ -40,6 +45,7 @@ public class GitImportCommand implements Command {
     public static final String FLAG_LLM_MODEL = "--llm-model";
     public static final String FLAG_LLM_ALLOW_REMOTE = "--llm-allow-remote";
     public static final String FLAG_ON_REVIEW = "--on-review";
+    public static final String FLAG_CONFIGURATIONS = "--configurations";
     public static final String ON_REVIEW_STOP = "stop";
     public static final String ON_REVIEW_SKIP = "skip";
     public static final String ON_REVIEW_IMPORT = "import";
@@ -94,11 +100,47 @@ public class GitImportCommand implements Command {
             commits = commits.subList(0, last + 1);
         }
         List<GitCommitInfo> toImport = commits;
-        Command.withOpenRepository(this.eccoService, () -> this.importCommits(clone, reader, tags, taggedOnly, toImport, useLlm, onReview));
+        String file = namespace.getString(stripDashes(FLAG_CONFIGURATIONS));
+        Map<Integer, String> named = file == null ? Map.of()
+                : configurations((startDir instanceof Path path ? path : Path.of("")).resolve(file), reader.listCommits(clone), toImport, tags);
+        Command.withOpenRepository(this.eccoService, () -> this.importCommits(clone, reader, tags, taggedOnly, toImport, useLlm, onReview, named));
+    }
+
+    /**
+     * The configurations [file] names, by the index in [toImport] of their commit: a line
+     * "COMMIT: CONFIGURATION" each - COMMIT as {@link #FLAG_FROM} takes it, an id, its beginning or a
+     * tag (Git allows no ":" in one) - blank lines and those starting with "#" left out. A commit of
+     * the clone outside the range is left out too; one the clone does not have, named twice, or a line
+     * without a configuration, is refused before anything is imported.
+     */
+    static Map<Integer, String> configurations(Path file, List<GitCommitInfo> newestFirst, List<GitCommitInfo> toImport, Map<String, List<String>> tags) {
+        List<String> lines;
+        try {
+            lines = Files.readAllLines(file);
+        } catch (IOException e) {
+            throw new CliException(FLAG_CONFIGURATIONS + " " + file + ": cannot be read - " + e.getMessage());
+        }
+        List<GitCommitInfo> oldestFirst = new ArrayList<>(newestFirst);
+        Collections.reverse(oldestFirst);
+        Map<Integer, String> named = new HashMap<>();
+        for (int n = 0; n < lines.size(); n++) {
+            String line = lines.get(n).strip();
+            if (line.isEmpty() || line.startsWith("#"))
+                continue;
+            String where = FLAG_CONFIGURATIONS + " " + file.getFileName() + ", line " + (n + 1);
+            int colon = line.indexOf(':');
+            if (colon <= 0 || line.substring(colon + 1).isBlank())
+                throw new CliException(where + ": not \"COMMIT: CONFIGURATION\" - " + line);
+            String id = oldestFirst.get(indexOf(oldestFirst, tags, line.substring(0, colon).strip(), where + ":")).getId();
+            for (int i = 0; i < toImport.size(); i++)
+                if (toImport.get(i).getId().equals(id) && named.put(i, line.substring(colon + 1).strip()) != null)
+                    throw new CliException(where + ": " + toImport.get(i).getShortId() + " is named twice.");
+        }
+        return named;
     }
 
     private void importCommits(Path clone, GitHistoryReader reader, Map<String, List<String>> tags, boolean taggedOnly,
-                               List<GitCommitInfo> commits, boolean useLlm, String onReview) {
+                               List<GitCommitInfo> commits, boolean useLlm, String onReview, Map<Integer, String> named) {
         // nobody reviews: each commit unattended, stopping (as --on-review says) where the dialog would
         GitImport run = new GitImport(this.eccoService, reader, clone, tags, taggedOnly, commits, useLlm, false, true, line -> this.writer.printf("%s", line));
         Function<GitCommitInfo, GitImport.Suggested> suggest = this.suggester.apply(run);
@@ -106,6 +148,17 @@ public class GitImportCommand implements Command {
         run.continueFromLatestCommit();
         GitImport.Step step = run.next(0);
         while (!(step instanceof GitImport.Finished)) {
+            Integer index = switch (step) {
+                case GitImport.Import anImport -> anImport.index();
+                case GitImport.Unattended unattended -> unattended.index();
+                case GitImport.Review review -> review.index();
+                default -> null;
+            };
+            if (index != null && named.containsKey(index)) {
+                // the person's configuration: imported as reviewed, the LLM not asked
+                step = this.importNamed(run, index, named.get(index));
+                continue;
+            }
             step = switch (step) {
                 case GitImport.Import anImport -> this.importOne(run, anImport.index(), anImport.configuration());
                 case GitImport.Unattended unattended -> this.unattended(run, suggest, unattended.index());
@@ -129,6 +182,21 @@ public class GitImportCommand implements Command {
             return run.afterUnattendedSuggestionFailed(index, e);
         }
         return run.afterUnattendedSuggestion(index, suggested);
+    }
+
+    /**
+     * Commit [index] with the [configuration] the file named for it, as reviewed - unless it was
+     * imported before (FR-G3f): the file is to name the features this commit changes.
+     */
+    private GitImport.Step importNamed(GitImport run, int index, String configuration) {
+        GitCommitInfo commit = run.commit(index);
+        String repeated = run.folds(commit) ? null : run.repeats(index, configuration);
+        if (repeated != null) {
+            this.writer.println(run.summary(true));
+            throw new CliException("Stopped at " + commit.getShortId() + " (" + commit.getMessage() + "), named in " + FLAG_CONFIGURATIONS + ": " + repeated
+                    + resumeHint(run, index));
+        }
+        return this.importOne(run, index, configuration);
     }
 
     /** Commit [index], with [configuration]: committed, or - between tagged ones - kept for the next tagged one. */
@@ -159,8 +227,8 @@ public class GitImportCommand implements Command {
             // imported as proposed, its changed lines would be lost (FR-M4d): only a person can name its features
             this.writer.println(run.summary(true));
             throw new CliException("Stopped at " + commit.getShortId() + " (" + commit.getMessage() + "): " + why
-                    + " " + FLAG_ON_REVIEW + " " + ON_REVIEW_IMPORT + " does not import such a commit; import it from the GUI's Import from Git, naming its features, or "
-                    + FLAG_ON_REVIEW + " " + ON_REVIEW_SKIP + " to leave it out." + resumeHint(run, review.index()));
+                    + " " + FLAG_ON_REVIEW + " " + ON_REVIEW_IMPORT + " does not import such a commit: " + nameItsFeatures(commit, review.configuration())
+                    + " or give " + FLAG_ON_REVIEW + " " + ON_REVIEW_SKIP + " to leave it out." + resumeHint(run, review.index()));
         }
         switch (onReview) {
             case ON_REVIEW_SKIP -> {
@@ -174,10 +242,18 @@ public class GitImportCommand implements Command {
             default -> {
                 this.writer.println(run.summary(true));
                 throw new CliException("Stopped at " + commit.getShortId() + " (" + commit.getMessage() + "), proposed [" + review.configuration() + "]: " + why
-                        + " " + FLAG_ON_REVIEW + " " + ON_REVIEW_SKIP + " leaves such commits out, " + FLAG_ON_REVIEW + " " + ON_REVIEW_IMPORT
-                        + " imports them as proposed." + resumeHint(run, review.index()));
+                        + " " + (review.repeated() != null
+                        ? nameItsFeatures(commit, review.configuration()) + " " + FLAG_ON_REVIEW + " " + ON_REVIEW_SKIP + " leaves such commits out."
+                        : FLAG_ON_REVIEW + " " + ON_REVIEW_SKIP + " leaves such commits out, " + FLAG_ON_REVIEW + " " + ON_REVIEW_IMPORT + " imports them as proposed.")
+                        + resumeHint(run, review.index()));
             }
         }
+    }
+
+    /** How to name the features of [commit], proposed [configuration] imported before. */
+    private static String nameItsFeatures(GitCommitInfo commit, String configuration) {
+        return "Give them in a file with " + FLAG_CONFIGURATIONS + ", a line \"" + commit.getShortId() + ": " + configuration
+                + ", <a new feature or A'>\".";
     }
 
     /** How to go on from commit [index], once something was imported. */
