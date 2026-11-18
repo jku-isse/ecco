@@ -152,6 +152,21 @@ public class FileRepositoryServiceTest {
         assertEquals("first commit", result.getCommits().iterator().next().getCommitMessage());
     }
 
+    /** A configuration committed again with other content is warned about in the answer (FR-M4d); the same content is not. */
+    @Test
+    @Timeout(30)
+    public void aConfigurationCommittedAgainWithOtherContentIsWarnedAbout() throws IOException {
+        Path storage = Files.createTempDirectory("file-repository-service-recommit");
+        FileRepositoryService service = new FileRepositoryService(storage);
+        service.createRepository("my-repo");
+
+        assertEquals("", service.addCommit(1, "first", "Core", "alice", List.of(mockUpload("\\file.txt", "hello\n"))).getWarning());
+        assertEquals("", service.addCommit(1, "same", "Core", "alice", List.of(mockUpload("\\file.txt", "hello\n"))).getWarning());
+        RestRepository changed = service.addCommit(1, "changed", "Core", "alice", List.of(mockUpload("\\file.txt", "changed\n")));
+        assertTrue(changed.getWarning().startsWith("Core was committed before with other content: 1 file differs (file.txt)"), changed.getWarning());
+        assertEquals(3, changed.getCommits().size(), "committed all the same");
+    }
+
     @Test
     @Timeout(30)
     public void addCommitWithABadConfigurationIsABadRequestAndWritesNothing() throws IOException {

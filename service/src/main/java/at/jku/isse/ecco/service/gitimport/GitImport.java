@@ -63,9 +63,14 @@ public final class GitImport {
 
 	/**
 	 * A person reviews commit [index], its configuration proposed as [configuration]; [suggestionFailure]
-	 * says why there is no suggestion, if one was asked for and failed.
+	 * says why there is no suggestion, if one was asked for and failed; [repeated] why an unattended
+	 * commit stopped for its configuration imported before ({@link #repeats}), else null - a commit
+	 * reviewed anyway is checked on its review screen, as its configuration is edited.
 	 */
-	public record Review(int index, String configuration, String suggestionFailure) implements Step {
+	public record Review(int index, String configuration, String suggestionFailure, String repeated) implements Step {
+		public Review(int index, String configuration, String suggestionFailure) {
+			this(index, configuration, suggestionFailure, null);
+		}
 	}
 
 	/** Commit [index] is imported with [configuration], unattended. */
@@ -73,7 +78,7 @@ public final class GitImport {
 	}
 
 	/**
-	 * Commit [index] is imported unattended: without suggestions, with {@link #unattendedConfiguration};
+	 * Commit [index] is imported unattended: without suggestions, with {@link #unattendedWithoutSuggestion};
 	 * with them, after {@link #requestSuggestion}, as {@link #afterUnattendedSuggestion} says.
 	 */
 	public record Unattended(int index) implements Step {
@@ -127,6 +132,8 @@ public final class GitImport {
 	// suggestion failures of unattended commits, for the summary: a single log line during an
 	// unattended stretch is easy to miss - a review screen shows its own failure prominently
 	private final List<String> llmSuggestionFailures = new ArrayList<>();
+	// unattended commits stopped for review because their configuration was imported before, for the summary
+	private final List<String> repeatedConfigurations = new ArrayList<>();
 	// the commit being reviewed or imported, with its suggestion if one was asked for, recorded with
 	// what became of it once it is imported or skipped (see FeatureSuggestionLog)
 	private FeatureSuggestionLog.Entry pendingSuggestion;
@@ -247,14 +254,6 @@ public final class GitImport {
 		return new Review(index, defaultConfig, null);
 	}
 
-	/** The configuration an unattended commit [index] is imported with when there are no suggestions. */
-	public String unattendedConfiguration(int index) {
-		GitCommitInfo commit = this.commits.get(index);
-		String config = this.proposedConfiguration(commit, "");
-		this.pendingSuggestion = this.suggestionEntry(commit, null, null, config, FeatureSuggestionLog.Outcome.AUTO);
-		return config;
-	}
-
 	/**
 	 * Unattended commit [index] got its suggestion: imported with it - or reviewed if it failed
 	 * (logged and counted for the summary, see {@link #stopForFailedSuggestion}) or is uncertain.
@@ -269,10 +268,65 @@ public final class GitImport {
 		if (this.reviewUncertain && confidence != null && confidence.uncertain()) {
 			// not trusted: a person decides, as on a review commit
 			this.pendingSuggestion = this.suggestionEntry(commit, suggested, null, config, FeatureSuggestionLog.Outcome.REVIEWED);
-			return new Review(index, config, null);
+			return new Review(index, config, null, this.repeats(index, config));
 		}
-		this.pendingSuggestion = this.suggestionEntry(commit, suggested, batch.failureReason(), config, FeatureSuggestionLog.Outcome.AUTO);
+		return this.importUnlessRepeated(index, suggested, config);
+	}
+
+	/**
+	 * Unattended commit [index] without suggestions (none asked for): imported with the features so
+	 * far - unless they were imported before, when a person decides ({@link #repeats}). Reads the
+	 * repository: not on the FX thread, as {@link #afterUnattendedSuggestion} and
+	 * {@link #afterUnattendedSuggestionFailed}.
+	 */
+	public Step unattendedWithoutSuggestion(int index) {
+		return this.importUnlessRepeated(index, null, this.proposedConfiguration(this.commits.get(index), ""));
+	}
+
+	/**
+	 * Unattended commit [index] is imported with [config] - or reviewed, if [config] was imported
+	 * before: committed again, the lines the commit changed would check out for it no more (FR-M4d). A
+	 * person names the features it changes; no feature could be told from another without them.
+	 */
+	private Step importUnlessRepeated(int index, Suggested suggested, String config) {
+		GitCommitInfo commit = this.commits.get(index);
+		String failure = suggested == null ? null : suggested.batch().failureReason();
+		String repeated = this.folds(commit) ? null : this.repeats(index, config);
+		if (repeated != null) {
+			this.repeatedConfigurations.add(commit.getShortId() + ": " + config);
+			this.log.accept("*** CONFIGURATION IMPORTED BEFORE for " + commit.getShortId() + " (stopped for review): [" + config + "]" + System.lineSeparator());
+			this.pendingSuggestion = this.suggestionEntry(commit, suggested, failure, config, FeatureSuggestionLog.Outcome.REVIEWED);
+			return new Review(index, config, null, repeated);
+		}
+		this.pendingSuggestion = this.suggestionEntry(commit, suggested, failure, config, FeatureSuggestionLog.Outcome.AUTO);
 		return new Import(index, config);
+	}
+
+	/**
+	 * Why importing commit [index] with [configurationText] would lose lines (FR-M4d), or null: a
+	 * commit has that configuration already - in the same feature revisions; "A'" is a new one - and
+	 * this one changes files, whose changed lines would then check out for it no more, neither the old
+	 * nor the new ones. An import without suggestions proposed BASE for every commit, and BASE checked
+	 * out the lines all of them share. Cheap: nothing is composed; a commit that changes only files the
+	 * repository ignores is asked about too.
+	 */
+	public String repeats(int index, String configurationText) {
+		if (this.repositoryEmpty || configurationText == null || configurationText.isBlank())
+			return null;
+		boolean before;
+		try {
+			before = this.service.committedBefore(configurationText);
+		} catch (RuntimeException e) {
+			return null; // not a configuration: the commit says why
+		}
+		if (!before)
+			return null;
+		List<String> changed = this.changedFiles(this.commits.get(index));
+		if (changed.isEmpty())
+			return null;
+		return "[" + configurationText + "] was imported before, for an earlier commit, and this one changes "
+				+ (changed.size() == 1 ? "1 file" : changed.size() + " files") + ". Imported with it again, the lines it changes check out for it no more"
+				+ " - neither the old nor the new ones. Name the features this commit changes: a new feature, or a new revision (A') of one imported before.";
 	}
 
 	/** Asking for unattended commit [index]'s suggestion failed with [failure]: it is reviewed. */
@@ -293,7 +347,7 @@ public final class GitImport {
 		this.llmSuggestionFailures.add(commit.getShortId() + ": " + reason);
 		this.log.accept("*** LLM SUGGESTION FAILED for " + commit.getShortId() + " (stopped for review): " + reason + System.lineSeparator());
 		this.pendingSuggestion = this.suggestionEntry(commit, suggested, reason, config, FeatureSuggestionLog.Outcome.REVIEWED);
-		return new Review(index, config, reason);
+		return new Review(index, config, reason, this.folds(commit) ? null : this.repeats(index, config));
 	}
 
 	/** Commit [index] got its suggestion: reviewed, with the configuration it proposes. */
@@ -569,6 +623,8 @@ public final class GitImport {
 	/** The summary of the run: what was imported, skipped and folded, the constraints violated and the suggestions failed. */
 	public String summary(boolean stoppedEarly) {
 		return summary(this.importedCount, this.toImport(), this.skippedCount, stoppedEarly, this.allConstraintWarnings, this.llmSuggestionFailures)
+				+ (this.repeatedConfigurations.isEmpty() ? "" : System.lineSeparator() + System.lineSeparator() + "Configurations imported before, each stopped for review ("
+						+ this.repeatedConfigurations.size() + "):" + System.lineSeparator() + String.join(System.lineSeparator(), this.repeatedConfigurations))
 				+ (this.foldedCount == 0 ? "" : System.lineSeparator() + this.foldedCount + " commit(s) between the tagged ones were not imported: their features went into the next tagged one.");
 	}
 

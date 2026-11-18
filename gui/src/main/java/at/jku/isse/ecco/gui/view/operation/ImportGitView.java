@@ -113,6 +113,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 	static final String NEW_REVISION_HINT = "\nA feature with ' (A') gets a new revision: this commit changes it, so its code can be told from earlier versions.";
 	// lets tests find the confidence shown on a commit's review screen
 	static final String CONFIDENCE_LABEL_ID = "suggestionConfidence";
+	static final String REPEATED_LABEL_ID = "repeatedConfiguration";
 
 	private final EccoService service;
 	private final GitHistoryReader gitHistoryReader = new GitHistoryReader();
@@ -610,15 +611,21 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.showProgress((folds ? "Suggesting features of commit " : "Importing commit ") + commit.getShortId() + " unattended...");
 		this.growToFit(); // a size the user chose stays - fit() resized the window for every commit
 
-		if (!this.run.useLlm()) {
-			this.importOneCommit(index, this.run.unattendedConfiguration(index));
-			return;
-		}
-
-		Task<GitImport.Suggested> suggestTask = new Task<>() {
+		// the step after it asks the repository whether the configuration was imported before: not on the FX thread (NFR-C3)
+		GitImport run = this.run;
+		boolean useLlm = run.useLlm();
+		Task<GitImport.Step> suggestTask = new Task<>() {
 			@Override
-			protected GitImport.Suggested call() {
-				return ImportGitView.this.suggester.apply(commit);
+			protected GitImport.Step call() {
+				if (!useLlm)
+					return run.unattendedWithoutSuggestion(index);
+				GitImport.Suggested suggested;
+				try {
+					suggested = ImportGitView.this.suggester.apply(commit);
+				} catch (RuntimeException e) {
+					return run.afterUnattendedSuggestionFailed(index, e);
+				}
+				return run.afterUnattendedSuggestion(index, suggested);
 			}
 
 			@Override
@@ -627,7 +634,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				if (ImportGitView.this.runEnded) {
 					return;
 				}
-				ImportGitView.this.act(ImportGitView.this.run.afterUnattendedSuggestion(index, this.getValue()));
+				ImportGitView.this.act(this.getValue());
 			}
 
 			@Override
@@ -636,7 +643,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				if (ImportGitView.this.runEnded) {
 					return;
 				}
-				ImportGitView.this.act(ImportGitView.this.run.afterUnattendedSuggestionFailed(index, this.getException()));
+				ImportGitView.this.reportImportFailure(this.getException());
 			}
 		};
 		new Thread(suggestTask).start();
@@ -787,6 +794,14 @@ public class ImportGitView extends OperationView implements EccoListener {
 		gridPane.add(constraintWarningLabel, 0, row, 1, 1);
 		row++;
 
+		// a configuration imported before loses the lines this commit changes (FR-M4d): said as it is edited
+		Label repeatedLabel = new Label();
+		repeatedLabel.setId(REPEATED_LABEL_ID);
+		repeatedLabel.setWrapText(true);
+		repeatedLabel.setStyle("-fx-text-fill: firebrick;");
+		gridPane.add(repeatedLabel, 0, row, 1, 1);
+		row++;
+
 		// live constraint-violation feedback as the configuration is edited, debounced so typing
 		// doesn't spawn a background check per keystroke -- only one commit's field is ever live at
 		// once here, unlike the previous batch review table, so a short debounce is enough (no need
@@ -798,7 +813,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 				String description = (configurationText == null || configurationText.isBlank()
 						|| !this.service.isInitialized() || this.service.isWriteInProgress())
 						? "" : ConstraintWarnings.describe(this.service, configurationText);
-				Platform.runLater(() -> constraintWarningLabel.setText(description));
+				String repeated = folds || !this.service.isInitialized() || this.service.isWriteInProgress() ? null : run.repeats(index, configurationText);
+				Platform.runLater(() -> {
+					constraintWarningLabel.setText(description);
+					repeatedLabel.setText(repeated == null ? "" : repeated);
+				});
 			}).start();
 		});
 		configField.textProperty().addListener((observable, oldValue, newValue) -> debounce.playFromStart());
@@ -814,6 +833,14 @@ public class ImportGitView extends OperationView implements EccoListener {
 			if (!folds && warning != null && !warning.isEmpty()) {
 				Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.CONFIRMATION, warning + "\n\nDo you want to import anyway?");
 				alert.setHeaderText("Constraint violation");
+				Optional<ButtonType> result = alert.showAndWait();
+				if (result.isEmpty() || result.get() != ButtonType.OK) return;
+			}
+			// as checked in the background after the last edit, as the constraints are
+			String repeated = repeatedLabel.getText();
+			if (!folds && repeated != null && !repeated.isEmpty()) {
+				Alert alert = new at.jku.isse.ecco.gui.common.OwnedAlert(Alert.AlertType.CONFIRMATION, repeated + "\n\nDo you want to import it anyway?");
+				alert.setHeaderText("Configuration imported before");
 				Optional<ButtonType> result = alert.showAndWait();
 				if (result.isEmpty() || result.get() != ButtonType.OK) return;
 			}

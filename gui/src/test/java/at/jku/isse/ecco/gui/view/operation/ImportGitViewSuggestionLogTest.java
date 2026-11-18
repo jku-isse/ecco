@@ -485,6 +485,53 @@ public class ImportGitViewSuggestionLogTest {
                 ImportedFeatureTraces.fromLog(log, service.getRepositoryDir().toString(), clone, new GitHistoryReader(), null).files());
     }
 
+    /**
+     * Unattended without suggestions, a commit whose configuration was imported before stops for
+     * review (FR-M4d): imported with BASE again, the lines it changes would check out for BASE no more.
+     * The review says so as long as the configuration names no feature it changes.
+     */
+    @Test
+    @Timeout(60)
+    public void aConfigurationImportedBeforeStopsAnUnattendedImport(@TempDir Path tmp) throws Exception {
+        System.setProperty(FeatureSuggestionLog.LOCATION_PROPERTY, tmp.resolve("suggestions.jsonl").toString());
+        Path clone = gitHistory(tmp.resolve("clone"), "first", "second");
+        EccoService service = repository(tmp.resolve("repo"));
+        List<GitCommitInfo> oldestFirst = new ArrayList<>(new GitHistoryReader().listCommits(clone));
+        Collections.reverse(oldestFirst);
+        ImportGitView view = onFx(() -> {
+            ImportGitView v = new ImportGitView(service);
+            new Scene(v);
+            v.startImport(clone, oldestFirst, false, false);
+            return v;
+        });
+        waitFor(view, "Review Commit (2 of 2)");
+        assertEquals("BASE", onFx(() -> findField(view).getText()));
+        waitForRepeated(view, true);
+        onFx(() -> {
+            findField(view).setText("BASE, SECOND");
+            return null;
+        });
+        waitForRepeated(view, false);
+        clickButton(view, "Import");
+        waitFor(view, FINISHED);
+        assertTrue(onFx(() -> view.logArea.getText()).contains("*** CONFIGURATION IMPORTED BEFORE"), onFx(() -> view.logArea.getText()));
+        assertEquals(2, service.getCommits().size());
+        service.close();
+    }
+
+    /** Waits until the review screen says [shown] whether its configuration was imported before. */
+    private static void waitForRepeated(ImportGitView view, boolean shown) throws Exception {
+        long deadline = System.currentTimeMillis() + 10_000;
+        String text = "";
+        while (System.currentTimeMillis() < deadline) {
+            text = onFx(() -> ((javafx.scene.control.Label) find(view, n -> ImportGitView.REPEATED_LABEL_ID.equals(n.getId()))).getText());
+            if (text.contains("was imported before") == shown)
+                return;
+            Thread.sleep(50);
+        }
+        fail("the review says '" + text + "'");
+    }
+
     /** a top-level field of one log line: a string's text, or a number or null as written */
     private static String field(String line, String name) {
         java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"" + name + "\":(?:\"((?:[^\"\\\\]|\\\\.)*)\"|([^,}]*))").matcher(line);

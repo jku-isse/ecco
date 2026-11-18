@@ -59,7 +59,11 @@ public class GitImportCommandTest {
         });
     }
 
-    /** Without an LLM every commit has the features of the first, BASE; a second import goes on from the repository's latest commit. */
+    /**
+     * Without an LLM nothing names a later commit's features: proposed the features of the first, BASE,
+     * again, it stops (FR-M4d) - imported with BASE, the lines it changed checked out for BASE no more.
+     * A second import goes on from the repository's latest commit.
+     */
     @Test
     @Timeout(120)
     public void importsARangeAndGoesOnLater(@TempDir Path tmp) throws Exception {
@@ -67,13 +71,13 @@ public class GitImportCommandTest {
         Path home = Files.createDirectories(tmp.resolve("home"));
         assertEquals(0, MainTestAccess.run(new String[]{"init"}, home));
 
-        assertEquals(0, MainTestAccess.run(new String[]{"git-import", "../clone", "--to", "v2"}, home));
-        assertEquals(List.of("first [BASE]", "second [BASE]"), commits(home));
+        assertEquals(1, MainTestAccess.run(new String[]{"git-import", "../clone", "--to", "v2"}, home));
+        assertEquals(List.of("first [BASE]"), commits(home));
 
-        // the repository has commits: the run starts from the latest one's features - it started from
-        // none, and the commit was refused for having no feature
-        assertEquals(0, MainTestAccess.run(new String[]{"git-import", "../clone", "--from", ids.get("third").substring(0, 7)}, home));
-        assertEquals(List.of("first [BASE]", "second [BASE]", "third [BASE]"), commits(home));
+        // the repository has commits: the run starts from the latest one's features, BASE, which it
+        // skips - from none, the commit was refused for having no feature
+        assertEquals(0, MainTestAccess.run(new String[]{"git-import", "../clone", "--from", ids.get("second").substring(0, 7), "--on-review", "skip"}, home));
+        assertEquals(List.of("first [BASE]"), commits(home));
     }
 
     /** Only the tagged commits are committed; those before the first are part of BASE, those between go into the next tagged one. */
@@ -84,9 +88,9 @@ public class GitImportCommandTest {
         Path home = Files.createDirectories(tmp.resolve("home"));
         assertEquals(0, MainTestAccess.run(new String[]{"init"}, home));
 
-        assertEquals(0, MainTestAccess.run(new String[]{"git-import", "../clone", "--tagged-only"}, home));
-
-        assertEquals(List.of("second [BASE]", "fourth [BASE]"), commits(home), "fifth, after the last tag, left out");
+        // without an LLM, the second tagged commit would be BASE again: it stops (FR-M4d)
+        assertEquals(1, MainTestAccess.run(new String[]{"git-import", "../clone", "--tagged-only"}, home));
+        assertEquals(List.of("second [BASE]"), commits(home));
     }
 
     @Test
@@ -134,13 +138,15 @@ public class GitImportCommandTest {
 
     @Test
     @Timeout(120)
-    public void aFailedSuggestionIsImportedAsProposed(@TempDir Path tmp) throws Exception {
+    public void aFailedSuggestionIsNotImportedWithTheFeaturesOfTheCommitBefore(@TempDir Path tmp) throws Exception {
         gitHistory(tmp.resolve("clone"), Map.of(), "first", "second", "third");
         Path home = repository(tmp);
 
-        command(home, new StringWriter(), failingOn("second")).run(arguments(home, "import"));
-
-        assertEquals(List.of("first [BASE]", "second [BASE]", "third [BASE, THIRD]"), commits(home));
+        // proposed BASE again, as the commit before: imported, the lines it changes would be lost (FR-M4d)
+        CliException stopped = assertThrows(CliException.class, () -> command(home, new StringWriter(), failingOn("second")).run(arguments(home, "import")));
+        assertTrue(stopped.getMessage().contains("its suggestion failed. [BASE] was imported before"), stopped.getMessage());
+        assertTrue(stopped.getMessage().contains("--on-review import does not import such a commit"), stopped.getMessage());
+        assertEquals(List.of("first [BASE]"), commits(home));
     }
 
     @Test

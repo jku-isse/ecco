@@ -14,6 +14,7 @@ public class RestRepository implements Serializable {
     private final int repositoryHandlerId;
     private final String name;
     private final EccoService service;
+    private String warning = "";
 
     public RestRepository(EccoService service, int repositoryHandlerId, String name) {
         this.repositoryHandlerId = repositoryHandlerId;
@@ -35,6 +36,17 @@ public class RestRepository implements Serializable {
 
     public String getName() {
         return name;
+    }
+
+    /** What the request that answered with this should be told, e.g. a configuration committed again with other content (FR-M4d); "" for nothing. */
+    public String getWarning() {
+        return warning;
+    }
+
+    /** This, with [warning] for the request it answers. */
+    public RestRepository withWarning(String warning) {
+        this.warning = warning == null ? "" : warning;
+        return this;
     }
 
     public Collection<RestCommit> getCommits () {

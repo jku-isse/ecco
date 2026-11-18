@@ -35,14 +35,7 @@ final class RecommitCheck {
      * order is an ORDER warning, not lost lines.
      */
     List<String> differences(Configuration configuration, Path directory) {
-        RepositoryContext context = this.state.context();
-        boolean committedBefore = context.read(null, () -> {
-            for (Commit commit : context.repositoryDao.load().getCommits())
-                if (commit.getConfiguration().equals(configuration))
-                    return true;
-            return false;
-        });
-        if (!committedBefore)
+        if (!this.committedBefore(configuration))
             return List.of();
         Map<String, Node> composed = new TreeMap<>();
         files(this.checkoutService.compose(configuration).getNode(), composed);
@@ -57,6 +50,17 @@ final class RecommitCheck {
             if (!composed.containsKey(file))
                 differ.add(file);
         return List.copyOf(differ);
+    }
+
+    /** Whether a commit has [configuration] - cheap: nothing is composed. */
+    boolean committedBefore(Configuration configuration) {
+        RepositoryContext context = this.state.context();
+        return context.read(null, () -> {
+            for (Commit commit : context.repositoryDao.load().getCommits())
+                if (commit.getConfiguration().equals(configuration))
+                    return true;
+            return false;
+        });
     }
 
     /** The warning for [files] differing from [configuration]'s checkout, or "" for none. */

@@ -120,7 +120,7 @@ public class GitImportCommand implements Command {
 
     private GitImport.Step unattended(GitImport run, Function<GitCommitInfo, GitImport.Suggested> suggest, int index) {
         if (!run.useLlm())
-            return this.importOne(run, index, run.unattendedConfiguration(index));
+            return run.unattendedWithoutSuggestion(index);
         this.writer.println("Asking the LLM about " + run.commit(index).getShortId() + " (" + run.commit(index).getMessage() + ")...");
         GitImport.Suggested suggested;
         try {
@@ -153,10 +153,18 @@ public class GitImportCommand implements Command {
 
     private GitImport.Step review(GitImport run, GitImport.Review review, String onReview) {
         GitCommitInfo commit = run.commit(review.index());
-        String why = review.suggestionFailure() != null ? "its suggestion failed" : "its suggestion is uncertain";
+        String why = (review.suggestionFailure() != null ? "its suggestion failed." : review.repeated() == null ? "its suggestion is uncertain." : "")
+                + (review.repeated() == null ? "" : (review.suggestionFailure() != null ? " " : "") + review.repeated());
+        if (review.repeated() != null && ON_REVIEW_IMPORT.equals(onReview)) {
+            // imported as proposed, its changed lines would be lost (FR-M4d): only a person can name its features
+            this.writer.println(run.summary(true));
+            throw new CliException("Stopped at " + commit.getShortId() + " (" + commit.getMessage() + "): " + why
+                    + " " + FLAG_ON_REVIEW + " " + ON_REVIEW_IMPORT + " does not import such a commit; import it from the GUI's Import from Git, naming its features, or "
+                    + FLAG_ON_REVIEW + " " + ON_REVIEW_SKIP + " to leave it out." + resumeHint(run, review.index()));
+        }
         switch (onReview) {
             case ON_REVIEW_SKIP -> {
-                this.writer.println("Skipped " + commit.getShortId() + " (" + commit.getMessage() + "): " + why + ".");
+                this.writer.println("Skipped " + commit.getShortId() + " (" + commit.getMessage() + "): " + why);
                 run.skip(review.index());
                 return run.next(review.index() + 1);
             }
@@ -166,7 +174,7 @@ public class GitImportCommand implements Command {
             default -> {
                 this.writer.println(run.summary(true));
                 throw new CliException("Stopped at " + commit.getShortId() + " (" + commit.getMessage() + "), proposed [" + review.configuration() + "]: " + why
-                        + ". " + FLAG_ON_REVIEW + " " + ON_REVIEW_SKIP + " leaves such commits out, " + FLAG_ON_REVIEW + " " + ON_REVIEW_IMPORT
+                        + " " + FLAG_ON_REVIEW + " " + ON_REVIEW_SKIP + " leaves such commits out, " + FLAG_ON_REVIEW + " " + ON_REVIEW_IMPORT
                         + " imports them as proposed." + resumeHint(run, review.index()));
             }
         }

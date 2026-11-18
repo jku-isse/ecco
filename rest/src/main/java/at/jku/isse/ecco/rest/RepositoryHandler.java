@@ -95,13 +95,22 @@ public class RepositoryHandler {
         return configuration;
     }
 
-    public synchronized void addCommit(String message, String config, Path commitFolder, String committer) {
-        addCommit(message, parseCommitConfiguration(config), commitFolder, committer);
+    /** Commits; returns the warning for a configuration committed again with other content (FR-M4d), or "". */
+    public synchronized String addCommit(String message, String config, Path commitFolder, String committer) {
+        return addCommit(message, parseCommitConfiguration(config), commitFolder, committer);
     }
 
-    public synchronized void addCommit(String message, Configuration configuration, Path commitFolder, String committer) {
+    /**
+     * Commits [commitFolder] as [configuration]; returns the warning for it committed before with other
+     * content, or "": committed again, the lines that differ check out for it no more (FR-M4d). The
+     * client is told afterwards, as the command line tells.
+     */
+    public synchronized String addCommit(String message, Configuration configuration, Path commitFolder, String committer) {
         service().setBaseDir(commitFolder);
+        List<String> differences = service().recommitDifferences(configuration, commitFolder);
         service().commit(message, configuration, committer);
+        String text = configuration.getOriginalConfigString() != null ? configuration.getOriginalConfigString() : configuration.toString();
+        return EccoService.describeRecommit(text, differences);
     }
 
     //checkout

@@ -1419,6 +1419,15 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         return this.recommitCheck.differences(configuration, directory);
     }
 
+    /**
+     * Whether a commit has the configuration already: committed with it again, a commit that changed
+     * files loses their changed lines for it (FR-M4d). Cheap - nothing is composed - so the Git
+     * import asks it for each commit it imports.
+     */
+    public synchronized boolean committedBefore(String configurationString) {
+        return this.recommitCheck.committedBefore(this.parseConfigurationString(configurationString));
+    }
+
     /** The warning for {@link #recommitDifferences}, or "" for none. */
     public static String describeRecommit(String configurationString, List<String> files) {
         return RecommitCheck.describe(configurationString, files);

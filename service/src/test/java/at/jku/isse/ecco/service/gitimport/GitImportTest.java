@@ -28,6 +28,8 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -104,6 +106,51 @@ public class GitImportTest {
 			String summary = run.summary(false);
 			assertTrue(summary.startsWith("Imported 2 of 3 commits, skipped 1."), summary);
 			assertTrue(summary.contains("no model"), summary);
+		}
+	}
+
+	/**
+	 * A commit whose configuration was imported before stops for review (FR-M4d): imported with it
+	 * again, the lines it changes checked out for it no more - an import without suggestions proposed
+	 * BASE for every commit, and BASE checked out only the lines all of them share. The person names
+	 * the features; with a new revision (A'), the newest configuration checks out the newest code.
+	 */
+	@Test
+	@Timeout(60)
+	public void aConfigurationImportedBeforeStopsForReview(@TempDir Path tmp) throws Exception {
+		Path clone = Files.createDirectories(tmp.resolve("clone"));
+		try (Git git = Git.init().setDirectory(clone.toFile()).call()) {
+			for (String version : List.of("v1", "v2", "v3")) {
+				Files.writeString(clone.resolve("a.txt"), "head\n" + version + "\ntail\n");
+				git.add().addFilepattern(".").call();
+				git.commit().setMessage(version).setAuthor("t", "t@example.com").setCommitter("t", "t@example.com").call();
+			}
+		}
+		try (EccoService service = repository(tmp.resolve("repo"))) {
+			List<String> log = new ArrayList<>();
+			GitImport run = new GitImport(service, new GitHistoryReader(), clone, Map.of(), false, oldestFirst(clone), false, false, true, log::add);
+			run.start();
+
+			GitImport.Step step = importAll(run, run.next(0), commit -> null);
+			GitImport.Review second = assertInstanceOf(GitImport.Review.class, run.unattendedWithoutSuggestion(assertInstanceOf(GitImport.Unattended.class, step).index()));
+			assertEquals("BASE", second.configuration());
+			assertTrue(second.repeated() != null && second.repeated().contains("imported before"), String.valueOf(second.repeated()));
+			assertTrue(log.stream().anyMatch(line -> line.startsWith("*** CONFIGURATION IMPORTED BEFORE")), String.join("", log));
+			assertNull(run.repeats(second.index(), "BASE, V2"), "a new feature");
+			assertNull(run.repeats(second.index(), "BASE'"), "a new revision");
+			run.imported(second.index(), "BASE, V2", run.commit(second.index(), "BASE, V2"));
+
+			GitImport.Review third = assertInstanceOf(GitImport.Review.class, run.unattendedWithoutSuggestion(assertInstanceOf(GitImport.Unattended.class, run.next(second.index() + 1)).index()));
+			assertEquals("BASE, V2", third.configuration());
+			assertNotNull(third.repeated());
+			run.imported(third.index(), "BASE, V2'", run.commit(third.index(), "BASE, V2'"));
+			assertInstanceOf(GitImport.Finished.class, run.next(third.index() + 1));
+			assertTrue(run.summary(false).contains("Configurations imported before, each stopped for review (2)"), run.summary(false));
+
+			Path out = Files.createDirectories(tmp.resolve("out"));
+			service.setBaseDir(out);
+			service.checkout("BASE, V2");
+			assertEquals("head\nv3\ntail\n", Files.readString(out.resolve("a.txt")));
 		}
 	}
 

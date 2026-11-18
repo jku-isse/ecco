@@ -241,10 +241,12 @@ public class FileRepositoryService implements RepositoryService {
             }
         }
 
-        repository.addCommit(message, configuration, commitFolder, committer);      //handler commit
+        String warning = repository.addCommit(message, configuration, commitFolder, committer);      //handler commit
 
         LOGGER.info(repositoryHandlerId + ": committed");
-        return repository.getRepository();
+        if (!warning.isEmpty())
+            LOGGER.warning(repositoryHandlerId + ": " + warning);
+        return repository.getRepository().withWarning(warning);
     }
 
     // Variant ---------------------------------------------------------------------------------------------------------
