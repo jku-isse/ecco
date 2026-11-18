@@ -51,6 +51,16 @@ public class SuggestionConfidenceTest {
 		assertEquals("new feature zip-slip, but extract changed exactly these positions before", c.reason());
 	}
 
+	/** A generic feature where it changed things before, none closer, or where no feature did, is trusted. */
+	@Test
+	public void documentationWhereItChangedThingsBeforeIsTrusted() {
+		List<String> known = List.of("extract", "documentation");
+		assertEquals(0.6, SuggestionConfidence.of("documentation", known, List.of(fileOnly("documentation"))).value());
+		assertEquals("documentation changed these files before", SuggestionConfidence.of("documentation", known, List.of(fileOnly("documentation"))).reason());
+		assertFalse(SuggestionConfidence.of("documentation", known, List.of()).uncertain());
+		assertTrue(SuggestionConfidence.of("documentation", known, List.of(same("extract"), fileOnly("documentation"))).uncertain(), "extract closer");
+	}
+
 	@Test
 	public void miscIsUncertain() {
 		assertTrue(SuggestionConfidence.of("misc", KNOWN, List.of(fileOnly("server"))).uncertain());

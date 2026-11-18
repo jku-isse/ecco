@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.service.gitimport;
 
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.git.GitCommitInfo;
@@ -150,7 +151,7 @@ public class GitImportTest {
 			assertTrue(Files.readString(Path.of(System.getProperty(FeatureSuggestionLog.LOCATION_PROPERTY))).contains("\"owner\":\"V2\""));
 			assertInstanceOf(GitImport.Finished.class, run.next(third.index() + 1));
 			assertTrue(run.summary(false).contains("Configurations imported before, each stopped for review (1)"), run.summary(false));
-			assertTrue(run.summary(false).contains("given a new revision of the feature whose places their changes lie in (1)"), run.summary(false));
+			assertTrue(run.summary(false).contains("given a new revision of the features they change (1)"), run.summary(false));
 
 			Path out = Files.createDirectories(tmp.resolve("out"));
 			service.setBaseDir(out);
@@ -194,6 +195,32 @@ public class GitImportTest {
 			assertEquals("BASE, A, B", fourth.configuration());
 			assertNotNull(fourth.repeated());
 			assertTrue(log.stream().noneMatch(line -> line.startsWith("*** REVISED BY OVERLAP")), String.join("", log));
+		}
+	}
+
+	/**
+	 * A commit whose configuration was imported before gets a new revision of the generic feature its
+	 * suggestion named: "documentation" for a commit to the manual - no stop, no line lost.
+	 */
+	@Test
+	public void aGenericFeatureSuggestedForARepeatedConfigurationIsRevised(@TempDir Path tmp) throws Exception {
+		Path clone = Files.createDirectories(tmp.resolve("clone"));
+		try (Git git = Git.init().setDirectory(clone.toFile()).call()) {
+			for (String version : List.of("first", "second", "third")) {
+				Files.writeString(clone.resolve("manual.texi"), "intro\n" + version + "\n");
+				git.add().addFilepattern(".").call();
+				git.commit().setMessage(version).setAuthor("t", "t@example.com").setCommitter("t", "t@example.com").call();
+			}
+		}
+		try (EccoService service = repository(tmp.resolve("repo"))) {
+			List<String> log = new ArrayList<>();
+			GitImport run = new GitImport(service, new GitHistoryReader(), clone, Map.of(), false, oldestFirst(clone), true, false, true, log::add);
+			run.start();
+			drive(run, commit -> suggesting("documentation"));
+			assertEquals(List.of(Set.of("BASE"), Set.of("BASE", "documentation"), Set.of("BASE", "documentation")), committedFeatures(service));
+			assertTrue(log.stream().anyMatch(line -> line.startsWith("*** REVISED AS SUGGESTED") && line.contains("documentation'")), String.join("", log));
+			Feature documentation = service.getRepository().getFeatures().stream().filter(f -> f.getName().equals("documentation")).findFirst().orElseThrow();
+			assertEquals(2, documentation.getRevisions().size());
 		}
 	}
 

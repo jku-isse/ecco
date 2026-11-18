@@ -288,14 +288,32 @@ public final class GitImport {
 	/**
 	 * Unattended commit [index] is imported with [config] - unless [config] was imported before:
 	 * committed again, the lines the commit changed would check out for it no more (FR-M4d). Then it
-	 * is imported with a new revision of the one feature whose places its changes lie in
-	 * ({@link #owner}), or, with no such feature, reviewed: a person names the features it changes.
+	 * is imported with a new revision of the features its suggestion named - generic ones, the others
+	 * revised already - or else of the one feature whose places its changes lie in ({@link #owner}),
+	 * or, with neither, reviewed: a person names the features it changes.
 	 */
 	private Step importUnlessRepeated(int index, Suggested suggested, String config) {
 		GitCommitInfo commit = this.commits.get(index);
 		String failure = suggested == null ? null : suggested.batch().failureReason();
 		String repeated = this.folds(commit) ? null : this.repeats(index, config);
 		if (repeated != null) {
+			// the features the suggestion named - generic ones, as the others have their new revision
+			// already: "documentation" for a commit to the manual
+			Set<String> named = new LinkedHashSet<>();
+			if (suggested != null && failure == null && !suggested.batch().configurations().isEmpty())
+				for (String token : ConfigurationText.tokens(suggested.batch().configurations().get(0)))
+					if (!token.startsWith("-") && !token.equals(LlmFeatureSuggestionClient.BASE) && ConfigurationText.tokens(config).contains(token))
+						named.add(token);
+			if (!named.isEmpty()) {
+				String revised = config;
+				for (String feature : named)
+					revised = revise(revised, feature);
+				this.revisedByOverlap.add(commit.getShortId() + ": " + String.join("', ", named) + "' (suggested)");
+				this.log.accept("*** REVISED AS SUGGESTED for " + commit.getShortId() + ": " + String.join("', ", named)
+						+ "' - its configuration was imported before: [" + revised + "]" + System.lineSeparator());
+				this.pendingSuggestion = this.suggestionEntry(commit, suggested, failure, revised, FeatureSuggestionLog.Outcome.AUTO);
+				return new Import(index, revised);
+			}
 			ImportedFeatureTraces.Overlap owner = this.owner(commit, config);
 			if (owner != null) {
 				// its changes lie where one feature's did: a new revision of it, unattended, by decision
@@ -317,14 +335,14 @@ public final class GitImport {
 
 	/**
 	 * The feature of [config] that owns [commit]'s changes, by where the features' imported commits
-	 * changed things ({@link ImportedFeatureTraces#owner}), or null - BASE and the generic features
-	 * own nothing here: everything lies where BASE's first commit created it. Reads the clone and the
+	 * changed things ({@link ImportedFeatureTraces#owner}), or null - BASE owns nothing here:
+	 * everything lies where its first commit created it. The generic features do: they keep one
+	 * revision, but committed again, the lines a commit to the documentation changed are lost. Reads the clone and the
 	 * log: not on the FX thread. Null if the changes cannot be located.
 	 */
 	private ImportedFeatureTraces.Overlap owner(GitCommitInfo commit, String config) {
 		Set<String> candidates = new LinkedHashSet<>(ConfigurationText.tokens(config));
 		candidates.remove(LlmFeatureSuggestionClient.BASE);
-		candidates.removeAll(LlmFeatureSuggestionClient.GENERIC);
 		if (candidates.isEmpty())
 			return null;
 		try {
@@ -679,7 +697,7 @@ public final class GitImport {
 		return summary(this.importedCount, this.toImport(), this.skippedCount, stoppedEarly, this.allConstraintWarnings, this.llmSuggestionFailures)
 				+ (this.repeatedConfigurations.isEmpty() ? "" : System.lineSeparator() + System.lineSeparator() + "Configurations imported before, each stopped for review ("
 						+ this.repeatedConfigurations.size() + "):" + System.lineSeparator() + String.join(System.lineSeparator(), this.repeatedConfigurations))
-				+ (this.revisedByOverlap.isEmpty() ? "" : System.lineSeparator() + System.lineSeparator() + "Configurations imported before, given a new revision of the feature whose places their changes lie in ("
+				+ (this.revisedByOverlap.isEmpty() ? "" : System.lineSeparator() + System.lineSeparator() + "Configurations imported before, given a new revision of the features they change ("
 						+ this.revisedByOverlap.size() + "):" + System.lineSeparator() + String.join(System.lineSeparator(), this.revisedByOverlap))
 				+ (this.foldedCount == 0 ? "" : System.lineSeparator() + this.foldedCount + " commit(s) between the tagged ones were not imported: their features went into the next tagged one.");
 	}

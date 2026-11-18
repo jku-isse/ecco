@@ -59,7 +59,19 @@ public record SuggestionConfidence(double value, String reason) {
 		for (String feature : predicted) {
 			double part;
 			String why;
-			if (feature.isEmpty() || GENERIC.contains(feature)) {
+			int own = strength.getOrDefault(feature, 0);
+			if (GENERIC.contains(feature) && (top == 0 || own == top)) {
+				// "documentation" for a commit to the documentation: where it changed things before
+				// - none closer - or where no feature did; a commit of tinycc's manual stopped as
+				// "no feature suggested"
+				part = switch (own) {
+					case 3 -> 0.9;
+					case 2 -> 0.75;
+					default -> 0.6;
+				};
+				why = own == 0 ? feature + ": no known feature changed these places"
+						: feature + " changed " + (own == 3 ? "these positions" : own == 2 ? "around these positions" : "these files") + " before";
+			} else if (feature.isEmpty() || GENERIC.contains(feature)) {
 				part = top < 3 ? 0.3 : 0.15;
 				why = top == 3 ? "no feature suggested, but " + strongest + " changed exactly these positions before"
 						: "no feature suggested (" + (feature.isEmpty() ? "nothing" : feature) + ")";
