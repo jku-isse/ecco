@@ -97,7 +97,7 @@ final class ChatEndpoint {
 		if (needed > context)
 			LOGGER.warning("The prompt needs about " + needed + " tokens, but " + model + " takes at most " + context + ": its beginning is cut off.");
 
-		HttpResponse<String> response = post(this.base + "/api/chat", ollamaRequest(body, context).toString(), timeout);
+		HttpResponse<String> response = post(this.base + "/api/chat", ollamaRequest(body, context, at.jku.isse.ecco.service.LlmPreferences.isReasoning()).toString(), timeout);
 		if (response.statusCode() / 100 != 2)
 			return new Reply(response.statusCode(), response.body());
 		return new Reply(response.statusCode(), openAiReply(response.body()));
@@ -120,12 +120,20 @@ final class ChatEndpoint {
 		return characters / 3 + 1;
 	}
 
-	/** The OpenAI request {@code body} as an Ollama /api/chat request with context {@code context}. Package-visible for testing. */
-	static ObjectNode ollamaRequest(ObjectNode body, int context) {
+	/**
+	 * The OpenAI request {@code body} as an Ollama /api/chat request with context {@code context}:
+	 * without {@code reasoning}, a model that reasons before it answers is told not to ("think":
+	 * false - a model that cannot is not affected); with it, nothing is said - "think": true makes a
+	 * model that cannot reason fail. See {@link at.jku.isse.ecco.service.LlmPreferences#isReasoning}.
+	 * Package-visible for testing.
+	 */
+	static ObjectNode ollamaRequest(ObjectNode body, int context, boolean reasoning) {
 		ObjectNode request = MAPPER.createObjectNode();
 		request.put("model", body.path("model").asText());
 		request.set("messages", body.path("messages").deepCopy());
 		request.put("stream", false);
+		if (!reasoning)
+			request.put("think", false);
 		if ("json_object".equals(body.path("response_format").path("type").asText()))
 			request.put("format", "json");
 		ObjectNode options = request.putObject("options");

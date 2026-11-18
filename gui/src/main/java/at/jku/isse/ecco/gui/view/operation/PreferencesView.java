@@ -295,8 +295,16 @@ public class PreferencesView extends OperationView {
 		llmGridPane.add(modelBox, 1, row, 1, 1);
 		row++;
 		llmGridPane.add(modelStatusLabel, 0, row, 2, 1);
+		row++;
+
+		CheckBox reasoningCheckBox = new CheckBox("Let the model reason before it answers");
+		reasoningCheckBox.setSelected(LlmPreferences.isReasoning());
+		reasoningCheckBox.setTooltip(new Tooltip("For models that can (Ollama's thinking: gemma4, qwen3, deepseek-r1). Much slower: "
+				+ "gemma4:31b took 93 s for a commit it answered in 3 s without, and a commit of a Git import ran past the 5-minute timeout."));
+		llmGridPane.add(reasoningCheckBox, 0, row, 2, 1);
 
 		Runnable save = () -> {
+			LlmPreferences.setReasoning(reasoningCheckBox.isSelected());
 			LlmPreferences.setEndpointUrl(llmEndpointUrlField.getText());
 			String modelText = llmModelNameComboBox.getEditor().getText();
 			LlmPreferences.setModelName(modelText == null ? "" : modelText.trim());

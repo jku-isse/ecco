@@ -44,6 +44,7 @@ public class GitImportCommand implements Command {
     public static final String FLAG_LLM_ENDPOINT = "--llm-endpoint";
     public static final String FLAG_LLM_MODEL = "--llm-model";
     public static final String FLAG_LLM_ALLOW_REMOTE = "--llm-allow-remote";
+    public static final String FLAG_LLM_REASONING = "--llm-reasoning";
     public static final String FLAG_ON_REVIEW = "--on-review";
     public static final String FLAG_CONFIGURATIONS = "--configurations";
     public static final String ON_REVIEW_STOP = "stop";
@@ -78,6 +79,8 @@ public class GitImportCommand implements Command {
             System.setProperty(LlmPreferences.ENDPOINT_URL_PROPERTY, endpoint);
         if (model != null)
             System.setProperty(LlmPreferences.MODEL_NAME_PROPERTY, model);
+        if (Boolean.TRUE.equals(namespace.getBoolean(stripDashes(FLAG_LLM_REASONING))))
+            System.setProperty(LlmPreferences.REASONING_PROPERTY, "true");
         if (useLlm && LlmPreferences.getModelName().isBlank())
             throw new CliException("No LLM model to ask: give one with " + FLAG_LLM_MODEL + " (or in the GUI's Preferences, LLM).");
         // code, diffs and commit messages go to the server: another machine's only once agreed to

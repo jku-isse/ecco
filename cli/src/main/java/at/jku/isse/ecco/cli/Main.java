@@ -170,6 +170,8 @@ public class Main {
                 .help("the OpenAI-compatible server to ask (default: the GUI's Preferences, LLM, or http://localhost:11434)");
         gitImportCommandParser.addArgument(GitImportCommand.FLAG_LLM_MODEL).metavar("MODEL")
                 .help("the model to ask (default: the GUI's Preferences, LLM)");
+        gitImportCommandParser.addArgument(GitImportCommand.FLAG_LLM_REASONING).action(Arguments.storeTrue())
+                .help("let a model that can reason before it answers do so (default: the GUI's Preferences, LLM; off) - much slower, a commit can run past the 5-minute timeout");
         gitImportCommandParser.addArgument(GitImportCommand.FLAG_LLM_ALLOW_REMOTE).action(Arguments.storeTrue())
                 .help("send code, diffs and commit messages to an LLM server that is not on this machine - refused without, unless it was confirmed in the GUI");
         gitImportCommandParser.addArgument(GitImportCommand.FLAG_ON_REVIEW)

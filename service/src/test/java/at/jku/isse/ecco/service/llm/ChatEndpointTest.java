@@ -176,9 +176,16 @@ public class ChatEndpointTest {
 	public void maxTokensBecomesNumPredict() {
 		ObjectNode body = request(10);
 		body.put("max_tokens", 300);
-		ObjectNode ollama = ChatEndpoint.ollamaRequest(body, 8192);
+		ObjectNode ollama = ChatEndpoint.ollamaRequest(body, 8192, false);
 		assertEquals(300, ollama.path("options").path("num_predict").asInt());
 		assertEquals(8192, ollama.path("options").path("num_ctx").asInt());
 		assertFalse(ollama.has("max_tokens"));
+	}
+
+	/** Without reasoning a model is told not to; with it nothing is said - "think": true fails a model that cannot reason. */
+	@Test
+	public void reasoningIsTurnedOffUnlessAskedFor() {
+		assertFalse(ChatEndpoint.ollamaRequest(request(10), 8192, false).path("think").asBoolean(true));
+		assertFalse(ChatEndpoint.ollamaRequest(request(10), 8192, true).has("think"));
 	}
 }

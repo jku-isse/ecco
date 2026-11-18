@@ -30,6 +30,7 @@ public final class LlmPreferences {
 	private static final String ENDPOINT_URL_KEY = "llmEndpointUrl";
 	private static final String MODEL_NAME_KEY = "llmModelName";
 	private static final String CONFIRMED_ENDPOINT_KEY = "llmConfirmedEndpoint";
+	private static final String REASONING_KEY = "llmReasoning";
 
 	private static final String DEFAULT_ENDPOINT_URL = "http://localhost:11434";
 
@@ -37,6 +38,8 @@ public final class LlmPreferences {
 	public static final String ENDPOINT_URL_PROPERTY = "ecco.llm.endpoint";
 	/** A system property naming the model for this process instead of the one stored (ecco git-import --llm-model); not stored. */
 	public static final String MODEL_NAME_PROPERTY = "ecco.llm.model";
+	/** A system property, "true" or "false", turning the model's reasoning on or off for this process instead of the stored setting (ecco git-import --llm-reasoning); not stored. */
+	public static final String REASONING_PROPERTY = "ecco.llm.reasoning";
 
 	private LlmPreferences() {
 	}
@@ -58,6 +61,22 @@ public final class LlmPreferences {
 
 	public static void setModelName(String modelName) {
 		prefs().put(MODEL_NAME_KEY, modelName);
+	}
+
+	/**
+	 * Whether a model that can reason before it answers (Ollama's "thinking": gemma4, qwen3,
+	 * deepseek-r1) does - off by default: gemma4:31b reasoned 93 s over a tinycc commit it answered
+	 * in 3.4 s without, and over the import's longer prompt past the 5-minute timeout, the server
+	 * going on with it after the import gave up. Off, an Ollama server is told not to; on, the model
+	 * does as it does by default. A model that cannot reason is not affected either way.
+	 */
+	public static boolean isReasoning() {
+		String given = System.getProperty(REASONING_PROPERTY);
+		return given != null ? Boolean.parseBoolean(given) : prefs().getBoolean(REASONING_KEY, false);
+	}
+
+	public static void setReasoning(boolean reasoning) {
+		prefs().putBoolean(REASONING_KEY, reasoning);
 	}
 
 	/**
