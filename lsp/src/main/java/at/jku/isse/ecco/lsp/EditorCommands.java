@@ -35,9 +35,11 @@ final class EditorCommands {
     static final String CHECKOUT = "ecco.server.checkout";
     /** The files differing from the configuration's earlier commit, and the warning for them (FR-M4d). */
     static final String RECOMMIT = "ecco.server.recommitDifferences";
-    static final List<String> ALL = List.of(INFO, CONSTRAINT_VIOLATIONS, RECOMMIT, COMMIT, CHANGES, CHECKOUT);
+    /** Keeps the order of the file as it is on disk: recorded in the repository (the quick fix of an ORDER warning). */
+    static final String RECORD_ORDER = "ecco.server.recordOrder";
+    static final List<String> ALL = List.of(INFO, CONSTRAINT_VIOLATIONS, RECOMMIT, COMMIT, CHANGES, CHECKOUT, RECORD_ORDER);
     /** After these, what the open files are traced to changed. */
-    static final Set<String> CHANGING = Set.of(COMMIT, CHECKOUT);
+    static final Set<String> CHANGING = Set.of(COMMIT, CHECKOUT, RECORD_ORDER);
 
     private EditorCommands() {
     }
@@ -54,6 +56,7 @@ final class EditorCommands {
                 case CHANGES -> changes(WorkingDirectory.since(dir));
                 case CHECKOUT -> checkout(service, dir, string(arguments, "configuration"),
                         arguments.has("force") && arguments.get("force").getAsBoolean());
+                case RECORD_ORDER -> recordOrder(service, dir, string(arguments, "uri"));
                 default -> throw EccoLanguageServer.failed("Unknown command: " + command);
             };
         } catch (EccoException | IOException e) {
@@ -114,6 +117,34 @@ final class EditorCommands {
         if (changes.problem() != null)
             result.put("problem", changes.problem());
         return result;
+    }
+
+    /**
+     * Records the order of the file [uri] as it is in the working directory - only reordered against
+     * the checkout, else refused - so the ORDER warnings of its checkout are decided as the file has
+     * them, as {@code ecco order} records it: {"added": precedences added, "message": what was done}.
+     */
+    private static Map<String, Object> recordOrder(EccoService service, Path dir, String uri) {
+        Path file = EccoLanguageServer.path(uri);
+        if (file == null)
+            throw EccoLanguageServer.failed("Not a file: " + uri);
+        Path relative = realPath(dir).relativize(realPath(file));
+        int added = service.recordOrderOfFiles(List.of(relative));
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("added", added);
+        result.put("message", added == 0
+                ? "The order of " + relative + " was already recorded."
+                : "Recorded the order of " + relative + " (" + added + " new precedence" + (added == 1 ? "" : "s") + ").");
+        return result;
+    }
+
+    /** [path] with its links resolved: macOS's /var -> /private/var would put every file outside. */
+    private static Path realPath(Path path) {
+        try {
+            return path.toRealPath();
+        } catch (IOException e) {
+            return path.toAbsolutePath().normalize();
+        }
     }
 
     /**

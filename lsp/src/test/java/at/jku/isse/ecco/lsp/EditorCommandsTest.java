@@ -127,6 +127,35 @@ public class EditorCommandsTest {
         }
     }
 
+    /**
+     * Keeping a file's order records it in the repository, as `ecco order` does: the ORDER warning is
+     * gone, and the checkout has the file's order. Content added or removed is refused.
+     */
+    @Test
+    public void keepingTheOrderOfAFileDecidesItsOrderWarnings(@TempDir Path tmp) throws Exception {
+        Path work = FeatureLensTest.orderCheckout(tmp);
+        Path notes = work.resolve("notes.txt");
+        try (FeatureLens lens = new FeatureLens(work)) {
+            assertEquals(1, lens.trace(Path.of("notes.txt"), Files.readString(notes)).orderWarnings().size());
+            Files.writeString(notes, "base\nb\na\nc\n");
+            ResponseErrorException added = assertThrows(ResponseErrorException.class, () -> run(lens, EditorCommands.RECORD_ORDER, arguments("uri", notes.toUri().toString())));
+            assertTrue(added.getMessage().contains("notes.txt"), added.getMessage());
+
+            Files.writeString(notes, "base\nb\na\n");
+            Map<String, Object> recorded = run(lens, EditorCommands.RECORD_ORDER, arguments("uri", notes.toUri().toString()));
+            assertTrue((Integer) recorded.get("added") > 0, recorded.toString());
+            assertTrue(((String) recorded.get("message")).startsWith("Recorded the order of notes.txt"), recorded.toString());
+            assertEquals(List.of(), lens.trace(Path.of("notes.txt"), Files.readString(notes)).orderWarnings());
+            assertEquals("The order of notes.txt was already recorded.", run(lens, EditorCommands.RECORD_ORDER, arguments("uri", notes.toUri().toString())).get("message"));
+
+            // checked out again, the file has the order kept
+            Path again = Files.createDirectories(tmp.resolve("again"));
+            lens.service().setBaseDir(again);
+            lens.service().checkout("BASE, A, B");
+            assertEquals("base\nb\na\n", Files.readString(again.resolve("notes.txt")));
+        }
+    }
+
     @Test
     public void infoSuggestsFeaturesAndCommittedConfigurations(@TempDir Path tmp) throws Exception {
         Path work = FeatureLensTest.checkout(tmp, "BASE, B");

@@ -141,9 +141,8 @@ public class FeatureLensTest {
         }
     }
 
-    /** a and b were each added after base by one variant: their order is undecided, at lines 2-3 of the file. */
-    @Test
-    public void anOrderWarningIsAtTheUndecidedLines(@TempDir Path tmp) throws Exception {
+    /** Commits base, a (BASE, A) and base, b (BASE, B) and checks out BASE, A, B into [tmp]/work: the order of a and b is undecided. */
+    static Path orderCheckout(Path tmp) throws Exception {
         Path work = Files.createDirectories(tmp.resolve("work"));
         try (EccoService service = new EccoService()) {
             service.setRepositoryDir(work.resolve(".ecco"));
@@ -157,6 +156,13 @@ public class FeatureLensTest {
             service.setBaseDir(work);
             service.checkout("BASE, A, B");
         }
+        return work;
+    }
+
+    /** a and b were each added after base by one variant: their order is undecided, at lines 2-3 of the file. */
+    @Test
+    public void anOrderWarningIsAtTheUndecidedLines(@TempDir Path tmp) throws Exception {
+        Path work = orderCheckout(tmp);
         try (FeatureLens lens = new FeatureLens(work)) {
             FeatureLens.FileTrace trace = lens.trace(Path.of("notes.txt"), Files.readString(work.resolve("notes.txt")));
             assertEquals(1, trace.orderWarnings().size(), trace.orderWarnings().toString());

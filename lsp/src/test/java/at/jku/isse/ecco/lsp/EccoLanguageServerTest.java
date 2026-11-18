@@ -2,6 +2,7 @@ package at.jku.isse.ecco.lsp;
 
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -207,6 +209,69 @@ public class EccoLanguageServerTest {
         assertTrue(info.toString().contains("features=[A, B, BASE]"), info.toString());
         assertTrue(result.getCapabilities().getExecuteCommandProvider().getCommands().containsAll(EditorCommands.ALL));
 
+        remote.shutdown().get(60, TimeUnit.SECONDS);
+    }
+
+    /**
+     * An ORDER warning has a quick fix keeping the file's order: refused while the editor's text is not
+     * saved, as the order is read from the file; once kept, the warning is gone and the editor told.
+     */
+    @Test
+    public void anOrderWarningsQuickFixKeepsTheFilesOrder(@TempDir Path tmp) throws Exception {
+        Path work = FeatureLensTest.orderCheckout(tmp);
+        Path notes = Files.writeString(work.resolve("notes.txt"), "base\nb\na\n");
+        PipedInputStream serverIn = new PipedInputStream();
+        PipedOutputStream clientOut = new PipedOutputStream(serverIn);
+        PipedInputStream clientIn = new PipedInputStream();
+        PipedOutputStream serverOut = new PipedOutputStream(clientIn);
+        Main.launcher(new EccoLanguageServer(), serverIn, serverOut).startListening();
+        Client client = new Client();
+        Launcher<LanguageServer> clientLauncher = LSPLauncher.createClientLauncher(client, clientIn, clientOut);
+        clientLauncher.startListening();
+        LanguageServer remote = clientLauncher.getRemoteProxy();
+        InitializeResult result = remote.initialize(new InitializeParams()).get(30, TimeUnit.SECONDS);
+        assertTrue(result.getCapabilities().getCodeActionProvider().isRight());
+        assertTrue(result.getCapabilities().getExecuteCommandProvider().getCommands().contains(EditorCommands.RECORD_ORDER));
+        remote.initialized(new InitializedParams());
+
+        String uri = notes.toUri().toString();
+        remote.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "plaintext", 1, Files.readString(notes))));
+        PublishDiagnosticsParams opened = client.diagnostics.poll(60, TimeUnit.SECONDS);
+        assertNotNull(opened);
+        List<Diagnostic> order = opened.getDiagnostics().stream().filter(d -> d.getCode() != null && "order".equals(d.getCode().getLeft())).toList();
+        assertEquals(1, order.size(), opened.getDiagnostics().toString());
+
+        CodeActionParams params = new CodeActionParams(new TextDocumentIdentifier(uri), order.getFirst().getRange(), new CodeActionContext(order));
+        List<Either<Command, CodeAction>> actions = remote.getTextDocumentService().codeAction(params).get(60, TimeUnit.SECONDS);
+        assertEquals(1, actions.size());
+        CodeAction fix = actions.getFirst().getRight();
+        assertEquals("Keep the order of notes.txt (ECCO)", fix.getTitle());
+        assertEquals(CodeActionKind.QuickFix, fix.getKind());
+        assertEquals(EditorCommands.RECORD_ORDER, fix.getCommand().getCommand());
+        assertEquals(List.of(), remote.getTextDocumentService().codeAction(new CodeActionParams(new TextDocumentIdentifier(uri), order.getFirst().getRange(),
+                new CodeActionContext(List.of()))).get(60, TimeUnit.SECONDS), "no ORDER warning, no fix");
+
+        ExecuteCommandParams keep = new ExecuteCommandParams(fix.getCommand().getCommand(), fix.getCommand().getArguments());
+        remote.getTextDocumentService().didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 2),
+                List.of(new TextDocumentContentChangeEvent("base\na\nb\n"))));
+        ExecutionException unsaved = assertThrows(ExecutionException.class, () -> remote.getWorkspaceService().executeCommand(keep).get(60, TimeUnit.SECONDS));
+        assertTrue(unsaved.getCause().getMessage().contains("Save notes.txt first"), unsaved.getCause().getMessage());
+
+        remote.getTextDocumentService().didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 3),
+                List.of(new TextDocumentContentChangeEvent(Files.readString(notes)))));
+        remote.getWorkspaceService().executeCommand(keep).get(60, TimeUnit.SECONDS);
+        MessageParams told = client.messages.poll(60, TimeUnit.SECONDS);
+        assertNotNull(told);
+        assertTrue(told.getMessage().startsWith("Recorded the order of notes.txt"), told.getMessage());
+        // traced again: the warning is gone
+        long deadline = System.currentTimeMillis() + 60_000;
+        List<Diagnostic> last = order;
+        while (!last.isEmpty() && System.currentTimeMillis() < deadline) {
+            PublishDiagnosticsParams next = client.diagnostics.poll(5, TimeUnit.SECONDS);
+            if (next != null)
+                last = next.getDiagnostics().stream().filter(d -> d.getCode() != null && "order".equals(d.getCode().getLeft())).toList();
+        }
+        assertEquals(List.of(), last);
         remote.shutdown().get(60, TimeUnit.SECONDS);
     }
 }

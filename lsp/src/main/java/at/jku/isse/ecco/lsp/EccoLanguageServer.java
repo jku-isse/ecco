@@ -3,7 +3,9 @@ package at.jku.isse.ecco.lsp;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.services.*;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
@@ -14,8 +16,9 @@ import java.util.logging.Logger;
 /**
  * The ECCO language server: for files of a working directory holding a checkout, a hover says which
  * features a line is traced to, a code lens marks where that changes, and diagnostics show the
- * checkout's ORDER warnings and code not committed yet. Read-only: it never writes the repository
- * or the working directory, and holds no repository lock between requests (each read is a
+ * checkout's ORDER warnings - with a quick fix keeping the file's order - and code not committed yet.
+ * It writes the repository or the working directory only when the editor commits, checks out or
+ * keeps an order (EditorCommands), and holds no repository lock between requests (each read is a
  * transaction of its own), so the command line and the GUI keep working beside it.
  * <p>
  * All ECCO work runs on one thread; an edit is traced again after a pause in typing.
@@ -24,6 +27,8 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
 
     private static final Logger LOGGER = Logger.getLogger(EccoLanguageServer.class.getName());
     static final String SOURCE = "ECCO";
+    /** The code of an ORDER warning's diagnostic: its quick fix keeps the file's order. */
+    static final String ORDER_CODE = "order";
     /** How long typing must pause before an edit is traced again. */
     static final long DEBOUNCE_MS = 400;
 
@@ -71,6 +76,7 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
         server.setHoverProvider(true);
         server.setCodeLensProvider(new CodeLensOptions(false));
         server.setFoldingRangeProvider(true);
+        server.setCodeActionProvider(new CodeActionOptions(List.of(CodeActionKind.QuickFix)));
         server.setExecuteCommandProvider(new ExecuteCommandOptions(EditorCommands.ALL));
         return CompletableFuture.completedFuture(new InitializeResult(server, new ServerInfo("ecco-lsp")));
     }
@@ -200,12 +206,60 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
             FeatureLens lens = file == null ? null : this.lens(file);
             if (lens == null)
                 throw failed("Not a file of an ECCO working directory: " + uri);
+            if (EditorCommands.RECORD_ORDER.equals(params.getCommand()) && !this.saved(uri, file))
+                // the order is read from the file on disk, as a commit reads it
+                throw failed("Save " + file.getFileName() + " first: its order is read from the file.");
             Object result = EditorCommands.run(params.getCommand(), lens, arguments);
+            if (EditorCommands.RECORD_ORDER.equals(params.getCommand()) && this.client != null && result instanceof Map<?, ?> recorded)
+                this.client.showMessage(new MessageParams(MessageType.Info, String.valueOf(recorded.get("message"))));
             if (EditorCommands.CHANGING.contains(params.getCommand()))
                 // the checkout or commit changed what the open files are traced to: again, all of them
                 this.documents.keySet().forEach(open -> this.schedule(open, 0));
             return result;
         }, this.ecco);
+    }
+
+    /** Whether the editor's text of [uri] is that of [file] on disk - or the editor does not have it open. */
+    private boolean saved(String uri, Path file) {
+        String text = this.documents.get(uri);
+        try {
+            return text == null || text.equals(Files.readString(file));
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
+     * The quick fix of an ORDER warning: keep the file's order as it is - recorded in the repository,
+     * as {@code ecco order} records it, so the checkout's order is decided where the variants did not
+     * decide it ({@link EditorCommands#RECORD_ORDER}).
+     */
+    @Override
+    public CompletableFuture<List<org.eclipse.lsp4j.jsonrpc.messages.Either<Command, CodeAction>>> codeAction(CodeActionParams params) {
+        String uri = params.getTextDocument().getUri();
+        List<Diagnostic> order = params.getContext() == null || params.getContext().getDiagnostics() == null ? List.of()
+                : params.getContext().getDiagnostics().stream().filter(EccoLanguageServer::isOrderWarning).toList();
+        return CompletableFuture.completedFuture(codeActions(uri, order));
+    }
+
+    static List<org.eclipse.lsp4j.jsonrpc.messages.Either<Command, CodeAction>> codeActions(String uri, List<Diagnostic> orderWarnings) {
+        if (orderWarnings.isEmpty())
+            return List.of();
+        Path file = path(uri);
+        String name = file == null ? uri : file.getFileName().toString();
+        com.google.gson.JsonObject arguments = new com.google.gson.JsonObject();
+        arguments.addProperty("uri", uri);
+        CodeAction action = new CodeAction("Keep the order of " + name + " (ECCO)");
+        action.setKind(CodeActionKind.QuickFix);
+        action.setDiagnostics(orderWarnings);
+        action.setIsPreferred(true);
+        action.setCommand(new Command(action.getTitle(), EditorCommands.RECORD_ORDER, List.of(arguments)));
+        return List.of(org.eclipse.lsp4j.jsonrpc.messages.Either.forRight(action));
+    }
+
+    private static boolean isOrderWarning(Diagnostic diagnostic) {
+        return SOURCE.equals(diagnostic.getSource()) && diagnostic.getCode() != null && diagnostic.getCode().isLeft()
+                && ORDER_CODE.equals(diagnostic.getCode().getLeft());
     }
 
     static org.eclipse.lsp4j.jsonrpc.ResponseErrorException failed(String message) {
@@ -417,8 +471,11 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
 
     static List<Diagnostic> diagnostics(FeatureLens.FileTrace trace) {
         List<Diagnostic> diagnostics = new ArrayList<>();
-        for (FeatureLens.OrderWarning warning : trace.orderWarnings())
-            diagnostics.add(diagnostic(warning.startLine(), warning.endLine(), warning.message(), DiagnosticSeverity.Warning));
+        for (FeatureLens.OrderWarning warning : trace.orderWarnings()) {
+            Diagnostic diagnostic = diagnostic(warning.startLine(), warning.endLine(), warning.message(), DiagnosticSeverity.Warning);
+            diagnostic.setCode(ORDER_CODE);
+            diagnostics.add(diagnostic);
+        }
         // code not committed, as runs of lines
         BitSet uncommitted = new BitSet();
         for (FeatureLens.Span span : trace.spans())
