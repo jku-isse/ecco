@@ -40,6 +40,9 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
     private final Map<Path, String> failedLenses = new HashMap<>();
 
     private LanguageClient client;
+    /** The workspace folders the editor opened, prepared at start (initialized). */
+    private final List<Path> workspaceFolders = new ArrayList<>();
+    private boolean workDoneProgress;
     /** The palette slot of each condition, in the order they were first seen (ecco thread only). */
     private final Map<String, Integer> colours = new HashMap<>();
     private boolean codeLensRefresh;
@@ -52,6 +55,11 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
     @Override
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
         ClientCapabilities capabilities = params.getCapabilities();
+        this.workDoneProgress = capabilities != null && capabilities.getWindow() != null && Boolean.TRUE.equals(capabilities.getWindow().getWorkDoneProgress());
+        if (params.getWorkspaceFolders() != null)
+            params.getWorkspaceFolders().forEach(folder -> Optional.ofNullable(path(folder.getUri())).ifPresent(this.workspaceFolders::add));
+        else if (params.getRootUri() != null)
+            Optional.ofNullable(path(params.getRootUri())).ifPresent(this.workspaceFolders::add);
         this.codeLensRefresh = capabilities != null && capabilities.getWorkspace() != null && capabilities.getWorkspace().getCodeLens() != null
                 && Boolean.TRUE.equals(capabilities.getWorkspace().getCodeLens().getRefreshSupport());
         ServerCapabilities server = new ServerCapabilities();
@@ -65,6 +73,57 @@ public class EccoLanguageServer implements LanguageServer, LanguageClientAware, 
         server.setFoldingRangeProvider(true);
         server.setExecuteCommandProvider(new ExecuteCommandOptions(EditorCommands.ALL));
         return CompletableFuture.completedFuture(new InitializeResult(server, new ServerInfo("ecco-lsp")));
+    }
+
+    /**
+     * Prepares the working directories of the workspace folders - the folder or one above it holding
+     * .ecco - before a file is opened: their repositories read and checkouts composed on the ECCO
+     * thread, where a file opened meanwhile waits its turn. Shown as progress where the editor shows it.
+     */
+    @Override
+    public void initialized(InitializedParams params) {
+        List<Path> dirs = this.workspaceFolders.stream().map(FeatureLens::findWorkingDir).filter(Objects::nonNull).distinct().toList();
+        if (dirs.isEmpty())
+            return;
+        String token = "ecco-prepare-" + System.nanoTime();
+        CompletableFuture<Void> created = this.workDoneProgress && this.client != null
+                ? this.client.createProgress(new WorkDoneProgressCreateParams(org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(token)))
+                : CompletableFuture.failedFuture(new UnsupportedOperationException("no progress"));
+        created.handle((ok, failed) -> {
+            boolean progress = failed == null;
+            this.ecco.execute(() -> this.prepare(dirs, progress ? token : null));
+            return null;
+        });
+    }
+
+    private void prepare(List<Path> dirs, String token) {
+        long start = System.nanoTime();
+        this.progress(token, new WorkDoneProgressBegin() {{
+            setTitle("ECCO");
+            setMessage("Loading the repository of " + dirs.getFirst().getFileName() + "…");
+            setCancellable(false);
+        }});
+        int prepared = 0;
+        for (Path dir : dirs) {
+            if (dirs.size() > 1)
+                this.progress(token, new WorkDoneProgressReport() {{
+                    setMessage("Loading the repository of " + dir.getFileName() + "…");
+                }});
+            FeatureLens lens = this.lens(dir);
+            if (lens != null && lens.prepare())
+                prepared++;
+        }
+        String done = String.format("%s in %.1f s", prepared == 0 ? "No checkout to compose" : "Ready", (System.nanoTime() - start) / 1e9);
+        LOGGER.info("ECCO: prepared " + dirs + " - " + done);
+        this.progress(token, new WorkDoneProgressEnd() {{
+            setMessage(done);
+        }});
+    }
+
+    private void progress(String token, WorkDoneProgressNotification value) {
+        if (token != null && this.client != null)
+            this.client.notifyProgress(new ProgressParams(org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(token),
+                    org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(value)));
     }
 
     @Override

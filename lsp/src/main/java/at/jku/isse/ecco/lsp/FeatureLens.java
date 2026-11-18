@@ -198,6 +198,23 @@ public final class FeatureLens implements AutoCloseable {
         return new FileTrace(configuration, fileCondition, List.copyOf(spans), List.copyOf(warnings), noLines);
     }
 
+    /**
+     * Reads the repository and composes the working directory's checkout ahead of the first trace -
+     * on a large repository the first read and compose take seconds (tinycc 15 s). False without a
+     * checkout to compose, or one that cannot be: the first trace then says why.
+     */
+    public boolean prepare() {
+        String configuration = this.service.getConfigStringFromFile(this.workingDir).trim();
+        if (configuration.isEmpty())
+            return false;
+        try {
+            this.checkout(configuration);
+            return true;
+        } catch (EccoException e) {
+            return false;
+        }
+    }
+
     /** The checkout of [configuration], composed again where the repository or the configuration changed. */
     private Checkout checkout(String configuration) {
         String key = configuration + "\n" + this.repositoryStamp();

@@ -37,6 +37,24 @@ public class EccoLanguageServerTest {
             this.featureRanges.add(params);
         }
         final BlockingQueue<MessageParams> messages = new LinkedBlockingQueue<>();
+        final BlockingQueue<String> progress = new LinkedBlockingQueue<>();
+
+        @Override
+        public CompletableFuture<Void> createProgress(WorkDoneProgressCreateParams params) {
+            this.progress.add("create");
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public void notifyProgress(ProgressParams params) {
+            WorkDoneProgressNotification value = (WorkDoneProgressNotification) params.getValue().getLeft();
+            this.progress.add(value.getKind() + ": " + switch (value) {
+                case WorkDoneProgressBegin begin -> begin.getMessage();
+                case WorkDoneProgressReport report -> report.getMessage();
+                case WorkDoneProgressEnd end -> end.getMessage();
+                default -> "";
+            });
+        }
 
         @Override
         public void telemetryEvent(Object object) {
@@ -125,10 +143,19 @@ public class EccoLanguageServerTest {
 
         InitializeParams init = new InitializeParams();
         init.setWorkspaceFolders(List.of(new WorkspaceFolder(work.toUri().toString(), "work")));
-        init.setCapabilities(new ClientCapabilities());
+        ClientCapabilities capabilities = new ClientCapabilities();
+        WindowClientCapabilities window = new WindowClientCapabilities();
+        window.setWorkDoneProgress(true);
+        capabilities.setWindow(window);
+        init.setCapabilities(capabilities);
         InitializeResult result = remote.initialize(init).get(30, TimeUnit.SECONDS);
         assertTrue(result.getCapabilities().getHoverProvider().getLeft());
         remote.initialized(new InitializedParams());
+        // the working directory of the workspace folder is prepared before a file is opened, shown as progress
+        assertEquals("create", client.progress.poll(60, TimeUnit.SECONDS));
+        assertEquals("begin: Loading the repository of work…", client.progress.poll(60, TimeUnit.SECONDS));
+        String end = client.progress.poll(60, TimeUnit.SECONDS);
+        assertTrue(end != null && end.matches("end: Ready in \\d+\\.\\d s"), end);
 
         String uri = work.resolve("notes.txt").toUri().toString();
         String text = Files.readString(work.resolve("notes.txt"));
