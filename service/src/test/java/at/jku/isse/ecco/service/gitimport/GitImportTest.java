@@ -6,6 +6,7 @@ import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.git.GitCommitInfo;
 import at.jku.isse.ecco.service.git.GitHistoryReader;
 import at.jku.isse.ecco.service.llm.FeatureSuggestionLog;
+import at.jku.isse.ecco.service.llm.ImportedFeatureTraces;
 import at.jku.isse.ecco.service.llm.LlmFeatureSuggestionClient;
 import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.AfterEach;
@@ -140,18 +141,79 @@ public class GitImportTest {
 			assertNull(run.repeats(second.index(), "BASE'"), "a new revision");
 			run.imported(second.index(), "BASE, V2", run.commit(second.index(), "BASE, V2"));
 
-			GitImport.Review third = assertInstanceOf(GitImport.Review.class, run.unattendedWithoutSuggestion(assertInstanceOf(GitImport.Unattended.class, run.next(second.index() + 1)).index()));
-			assertEquals("BASE, V2", third.configuration());
-			assertNotNull(third.repeated());
-			run.imported(third.index(), "BASE, V2'", run.commit(third.index(), "BASE, V2'"));
+			// V2 alone changed a.txt since BASE: its new revision, unattended
+			GitImport.Import third = assertInstanceOf(GitImport.Import.class, run.unattendedWithoutSuggestion(assertInstanceOf(GitImport.Unattended.class, run.next(second.index() + 1)).index()));
+			assertEquals("BASE, V2'", third.configuration());
+			assertTrue(log.stream().anyMatch(line -> line.startsWith("*** REVISED BY OVERLAP") && line.contains("V2'")), String.join("", log));
+			run.imported(third.index(), third.configuration(), run.commit(third.index(), third.configuration()));
+			// its changes count for V2 in the log, read again by the next run
+			assertTrue(Files.readString(Path.of(System.getProperty(FeatureSuggestionLog.LOCATION_PROPERTY))).contains("\"owner\":\"V2\""));
 			assertInstanceOf(GitImport.Finished.class, run.next(third.index() + 1));
-			assertTrue(run.summary(false).contains("Configurations imported before, each stopped for review (2)"), run.summary(false));
+			assertTrue(run.summary(false).contains("Configurations imported before, each stopped for review (1)"), run.summary(false));
+			assertTrue(run.summary(false).contains("given a new revision of the feature whose places their changes lie in (1)"), run.summary(false));
 
 			Path out = Files.createDirectories(tmp.resolve("out"));
 			service.setBaseDir(out);
 			service.checkout("BASE, V2");
 			assertEquals("head\nv3\ntail\n", Files.readString(out.resolve("a.txt")));
 		}
+	}
+
+	/**
+	 * A commit whose configuration was imported before stops for review when its changes lie where
+	 * two features' did - neither owns them - and when they lie where no feature but BASE's did.
+	 */
+	@Test
+	public void aConfigurationImportedBeforeWithoutOneOwnerStopsForReview(@TempDir Path tmp) throws Exception {
+		Path clone = Files.createDirectories(tmp.resolve("clone"));
+		try (Git git = Git.init().setDirectory(clone.toFile()).call()) {
+			for (String version : List.of("v1", "v2", "v3", "v4")) {
+				Files.writeString(clone.resolve("a.txt"), "head\n" + version + "\ntail\n");
+				if (version.equals("v4"))
+					Files.writeString(clone.resolve("new.txt"), "new\n");
+				git.add().addFilepattern(".").call();
+				git.commit().setMessage(version).setAuthor("t", "t@example.com").setCommitter("t", "t@example.com").call();
+			}
+		}
+		try (EccoService service = repository(tmp.resolve("repo"))) {
+			List<String> log = new ArrayList<>();
+			GitImport run = new GitImport(service, new GitHistoryReader(), clone, Map.of(), false, oldestFirst(clone), false, false, true, log::add);
+			run.start();
+			GitImport.Step step = importAll(run, run.next(0), commit -> null);
+			// BASE only: no feature but BASE changed a.txt
+			GitImport.Review second = assertInstanceOf(GitImport.Review.class, run.unattendedWithoutSuggestion(assertInstanceOf(GitImport.Unattended.class, step).index()));
+			assertNotNull(second.repeated());
+			run.imported(second.index(), "BASE, A", run.commit(second.index(), "BASE, A"));
+			// A alone changed a.txt: its new revision - here B, new, is committed instead, as by a person
+			GitImport.Import third = assertInstanceOf(GitImport.Import.class, run.unattendedWithoutSuggestion(assertInstanceOf(GitImport.Unattended.class, run.next(second.index() + 1)).index()));
+			assertEquals("BASE, A'", third.configuration());
+			log.clear();
+			run.imported(third.index(), "BASE, A, B", run.commit(third.index(), "BASE, A, B"));
+			// A and B both changed a.txt
+			GitImport.Review fourth = assertInstanceOf(GitImport.Review.class, run.unattendedWithoutSuggestion(assertInstanceOf(GitImport.Unattended.class, run.next(third.index() + 1)).index()));
+			assertEquals("BASE, A, B", fourth.configuration());
+			assertNotNull(fourth.repeated());
+			assertTrue(log.stream().noneMatch(line -> line.startsWith("*** REVISED BY OVERLAP")), String.join("", log));
+		}
+	}
+
+	@Test
+	public void aRevisedFeatureCountsForTheChangesOfItsCommit() {
+		assertEquals(Set.of("A"), ImportedFeatureTraces.labels("BASE, A", null, "BASE, A'", "A"));
+		assertEquals(Set.of(), ImportedFeatureTraces.labels("BASE, A", null, "BASE, A'"), "a tagged commit's mark: its folded commits changed A");
+		assertEquals(Set.of(), ImportedFeatureTraces.labels("BASE, A", null, "BASE", "A"), "not kept");
+	}
+
+	@Test
+	public void theOwnerIsTheOnlyFeatureAtTheStrongestOverlap() {
+		ImportedFeatureTraces.Overlap a = new ImportedFeatureTraces.Overlap("A", List.of("f#m"), List.of(), 1);
+		ImportedFeatureTraces.Overlap b = new ImportedFeatureTraces.Overlap("B", List.of(), List.of("f#C"), 1);
+		ImportedFeatureTraces.Overlap c = new ImportedFeatureTraces.Overlap("C", List.of("f#n"), List.of(), 1);
+		assertEquals("A", ImportedFeatureTraces.owner(List.of(a, b), Set.of("A", "B")).feature());
+		assertNull(ImportedFeatureTraces.owner(List.of(a, c, b), Set.of("A", "B", "C")), "two at the same positions");
+		assertEquals("B", ImportedFeatureTraces.owner(List.of(a, c, b), Set.of("B")).feature(), "only those of the configuration");
+		assertNull(ImportedFeatureTraces.owner(List.of(), Set.of("A")));
+		assertEquals("BASE, A', B", GitImport.revise("BASE, A, B", "A"));
 	}
 
 	/** Runs [run] from its first step to the end, suggesting with [suggester]; a review fails the test. */

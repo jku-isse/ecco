@@ -134,6 +134,8 @@ public final class GitImport {
 	private final List<String> llmSuggestionFailures = new ArrayList<>();
 	// unattended commits stopped for review because their configuration was imported before, for the summary
 	private final List<String> repeatedConfigurations = new ArrayList<>();
+	// unattended commits whose configuration was imported before, given a new revision of the feature owning their changes, for the summary
+	private final List<String> revisedByOverlap = new ArrayList<>();
 	// the commit being reviewed or imported, with its suggestion if one was asked for, recorded with
 	// what became of it once it is imported or skipped (see FeatureSuggestionLog)
 	private FeatureSuggestionLog.Entry pendingSuggestion;
@@ -284,15 +286,26 @@ public final class GitImport {
 	}
 
 	/**
-	 * Unattended commit [index] is imported with [config] - or reviewed, if [config] was imported
-	 * before: committed again, the lines the commit changed would check out for it no more (FR-M4d). A
-	 * person names the features it changes; no feature could be told from another without them.
+	 * Unattended commit [index] is imported with [config] - unless [config] was imported before:
+	 * committed again, the lines the commit changed would check out for it no more (FR-M4d). Then it
+	 * is imported with a new revision of the one feature whose places its changes lie in
+	 * ({@link #owner}), or, with no such feature, reviewed: a person names the features it changes.
 	 */
 	private Step importUnlessRepeated(int index, Suggested suggested, String config) {
 		GitCommitInfo commit = this.commits.get(index);
 		String failure = suggested == null ? null : suggested.batch().failureReason();
 		String repeated = this.folds(commit) ? null : this.repeats(index, config);
 		if (repeated != null) {
+			ImportedFeatureTraces.Overlap owner = this.owner(commit, config);
+			if (owner != null) {
+				// its changes lie where one feature's did: a new revision of it, unattended, by decision
+				String revised = revise(config, owner.feature());
+				this.revisedByOverlap.add(commit.getShortId() + ": " + owner.feature() + "' (" + evidence(owner) + ")");
+				this.log.accept("*** REVISED BY OVERLAP for " + commit.getShortId() + ": " + owner.feature() + "' - its changes lie where only "
+						+ owner.feature() + "'s commits changed things (" + evidence(owner) + "): [" + revised + "]" + System.lineSeparator());
+				this.pendingSuggestion = this.suggestionEntry(commit, suggested, failure, revised, FeatureSuggestionLog.Outcome.AUTO).withOwner(owner.feature());
+				return new Import(index, revised);
+			}
 			this.repeatedConfigurations.add(commit.getShortId() + ": " + config);
 			this.log.accept("*** CONFIGURATION IMPORTED BEFORE for " + commit.getShortId() + " (stopped for review): [" + config + "]" + System.lineSeparator());
 			this.pendingSuggestion = this.suggestionEntry(commit, suggested, failure, config, FeatureSuggestionLog.Outcome.REVIEWED);
@@ -300,6 +313,46 @@ public final class GitImport {
 		}
 		this.pendingSuggestion = this.suggestionEntry(commit, suggested, failure, config, FeatureSuggestionLog.Outcome.AUTO);
 		return new Import(index, config);
+	}
+
+	/**
+	 * The feature of [config] that owns [commit]'s changes, by where the features' imported commits
+	 * changed things ({@link ImportedFeatureTraces#owner}), or null - BASE and the generic features
+	 * own nothing here: everything lies where BASE's first commit created it. Reads the clone and the
+	 * log: not on the FX thread. Null if the changes cannot be located.
+	 */
+	private ImportedFeatureTraces.Overlap owner(GitCommitInfo commit, String config) {
+		Set<String> candidates = new LinkedHashSet<>(ConfigurationText.tokens(config));
+		candidates.remove(LlmFeatureSuggestionClient.BASE);
+		candidates.removeAll(LlmFeatureSuggestionClient.GENERIC);
+		if (candidates.isEmpty())
+			return null;
+		try {
+			Map<String, Set<String>> changed = new LinkedHashMap<>();
+			this.gitHistoryReader.getChangedPositions(this.repoDir, commit.getId(), this.service.getReader())
+					.forEach((path, file) -> changed.put(path, file.positions()));
+			return ImportedFeatureTraces.owner(this.importedTraces().overlap(changed), candidates);
+		} catch (RuntimeException e) {
+			LOGGER.log(Level.WARNING, "Could not locate the changes of " + commit.getShortId(), e);
+			return null;
+		}
+	}
+
+	/** "2 same positions", "1 same enclosing position" or "1 same file": what an owner's overlap rests on. */
+	private static String evidence(ImportedFeatureTraces.Overlap overlap) {
+		if (!overlap.samePositions().isEmpty())
+			return overlap.samePositions().size() + " same position" + (overlap.samePositions().size() == 1 ? "" : "s");
+		if (!overlap.sameEnclosing().isEmpty())
+			return overlap.sameEnclosing().size() + " same enclosing position" + (overlap.sameEnclosing().size() == 1 ? "" : "s");
+		return overlap.sameFiles() + " same file" + (overlap.sameFiles() == 1 ? "" : "s");
+	}
+
+	/** [configuration] with [feature] marked with a new revision ("A'"). */
+	static String revise(String configuration, String feature) {
+		List<String> text = new ArrayList<>();
+		for (String token : markedTokens(configuration))
+			text.add(plainName(token).equals(feature) ? feature + "'" : token);
+		return String.join(", ", text);
 	}
 
 	/**
@@ -504,7 +557,8 @@ public final class GitImport {
 		String before = String.join(", ", this.runningFeatures);
 		FeatureSuggestionLog.Entry suggestion = this.pendingSuggestion;
 		String suggested = suggestion != null && suggestion.commitId().equals(commit.getId()) ? suggestion.suggestion() : null;
-		Set<String> labels = ImportedFeatureTraces.labels(before, suggested, configurationText);
+		String owner = suggestion != null && suggestion.commitId().equals(commit.getId()) ? suggestion.owner() : null;
+		Set<String> labels = ImportedFeatureTraces.labels(before, suggested, configurationText, owner);
 		Set<String> relationLabels = ImportedFeatureTraces.relationLabels(before, suggested, configurationText);
 		Map<String, String> parents = suggestion != null && suggestion.commitId().equals(commit.getId()) ? suggestion.parents() : Map.of();
 
@@ -625,6 +679,8 @@ public final class GitImport {
 		return summary(this.importedCount, this.toImport(), this.skippedCount, stoppedEarly, this.allConstraintWarnings, this.llmSuggestionFailures)
 				+ (this.repeatedConfigurations.isEmpty() ? "" : System.lineSeparator() + System.lineSeparator() + "Configurations imported before, each stopped for review ("
 						+ this.repeatedConfigurations.size() + "):" + System.lineSeparator() + String.join(System.lineSeparator(), this.repeatedConfigurations))
+				+ (this.revisedByOverlap.isEmpty() ? "" : System.lineSeparator() + System.lineSeparator() + "Configurations imported before, given a new revision of the feature whose places their changes lie in ("
+						+ this.revisedByOverlap.size() + "):" + System.lineSeparator() + String.join(System.lineSeparator(), this.revisedByOverlap))
 				+ (this.foldedCount == 0 ? "" : System.lineSeparator() + this.foldedCount + " commit(s) between the tagged ones were not imported: their features went into the next tagged one.");
 	}
 

@@ -63,7 +63,7 @@ public final class FeatureSuggestionLog {
 	public record Entry(String eccoRepository, String gitRepository, String commitId, String message, int diffLines, String model,
 						String before, String suggestion, String proposed, String failure,
 						LlmFeatureSuggestionClient.Usage usage, SuggestionConfidence confidence, Outcome outcome, String committed, ImportedFeatureTraces.Changes changes,
-						Map<String, String> parents) {
+						Map<String, String> parents, String owner) {
 
 		public Entry {
 			parents = parents == null ? Map.of() : Map.copyOf(parents);
@@ -75,28 +75,45 @@ public final class FeatureSuggestionLog {
 			this(eccoRepository, gitRepository, commitId, message, diffLines, model, before, suggestion, proposed, failure, usage, confidence, outcome, committed, changes, Map.of());
 		}
 
+		public Entry(String eccoRepository, String gitRepository, String commitId, String message, int diffLines, String model,
+					 String before, String suggestion, String proposed, String failure,
+					 LlmFeatureSuggestionClient.Usage usage, SuggestionConfidence confidence, Outcome outcome, String committed, ImportedFeatureTraces.Changes changes,
+					 Map<String, String> parents) {
+			this(eccoRepository, gitRepository, commitId, message, diffLines, model, before, suggestion, proposed, failure, usage, confidence, outcome, committed, changes, parents, null);
+		}
+
+		/**
+		 * This entry with {@code owner} as the feature its commit was given a new revision of, unattended,
+		 * because its changes lie where only that feature's imported commits changed things - its changes
+		 * count for it, as for a feature its suggestion named.
+		 */
+		public Entry withOwner(String owner) {
+			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, this.committed, this.changes, this.parents, owner);
+		}
+
 		/** This entry with {@code committed} as the configuration it was committed with. */
 		public Entry committedAs(String committed) {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, committed, this.changes, this.parents);
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, committed, this.changes, this.parents, this.owner);
 		}
 
 		/** This entry with what its commit changed. */
 		public Entry withChanges(ImportedFeatureTraces.Changes changes) {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, this.committed, changes, this.parents);
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, this.outcome, this.committed, changes, this.parents, this.owner);
 		}
 
 		/** This entry for a commit not imported, whose features go into the next imported one (see {@link Outcome#FOLDED}). */
 		public Entry folded() {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, Outcome.FOLDED, this.committed, this.changes, this.parents);
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, Outcome.FOLDED, this.committed, this.changes, this.parents, this.owner);
 		}
 
 		/** This entry for a skipped commit. */
 		public Entry skipped() {
 			return new Entry(this.eccoRepository, this.gitRepository, this.commitId, this.message, this.diffLines, this.model, this.before,
-					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, Outcome.SKIPPED, null, this.changes, this.parents);
+					this.suggestion, this.proposed, this.failure, this.usage, this.confidence, Outcome.SKIPPED, null, this.changes, this.parents, this.owner);
 		}
 	}
 
@@ -147,6 +164,8 @@ public final class FeatureSuggestionLog {
 		}
 		line.put("outcome", entry.outcome().name().toLowerCase());
 		line.put("committed", entry.committed());
+		if (entry.owner() != null)
+			line.put("owner", entry.owner());
 		if (!entry.parents().isEmpty()) {
 			// sorted, so a line reads the same however the reply ordered them
 			ObjectNode parents = line.putObject("parents");

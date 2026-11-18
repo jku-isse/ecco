@@ -304,9 +304,40 @@ public final class ImportedFeatureTraces {
 
 	/**
 	 * What an imported commit was about: the features {@code committed} has that {@code before}
-	 * did not, and the features {@code suggestion} named ("-name" removals aside) that
-	 * {@code committed} kept. Empty for a commit that added nothing and had no suggestion kept.
+	 * did not, the features {@code suggestion} named ("-name" removals aside) that
+	 * {@code committed} kept, and {@code owner} if it kept that: the feature the commit was given a
+	 * new revision of because its changes lie in that feature's places (see {@link #owner}). Empty
+	 * for a commit that added nothing and had no suggestion or owner kept. Not every "A'" counts: a
+	 * tagged commit's marks its features revised by the commits folded into it.
 	 */
+	public static Set<String> labels(String before, String suggestion, String committed, String owner) {
+		Set<String> labels = labels(before, suggestion, committed);
+		if (owner != null && ConfigurationText.tokens(committed).contains(owner))
+			labels.add(owner);
+		return labels;
+	}
+
+	/**
+	 * The one feature of {@code candidates} whose earlier changes {@code overlaps} ({@link #overlap})
+	 * say owns a commit's changes, or null: at the strongest kind of overlap any candidate has - the
+	 * same positions, else the same enclosing ones, else the same files - exactly one candidate has
+	 * it. Two there, or none at all (code no candidate changed before), and no one owns them.
+	 */
+	public static Overlap owner(List<Overlap> overlaps, Set<String> candidates) {
+		List<Overlap> considered = overlaps.stream().filter(overlap -> candidates.contains(overlap.feature())).toList();
+		List<java.util.function.Predicate<Overlap>> tiers = List.of(
+				overlap -> !overlap.samePositions().isEmpty(),
+				overlap -> !overlap.sameEnclosing().isEmpty(),
+				overlap -> overlap.sameFiles() > 0);
+		for (java.util.function.Predicate<Overlap> tier : tiers) {
+			List<Overlap> strongest = considered.stream().filter(tier).toList();
+			if (!strongest.isEmpty())
+				return strongest.size() == 1 ? strongest.get(0) : null;
+		}
+		return null;
+	}
+
+	/** As {@link #labels(String, String, String, String)}, without an owner. */
 	public static Set<String> labels(String before, String suggestion, String committed) {
 		Set<String> committedFeatures = ConfigurationText.tokens(committed);
 		Set<String> labels = new LinkedHashSet<>(committedFeatures);
@@ -474,7 +505,7 @@ public final class ImportedFeatureTraces {
 						|| "skipped".equals(entry.path("outcome").asText()))
 					continue;
 				String before = entry.path("before").asText(null), suggestion = entry.path("suggestion").asText(null), committed = entry.path("committed").asText(null);
-				Set<String> labels = labels(before, suggestion, committed);
+				Set<String> labels = labels(before, suggestion, committed, entry.path("owner").asText(null));
 				if (!labels.isEmpty())
 					imported.record(gitRepository.toString(), labels, relationLabels(before, suggestion, committed), changes(entry, gitRepository, reader, dispatchReader));
 				imported.recordParents(keptParents(parents(entry), committed));
